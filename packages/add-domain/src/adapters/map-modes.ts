@@ -36,9 +36,9 @@ export interface AddMapModeOption {
 }
 
 export const ADD_MAP_MODE_OPTIONS: readonly AddMapModeOption[] = [
-  { id: "overworld_hex", label: "Overworld", topology: "hex", fixture: false },
-  { id: "area_hex", label: "Area", topology: "hex", fixture: false },
-  { id: "dungeon_square", label: "Dungeon", topology: "square", fixture: false },
+  { id: "overworld_hex", label: "World", topology: "hex", fixture: false },
+  { id: "area_hex", label: "Studio", topology: "hex", fixture: false },
+  { id: "dungeon_square", label: "Cave", topology: "square", fixture: false },
   { id: "base_square", label: "Base", topology: "square", fixture: false },
 ]
 
@@ -243,7 +243,7 @@ function baseSquareMap(): GameMap {
         "studio_dungeon_entrance",
       ),
       landmark("add.entity.base.workbench", "Workbench", createSquareCoord(8, 3), "workbench"),
-      landmark("add.entity.base.exit", "Overworld Exit", createSquareCoord(5, 6), "base_exit"),
+      landmark("add.entity.base.exit", "World Exit", createSquareCoord(5, 6), "base_exit"),
     ],
     zones: [
       zone("add.zone.base.core", "Core Room", [

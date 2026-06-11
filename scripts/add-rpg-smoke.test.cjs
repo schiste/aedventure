@@ -260,7 +260,7 @@ async function assertBootAndRenderTextContract(page, consoleErrors) {
   assert.equal(initial.boundary.runtimeAuthority, "rust-wasm")
   assert.equal(initial.boundary.firstTargetApp, "apps/add-rpg")
   assert.equal(initial.runtime.error, null)
-  assert.match(initial.shell.interfaceHierarchy.questions.whereAmI, /Overworld/)
+  assert.match(initial.shell.interfaceHierarchy.questions.whereAmI, /World/)
   assert.equal(initial.shell.interfaceHierarchy.secondary.actionLabel, initial.shell.currentAction.label)
   assert.equal(initial.shell.interfaceHierarchy.secondary.actionEnabled, initial.shell.currentAction.enabled)
   assert.ok(
@@ -279,6 +279,7 @@ async function assertBootAndRenderTextContract(page, consoleErrors) {
   assert.equal(await page.locator(".first-playable-drag-handle[tabindex='0']").count(), 1)
   assert.equal(await page.locator("#add-world[data-visual-surface='map-stage']").count(), 1)
   assert.equal(await page.locator(".map-topbar[data-visual-surface='status']").count(), 1)
+  await assertMapModeNavigationLabels(page, ["World", "Studio", "Cave", "Base"])
   assert.equal(await page.locator("#first-playable-panel[data-visual-surface='objective']").count(), 1)
   assert.equal(await page.locator("#discovery-panel[data-visual-surface='context']").count(), 1)
   assert.equal(await page.locator("#map-loading-state[data-visual-state='loading']").count(), 1)
@@ -317,6 +318,22 @@ async function assertBootAndRenderTextContract(page, consoleErrors) {
   assert.ok(initial.ui.resourceCount > 0)
   assert.ok(initial.catalog.worldActionCount > 0)
   return initial
+}
+
+async function assertMapModeNavigationLabels(page, expectedLabels) {
+  const labels = await page
+    .locator(".map-mode-switcher .map-mode-label-full")
+    .evaluateAll((elements) =>
+      elements
+        .map((element) => element.textContent?.trim() ?? "")
+        .filter((label) => label.length > 0),
+    )
+  assert.deepEqual(labels, expectedLabels, "Map navigation should use player-facing labels.")
+  assert.doesNotMatch(
+    labels.join(" "),
+    /\b(?:Overworld|Area|Dgn|Dungeon)\b/i,
+    "Map navigation should not expose system/topology labels.",
+  )
 }
 
 async function assertAdminDeveloperSeparation(page, consoleErrors) {
@@ -471,7 +488,8 @@ async function exerciseMapModeSwitching(page, consoleErrors) {
       state.mapMode?.fixture === false &&
       state.map?.topology?.kind === "square" &&
       state.map?.topology?.fixture === false &&
-      state.map?.mapId === "add.rpg.dungeon.studio" &&
+      typeof state.map?.mapId === "string" &&
+      state.map.mapId.startsWith("add.rpg.dungeon.") &&
       state.map?.cells?.total > 100 &&
       state.map?.cells?.blocked > 0 &&
       state.map?.cells?.bubbleEdge === 0 &&
@@ -1129,6 +1147,19 @@ async function assertMobilePresentation(browser, url) {
         consoleErrors,
       )
       await assertMobileLayoutComposition(page, viewport)
+      const mobileNavigationText = await page.locator(".map-mode-switcher").innerText()
+      ;["World", "Studio", "Cave", "Base"].forEach((label) => {
+        assert.match(
+          mobileNavigationText,
+          new RegExp(label, "i"),
+          `${viewport.name}: mobile map navigation should include ${label}.`,
+        )
+      })
+      assert.doesNotMatch(
+        mobileNavigationText,
+        /\b(?:Overworld|Area|Dgn|Dungeon)\b/i,
+        `${viewport.name}: mobile map navigation should not expose system labels.`,
+      )
       await assertLayoutHierarchy(page, {
         expectedContextPanelId: "discovery-panel",
         expectedMapMode: "overworld_hex",

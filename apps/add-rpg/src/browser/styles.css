@@ -3760,11 +3760,11 @@ h1 {
   }
 
   .map-mode-switcher {
-    flex: 0 1 42vw;
+    flex: 0 1 min(48vw, 190px);
     flex-wrap: nowrap;
     justify-content: flex-start;
     overflow-x: auto;
-    max-width: 42vw;
+    max-width: min(48vw, 190px);
     padding: 2px;
     scrollbar-width: none;
   }
@@ -3776,8 +3776,8 @@ h1 {
   .map-mode-button {
     flex: 0 0 auto;
     min-height: 1.42rem;
-    padding: 0 0.46rem;
-    font-size: 0.62rem;
+    padding: 0 0.34rem;
+    font-size: 0.58rem;
   }
 
   .map-mode-label-full {

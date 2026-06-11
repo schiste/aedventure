@@ -37,6 +37,7 @@ import {
   lootDropForLocation,
   emptyDungeonVisibility,
   addDungeonByMapId,
+  addAreaByMapId,
   ADD_MAP_MODE_OPTIONS,
   STUDIO_DUNGEON_MAP_ID,
   STUDIO_GROUNDS_AREA_MAP_ID,
@@ -117,6 +118,14 @@ interface QuestPanelPosition {
 }
 
 type DungeonReturnMapMode = Exclude<AddMapMode, "dungeon_square">
+
+interface AddMapModeNavItem {
+  readonly id: AddMapMode
+  readonly label: string
+  readonly shortLabel: string
+  readonly ariaLabel: string
+  readonly hidden: boolean
+}
 
 interface TravelDialogState {
   readonly kind: TravelDialogKind
@@ -2023,10 +2032,10 @@ function interfaceWhereCopy(): string {
     return objective?.label ? `${objective.label} interior` : "Dungeon interior"
   }
   const currentEntrance = info.character.dungeonLinksAtCell[0]?.label
-  if (currentEntrance) return `Overworld at ${currentEntrance}`
+  if (currentEntrance) return `World at ${currentEntrance}`
   const selected = info.interaction.selectedLabel
-  if (selected) return `Overworld near ${selected}`
-  return info.character.cell ? `Overworld ${info.character.cell}` : addMapModeLabel(mapMode())
+  if (selected) return `World near ${selected}`
+  return info.character.cell ? `World ${info.character.cell}` : addMapModeLabel(mapMode())
 }
 
 function interfaceChangedCopy(): string {
@@ -3930,7 +3939,7 @@ function actionRows(): readonly unknown[] {
 }
 
 function mapModeButtons(): readonly unknown[] {
-  return ADD_MAP_MODE_OPTIONS.map(
+  return mapModeNavigationItems().map(
     (option) => html`
       <button
         id=${`map-mode-${option.id}`}
@@ -3938,27 +3947,91 @@ function mapModeButtons(): readonly unknown[] {
         class=${() => (mapMode() === option.id ? "map-mode-button active" : "map-mode-button")}
         role="tab"
         aria-selected=${() => mapMode() === option.id}
-        aria-label=${option.label}
+        aria-label=${option.ariaLabel}
         onClick=${() => switchMapModeFromTab(option.id)}
       >
         <span class="map-mode-label-full">${option.label}</span>
-        <span class="map-mode-label-short" aria-hidden="true">${shortMapModeLabel(option.id)}</span>
+        <span class="map-mode-label-short" aria-hidden="true">${option.shortLabel}</span>
       </button>
     `,
   )
 }
 
-function shortMapModeLabel(mode: AddMapMode): string {
+function mapModeNavigationItems(): readonly AddMapModeNavItem[] {
+  return ADD_MAP_MODE_OPTIONS.map((option) => mapModeNavigationItem(option.id)).filter(
+    (item) => !item.hidden,
+  )
+}
+
+function mapModeNavigationItem(mode: AddMapMode): AddMapModeNavItem {
   switch (mode) {
     case "overworld_hex":
-      return "World"
-    case "area_hex":
-      return "Area"
-    case "dungeon_square":
-      return "Dgn"
+      return {
+        id: mode,
+        label: "World",
+        shortLabel: "World",
+        ariaLabel: "Open the world map",
+        hidden: false,
+      }
+    case "area_hex": {
+      const area = addAreaByMapId(areaTarget())
+      const areaLabel = area?.label ?? "Studio Grounds"
+      return {
+        id: mode,
+        label: "Studio",
+        shortLabel: "Studio",
+        ariaLabel: `Open ${areaLabel}`,
+        hidden: !snapshot() && mapMode() !== mode,
+      }
+    }
+    case "dungeon_square": {
+      const label = dungeonNavigationLabel()
+      return {
+        id: mode,
+        label,
+        shortLabel: dungeonNavigationShortLabel(label),
+        ariaLabel: `Open ${dungeonNavigationAriaLabel(label)}`,
+        hidden: !dungeonNavigationAvailable(),
+      }
+    }
     case "base_square":
-      return "Base"
+      return {
+        id: mode,
+        label: "Base",
+        shortLabel: "Base",
+        ariaLabel: "Open base management",
+        hidden: !baseManagementState() && mapMode() !== mode,
+      }
   }
+}
+
+function dungeonNavigationAvailable(): boolean {
+  return Boolean(
+    mapMode() === "dungeon_square" ||
+      heroDungeonLink() ||
+      (mapMode() === "base_square" && baseDungeonEntranceInteraction()) ||
+      lastDungeonEntryCommand(),
+  )
+}
+
+function dungeonNavigationLabel(): string {
+  const activeObjective = dungeonObjectiveState()
+  const link = heroDungeonLink()
+  const registered = addDungeonByMapId(dungeonTarget())
+  const sourceLabel = activeObjective?.label ?? link?.label ?? registered?.label ?? "Cave"
+  if (/survivor cave/i.test(sourceLabel)) return "Cave"
+  if (/studio/i.test(sourceLabel)) return "Studio Dungeon"
+  return sourceLabel
+}
+
+function dungeonNavigationShortLabel(label: string): string {
+  if (/studio/i.test(label)) return "Studio"
+  return label
+}
+
+function dungeonNavigationAriaLabel(label: string): string {
+  if (label === "Cave") return "Survivor Cave"
+  return label
 }
 
 // Smoothly animates the *presentation* clock toward a target. Only the explicit
@@ -4563,9 +4636,26 @@ function enterAreaTarget(areaMapId: string, command: string): void {
 }
 
 function switchMapModeFromTab(nextMode: AddMapMode): void {
-  switchMapMode(nextMode, {
-    dungeonTargetId: nextMode === "dungeon_square" ? STUDIO_DUNGEON_MAP_ID : undefined,
-  })
+  if (nextMode !== "dungeon_square") {
+    switchMapMode(nextMode)
+    return
+  }
+
+  if (mapMode() === "dungeon_square") return
+
+  const baseEntrance = mapMode() === "base_square" ? baseDungeonEntranceInteraction() : null
+  if (baseEntrance) {
+    enterDungeonInteraction(baseEntrance)
+    return
+  }
+
+  const link = heroDungeonLink()
+  if (link) {
+    enterDungeonLink(link)
+    return
+  }
+
+  switchMapMode(nextMode, { dungeonTargetId: dungeonTarget() })
 }
 
 function returnToOverworldFromDungeon(): void {
@@ -4589,7 +4679,7 @@ function dungeonReturnLabel(): string {
     case "area_hex":
       return "Return to Studio Grounds"
     default:
-      return "Return to Overworld"
+      return "Return to World"
   }
 }
 
