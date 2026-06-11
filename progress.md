@@ -2937,3 +2937,10 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   `npm run smoke:add-rpg`, and the web-game client against
   `http://127.0.0.1:5180/app/`; visually inspected Discovery, Base, and Offline
   Return screenshots.
+- Removed the disruptive per-hex travel-time badges from the ADD Phaser map.
+  The renderer no longer draws repeated `1h` chips on every reachable adjacent
+  cell or the `Crossing: 1h` path-preview label; travel time remains available
+  in the discovery panel, selected-tile details, and telemetry. Verification
+  passed with `npm --workspace @aedventure/add-rpg run build:browser`, full
+  `npm run smoke:add-rpg`, and a web-game client screenshot against the live
+  local preview at `http://127.0.0.1:5180/app/`.

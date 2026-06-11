@@ -1137,11 +1137,6 @@ export class AddRpgHexScene extends Phaser.Scene {
       this.drawFrontierHint(graphics, centerFor(cell.coord, context), context)
     }
 
-    for (const cell of reachableCells) {
-      if (!this.cellPresentationPolicy.cellVisible(cell)) continue
-      this.drawReachableTimeChip(centerFor(cell.coord, context), context)
-    }
-
     const previewCoord = this.activeAdjacentPreviewCoord(context, reachableCells)
     const pathTimePreviewVisible = Boolean(previewCoord)
     if (previewCoord && this.characterPosition) {
@@ -1247,33 +1242,11 @@ export class AddRpgHexScene extends Phaser.Scene {
     graphics.strokeRoundedRect(center.x - size * 0.40, center.y - size * 0.40, size * 0.80, size * 0.80, 6)
   }
 
-  private drawReachableTimeChip(center: Vector2, context: RenderContext): void {
-    const radius = visualCellRadius(context)
-    const text = this.add.text(center.x, center.y + radius * 0.70, "1h", {
-      color: "#244137",
-      fontFamily: "Aptos, Segoe UI, sans-serif",
-      fontSize: "10px",
-      fontStyle: "900",
-      backgroundColor: "rgba(255, 250, 226, 0.86)",
-      stroke: "rgba(255, 255, 255, 0.5)",
-      strokeThickness: 2,
-      padding: { x: 6, y: 2 },
-    })
-    text.setOrigin(0.5, 0.5)
-    text.setDepth(33)
-    setCrispText(text)
-    this.mapCommunicationObjects.push(text)
-  }
-
   private drawPathTimePreview(
     graphics: Phaser.GameObjects.Graphics,
     from: Vector2,
     to: Vector2,
   ): void {
-    const mid = {
-      x: (from.x + to.x) / 2,
-      y: (from.y + to.y) / 2,
-    }
     graphics.lineStyle(5, 0x1a1e18, 0.20)
     graphics.lineBetween(from.x, from.y, to.x, to.y)
     graphics.lineStyle(2.4, 0xf0b95d, 0.86)
@@ -1282,21 +1255,6 @@ export class AddRpgHexScene extends Phaser.Scene {
     graphics.fillCircle(to.x, to.y, 4.4)
     graphics.lineStyle(1.4, 0x9b5637, 0.72)
     graphics.strokeCircle(to.x, to.y, 6.8)
-
-    const label = this.add.text(mid.x, mid.y - 15, "Crossing: 1h", {
-      color: "#3c2916",
-      fontFamily: "Aptos, Segoe UI, sans-serif",
-      fontSize: "11px",
-      fontStyle: "900",
-      backgroundColor: "rgba(255, 250, 226, 0.94)",
-      stroke: "rgba(255, 255, 255, 0.55)",
-      strokeThickness: 2,
-      padding: { x: 7, y: 3 },
-    })
-    label.setOrigin(0.5, 0.5)
-    label.setDepth(58)
-    setCrispText(label)
-    this.mapCommunicationObjects.push(label)
   }
 
   /** Compute the cartographic scale bar: a "nice" 1/2/5 distance and its on-screen
