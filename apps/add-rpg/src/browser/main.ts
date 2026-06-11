@@ -1,4 +1,12 @@
-import { createEffect, createMemo, createSignal, onCleanup, onMount } from "solid-js"
+import {
+  createEffect,
+  createMemo,
+  createRoot,
+  createSignal,
+  onCleanup,
+  onMount,
+  type Accessor,
+} from "solid-js"
 import html from "solid-js/html"
 import { render } from "solid-js/web"
 import {
@@ -103,6 +111,33 @@ import {
 import "./styles.css"
 
 const OPENING_TRAVEL_STEP_ID = "reach-base"
+
+const moduleRootDisposers: Array<() => void> = []
+
+function createModuleMemo<T>(compute: () => T): Accessor<T> {
+  let disposeRoot: (() => void) | undefined
+  const memo = createRoot((dispose) => {
+    disposeRoot = dispose
+    return createMemo(compute)
+  })
+  if (disposeRoot) moduleRootDisposers.push(disposeRoot)
+  return memo
+}
+
+function createModuleEffect(effect: () => void): void {
+  let disposeRoot: (() => void) | undefined
+  createRoot((dispose) => {
+    disposeRoot = dispose
+    createEffect(effect)
+  })
+  if (disposeRoot) moduleRootDisposers.push(disposeRoot)
+}
+
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    for (const dispose of moduleRootDisposers.splice(0)) dispose()
+  })
+}
 
 const FIRST_PLAYABLE_ROLE_IDS = [
   ROLE_CRYSTAL_BASSLINE,
@@ -327,29 +362,29 @@ const client = new SimulationClient({
   },
 })
 
-const uiState = createMemo<AddUiState | null>(() => {
+const uiState = createModuleMemo<AddUiState | null>(() => {
   const currentSnapshot = snapshot()
   const currentCatalog = catalog()
   return currentSnapshot && currentCatalog
     ? selectAddUiState(currentSnapshot, currentCatalog)
     : null
 })
-const baseManagementState = createMemo<AddBaseManagementState | null>(() => {
+const baseManagementState = createModuleMemo<AddBaseManagementState | null>(() => {
   const currentSnapshot = snapshot()
   const currentCatalog = catalog()
   return currentSnapshot && currentCatalog
     ? selectAddBaseManagementState(currentSnapshot, currentCatalog)
     : null
 })
-const perkProgress = createMemo(() => {
+const perkProgress = createModuleMemo(() => {
   const currentSnapshot = snapshot()
   return currentSnapshot ? selectAddPerkSummaries(currentSnapshot) : null
 })
-const inventoryItems = createMemo(() => {
+const inventoryItems = createModuleMemo(() => {
   const currentSnapshot = snapshot()
   return currentSnapshot ? selectAddInventory(currentSnapshot) : []
 })
-const discoveryState = createMemo(() => {
+const discoveryState = createModuleMemo(() => {
   const currentSnapshot = snapshot()
   const currentCatalog = catalog()
   if (!currentSnapshot || !currentCatalog) return null
@@ -384,7 +419,7 @@ const discoveryState = createMemo(() => {
     lastMovement: lastDiscoveryMovement(),
   })
 })
-const dungeonObjectiveState = createMemo(() =>
+const dungeonObjectiveState = createModuleMemo(() =>
   selectAddDungeonObjective({
     mapMode: mapMode(),
     dungeonMapId: mapMode() === "dungeon_square" ? dungeonTarget() : null,
@@ -392,7 +427,7 @@ const dungeonObjectiveState = createMemo(() =>
   }),
 )
 let firstPlayableCompletionCollapseApplied = false
-createEffect(() => {
+createModuleEffect(() => {
   const complete = uiState()?.firstPlayable.complete === true
   const objectiveOwnedByDungeon = dungeonObjectiveState() !== null
   if (!complete || objectiveOwnedByDungeon) {
@@ -411,7 +446,7 @@ createEffect(() => {
     })
   }
 })
-const displayedWorldTime = createMemo<AddWorldTimeSummary | null>(() => {
+const displayedWorldTime = createModuleMemo<AddWorldTimeSummary | null>(() => {
   const currentSnapshot = snapshot()
   const clockSeconds = displayClockSeconds() ?? currentSnapshot?.clockSeconds
   return clockSeconds === undefined || clockSeconds === null
@@ -419,28 +454,28 @@ const displayedWorldTime = createMemo<AddWorldTimeSummary | null>(() => {
     : selectAddWorldTimeForClockSeconds(clockSeconds)
 })
 
-const worldActions = createMemo(() => uiState()?.availableWorldActions ?? [])
-const gameInteractions = createMemo(() => {
+const worldActions = createModuleMemo(() => uiState()?.availableWorldActions ?? [])
+const gameInteractions = createModuleMemo(() => {
   const currentWorld = world()
   const map = currentWorld?.maps.find((candidate) => candidate.id === currentWorld.activeMapId)
   return map?.interactions ?? []
 })
-const primaryWorldActionInteraction = createMemo(() =>
+const primaryWorldActionInteraction = createModuleMemo(() =>
   gameInteractions().find(
     (interaction) => interaction.kind === "world_action" && interaction.enabled,
   ),
 )
-const recruitmentInteraction = createMemo(() =>
+const recruitmentInteraction = createModuleMemo(() =>
   gameInteractions().find((interaction) => interaction.action === "add.recruit_from_survivor_cave"),
 )
 // On the overworld, the enabled dungeon link under the Hero (for example,
 // Survivor Cave) surfaces an "Enter" affordance for that local entrance.
-const heroDungeonLink = createMemo(() =>
+const heroDungeonLink = createModuleMemo(() =>
   mapMode() === "overworld_hex"
     ? (mapInfo().character.dungeonLinksAtCell.find((link) => link.enabled) ?? null)
     : null,
 )
-const baseDungeonEntranceInteraction = createMemo(() =>
+const baseDungeonEntranceInteraction = createModuleMemo(() =>
   mapMode() === "base_square"
     ? (gameInteractions().find(
         (interaction) => interaction.action === "add.enter_dungeon" && interaction.enabled !== false,
@@ -449,17 +484,17 @@ const baseDungeonEntranceInteraction = createMemo(() =>
 )
 
 // Hero pose (coord + facing), as stable strings, drives the dungeon cone FOV.
-const heroDungeonCell = createMemo(() =>
+const heroDungeonCell = createModuleMemo(() =>
   mapMode() === "dungeon_square" ? mapInfo().character.cell : null,
 )
-const heroDungeonFacing = createMemo(() =>
+const heroDungeonFacing = createModuleMemo(() =>
   mapMode() === "dungeon_square" ? mapInfo().character.facing : null,
 )
 // Remembered dungeon visibility, persisted across moves/turns; reset per dungeon.
 let dungeonVisibility: VisibilityMap = emptyDungeonVisibility()
 let dungeonVisibilityKey = ""
 
-createEffect(() => {
+createModuleEffect(() => {
   const currentSnapshot = snapshot()
   const currentCatalog = catalog()
   if (!currentSnapshot || !currentCatalog) return
@@ -543,21 +578,27 @@ function AddRpgApp() {
 
   onMount(() => {
     if (!mapElement) return
-    mapHost = new AddRpgPhaserMapHost(mapElement, {
-      onBeforeCharacterTravel: confirmFirstCharacterTravel,
-      onCharacterTravel: (event) => {
-        void handleCharacterTravel(event)
-      },
-      onDoorToggle: (coord) => {
-        void handleDoorToggle(coord)
-      },
-      onClearLocation: (coord, lootTable) => {
-        void handleClearLocation(coord, lootTable)
-      },
-      onPickUp: (coord) => {
-        void handlePickUp(coord)
-      },
-    })
+    try {
+      mapHost = new AddRpgPhaserMapHost(mapElement, {
+        onBeforeCharacterTravel: confirmFirstCharacterTravel,
+        onCharacterTravel: (event) => {
+          void handleCharacterTravel(event)
+        },
+        onDoorToggle: (coord) => {
+          void handleDoorToggle(coord)
+        },
+        onClearLocation: (coord, lootTable) => {
+          void handleClearLocation(coord, lootTable)
+        },
+        onPickUp: (coord) => {
+          void handlePickUp(coord)
+        },
+      })
+    } catch (error) {
+      setLastEvent("error")
+      setLastError(error instanceof Error ? error.message : "Unable to start the map renderer.")
+      return
+    }
     const currentWorld = world()
     if (currentWorld) {
       mapHost.renderWorld(currentWorld)

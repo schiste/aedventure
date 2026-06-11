@@ -2913,3 +2913,15 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   `npm run smoke:add-rpg` and the web-game client against
   `http://127.0.0.1:5180/app/`; inspected the generated start screenshot and
   `tmp/add-rpg-movement-consequences-smoke.png`.
+- Fixed the ADD dev-console boot issues reported from `main.ts` and Phaser.
+  Module-scope Solid `createMemo` / `createEffect` calls now live under explicit
+  module roots with HMR disposal, so dev builds no longer warn about ownerless
+  computations. The ADD Phaser host now prefers WebGL but falls back to Canvas
+  when a browser cannot create a WebGL context, preventing a renderer boot
+  white screen; the app also catches total renderer startup failure and records
+  it as runtime UI state. Added an empty favicon link to avoid the local
+  `/favicon.ico` 404 noise. Verification passed with `npm --workspace
+  @aedventure/add-rpg run build:browser`, full `npm run smoke:add-rpg`, a dev
+  browser console pass against `http://127.0.0.1:5177/app/`, a forced
+  WebGL-disabled Canvas boot pass, and the web-game client screenshot/state
+  capture.
