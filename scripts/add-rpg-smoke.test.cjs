@@ -2205,6 +2205,11 @@ async function assertIdleAmbientClockAdvances(page) {
 async function assertHeroStartsAtSurvivorCave(page, state) {
   const canvas = page.locator("#add-world canvas")
   await canvas.waitFor({ state: "visible" })
+  assert.equal(
+    await page.locator("#map-focus-cave").count(),
+    1,
+    "The Cave camera anchor should be visible while the Hero starts on the Survivor Cave.",
+  )
   const box = await canvas.boundingBox()
   assert.ok(box, "ADD RPG Phaser canvas should have a browser box")
   const character = state.map?.character
@@ -2686,6 +2691,11 @@ async function exerciseMainCharacterMovement(page, consoleErrors) {
     10000,
   )
   assert.equal(moved.travel.costGameMinutes, 60)
+  assert.equal(
+    await page.locator("#map-focus-cave").count(),
+    0,
+    "The Cave camera anchor should hide once the Hero has left the relevant cave context.",
+  )
   assert.ok(
     hasNewCells(before.snapshot.discoveredCells, moved.snapshot.discoveredCells),
     "Moving the hero should reveal at least one new discovered cell.",

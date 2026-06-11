@@ -2901,3 +2901,15 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   `npm --workspace @aedventure/add-rpg run build:browser`, and
   `npm run smoke:add-rpg:built`; visually inspected the regenerated Base
   hierarchy screenshot.
+- Started the camera HUD polish pass: the bottom-left map HUD keeps the same
+  camera-control behavior and IDs, but is now structured as compact zoom and
+  anchor clusters. The zoom readout now uses game-style scale (`1.2x`) instead
+  of a QA-like percent, Hero/Studio/Cave anchors are compact glyph controls with
+  accessible labels, and the Cave anchor only appears on the overworld when the
+  Survivor Cave anchor is relevant.
+- Completed and verified the camera HUD polish pass. Smoke now asserts the Cave
+  anchor is present while the Hero starts on Survivor Cave and disappears after
+  the Hero leaves that local cave context. Verification passed with
+  `npm run smoke:add-rpg` and the web-game client against
+  `http://127.0.0.1:5180/app/`; inspected the generated start screenshot and
+  `tmp/add-rpg-movement-consequences-smoke.png`.

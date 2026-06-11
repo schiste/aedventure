@@ -798,67 +798,86 @@ function AddRpgApp() {
             data-visual-surface="map-controls"
             aria-label="ADD map controls"
           >
-            <div class="map-camera-controls">
-              <button
-                id="map-zoom-out"
-                type="button"
-                class="map-button"
-                onClick=${() => zoomMap(0.9)}
-                disabled=${() => !mapInfo().ready}
-                aria-label="Zoom out"
-              >
-                -
-              </button>
-              <span class="zoom-readout">${() => `${Math.round(mapInfo().camera.zoom * 100)}%`}</span>
-              <button
-                id="map-zoom-in"
-                type="button"
-                class="map-button"
-                onClick=${() => zoomMap(1.1)}
-                disabled=${() => !mapInfo().ready}
-                aria-label="Zoom in"
-              >
-                +
-              </button>
-              <button
-                id="map-reset-camera"
-                type="button"
-                class="map-button text"
-                onClick=${resetMapCamera}
-                disabled=${() => !mapInfo().ready}
-              >
-                Center
-              </button>
-              <button
-                id="map-focus-hero"
-                type="button"
-                class="map-button text"
-                onClick=${() => focusMap("hero")}
-                disabled=${() => !mapInfo().ready}
-              >
-                Hero
-              </button>
-              ${() =>
-                mapMode() === "overworld_hex"
-                  ? html`<button
-                        id="map-focus-base"
-                        type="button"
-                        class="map-button text"
-                        onClick=${() => focusMap("base")}
-                        disabled=${() => !mapInfo().ready}
-                      >
-                        Base
-                      </button>
-                      <button
-                        id="map-focus-cave"
-                        type="button"
-                        class="map-button text"
-                        onClick=${() => focusMap("cave")}
-                        disabled=${() => !mapInfo().ready}
-                      >
-                        Cave
-                      </button>`
-                  : null}
+            <div class="map-camera-controls" aria-label="Map camera controls">
+              <div class="map-zoom-cluster" aria-label="Map zoom">
+                <button
+                  id="map-zoom-out"
+                  type="button"
+                  class="map-button map-button-icon"
+                  onClick=${() => zoomMap(0.9)}
+                  disabled=${() => !mapInfo().ready}
+                  aria-label="Zoom out"
+                  title="Zoom out"
+                >
+                  -
+                </button>
+                <span class="zoom-readout" aria-label=${() => `Zoom ${mapZoomReadout()}`}>
+                  ${() => mapZoomReadout()}
+                </span>
+                <button
+                  id="map-zoom-in"
+                  type="button"
+                  class="map-button map-button-icon"
+                  onClick=${() => zoomMap(1.1)}
+                  disabled=${() => !mapInfo().ready}
+                  aria-label="Zoom in"
+                  title="Zoom in"
+                >
+                  +
+                </button>
+              </div>
+              <div class="map-anchor-cluster" aria-label="Map anchors">
+                <button
+                  id="map-reset-camera"
+                  type="button"
+                  class="map-button map-button-anchor map-button-center"
+                  onClick=${resetMapCamera}
+                  disabled=${() => !mapInfo().ready}
+                  aria-label="Frame known map"
+                  title="Frame known map"
+                >
+                  O
+                </button>
+                <button
+                  id="map-focus-hero"
+                  type="button"
+                  class="map-button map-button-anchor"
+                  onClick=${() => focusMap("hero")}
+                  disabled=${() => !mapInfo().ready}
+                  aria-label="Focus Hero"
+                  title="Focus Hero"
+                >
+                  H
+                </button>
+                ${() =>
+                  mapMode() === "overworld_hex"
+                    ? html`<button
+                          id="map-focus-base"
+                          type="button"
+                          class="map-button map-button-anchor"
+                          onClick=${() => focusMap("base")}
+                          disabled=${() => !mapInfo().ready}
+                          aria-label="Focus Studio"
+                          title="Focus Studio"
+                        >
+                          B
+                        </button>`
+                    : null}
+                ${() =>
+                  shouldShowCaveCameraAnchor()
+                    ? html`<button
+                          id="map-focus-cave"
+                          type="button"
+                          class="map-button map-button-anchor"
+                          onClick=${() => focusMap("cave")}
+                          disabled=${() => !mapInfo().ready}
+                          aria-label="Focus Survivor Cave"
+                          title="Focus Survivor Cave"
+                        >
+                          C
+                        </button>`
+                    : null}
+              </div>
             </div>
           </div>
         </div>
@@ -4841,6 +4860,11 @@ function zoomMap(factor: number): void {
   refreshMapInfo()
 }
 
+function mapZoomReadout(): string {
+  const rounded = Math.round(mapInfo().camera.zoom * 10) / 10
+  return `${Number.isInteger(rounded) ? rounded.toFixed(0) : rounded.toFixed(1)}x`
+}
+
 function resetMapCamera(): void {
   mapHost?.resetCamera()
   refreshMapInfo()
@@ -4849,6 +4873,17 @@ function resetMapCamera(): void {
 function focusMap(target: "hero" | "base" | "cave"): void {
   mapHost?.focusOn(target)
   refreshMapInfo()
+}
+
+function shouldShowCaveCameraAnchor(): boolean {
+  if (mapMode() !== "overworld_hex") return false
+  const info = mapInfo()
+  const caveVisible = info.landmarks.survivorCaveVisible
+  const heroAtCave =
+    info.character.coord !== null &&
+    info.landmarks.survivorCave !== null &&
+    info.character.coord === info.landmarks.survivorCave
+  return caveVisible && heroAtCave
 }
 
 function handleOnline(): void {

@@ -3179,42 +3179,84 @@ h1 {
 .map-camera-controls {
   display: inline-flex;
   align-items: center;
-  border: 1px solid var(--border-soft);
-  border-radius: var(--radius-ui);
+  gap: 7px;
+  border: 1px solid rgb(255 244 201 / 13%);
+  border-radius: 999px;
+  padding: 4px;
   background:
-    linear-gradient(180deg, rgb(255 244 201 / 8%), rgb(255 244 201 / 3%)),
-    var(--surface-status);
-  box-shadow: var(--shadow-hud);
-  backdrop-filter: blur(14px);
+    radial-gradient(circle at 28% 30%, rgb(95 209 216 / 12%), transparent 44%),
+    linear-gradient(180deg, rgb(255 244 201 / 9%), rgb(255 244 201 / 3%)),
+    rgb(7 16 14 / 88%);
+  box-shadow:
+    var(--shadow-hud),
+    inset 0 1px 0 rgb(255 255 255 / 7%);
+  backdrop-filter: blur(16px);
   pointer-events: auto;
 }
 
-.map-camera-controls {
-  gap: 4px;
-  padding: 5px;
+.map-zoom-cluster,
+.map-anchor-cluster {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border-radius: 999px;
+}
+
+.map-zoom-cluster {
+  padding: 2px;
+  background: rgb(0 0 0 / 18%);
+}
+
+.map-anchor-cluster {
+  padding: 2px;
+  background: rgb(255 244 201 / 6%);
 }
 
 .map-button {
   display: inline-grid;
-  min-width: 2rem;
-  min-height: 2rem;
+  min-width: 1.72rem;
+  min-height: 1.72rem;
   place-items: center;
-  border-radius: 6px;
-  padding: 0 0.55rem;
-  font-size: 0.94rem;
+  border-color: rgb(255 244 201 / 11%);
+  border-radius: 999px;
+  padding: 0;
+  background: rgb(255 244 201 / 7%);
+  color: rgb(247 238 210 / 84%);
+  font-size: 0.76rem;
+  font-weight: 950;
   line-height: 1;
   box-shadow: none;
 }
 
-.map-button.text {
-  min-width: 4rem;
-  font-size: 0.78rem;
+.map-button:hover:not(:disabled) {
+  background: rgb(95 209 216 / 18%);
+  color: #c9fff9;
+  transform: none;
+}
+
+.map-button-icon {
+  min-width: 1.5rem;
+  min-height: 1.5rem;
+  color: rgb(247 238 210 / 70%);
+}
+
+.map-button-anchor {
+  min-width: 1.82rem;
+  min-height: 1.82rem;
+  border-color: rgb(95 209 216 / 18%);
+  background: rgb(95 209 216 / 9%);
+}
+
+.map-button-center {
+  border-color: rgb(240 185 93 / 22%);
+  background: rgb(240 185 93 / 11%);
+  color: #fff2bd;
 }
 
 .zoom-readout {
-  min-width: 3.2rem;
-  color: var(--paper);
-  font-size: 0.78rem;
+  min-width: 2.35rem;
+  color: rgb(247 238 210 / 78%);
+  font-size: 0.66rem;
   font-weight: 850;
   text-align: center;
 }
@@ -4266,7 +4308,7 @@ h1 {
   .map-camera-controls {
     width: auto;
     max-width: 100%;
-    gap: 2px;
+    gap: 4px;
     padding: 3px;
   }
 
@@ -4275,20 +4317,24 @@ h1 {
   }
 
   .map-button {
-    min-width: 1.7rem;
-    min-height: 1.7rem;
-    padding: 0 0.42rem;
-    font-size: 0.82rem;
+    min-width: 1.55rem;
+    min-height: 1.55rem;
+    font-size: 0.68rem;
   }
 
-  .map-button.text {
-    min-width: 3.2rem;
-    font-size: 0.66rem;
+  .map-button-icon {
+    min-width: 1.35rem;
+    min-height: 1.35rem;
+  }
+
+  .map-button-anchor {
+    min-width: 1.62rem;
+    min-height: 1.62rem;
   }
 
   .zoom-readout {
-    min-width: 2.7rem;
-    font-size: 0.66rem;
+    min-width: 2.05rem;
+    font-size: 0.6rem;
   }
 
   .command-grid {
