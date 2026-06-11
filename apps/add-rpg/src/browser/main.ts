@@ -1615,12 +1615,12 @@ function baseManagementCommandStrip(state: AddBaseManagementState): unknown {
       <div class="base-bottleneck-primary">
         <span>Bottleneck</span>
         <strong>${state.nextBottleneck.label}</strong>
-        <small>${state.nextBottleneck.detail}</small>
+        <small title=${state.nextBottleneck.detail}>${leadUiCopy(state.nextBottleneck.detail, 58)}</small>
       </div>
       <div class="base-bottleneck-action">
         <span>Why now</span>
         <strong>${state.recommendedAction.label}</strong>
-        <small>${state.recommendedAction.detail}</small>
+        <small title=${state.recommendedAction.detail}>${leadUiCopy(state.recommendedAction.detail, 58)}</small>
       </div>
       <div class="base-bottleneck-rates" aria-label="Current base rates">
         ${() => baseRateWatchChips(state)}
@@ -1672,13 +1672,20 @@ function dungeonContextPanel(): unknown {
       <article class="dungeon-mode-summary">
         <span>Dungeon status</span>
         <strong>${dungeon?.headline ?? "Explore the interior"}</strong>
-        <small>${dungeon?.detail ?? "Explore the interior and return when ready."}</small>
+        <small title=${dungeon?.detail ?? "Explore the interior and return when ready."}>
+          ${leadUiCopy(dungeon?.detail ?? "Explore the interior and return when ready.", 62)}
+        </small>
       </article>
       <div class="dungeon-context-grid">
         <article class="dungeon-context-card emphasis">
           <span>Current objective</span>
           <strong>${currentStep()?.label ?? dungeon?.headline ?? "Get your bearings"}</strong>
-          <small>${currentStep()?.detail ?? dungeon?.detail ?? "Inspect the room, then return when ready."}</small>
+          <small title=${currentStep()?.detail ?? dungeon?.detail ?? "Inspect the room, then return when ready."}>
+            ${leadUiCopy(
+              currentStep()?.detail ?? dungeon?.detail ?? "Inspect the room, then return when ready.",
+              62,
+            )}
+          </small>
         </article>
         <article class="dungeon-context-card">
           <span>Discovered exits</span>
@@ -1879,6 +1886,55 @@ function storyMoment(): AddStoryMoment | null {
   return selectAddStoryMoment(currentSnapshot, currentCatalog)
 }
 
+function leadUiCopy(copy: string | null | undefined, maxLength = 84): string {
+  const normalized = normalizeUiCopy(copy)
+  if (normalized.length <= maxLength) return normalized
+
+  const sentence = firstSentence(normalized)
+  if (sentence.length >= 18 && sentence.length <= maxLength) return sentence
+
+  const breakpoints = ["; ", " - ", " — ", " · "]
+  for (const breakpoint of breakpoints) {
+    const index = normalized.indexOf(breakpoint)
+    if (index > 16 && index <= maxLength) return normalized.slice(0, index)
+  }
+
+  const slice = normalized.slice(0, maxLength - 3)
+  const lastSpace = slice.lastIndexOf(" ")
+  return `${slice.slice(0, lastSpace > 32 ? lastSpace : slice.length).trimEnd()}...`
+}
+
+function normalizeUiCopy(copy: string | null | undefined): string {
+  return (copy ?? "").replace(/\s+/g, " ").trim()
+}
+
+function firstSentence(copy: string): string {
+  const match = /^(.+?[.!?])\s+/.exec(copy)
+  return match?.[1] ?? copy
+}
+
+function shouldRevealCopyDetail(fullCopy: string | null | undefined, visibleCopy: string): boolean {
+  const full = normalizeUiCopy(fullCopy)
+  const visible = normalizeUiCopy(visibleCopy)
+  return full.length > visible.length + 8 && full !== visible
+}
+
+function copyDisclosure(
+  id: string,
+  summary: string,
+  fullCopy: string | null | undefined,
+  visibleCopy: string,
+  className = "",
+): unknown {
+  if (!shouldRevealCopyDetail(fullCopy, visibleCopy)) return null
+  return html`
+    <details id=${id} class=${`copy-detail ${className}`.trim()}>
+      <summary>${summary}</summary>
+      <p>${normalizeUiCopy(fullCopy)}</p>
+    </details>
+  `
+}
+
 // The narrative moment stays inside the unified decision surface. The primary
 // CTA below owns the recommended action; alternate choices are secondary so the
 // player does not see several competing "next actions" at once.
@@ -1892,7 +1948,14 @@ function storyMomentBlock(): unknown {
       aria-label=${`Story moment: ${moment.label}`}
     >
       <div class="story-moment-kicker">${moment.label}</div>
-      <p class="story-moment-body">${moment.body}</p>
+      <p class="story-moment-body" title=${moment.body}>${leadUiCopy(moment.body, 96)}</p>
+      ${copyDisclosure(
+        `story-moment-detail-${safeElementId(moment.beatId)}`,
+        "Read more",
+        moment.body,
+        leadUiCopy(moment.body, 96),
+        "story-moment-detail",
+      )}
       <details class="story-moment-options">
         <summary>Other story choices</summary>
         <div class="story-moment-choices">
@@ -1937,25 +2000,45 @@ function currentActionSurface(
       <dl class="decision-brief" aria-label="Decision brief">
         <div data-question="what-should-i-do">
           <dt>Do now</dt>
-          <dd>${() => currentActionState().label}</dd>
+          <dd title=${() => currentActionState().label}>
+            ${() => leadUiCopy(currentActionState().label, 44)}
+          </dd>
         </div>
         <div data-question="what-if-i-wait">
           <dt>Wait</dt>
-          <dd>${() => interfaceHierarchyState().questions.whatHappensIfIWait}</dd>
+          <dd title=${() => interfaceHierarchyState().questions.whatHappensIfIWait}>
+            ${() => leadUiCopy(interfaceHierarchyState().questions.whatHappensIfIWait, 54)}
+          </dd>
         </div>
         <div data-question="what-changed">
           <dt>Changed</dt>
-          <dd>${() => interfaceHierarchyState().questions.whatChanged}</dd>
+          <dd title=${() => interfaceHierarchyState().questions.whatChanged}>
+            ${() => leadUiCopy(interfaceHierarchyState().questions.whatChanged, 48)}
+          </dd>
         </div>
         <div data-question="where-am-i">
           <dt>Where</dt>
-          <dd>${() => interfaceHierarchyState().questions.whereAmI}</dd>
+          <dd title=${() => interfaceHierarchyState().questions.whereAmI}>
+            ${() => leadUiCopy(interfaceHierarchyState().questions.whereAmI, 48)}
+          </dd>
         </div>
       </dl>
-      <small class="current-action-detail">${() => currentActionState().detail}</small>
+      ${() =>
+        copyDisclosure(
+          "current-action-detail",
+          "Why",
+          currentActionState().detail,
+          currentActionState().label,
+          "current-action-more",
+        )}
       ${() =>
         currentActionState().progressLabel
-          ? html`<em class="current-action-progress">${() => currentActionState().progressLabel}</em>`
+          ? html`<em
+              class="current-action-progress"
+              title=${() => currentActionState().progressLabel ?? ""}
+            >
+              ${() => leadUiCopy(currentActionState().progressLabel, 72)}
+            </em>`
           : null}
       ${() =>
         currentActionState().primaryLabel
@@ -2218,28 +2301,28 @@ function basePlayerLoopPanel(state: AddBaseManagementState): unknown {
       <header>
         <span>Player loop</span>
         <strong>${currentStep?.label ?? "Decide"}</strong>
-        <small>${loop.summary}</small>
+        <small title=${loop.summary}>${leadUiCopy(loop.summary, 74)}</small>
       </header>
       <div class="base-loop-focus-grid">
         <article data-severity=${loop.health.severity}>
           <span>Health</span>
           <strong>${loop.health.label}</strong>
-          <small>${loop.health.detail}</small>
+          <small title=${loop.health.detail}>${leadUiCopy(loop.health.detail, 50)}</small>
         </article>
         <article data-severity=${loop.bottleneck.severity}>
           <span>Bottleneck</span>
           <strong>${loop.bottleneck.label}</strong>
-          <small>${loop.bottleneck.detail}</small>
+          <small title=${loop.bottleneck.detail}>${leadUiCopy(loop.bottleneck.detail, 50)}</small>
         </article>
         <article data-severity=${state.recommendedAction.enabled ? "good" : "neutral"}>
           <span>Action</span>
           <strong>${state.recommendedAction.label}</strong>
-          <small>${state.recommendedAction.detail}</small>
+          <small title=${state.recommendedAction.detail}>${leadUiCopy(state.recommendedAction.detail, 50)}</small>
         </article>
         <article data-severity="neutral">
           <span>Return</span>
           <strong>${loop.returnPlan.horizonSeconds === null ? "Review now" : formatEconomyDuration(loop.returnPlan.horizonSeconds)}</strong>
-          <small>${loop.returnPlan.summary}</small>
+          <small title=${loop.returnPlan.summary}>${leadUiCopy(loop.returnPlan.summary, 50)}</small>
         </article>
       </div>
       <div class="base-loop-rate-strip">
@@ -2249,7 +2332,13 @@ function basePlayerLoopPanel(state: AddBaseManagementState): unknown {
       <div class="base-loop-steps" aria-label="Idle loop steps">
         ${() => loop.steps.map(basePlayerLoopStep)}
       </div>
-      <small class="base-loop-hint">${loop.decisionHint}</small>
+      ${copyDisclosure(
+        "base-loop-plan-detail",
+        "Plan",
+        loop.decisionHint,
+        currentStep?.label ?? "Decide",
+        "base-loop-details",
+      )}
     </section>
   `
 }
@@ -2346,6 +2435,11 @@ function baseManagementMetricRows(section: AddBaseManagementState["sections"][nu
 function baseEconomyOverview(state: AddBaseManagementState): unknown {
   const limiting = state.economy.limitingResource
   const stalled = state.economy.stalledSystems.slice(0, 3)
+  const limiterDetail = limiting
+    ? limiting.timeToAffordSeconds === null
+      ? "Waiting will not solve this without changing assignments."
+      : `${formatEconomyDuration(limiting.timeToAffordSeconds)} at current net flow.`
+    : state.nextBottleneck.detail
   return html`
     <section class="base-economy-overview" aria-label="Economy forecast">
       <article
@@ -2355,13 +2449,7 @@ function baseEconomyOverview(state: AddBaseManagementState): unknown {
       >
         <span>Current limiter</span>
         <strong>${limiting?.copy ?? "No hard resource blocker"}</strong>
-        <small>
-          ${limiting
-            ? limiting.timeToAffordSeconds === null
-              ? "Waiting will not solve this without changing assignments."
-              : `${formatEconomyDuration(limiting.timeToAffordSeconds)} at current net flow.`
-            : state.nextBottleneck.detail}
-        </small>
+        <small title=${limiterDetail}>${leadUiCopy(limiterDetail, 64)}</small>
       </article>
       <div class="base-economy-forecast-grid" aria-label="Wait forecast">
         ${() => state.economy.waitForecasts.map(baseEconomyForecastCard)}
@@ -2375,7 +2463,9 @@ function baseEconomyOverview(state: AddBaseManagementState): unknown {
         : null}
       <article class="base-offline-preview" data-enabled=${state.economy.offlinePreview.enabled ? "true" : "false"}>
         <span>Offline preview</span>
-        <small>${state.economy.offlinePreview.summary}</small>
+        <small title=${state.economy.offlinePreview.summary}>
+          ${leadUiCopy(state.economy.offlinePreview.summary, 72)}
+        </small>
       </article>
     </section>
   `
@@ -2402,10 +2492,10 @@ function baseEconomyForecastCard(forecast: AddBaseManagementState["economy"]["wa
 
 function baseStalledSystemRow(stalled: AddBaseManagementState["economy"]["stalledSystems"][number]): unknown {
   return html`
-    <span class="base-stalled-row" data-severity=${stalled.severity}>
-      <strong>${stalled.label}</strong>
-      <small>${stalled.reason}</small>
-    </span>
+      <span class="base-stalled-row" data-severity=${stalled.severity}>
+        <strong>${stalled.label}</strong>
+        <small title=${stalled.reason}>${leadUiCopy(stalled.reason, 58)}</small>
+      </span>
   `
 }
 
@@ -3316,7 +3406,7 @@ function discoveryConsequenceSection(): unknown {
     return null
   }
   return html`
-    <details id="movement-consequences-section" class="context-detail-section">
+    <details id="movement-consequences-section" class="context-detail-section" open>
       <summary>
         <span>Consequences</span>
         <small>${consequences.safety.headline}</small>
@@ -3406,7 +3496,7 @@ function discoveryTileRows(): readonly unknown[] {
       >
         <span>
           ${choice.label}
-          <small>${choice.copy}</small>
+          <small title=${choice.copy}>${leadUiCopy(choice.copy, 54)}</small>
         </span>
         <strong>
           ${choice.actionLabel}
@@ -3421,7 +3511,7 @@ function discoverySelectedTileSection(): unknown {
   const detail = discoveryState()?.tileDetail
   if (!detail) return null
   return html`
-    <details id="selected-tile-section" class="context-detail-section">
+    <details id="selected-tile-section" class="context-detail-section" open>
       <summary>
         <span>Selected tile</span>
         <small>${detail.label}</small>
@@ -3452,7 +3542,19 @@ function discoverySelectedTileCard(): unknown {
         </span>
         <small>${selectedTileStatusLabel(detail)}</small>
       </header>
-      <p class="selected-tile-summary">${decision?.travel.copy ?? detail.travel.copy}</p>
+      <p
+        class="selected-tile-summary"
+        title=${decision?.travel.copy ?? detail.travel.copy}
+      >
+        ${leadUiCopy(decision?.travel.copy ?? detail.travel.copy, 72)}
+      </p>
+      ${copyDisclosure(
+        "selected-tile-travel-detail",
+        "Travel detail",
+        decision?.travel.copy ?? detail.travel.copy,
+        leadUiCopy(decision?.travel.copy ?? detail.travel.copy, 72),
+        "selected-tile-more",
+      )}
       <div class="selected-tile-actions">
         ${() => selectedTileActionRows(detail)}
       </div>
@@ -3468,12 +3570,14 @@ function discoverySelectedTileCard(): unknown {
         <span>
           Toxicity
           <strong>${titleCase(detail.travel.risk.replaceAll("_", " "))}</strong>
-          <small>${detail.travel.copy}</small>
+          <small title=${detail.travel.copy}>${leadUiCopy(detail.travel.copy, 42)}</small>
         </span>
         <span>
           Links
           <strong>${detail.links.length}</strong>
-          <small>${detail.hasSubmap ? "Optional detail map available here" : "No known submap on this tile"}</small>
+          <small>
+            ${detail.hasSubmap ? "Submap available" : "No known submap"}
+          </small>
         </span>
         <span>
           Usefulness
@@ -4450,7 +4554,7 @@ function offlineReturnPanel(): unknown {
       <article class="offline-return-hero">
         <span>${summary.source === "manual" ? "Manual catch-up" : "Autosave return"}</span>
         <strong>${summary.headline}</strong>
-        <small>${summary.summary}</small>
+        <small title=${summary.summary}>${leadUiCopy(summary.summary, 76)}</small>
       </article>
       <div class="offline-return-highlights" aria-label="Return highlights">
         ${() => offlineReturnHighlightRows(summary)}
@@ -4458,7 +4562,9 @@ function offlineReturnPanel(): unknown {
       <article class="offline-return-card offline-return-next">
         <span>After dismissing</span>
         <strong>${() => returnReviewNextAction().label}</strong>
-        <small>${() => returnReviewNextAction().detail}</small>
+        <small title=${() => returnReviewNextAction().detail}>
+          ${() => leadUiCopy(returnReviewNextAction().detail, 72)}
+        </small>
         <button
           id="dismiss-offline-return-primary"
           type="button"
@@ -4482,8 +4588,8 @@ function offlineReturnPanel(): unknown {
           <strong>${summary.recruitsArrived}</strong>
           <small>
             ${summary.recruitsArrived > 0
-              ? "New survivors reached the base."
-              : "No new recruits arrived during this window."}
+              ? "New survivors arrived."
+              : "No arrivals."}
           </small>
         </article>
         <article class="offline-return-card">
@@ -4507,10 +4613,14 @@ function offlineReturnPanel(): unknown {
         <article class="offline-return-card offline-return-rules">
           <span>Offline rules</span>
           <strong>Automated loops only</strong>
-          <small>
-            Passive/systemic base loops can resolve while away. Manual Hero travel,
-            world actions, and local collection still require online input.
-          </small>
+          <small>Manual Hero actions stay paused.</small>
+          ${copyDisclosure(
+            "offline-return-rules-detail",
+            "Rules",
+            "Passive/systemic base loops can resolve while away. Manual Hero travel, world actions, and local collection still require online input.",
+            "Manual Hero actions stay paused.",
+            "offline-return-rules-detail",
+          )}
         </article>
       </div>
     </section>
@@ -4526,7 +4636,7 @@ function offlineReturnResourceRows(summary: AddOfflineReturnSummary): readonly u
     return [
       html`<li>
         <strong>No stock gained</strong>
-        <small>Automated loops held steady or were capped.</small>
+        <small>Loops were steady or capped.</small>
       </li>`,
     ]
   }
@@ -4562,7 +4672,7 @@ function offlineReturnJobRows(summary: AddOfflineReturnSummary): readonly unknow
     return [
       html`<li>
         <strong>No job completed</strong>
-        <small>Active jobs either kept running or none were queued.</small>
+        <small>No queued job finished.</small>
       </li>`,
     ]
   }
@@ -4594,7 +4704,7 @@ function offlineReturnPausedRows(summary: AddOfflineReturnSummary): readonly unk
     (rule) => html`
       <li>
         <strong>${rule.label}</strong>
-        <small>${rule.detail}</small>
+        <small title=${rule.detail}>${leadUiCopy(rule.detail, 58)}</small>
       </li>
     `,
   )
@@ -4606,7 +4716,7 @@ function offlineReturnBlockerRows(summary: AddOfflineReturnSummary): readonly un
     rows.push(html`
       <li>
         <strong>Brownout pressure</strong>
-        <small>${summary.brownout.summary}</small>
+        <small title=${summary.brownout.summary}>${leadUiCopy(summary.brownout.summary, 58)}</small>
       </li>
     `)
   }
@@ -4614,7 +4724,7 @@ function offlineReturnBlockerRows(summary: AddOfflineReturnSummary): readonly un
     rows.push(html`
       <li>
         <strong>${rule.label}</strong>
-        <small>${rule.detail}</small>
+        <small title=${rule.detail}>${leadUiCopy(rule.detail, 58)}</small>
       </li>
     `)
   })
@@ -4622,7 +4732,7 @@ function offlineReturnBlockerRows(summary: AddOfflineReturnSummary): readonly un
     rows.push(html`
       <li>
         <strong>No return blockers</strong>
-        <small>Nothing needed attention during this offline window.</small>
+        <small>Nothing needed attention.</small>
       </li>
     `)
   }

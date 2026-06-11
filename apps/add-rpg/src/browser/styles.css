@@ -882,6 +882,33 @@ h1 {
   color: var(--paper);
 }
 
+.copy-detail {
+  display: grid;
+  gap: 0.34rem;
+  margin: 0;
+}
+
+.copy-detail summary {
+  width: max-content;
+  cursor: pointer;
+  color: rgb(247 238 210 / 68%);
+  font-size: 0.64rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.copy-detail p {
+  margin: 0;
+  color: rgb(247 238 210 / 72%);
+  font-size: 0.68rem;
+  font-weight: 720;
+  line-height: 1.32;
+}
+
+.story-moment-detail p {
+  color: rgb(247 238 210 / 80%);
+}
+
 .story-moment-choices {
   display: grid;
   gap: 0.4rem;
@@ -991,13 +1018,20 @@ h1 {
   font-weight: 950;
 }
 
-.current-action-detail,
 .current-action-progress {
   color: rgb(247 238 210 / 70%);
   font-size: 0.7rem;
   font-style: normal;
   font-weight: 740;
   line-height: 1.25;
+}
+
+.current-action-more {
+  margin-top: -0.08rem;
+}
+
+.current-action-more p {
+  color: rgb(247 238 210 / 70%);
 }
 
 .current-action-progress {
@@ -1244,6 +1278,12 @@ h1 {
   border-radius: 7px;
   padding: 0.5rem 0.56rem;
   background: rgb(95 209 216 / 9%);
+}
+
+.selected-tile-more {
+  border-radius: 7px;
+  padding: 0.45rem 0.56rem;
+  background: rgb(95 209 216 / 6%);
 }
 
 .selected-tile-usefulness {
@@ -1751,13 +1791,18 @@ h1 {
   line-height: 1.08;
 }
 
-.base-player-loop header small,
 .base-loop-focus-grid article small,
-.base-loop-hint {
+.base-player-loop header small {
   color: rgb(247 238 210 / 66%);
   font-size: 0.62rem;
   font-weight: 720;
   line-height: 1.22;
+}
+
+.base-loop-details {
+  border-radius: 7px;
+  padding: 0.42rem 0.52rem;
+  background: rgb(255 244 201 / 5%);
 }
 
 .base-loop-focus-grid {
@@ -3943,14 +3988,6 @@ h1 {
     display: none;
   }
 
-  .discovery-panel[data-mobile-sheet-state="action"]:has(.discovery-panel-body details[open]) {
-    max-height: var(--mobile-context-sheet-detail-height);
-  }
-
-  .discovery-panel[data-mobile-sheet-state="action"]:has(.discovery-panel-body details[open]) .discovery-panel-body {
-    display: grid;
-  }
-
   .discovery-panel[data-mobile-sheet-state="detail"],
   .base-management-panel:has(details[open]),
   .dungeon-context-panel:has(details[open]) {
@@ -4006,7 +4043,7 @@ h1 {
     font-size: 0.72rem;
   }
 
-  .current-action-detail {
+  .current-action-more {
     display: -webkit-box;
     overflow: hidden;
     -webkit-box-orient: vertical;
@@ -4202,7 +4239,7 @@ h1 {
     max-height: var(--mobile-context-sheet-detail-height);
   }
 
-  .discovery-panel[data-mobile-sheet-state="action"] .current-action-detail {
+  .discovery-panel[data-mobile-sheet-state="action"] .current-action-more {
     display: none;
   }
 

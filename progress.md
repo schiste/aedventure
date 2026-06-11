@@ -2925,3 +2925,15 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   browser console pass against `http://127.0.0.1:5177/app/`, a forced
   WebGL-disabled Canvas boot pass, and the web-game client screenshot/state
   capture.
+- Completed the interface copy-density pass for review finding 10. The ADD
+  browser shell now renders action-first lead copy, moves longer story/current
+  action/selected tile/base loop/offline rule explanations behind disclosure
+  controls, and keeps full copy available through titles/details and
+  `render_game_to_text`. Selected tile and movement consequence sections are
+  open by default on desktop/player detail surfaces, while mobile action snap
+  uses the explicit sheet state instead of `:has(details[open])` so supporting
+  details stay hidden until the Details toggle. Verification passed with
+  `npm --workspace @aedventure/add-rpg run build:browser`, full
+  `npm run smoke:add-rpg`, and the web-game client against
+  `http://127.0.0.1:5180/app/`; visually inspected Discovery, Base, and Offline
+  Return screenshots.
