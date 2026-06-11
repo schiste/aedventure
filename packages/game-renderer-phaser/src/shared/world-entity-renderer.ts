@@ -32,6 +32,7 @@ export interface WorldEntityAppearance {
 export interface WorldEntityRenderState {
   readonly id: string
   readonly label: string
+  readonly labelVisible?: boolean
   readonly position: Vector2
   readonly facing?: WorldEntityFacing
   readonly moving?: boolean
@@ -188,16 +189,16 @@ class WorldEntityView {
       this.appearance.accentFill,
       0.96,
     )
-    this.label = scene.add.text(0, -36, state.label, {
+    this.label = scene.add.text(0, -34, state.label, {
       color: this.appearance.labelColor,
       fontFamily: "Aptos, Segoe UI, sans-serif",
-      fontSize: "12px",
+      fontSize: "10px",
       fontStyle: "800",
       align: "center",
       backgroundColor: this.appearance.labelBackgroundColor,
       stroke: this.appearance.labelStroke,
       strokeThickness: 2,
-      padding: { x: 6, y: 3 },
+      padding: { x: 5, y: 2 },
     })
     applyCrispWorldText(this.label)
     this.label.setOrigin(0.5, 0.5)
@@ -218,6 +219,7 @@ class WorldEntityView {
       this.labelText = state.label
       this.label.setText(state.label)
     }
+    this.label.setVisible(state.labelVisible !== false && state.label.trim().length > 0)
 
     const bob = Math.sin(frame.frameCount / 5) * (state.moving ? 1.8 : 0.5)
     const accentOffset = accentOffsetForFacing(state.facing ?? "down")
@@ -228,7 +230,7 @@ class WorldEntityView {
     this.head.setPosition(0, -12 + bob)
     this.accent.setPosition(accentOffset.x, 1 + bob + accentOffset.y)
     this.accent.setRotation(accentOffset.rotation)
-    this.label.setPosition(0, -36 + bob * 0.35)
+    this.label.setPosition(0, -34 + bob * 0.35)
   }
 
   destroy(): void {

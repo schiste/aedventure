@@ -1080,7 +1080,9 @@ async function verifyAddRendererTopologyFixtures(browser, report) {
         state.map?.validationValid === true &&
         state.map?.topology?.kind === "square" &&
         state.map?.topology?.fixture === false &&
-        state.map?.mapId === "add.rpg.dungeon.studio" &&
+        ["add.rpg.dungeon.studio", "add.rpg.dungeon.survivor-cave"].includes(
+          state.map?.mapId,
+        ) &&
         state.map?.cells?.total > 100 &&
         state.map?.cells?.blocked > 0 &&
         state.map?.landmarks?.renderedCount > 0,

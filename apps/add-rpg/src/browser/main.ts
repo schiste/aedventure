@@ -6367,6 +6367,7 @@ function emptyMapInfo(): AddPhaserMapInfo {
       transitionState: "idle",
       transitionProgress: 1,
       responsiveLayout: "desktop",
+      mobileEdgeCulledLabelCount: 0,
     },
   }
 }

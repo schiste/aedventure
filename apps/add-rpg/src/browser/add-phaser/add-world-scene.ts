@@ -583,18 +583,31 @@ export class AddRpgHexScene extends Phaser.Scene {
   }
 
   private drawCellMarkers(center: Vector2, markers: readonly AddMapMarker[]): void {
-    const glyphs: Record<AddMapMarker["kind"], { glyph: string; label: string; color: number; text: string }> = {
-      harvestable: { glyph: "❀", label: "Gather", color: 0x2f8f4a, text: "#173528" },
-      water: { glyph: "≈", label: "Water", color: 0x3a78c0, text: "#17304f" },
-      entrance: { glyph: "▽", label: "Entry", color: 0xa05f2d, text: "#482715" },
+    const glyphs: Record<AddMapMarker["kind"], { glyph: string; color: number }> = {
+      harvestable: { glyph: "❀", color: 0x2f8f4a },
+      water: { glyph: "≈", color: 0x3a78c0 },
+      entrance: { glyph: "", color: 0xa05f2d },
     }
     markers.forEach((marker, index) => {
       const style = glyphs[marker.kind]
-      const container = this.add.container(center.x + 20, center.y - 19 + index * 16)
-      const shadow = this.add.ellipse(0, 8, 42, 10, 0x17140f, 0.18)
-      const badge = this.add.ellipse(0, 0, 44, 18, 0xfffae2, 0.92)
+      const isEntrance = marker.kind === "entrance"
+      const container = this.add.container(center.x + 20, center.y - 20 + index * 15)
+      const shadow = this.add.ellipse(0, 8, isEntrance ? 22 : 24, 8, 0x17140f, 0.18)
+      const badge = this.add.ellipse(0, 0, isEntrance ? 25 : 24, isEntrance ? 22 : 20, 0xfffae2, 0.88)
       badge.setStrokeStyle(1.2, style.color, 0.58)
-      const glyph = this.add.text(-11, -1, style.glyph, {
+      if (isEntrance) {
+        const roof = this.add.triangle(0, -5, -7, 4, 0, -6, 7, 4, style.color, 0.92)
+        const doorway = this.add.rectangle(0, 2, 11, 11, 0x482715, 0.92)
+        const opening = this.add.ellipse(0, 4, 6, 8, 0x17100d, 0.86)
+        const threshold = this.add.line(0, 8, -5, 0, 5, 0, 0xf4c477, 0.48)
+        container.add([shadow, badge, roof, doorway, opening, threshold])
+        container.setDepth(31)
+        this.actionMarkerCount += 1
+        this.landmarkObjects.push(container)
+        this.mobileEdgeCullObjects.push(container)
+        return
+      }
+      const glyph = this.add.text(0, -1, style.glyph, {
         color: `#${style.color.toString(16).padStart(6, "0")}`,
         fontFamily: "Aptos, Segoe UI, sans-serif",
         fontSize: "12px",
@@ -602,17 +615,9 @@ export class AddRpgHexScene extends Phaser.Scene {
         stroke: "rgba(255, 255, 255, 0.42)",
         strokeThickness: 1,
       })
-      const label = this.add.text(4, -1, style.label, {
-        color: style.text,
-        fontFamily: "Aptos, Segoe UI, sans-serif",
-        fontSize: "8px",
-        fontStyle: "800",
-      })
       glyph.setOrigin(0.5, 0.5)
-      label.setOrigin(0, 0.5)
       setCrispText(glyph)
-      setCrispText(label)
-      container.add([shadow, badge, glyph, label])
+      container.add([shadow, badge, glyph])
       container.setDepth(31)
       this.actionMarkerCount += 1
       this.landmarkObjects.push(container)
@@ -819,6 +824,7 @@ export class AddRpgHexScene extends Phaser.Scene {
     return {
       id: "add-main-character",
       label: "Hero",
+      labelVisible: this.shouldShowHeroNameplate(),
       position: this.characterPosition ?? { x: 0, y: 0 },
       facing: this.characterFacing,
       moving: this.characterIsMoving(),
@@ -833,8 +839,17 @@ export class AddRpgHexScene extends Phaser.Scene {
         labelColor: "#16221e",
         labelBackgroundColor: "rgba(255, 250, 226, 0.9)",
         labelStroke: "rgba(255, 255, 255, 0.54)",
+        bodyWidth: 20,
+        bodyHeight: 24,
+        headSize: 13,
+        shadowWidth: 31,
+        shadowHeight: 10,
       },
     }
+  }
+
+  private shouldShowHeroNameplate(): boolean {
+    return this.context?.topologyKind === "square"
   }
 
   private characterIsMoving(): boolean {
@@ -861,21 +876,21 @@ export class AddRpgHexScene extends Phaser.Scene {
     const isCrystal = sourceId.includes("crystal")
     const isDoor = sourceId.includes("door") || sourceId.includes("gate") || sourceId.includes("exit")
     const shouldLabel = isCave || isBase || isInteriorFeature
-    const radius = isCave ? 13 : isBase ? 15 : 11
-    const fill = isCave ? 0x8a4c2f : isBase ? 0x2f7d68 : 0xa05f2d
-    const stroke = isCave ? 0x432315 : isBase ? 0x114538 : 0x5f371d
+    const radius = isCave ? 16 : isBase ? 15 : 11
+    const fill = isCave ? 0x7a3d25 : isBase ? 0x2f7d68 : 0xa05f2d
+    const stroke = isCave ? 0x2b170f : isBase ? 0x114538 : 0x5f371d
     if (isCave || isBase || isInteriorFeature || isDoor || isCrystal) {
       this.drawLandmarkBeacon(center, isCave ? 0xe1a46a : isBase || isCrystal ? 0x7de5cb : 0xf0b95d, radius)
     }
-    const shadow = this.add.ellipse(center.x, center.y + 14, radius * 1.6, 7, 0x1f1b14, 0.18)
+    const shadow = this.add.ellipse(center.x, center.y + 14, radius * 1.75, 8, 0x1f1b14, 0.24)
     shadow.setDepth(24)
     const markerPoints = isCave
       ? [0, -radius, radius, 0, 0, radius, -radius, 0]
       : isDoor
         ? [-radius * 0.72, radius, -radius * 0.72, -radius * 0.36, 0, -radius, radius * 0.72, -radius * 0.36, radius * 0.72, radius]
         : [0, -radius, radius * 0.9, -3, radius * 0.5, radius, -radius * 0.5, radius, -radius * 0.9, -3]
-    const marker = this.add.polygon(center.x, center.y, markerPoints, fill, 0.96)
-    marker.setStrokeStyle(2, stroke, 0.86)
+    const marker = this.add.polygon(center.x, center.y, markerPoints, fill, isCave ? 1 : 0.96)
+    marker.setStrokeStyle(isCave ? 2.8 : 2, stroke, isCave ? 0.96 : 0.86)
     marker.setDepth(25)
     this.landmarkObjects.push(shadow, marker)
 
@@ -902,16 +917,25 @@ export class AddRpgHexScene extends Phaser.Scene {
         : isBase
           ? "Studio"
           : entity.label ?? "Landmark"
-    const label = this.add.text(center.x, center.y + 28, labelText, {
+    const labelSharesCharacterCell =
+      isCave && this.characterCoord && entity.coord
+        ? sameCoord(this.characterCoord, entity.coord)
+        : false
+    const labelOffsetY = labelSharesCharacterCell
+      ? 48
+      : isCave
+        ? 42
+        : 28
+    const label = this.add.text(center.x, center.y + labelOffsetY, labelText, {
       color: "#1f2a25",
       fontFamily: "Aptos, Segoe UI, sans-serif",
-      fontSize: "12px",
+      fontSize: isCave ? "11px" : "12px",
       fontStyle: "800",
       align: "center",
-      backgroundColor: "rgba(255, 250, 226, 0.86)",
+      backgroundColor: isCave ? "rgba(255, 250, 226, 0.80)" : "rgba(255, 250, 226, 0.86)",
       stroke: "rgba(255, 255, 255, 0.42)",
       strokeThickness: 2,
-      padding: { x: 6, y: 3 },
+      padding: { x: isCave ? 5 : 6, y: isCave ? 2 : 3 },
     })
     setCrispText(label)
     label.setShadow(0, 1, "rgba(255, 255, 255, 0.65)", 0, true, true)
@@ -1138,6 +1162,15 @@ export class AddRpgHexScene extends Phaser.Scene {
     }
 
     const previewCoord = this.activeAdjacentPreviewCoord(context, reachableCells)
+    for (const cell of reachableCells) {
+      this.drawReachableCellGlow(
+        graphics,
+        centerFor(cell.coord, context),
+        context,
+        Boolean(previewCoord && sameCoord(previewCoord, cell.coord)),
+      )
+    }
+
     const pathTimePreviewVisible = Boolean(previewCoord)
     if (previewCoord && this.characterPosition) {
       this.drawPathTimePreview(graphics, this.characterPosition, centerFor(previewCoord, context))
@@ -1242,6 +1275,35 @@ export class AddRpgHexScene extends Phaser.Scene {
     graphics.strokeRoundedRect(center.x - size * 0.40, center.y - size * 0.40, size * 0.80, size * 0.80, 6)
   }
 
+  private drawReachableCellGlow(
+    graphics: Phaser.GameObjects.Graphics,
+    center: Vector2,
+    context: RenderContext,
+    active: boolean,
+  ): void {
+    const pulse = (Math.sin(this.frameCount / 18 + center.x * 0.013 + center.y * 0.019) + 1) / 2
+    const fillAlpha = active ? 0.12 + pulse * 0.04 : 0.045 + pulse * 0.018
+    const lineAlpha = active ? 0.62 + pulse * 0.18 : 0.18 + pulse * 0.12
+    const color = active ? 0xf0b95d : 0x78d99b
+
+    if (context.topologyKind === "hex" && context.map.topology.kind === "hex") {
+      drawHexPath(graphics, center, context.map.topology.radius - 3)
+      graphics.fillStyle(color, fillAlpha)
+      graphics.fillPath()
+      drawHexPath(graphics, center, context.map.topology.radius + (active ? 3.2 : 1.8))
+      graphics.lineStyle(active ? 2.8 : 1.25, color, lineAlpha)
+      graphics.strokePath()
+      return
+    }
+
+    const size = squareCellSize(context)
+    const inset = active ? 2 : 5
+    graphics.fillStyle(color, fillAlpha)
+    graphics.fillRoundedRect(center.x - size / 2 + inset, center.y - size / 2 + inset, size - inset * 2, size - inset * 2, 7)
+    graphics.lineStyle(active ? 2.4 : 1.1, color, lineAlpha)
+    graphics.strokeRoundedRect(center.x - size / 2 + inset, center.y - size / 2 + inset, size - inset * 2, size - inset * 2, 7)
+  }
+
   private drawPathTimePreview(
     graphics: Phaser.GameObjects.Graphics,
     from: Vector2,
@@ -1335,27 +1397,11 @@ export class AddRpgHexScene extends Phaser.Scene {
     marker(this.characterCoord, 0xffe066, 3.2)
   }
 
-  /** On-map tooltip for the hovered/selected cell: its label (and an Entrance
-   * tag for dungeon tiles), floated above the tile. Reuses one text object. */
+  /** Tile facts stay in the side panel; the map keeps only silhouettes and state. */
   private drawTileTooltip(): void {
     const tip = this.tooltipText
-    const context = this.context
     if (!tip) return
-    const coord = this.selectedCoord ?? this.hoveredCoord
-    if (!coord || !context || !context.terrainByCoord.has(addMapCoordKey(coord))) {
-      tip.setVisible(false)
-      return
-    }
-    const detail = tileInteractionDetailForCoord(coord, context.terrainByCoord)
-    if (!detail) {
-      tip.setVisible(false)
-      return
-    }
-    const text = detail.dungeonLinks.length > 0 ? `${detail.label}\nEntrance` : detail.label
-    const center = centerFor(coord, context)
-    tip.setText(text)
-    tip.setPosition(center.x, center.y - 34)
-    tip.setVisible(true)
+    tip.setVisible(false)
   }
 
   private drawTransitionOverlay(): void {
@@ -1378,17 +1424,17 @@ export class AddRpgHexScene extends Phaser.Scene {
         coord: this.hoveredCoord,
         kind: "hover",
         color: 0xffffff,
-        alpha: 0.7,
-        lineWidth: 2,
+        alpha: 0.72,
+        lineWidth: 2.2,
       })
     }
     if (this.selectedCoord) {
       selections.push({
         coord: this.selectedCoord,
         kind: "selection",
-        color: 0xe3a64a,
-        alpha: 0.95,
-        lineWidth: 3,
+        color: 0xffd26a,
+        alpha: 1,
+        lineWidth: 4,
       })
     }
     return selections

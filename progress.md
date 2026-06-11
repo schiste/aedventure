@@ -2944,3 +2944,15 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   passed with `npm --workspace @aedventure/add-rpg run build:browser`, full
   `npm run smoke:add-rpg`, and a web-game client screenshot against the live
   local preview at `http://127.0.0.1:5180/app/`.
+- Polished the first ADD map readability pass. The overworld Hero label is now
+  hidden while the neutral entity renderer supports explicit label visibility;
+  entrance markers are icon-only instead of text badges; Survivor Cave gets a
+  lower, smaller landmark plate when the Hero stands on it; reachable/selected
+  hexes use glow/outline affordances; tile fact tooltips stay off the canvas so
+  details remain in the side panel. Verification passed with
+  `npm --workspace @aedventure/add-rpg run build:browser`, `npm run
+  smoke:add-rpg`, and the web-game client screenshot/state pass against
+  `http://127.0.0.1:5180/app/`. Renderer QA now accepts either Studio or
+  Survivor Cave as a valid ADD square dungeon fixture, because the topology gate
+  is about proving the square Phaser renderer, not a specific product route.
+  Full `npm run check` passed after the QA contract update.
