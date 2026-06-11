@@ -363,6 +363,7 @@ export function emptyRendererState(): PhaserMapRendererState {
       transitionState: "idle",
       transitionProgress: 1,
       responsiveLayout: "desktop",
+      mobileEdgeCulledLabelCount: 0,
     },
   }
 }
@@ -609,6 +610,7 @@ export function emptyMapInfo(): AddPhaserMapInfo {
       transitionState: "idle",
       transitionProgress: 1,
       responsiveLayout: "desktop",
+      mobileEdgeCulledLabelCount: 0,
     },
   }
 }

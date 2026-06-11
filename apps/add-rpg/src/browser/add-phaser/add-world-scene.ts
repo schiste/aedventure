@@ -101,6 +101,14 @@ interface DoorVisual {
   open: boolean
 }
 
+type MobileEdgeCullObject = Phaser.GameObjects.GameObject & {
+  readonly x?: number
+  readonly y?: number
+  readonly displayWidth?: number
+  setAlpha?: (alpha: number) => Phaser.GameObjects.GameObject
+  setVisible?: (visible: boolean) => Phaser.GameObjects.GameObject
+}
+
 export class AddRpgHexScene extends Phaser.Scene {
   private readonly hostOptions: AddRpgPhaserMapHostOptions
   private readonly cellPresentationPolicy = createAddCellPresentationPolicy()
@@ -114,10 +122,12 @@ export class AddRpgHexScene extends Phaser.Scene {
   private mapCommunicationGraphics?: Phaser.GameObjects.Graphics
   private transitionGraphics?: Phaser.GameObjects.Graphics
   private landmarkObjects: Phaser.GameObjects.GameObject[] = []
+  private mobileEdgeCullObjects: MobileEdgeCullObject[] = []
   private mapCommunicationObjects: Phaser.GameObjects.GameObject[] = []
   private mapPrimaryAffordanceInfo: MapPrimaryAffordanceInfo = emptyMapPrimaryAffordanceInfo()
   private actionMarkerCount = 0
   private landmarkBeaconCount = 0
+  private mobileEdgeCulledLabelCount = 0
   private readonly doorVisuals = new Map<string, DoorVisual>()
   private readonly transitions = new TransitionRegistry()
   private pendingWorld?: GameWorld
@@ -219,6 +229,7 @@ export class AddRpgHexScene extends Phaser.Scene {
     this.drawAmbience(this.context)
     this.drawFog(this.context)
     this.tickDoors()
+    this.updateMobileEdgeCullObjects()
     this.drawOverlay()
     this.refreshInfo()
   }
@@ -538,6 +549,7 @@ export class AddRpgHexScene extends Phaser.Scene {
   private drawLandmarks(context: RenderContext): void {
     this.landmarkObjects.forEach((object) => object.destroy())
     this.landmarkObjects = []
+    this.mobileEdgeCullObjects = []
     this.actionMarkerCount = 0
     this.landmarkBeaconCount = 0
 
@@ -604,6 +616,7 @@ export class AddRpgHexScene extends Phaser.Scene {
       container.setDepth(31)
       this.actionMarkerCount += 1
       this.landmarkObjects.push(container)
+      this.mobileEdgeCullObjects.push(container)
     })
   }
 
@@ -905,6 +918,7 @@ export class AddRpgHexScene extends Phaser.Scene {
     label.setOrigin(0.5, 0.5)
     label.setDepth(26)
     this.landmarkObjects.push(label)
+    this.mobileEdgeCullObjects.push(label)
   }
 
   private drawLandmarkBeacon(center: Vector2, color: number, radius: number): void {
@@ -930,6 +944,54 @@ export class AddRpgHexScene extends Phaser.Scene {
     ring.setDepth(22.2)
     this.landmarkBeaconCount += 1
     this.landmarkObjects.push(outer, ring)
+  }
+
+  private updateMobileEdgeCullObjects(): void {
+    const isMobile = this.scale.width < 640 || this.scale.height < 520
+    const camera = this.cameras.main
+    let culled = 0
+
+    for (const object of this.mobileEdgeCullObjects) {
+      if (typeof object.setVisible !== "function" || typeof object.setAlpha !== "function") {
+        continue
+      }
+
+      if (!isMobile) {
+        object.setVisible(true)
+        object.setAlpha(1)
+        continue
+      }
+
+      if (typeof object.x !== "number" || typeof object.y !== "number") {
+        object.setVisible(true)
+        object.setAlpha(1)
+        continue
+      }
+
+      const viewport = viewportPointFor(
+        { x: object.x, y: object.y },
+        camera,
+        this.scale.width,
+        this.scale.height,
+      )
+      const halfScreenWidth = ((object.displayWidth ?? 0) * camera.zoom) / 2
+      const edgeMargin = clamp(Math.max(34, halfScreenWidth + 8), 34, 88)
+      const clippedHorizontally =
+        viewport.x < edgeMargin || viewport.x > this.scale.width - edgeMargin
+      const clippedByTopbar = viewport.y < 44
+      const clippedByMobileHud = viewport.y > this.scale.height - 350
+
+      if (clippedHorizontally || clippedByTopbar || clippedByMobileHud) {
+        object.setVisible(false)
+        object.setAlpha(0)
+        culled += 1
+      } else {
+        object.setVisible(true)
+        object.setAlpha(1)
+      }
+    }
+
+    this.mobileEdgeCulledLabelCount = culled
   }
 
   private drawCaveMouthSilhouette(center: Vector2, radius: number): void {
@@ -1791,6 +1853,7 @@ export class AddRpgHexScene extends Phaser.Scene {
         transitionState: this.transitionState,
         transitionProgress: round(this.transitionProgress),
         responsiveLayout: this.scale.width < 640 || this.scale.height < 520 ? "mobile" : "desktop",
+        mobileEdgeCulledLabelCount: this.mobileEdgeCulledLabelCount,
       },
     }
   }

@@ -84,6 +84,7 @@ export interface PhaserMapPresentationState {
   readonly transitionState: "idle" | "entering"
   readonly transitionProgress: number
   readonly responsiveLayout: "desktop" | "mobile"
+  readonly mobileEdgeCulledLabelCount: number
 }
 
 /**

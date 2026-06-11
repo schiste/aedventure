@@ -231,6 +231,7 @@ const [adminOpen, setAdminOpen] = createSignal(false)
 const [devToolsOpen, setDevToolsOpen] = createSignal(false)
 const [shellMenuOpen, setShellMenuOpen] = createSignal(false)
 const [discoveryPanelCollapsed, setDiscoveryPanelCollapsed] = createSignal(false)
+const [mobileDiscoveryDetailOpen, setMobileDiscoveryDetailOpen] = createSignal(false)
 const [firstPlayableCollapsed, setFirstPlayableCollapsed] =
   createSignal(shouldCollapseQuestPanelByDefault())
 const [questPanelDragging, setQuestPanelDragging] = createSignal(false)
@@ -1400,9 +1401,14 @@ function discoveryPanel(): unknown {
       data-interface-tier="secondary"
       data-interface-answer="current-decision-action"
       class=${() =>
-        discoveryPanelCollapsed()
-          ? "panel discovery-panel collapsed"
-          : "panel discovery-panel"}
+        [
+          "panel discovery-panel",
+          discoveryPanelCollapsed() ? "collapsed" : "",
+          mobileDiscoveryDetailOpen() ? "detail-open" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      data-mobile-sheet-state=${() => discoveryMobileSheetState()}
       data-visual-surface="context"
       role="region"
       aria-labelledby="discovery-panel-title"
@@ -1430,11 +1436,21 @@ function discoveryPanel(): unknown {
             id="toggle-discovery-panel"
             type="button"
             class="ghost-button discovery-toggle"
-            onClick=${() => setDiscoveryPanelCollapsed((collapsed) => !collapsed)}
+            onClick=${toggleDiscoveryPanel}
             aria-expanded=${() => !discoveryPanelCollapsed()}
             aria-controls="discovery-panel-body"
           >
             ${() => (discoveryPanelCollapsed() ? "Open" : "Hide")}
+          </button>
+          <button
+            id="toggle-discovery-detail"
+            type="button"
+            class="ghost-button mobile-detail-toggle"
+            onClick=${toggleDiscoveryDetail}
+            aria-expanded=${() => mobileDiscoveryDetailOpen()}
+            aria-controls="discovery-panel-body"
+          >
+            ${() => (mobileDiscoveryDetailOpen() ? "Action" : "Details")}
           </button>
         </div>
       </div>
@@ -1442,6 +1458,22 @@ function discoveryPanel(): unknown {
       ${() => discoveryPanelBody()}
     </section>
   `
+}
+
+function discoveryMobileSheetState(): "compact" | "action" | "detail" {
+  if (discoveryPanelCollapsed()) return "compact"
+  return mobileDiscoveryDetailOpen() ? "detail" : "action"
+}
+
+function toggleDiscoveryPanel(): void {
+  const nextCollapsed = !discoveryPanelCollapsed()
+  setDiscoveryPanelCollapsed(nextCollapsed)
+  if (nextCollapsed) setMobileDiscoveryDetailOpen(false)
+}
+
+function toggleDiscoveryDetail(): void {
+  if (discoveryPanelCollapsed()) setDiscoveryPanelCollapsed(false)
+  setMobileDiscoveryDetailOpen((open) => !open)
 }
 
 function baseManagementPanel(): unknown {

@@ -1249,18 +1249,50 @@ async function assertMobileLayoutComposition(page, viewport) {
       topbar: rectFor(".map-topbar"),
       questPanel: rectFor("#first-playable-panel"),
       cameraControls: rectFor(".map-camera-controls"),
+      currentAction: rectFor("#current-action-surface"),
+      detailToggle: rectFor("#toggle-discovery-detail"),
+      discoverySheetState: document
+        .querySelector("#discovery-panel")
+        ?.getAttribute("data-mobile-sheet-state"),
+      discoveryBodyDisplay: (() => {
+        const body = document.querySelector("#discovery-panel-body")
+        return body instanceof HTMLElement ? window.getComputedStyle(body).display : null
+      })(),
       context,
     }
   })
+  const state = await renderGameToText(page)
 
   assert.ok(metrics.topbar, `${viewport.name}: expected compact topbar`)
   assert.ok(metrics.context, `${viewport.name}: expected contextual bottom sheet`)
   assert.ok(metrics.questPanel, `${viewport.name}: expected objective tracker`)
   assert.ok(metrics.cameraControls, `${viewport.name}: expected camera controls`)
+  assert.ok(metrics.currentAction, `${viewport.name}: current action should remain visible`)
+  assert.ok(metrics.detailToggle, `${viewport.name}: mobile detail snap control should be visible`)
   assert.equal(metrics.width, viewport.width)
   assert.equal(metrics.height, viewport.height)
+  assert.equal(
+    metrics.discoverySheetState,
+    "action",
+    `${viewport.name}: discovery sheet should default to the action snap`,
+  )
+  assert.equal(
+    metrics.discoveryBodyDisplay,
+    "none",
+    `${viewport.name}: supporting discovery details should stay hidden in the action snap`,
+  )
+  assert.equal(
+    state.map.presentation.responsiveLayout,
+    "mobile",
+    `${viewport.name}: renderer should report mobile presentation mode`,
+  )
+  assert.equal(
+    typeof state.map.presentation.mobileEdgeCulledLabelCount,
+    "number",
+    `${viewport.name}: renderer should expose mobile edge label culling telemetry`,
+  )
   assert.ok(metrics.topbar.height <= 46, `${viewport.name}: topbar is too tall`)
-  assert.ok(metrics.questPanel.height <= 64, `${viewport.name}: objective tracker should start collapsed`)
+  assert.ok(metrics.questPanel.height <= 48, `${viewport.name}: objective tracker should start as a compact chip`)
   assert.ok(
     metrics.questPanel.top >= metrics.topbar.bottom + 2,
     `${viewport.name}: objective tracker overlaps the topbar`,
@@ -1276,6 +1308,10 @@ async function assertMobileLayoutComposition(page, viewport) {
   assert.ok(
     metrics.cameraControls.bottom <= metrics.context.top - 4,
     `${viewport.name}: camera controls overlap the bottom sheet`,
+  )
+  assert.ok(
+    metrics.currentAction.bottom <= metrics.context.bottom + 1,
+    `${viewport.name}: current action should fit inside the bottom sheet action snap`,
   )
   assert.ok(
     metrics.cameraControls.left >= 0 && metrics.cameraControls.right <= viewport.width,
