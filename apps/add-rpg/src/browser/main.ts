@@ -1722,20 +1722,47 @@ function resourceStatusStrip(): unknown {
     <div
       id="resource-status-strip"
       class="resource-status-strip"
+      data-label-mode=${() => resourceStatusLabelMode()}
       data-interface-tier="tertiary"
+      role="list"
       aria-label="Key resources"
     >
       ${() =>
         prioritized.map(
           (resource) => html`
-            <span data-resource=${resource.id}>
-              <small title=${resource.label}>${resourceCompactLabel(resource.id, resource.label)}</small>
+            <span
+              data-resource=${resource.id}
+              role="listitem"
+              title=${resourceStatusTooltip(resource)}
+              aria-label=${resourceStatusAriaLabel(resource)}
+            >
+              <small>
+                <span class="resource-label-compact" aria-hidden="true">
+                  ${resourceCompactLabel(resource.id, resource.label)}
+                </span>
+                <span class="resource-label-full">${resource.label}</span>
+              </small>
               <strong>${formatResource(resource.value)}</strong>
             </span>
           `,
         )}
     </div>
   `
+}
+
+function resourceStatusLabelMode(): "expanded" | "compact" {
+  return firstPlayableArcComplete() ? "compact" : "expanded"
+}
+
+function resourceStatusTooltip(resource: AddUiState["resources"][number]): string {
+  const cap = resource.cap > 0 ? ` / ${formatResource(resource.cap)} cap` : ""
+  const blocker = resource.blocker ? ` Blocked: ${resource.blocker}` : ""
+  return `${resource.label}: ${formatResource(resource.value)}${cap}. Source: ${resource.source}. Used for: ${resource.sink}.${blocker}`
+}
+
+function resourceStatusAriaLabel(resource: AddUiState["resources"][number]): string {
+  const blocker = resource.blocker ? ` Blocked: ${resource.blocker}.` : ""
+  return `${resource.label}, ${formatResource(resource.value)} of ${formatResource(resource.cap)}. Source: ${resource.source}. Used for ${resource.sink}.${blocker}`
 }
 
 function resourceCompactLabel(id: string, label: string): string {

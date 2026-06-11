@@ -280,6 +280,7 @@ async function assertBootAndRenderTextContract(page, consoleErrors) {
   assert.equal(await page.locator("#add-world[data-visual-surface='map-stage']").count(), 1)
   assert.equal(await page.locator(".map-topbar[data-visual-surface='status']").count(), 1)
   await assertMapModeNavigationLabels(page, ["World", "Studio", "Cave", "Base"])
+  await assertResourceStatusClarity(page)
   assert.equal(await page.locator("#first-playable-panel[data-visual-surface='objective']").count(), 1)
   assert.equal(await page.locator("#discovery-panel[data-visual-surface='context']").count(), 1)
   assert.equal(await page.locator("#map-loading-state[data-visual-state='loading']").count(), 1)
@@ -334,6 +335,32 @@ async function assertMapModeNavigationLabels(page, expectedLabels) {
     /\b(?:Overworld|Area|Dgn|Dungeon)\b/i,
     "Map navigation should not expose system/topology labels.",
   )
+}
+
+async function assertResourceStatusClarity(page) {
+  const strip = page.locator("#resource-status-strip")
+  await strip.waitFor({ state: "visible" })
+  await expectResourceStripText(page, ["Bassline", "Chorus", "Stone", "Water"])
+
+  const resources = await strip.locator("[data-resource]").evaluateAll((elements) =>
+    elements.map((element) => ({
+      id: element.getAttribute("data-resource") ?? "",
+      title: element.getAttribute("title") ?? "",
+      ariaLabel: element.getAttribute("aria-label") ?? "",
+    })),
+  )
+  assert.ok(resources.length >= 4, "Resource strip should expose the four first-playable resources.")
+  for (const resource of resources.slice(0, 4)) {
+    assert.match(resource.title, /Source: .+ Used for: /, `${resource.id} should explain source and use in its tooltip.`)
+    assert.match(resource.ariaLabel, /Source: .+ Used for /, `${resource.id} should explain source and use to assistive tech.`)
+  }
+}
+
+async function expectResourceStripText(page, expectedLabels) {
+  const text = await page.locator("#resource-status-strip").innerText()
+  for (const label of expectedLabels) {
+    assert.match(text, new RegExp(label, "i"), `Resource strip should include ${label}.`)
+  }
 }
 
 async function assertAdminDeveloperSeparation(page, consoleErrors) {
