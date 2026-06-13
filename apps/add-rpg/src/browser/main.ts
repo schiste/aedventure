@@ -769,6 +769,7 @@ function AddRpgApp() {
               </div>
             </div>
           </div>
+          ${() => storyMomentBlock()}
           ${() => contextualPanel()}
           ${() => travelDialogView()}
           <section
@@ -1575,7 +1576,7 @@ function baseManagementPanel(): unknown {
         </div>
       </div>
       ${() => basePlayerLoopPanel(state)}
-      ${() => currentActionSurface({ includeStoryMoment: false })}
+      ${() => currentActionSurface()}
       ${() => baseManagementCommandStrip(state)}
       ${() => baseRateChangePanel()}
       <div class="base-management-tabs" role="tablist" aria-label="Base management sections">
@@ -1986,10 +1987,7 @@ function storyMomentBlock(): unknown {
   `
 }
 
-function currentActionSurface(
-  options: { readonly includeStoryMoment?: boolean } = {},
-): unknown {
-  const includeStoryMoment = options.includeStoryMoment ?? true
+function currentActionSurface(): unknown {
   return html`
     <article
       id="current-action-surface"
@@ -2001,7 +1999,6 @@ function currentActionSurface(
       aria-live="polite"
       aria-label="Current action"
     >
-      ${() => includeStoryMoment ? storyMomentBlock() : null}
       <div class="current-action-kicker">
         <span>Current decision</span>
         <small>${() => currentActionKickerMeta()}</small>
