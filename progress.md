@@ -2970,3 +2970,9 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   Current Action now exposes transient Travel/Arrival states ahead of tutorial
   actions while the crossing resolves, and the Phaser map no longer draws generic
   `Inspect` badges for non-portal tiles; tile facts stay in the Discovery panel.
+- Reduced the ADD objective tracker so the map has more visual priority by
+  default. The first-playable panel now starts collapsed on desktop and mobile,
+  shows only the current step plus progress, expands into the full checklist on
+  demand, and collapses into a small journal chip after the arc completes. The
+  ADD smoke contract now asserts the compact default, expansion path, and offline
+  return review behavior.

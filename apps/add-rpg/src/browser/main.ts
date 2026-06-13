@@ -605,6 +605,10 @@ function AddRpgApp() {
       mapHost.renderWorld(currentWorld)
       refreshMapInfo()
     }
+    window.requestAnimationFrame(() => {
+      const current = questPanelPosition()
+      setQuestPanelPosition(clampQuestPanelPosition(current.x, current.y))
+    })
     mapInfoTimer = window.setInterval(refreshMapInfo, 180)
     autosaveTimer = window.setInterval(maybeRequestAutosave, 3500)
     window.addEventListener("online", handleOnline)
@@ -823,6 +827,7 @@ function AddRpgApp() {
                 </button>
               </div>
             </div>
+            ${() => objectivePanelCompactSummary()}
             <span id="first-playable-keyboard-help" class="sr-only">
               Use arrow keys while the tracker handle is focused to move this panel. Press Enter
               or Space to collapse or expand it.
@@ -1278,7 +1283,7 @@ function defaultQuestPanelPosition(): QuestPanelPosition {
 }
 
 function shouldCollapseQuestPanelByDefault(): boolean {
-  return typeof window !== "undefined" && window.innerWidth <= 520
+  return true
 }
 
 function questPanelStyle(): Record<string, string> {
@@ -1377,15 +1382,16 @@ function toggleFirstPlayablePanel(): void {
 function clampQuestPanelPosition(x: number, y: number): QuestPanelPosition {
   const panel = document.getElementById("first-playable-panel")
   const panelWidth = panel?.offsetWidth ?? 390
-  const panelHeight = panel?.offsetHeight ?? (firstPlayableCollapsed() ? 64 : 360)
+  const panelHeight = panel?.offsetHeight ?? (firstPlayableCollapsed() ? 82 : 360)
   const viewportWidth = window.innerWidth || 1024
   const viewportHeight = window.innerHeight || 768
   const gutter = viewportWidth <= 520 ? 10 : 12
+  const topSafeArea = viewportWidth <= 520 ? 46 : 54
   const maxX = Math.max(gutter, viewportWidth - panelWidth - gutter)
-  const maxY = Math.max(gutter, viewportHeight - panelHeight - gutter)
+  const maxY = Math.max(topSafeArea, viewportHeight - panelHeight - gutter)
   return {
     x: Math.round(Math.min(maxX, Math.max(gutter, x))),
-    y: Math.round(Math.min(maxY, Math.max(gutter, y))),
+    y: Math.round(Math.min(maxY, Math.max(topSafeArea, y))),
   }
 }
 
@@ -4041,6 +4047,44 @@ function objectivePanelToggleLabel(): string {
 function objectivePanelToggleText(): string {
   if (firstPlayableArcComplete()) return firstPlayableCollapsed() ? "Journal" : "Close"
   return firstPlayableCollapsed() ? "Show" : "Hide"
+}
+
+function objectivePanelCompactSummary(): unknown {
+  if (!firstPlayableCollapsed()) return null
+  if (firstPlayableArcComplete()) return null
+
+  const dungeon = dungeonObjectiveState()
+  if (dungeon) {
+    const active = dungeon.steps.find((step) => step.status === "active") ?? dungeon.steps[0]
+    return html`
+      <div class="objective-compact-summary">
+        <span>
+          <small>Current</small>
+          <strong>${active?.label ?? dungeon.headline}</strong>
+        </span>
+        <div class="progress-track compact-progress" aria-hidden="true">
+          <span style=${() => ({ width: dungeonObjectiveProgressWidth() })} />
+        </div>
+      </div>
+    `
+  }
+
+  const firstPlayable = uiState()?.firstPlayable
+  const current = currentFirstPlayableStep()
+  return html`
+    <div class="objective-compact-summary">
+      <span>
+        <small>Current</small>
+        <strong>${current?.label ?? "First playable"}</strong>
+      </span>
+      <div class="progress-track compact-progress" aria-hidden="true">
+        <span style=${() => ({ width: firstPlayableProgressWidth() })} />
+      </div>
+      <small class="objective-compact-progress">
+        ${firstPlayable?.completedCount ?? 0}/${firstPlayable?.totalCount ?? 0}
+      </small>
+    </div>
+  `
 }
 
 function objectivePanelBody(): unknown {

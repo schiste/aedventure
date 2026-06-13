@@ -170,12 +170,12 @@ async function assertBootAndRenderTextContract(page, consoleErrors) {
       state.shell?.adminOpen === false &&
       state.shell?.devToolsOpen === false &&
       state.shell?.discoveryPanel?.collapsed === false &&
-      state.shell?.questPanel?.collapsed === false &&
+      state.shell?.questPanel?.collapsed === true &&
       state.shell?.questPanel?.dragEnabled === true &&
       state.shell?.questPanel?.keyboardMoveEnabled === true &&
       state.shell?.questPanel?.dragging === false &&
       state.shell?.questPanel?.lastAction === "idle" &&
-      state.shell?.questPanel?.collapseControlLabel === "Collapse objective tracker" &&
+      state.shell?.questPanel?.collapseControlLabel === "Expand objective tracker" &&
       state.shell?.accessibility?.keyboardNavigation === true &&
       state.shell?.accessibility?.focusVisible === true &&
       state.shell?.accessibility?.currentActionLiveRegion === "polite" &&
@@ -276,6 +276,8 @@ async function assertBootAndRenderTextContract(page, consoleErrors) {
   assert.equal(await page.locator("#current-action-surface[aria-live='polite']").count(), 1)
   assert.equal(await page.locator("#discovery-panel[role='region'][aria-labelledby]").count(), 1)
   assert.equal(await page.locator("#first-playable-panel[aria-describedby]").count(), 1)
+  assert.equal(await page.locator("#first-playable-body").isHidden(), true)
+  await assertVisibleText(page, "#first-playable-panel", ["Reach the Base", "0/10", "Show"])
   assert.equal(await page.locator(".first-playable-drag-handle[tabindex='0']").count(), 1)
   assert.equal(await page.locator("#add-world[data-visual-surface='map-stage']").count(), 1)
   assert.equal(await page.locator(".map-topbar[data-visual-surface='status']").count(), 1)
@@ -2104,10 +2106,13 @@ async function exerciseQuestHud(page, consoleErrors) {
   const handle = page.locator(".first-playable-drag-handle")
   await handle.waitFor({ state: "visible" })
   const before = await renderGameToText(page)
-  assert.equal(before.shell?.questPanel?.collapsed, false)
+  assert.equal(before.shell?.questPanel?.collapsed, true)
   assert.equal(before.shell?.questPanel?.dragEnabled, true)
   assert.equal(before.shell?.questPanel?.keyboardMoveEnabled, true)
   assert.equal(before.shell?.questPanel?.dragging, false)
+  assert.equal(await page.locator("#first-playable-body").isHidden(), true)
+  await assertVisibleText(page, "#first-playable-panel", ["Reach the Base", "0/10", "Show"])
+
   await handle.focus()
   await waitForTextState(
     page,
@@ -2127,17 +2132,35 @@ async function exerciseQuestHud(page, consoleErrors) {
   )
 
   await page.locator("#toggle-first-playable-panel").click()
+  await page.locator("#first-playable-body").waitFor({ state: "visible" })
+  const expandedOnce = await waitForTextState(
+    page,
+    (state) =>
+      state.shell?.questPanel?.collapsed === false &&
+      state.shell.questPanel.lastAction === "expanded" &&
+      state.shell.questPanel.collapseControlLabel === "Collapse objective tracker",
+    consoleErrors,
+  )
+  assert.equal(expandedOnce.shell.questPanel.x, keyboardMoved.shell.questPanel.x)
+  assert.equal(expandedOnce.shell.questPanel.y, keyboardMoved.shell.questPanel.y)
+  await assertVisibleText(page, "#first-playable-body", [
+    "Tracking: Reach the Base",
+    "Assign Hero and crew",
+    "Recruit once",
+  ])
+
+  await page.locator("#toggle-first-playable-panel").click()
   await page.locator("#first-playable-body").waitFor({ state: "hidden" })
   const collapsed = await waitForTextState(
     page,
     (state) =>
       state.shell?.questPanel?.collapsed === true &&
+      state.shell.questPanel.x === keyboardMoved.shell.questPanel.x &&
+      state.shell.questPanel.y === keyboardMoved.shell.questPanel.y &&
       state.shell.questPanel.lastAction === "collapsed" &&
       state.shell.questPanel.collapseControlLabel === "Expand objective tracker",
     consoleErrors,
   )
-  assert.equal(collapsed.shell.questPanel.x, keyboardMoved.shell.questPanel.x)
-  assert.equal(collapsed.shell.questPanel.y, keyboardMoved.shell.questPanel.y)
 
   await page.locator("#toggle-first-playable-panel").click()
   await page.locator("#first-playable-body").waitFor({ state: "visible" })
@@ -2145,8 +2168,8 @@ async function exerciseQuestHud(page, consoleErrors) {
     page,
     (state) =>
       state.shell?.questPanel?.collapsed === false &&
-      state.shell.questPanel.x === keyboardMoved.shell.questPanel.x &&
-      state.shell.questPanel.y === keyboardMoved.shell.questPanel.y &&
+      state.shell.questPanel.x === collapsed.shell.questPanel.x &&
+      state.shell.questPanel.y === collapsed.shell.questPanel.y &&
       state.shell.questPanel.lastAction === "expanded" &&
       state.shell.questPanel.collapseControlLabel === "Collapse objective tracker",
     consoleErrors,

@@ -3616,7 +3616,7 @@ h1 {
 }
 
 .first-playable-overlay.collapsed {
-  width: min(240px, calc(100vw - 28px));
+  width: min(254px, calc(100vw - 28px));
   overflow: visible;
   box-shadow:
     var(--shadow-hud),
@@ -3671,6 +3671,51 @@ h1 {
 
 .first-playable-body[hidden] {
   display: none;
+}
+
+.objective-compact-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 0.42rem 0.62rem;
+  border-radius: 8px;
+  padding: 0.34rem 0.44rem 0.4rem;
+  background: rgb(0 0 0 / 16%);
+}
+
+.objective-compact-summary > span {
+  display: grid;
+  min-width: 0;
+  gap: 0.14rem;
+}
+
+.objective-compact-summary small {
+  color: rgb(247 238 210 / 62%);
+  font-size: 0.58rem;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.objective-compact-summary strong {
+  overflow: hidden;
+  color: #fff4c9;
+  font-size: 0.78rem;
+  font-weight: 950;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compact-progress {
+  grid-column: 1 / -1;
+  height: 0.24rem;
+}
+
+.objective-compact-progress {
+  justify-self: end;
+  align-self: start;
+  padding-top: 0.08rem;
 }
 
 .panel-heading-actions {
