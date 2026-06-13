@@ -245,6 +245,7 @@ const [areaTarget, setAreaTarget] = createSignal<string>(STUDIO_GROUNDS_AREA_MAP
 const [dungeonReturnMode, setDungeonReturnMode] =
   createSignal<DungeonReturnMapMode>("overworld_hex")
 const [mapInfo, setMapInfo] = createSignal<AddPhaserMapInfo>(emptyMapInfo())
+const [baseNavigationUnlocked, setBaseNavigationUnlocked] = createSignal(false)
 const [autosaveRecord, setAutosaveRecord] = createSignal<AddBrowserSaveRecord | null>(readAutosave())
 const [autosaveEnabled, setAutosaveEnabled] = createSignal(true)
 const [savePayload, setSavePayload] = createSignal(autosaveRecord()?.payload ?? "")
@@ -420,6 +421,12 @@ const discoveryState = createModuleMemo(() => {
     },
     lastMovement: lastDiscoveryMovement(),
   })
+})
+createModuleEffect(() => {
+  if (baseNavigationUnlocked()) return
+  if (mapMode() === "base_square" || heroIsAtStudio(mapInfo())) {
+    setBaseNavigationUnlocked(true)
+  }
 })
 const dungeonObjectiveState = createModuleMemo(() =>
   selectAddDungeonObjective({
@@ -4423,9 +4430,22 @@ function mapModeNavigationItem(mode: AddMapMode): AddMapModeNavItem {
         label: "Base",
         shortLabel: "Base",
         ariaLabel: "Open base management",
-        hidden: !baseManagementState() && mapMode() !== mode,
+        hidden: !baseNavigationAvailable(),
       }
   }
+}
+
+function baseNavigationAvailable(): boolean {
+  return mapMode() === "base_square" || baseNavigationUnlocked() || heroIsAtStudio()
+}
+
+function heroIsAtStudio(currentMapInfo: AddPhaserMapInfo = mapInfo()): boolean {
+  const baseCenter = currentMapInfo.landmarks.baseCenter
+  if (!baseCenter) return false
+  return (
+    currentMapInfo.character.coord === baseCenter ||
+    currentMapInfo.character.cell === `hex:${baseCenter}`
+  )
 }
 
 function dungeonNavigationAvailable(): boolean {
@@ -5065,6 +5085,8 @@ function enterAreaTarget(areaMapId: string, command: string): void {
 }
 
 function switchMapModeFromTab(nextMode: AddMapMode): void {
+  if (nextMode === "base_square" && !baseNavigationAvailable()) return
+
   if (nextMode !== "dungeon_square") {
     switchMapMode(nextMode)
     return
@@ -5161,6 +5183,7 @@ function runCurrentTileDetailAction(event: Event): void {
   if (targetMapMode === "base_square") {
     setLastTileActionTarget(targetMapId ?? "base_square")
     setLastCommand("tile-open:base")
+    setBaseNavigationUnlocked(true)
     switchMapMode("base_square")
     return
   }
@@ -5192,6 +5215,7 @@ function runTileDetailAction(detail: AddTileDetailSummary, action: AddTileAction
 
   if (link.targetMapMode === "base_square") {
     setLastCommand("tile-open:base")
+    setBaseNavigationUnlocked(true)
     switchMapMode("base_square")
     return
   }
@@ -5933,6 +5957,7 @@ async function runCurrentAction(): Promise<void> {
       if (action.kind === "open_base" && action.actionId === ADD_DISCOVERY_OPEN_BASE_ACTION_ID) {
         setLastTileActionTarget("base_square")
         setLastCommand("discovery-open:base")
+        setBaseNavigationUnlocked(true)
         switchMapMode("base_square")
         return
       }
@@ -5965,6 +5990,7 @@ async function resetRuntime(): Promise<void> {
     setLastCommand("reset")
     setResetCount((count) => count + 1)
     travelDramaState = "fresh"
+    setBaseNavigationUnlocked(false)
     setTravelDialog(null)
     pendingOfflineReturnSummary = null
     setOfflineReturnSummary(null)
@@ -6191,6 +6217,7 @@ function toTextState(): RuntimeTextState {
     baseRateChange: baseRateChange(),
     dungeonObjective: currentDungeonObjective,
     mapMode: mapMode(),
+    mapModeAvailable: mapModeNavigationItems().map((item) => item.id),
     dungeonTarget: mapMode() === "dungeon_square" ? dungeonTarget() : null,
     lastDungeonEntryCommand: lastDungeonEntryCommand(),
     lastTileActionTarget: lastTileActionTarget(),

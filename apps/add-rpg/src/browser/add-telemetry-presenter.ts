@@ -1,6 +1,5 @@
 import {
   ADD_DOMAIN_BOUNDARY,
-  ADD_MAP_MODE_OPTIONS,
   addMapModeLabel,
   selectAddMapScaleForMode,
   type AddDungeonObjectiveSummary,
@@ -140,6 +139,7 @@ export interface AddRuntimeTelemetryPresenterInput {
   } | null
   readonly dungeonObjective: AddDungeonObjectiveSummary | null
   readonly mapMode: AddMapMode
+  readonly mapModeAvailable: readonly AddMapMode[]
   readonly dungeonTarget: string | null
   readonly lastDungeonEntryCommand: string | null
   readonly lastTileActionTarget: string | null
@@ -1083,7 +1083,7 @@ export function createAddRuntimeTextState(
       dungeonTarget: input.dungeonTarget,
       lastDungeonEntryCommand: input.lastDungeonEntryCommand,
       lastTileActionTarget: input.lastTileActionTarget,
-      available: ADD_MAP_MODE_OPTIONS.map((option) => option.id),
+      available: input.mapModeAvailable,
       topology: input.mapInfo.topology.kind,
       fixture: input.mapInfo.topology.fixture,
       scale: selectAddMapScaleForMode(input.mapMode),

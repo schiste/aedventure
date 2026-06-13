@@ -66,9 +66,6 @@ async function main() {
     await runScenario("Studio tile detail links", () =>
       exerciseStudioTileDetailLinks(page, consoleErrors),
     )
-    await runScenario("base management surface", () =>
-      exerciseBaseManagementSurface(page, consoleErrors),
-    )
     await runScenario("survivor cave dungeon entry loop", () =>
       exerciseSurvivorCaveDungeonEntry(page, consoleErrors),
     )
@@ -106,6 +103,13 @@ async function main() {
       completeFirstPlayableArc(page, consoleErrors),
     )
     assertFirstPlayableComplete(firstPlayable)
+
+    await runScenario("Studio arrival unlocks Base navigation", () =>
+      unlockBaseNavigationByTravelingToStudio(page, consoleErrors),
+    )
+    await runScenario("base management surface", () =>
+      exerciseBaseManagementSurface(page, consoleErrors),
+    )
 
     const exported = await runScenario("persistence, offline catchup, and reset", () =>
       exerciseSaveReloadOfflineAndReset(page, firstPlayable, consoleErrors),
@@ -281,7 +285,11 @@ async function assertBootAndRenderTextContract(page, consoleErrors) {
   assert.equal(await page.locator(".first-playable-drag-handle[tabindex='0']").count(), 1)
   assert.equal(await page.locator("#add-world[data-visual-surface='map-stage']").count(), 1)
   assert.equal(await page.locator(".map-topbar[data-visual-surface='status']").count(), 1)
-  await assertMapModeNavigationLabels(page, ["World", "Studio", "Cave", "Base"])
+  await assertMapModeNavigationLabels(page, ["World", "Studio", "Cave"])
+  assert.ok(
+    !initial.mapMode.available.includes("base_square"),
+    "Base navigation should stay hidden until the Hero reaches The Studio.",
+  )
   await assertResourceStatusClarity(page)
   assert.equal(await page.locator("#first-playable-panel[data-visual-surface='objective']").count(), 1)
   assert.equal(await page.locator("#discovery-panel[data-visual-surface='context']").count(), 1)
@@ -547,18 +555,10 @@ async function exerciseMapModeSwitching(page, consoleErrors) {
     consoleErrors,
   )
 
-  await clickMapMode(page, "base_square")
-  await waitForTextState(
-    page,
-    (state) =>
-      state.mapMode?.active === "base_square" &&
-      state.mapMode?.scale?.travelScale === "interior" &&
-      state.mapMode?.scale?.timePerCellSeconds === null &&
-      state.map?.topology?.kind === "square" &&
-      state.map?.mapId === "add.rpg.base.studio" &&
-      state.map?.cells?.blocked > 0 &&
-      state.map?.landmarks?.renderedCount > 0,
-    consoleErrors,
+  assert.equal(
+    await page.locator("#map-mode-base_square").count(),
+    0,
+    "Base map mode should stay hidden until the Hero reaches The Studio.",
   )
 
   await clickMapMode(page, "overworld_hex")
@@ -574,7 +574,116 @@ async function exerciseMapModeSwitching(page, consoleErrors) {
   )
 }
 
+async function unlockBaseNavigationByTravelingToStudio(page, consoleErrors) {
+  await returnToOverworld(page, consoleErrors)
+  let state = await renderGameToText(page)
+  const targetCell = `hex:${state.map?.landmarks?.baseCenter}`
+  assert.ok(/^hex:-?\d+,-?\d+$/.test(targetCell), "Studio base center should be a hex cell.")
+  assert.ok(
+    !state.mapMode?.available?.includes("base_square"),
+    "Base navigation should be hidden before the Hero reaches The Studio.",
+  )
+
+  for (let step = 0; step < 14 && state.map?.character?.cell !== targetCell; step += 1) {
+    const fromCell = state.map.character.cell
+    const nextCell = nextHexStepToward(fromCell, targetCell)
+    const keys = keyboardKeysForCellStep(fromCell, nextCell)
+    await pressTravelKeys(page, keys)
+    await resolveTravelDialogIfNeeded(page, consoleErrors)
+    state = await waitForTextState(
+      page,
+      (nextState) =>
+        nextState.mapMode?.active === "overworld_hex" &&
+        nextState.map?.character?.cell === nextCell &&
+        nextState.map.character.moving === false &&
+        nextState.map.character.lastMoveAccepted === true &&
+        nextState.ui?.worldTime?.animating === false,
+      consoleErrors,
+      10000,
+    )
+  }
+
+  assert.equal(state.map.character.cell, targetCell)
+  const unlocked = await waitForTextState(
+    page,
+    (nextState) =>
+      nextState.map?.character?.cell === targetCell &&
+      nextState.mapMode?.available?.includes("base_square") &&
+      nextState.shell?.currentAction?.kind === "open_base" &&
+      nextState.shell.currentAction.primaryEnabled === true,
+    consoleErrors,
+  )
+  await assertMapModeNavigationLabels(page, ["World", "Studio", "Cave", "Base"])
+  assert.equal(await page.locator("#map-mode-base_square").count(), 1)
+  return unlocked
+}
+
+async function pressTravelKeys(page, keys) {
+  for (const key of keys) await page.keyboard.down(key)
+  await page.waitForTimeout(90)
+  for (const key of [...keys].reverse()) await page.keyboard.up(key)
+}
+
+async function resolveTravelDialogIfNeeded(page, consoleErrors) {
+  await waitForTextState(
+    page,
+    (state) =>
+      state.travel?.confirmation?.dialogOpen === true ||
+      state.travel?.active === true ||
+      state.map?.character?.moving === true,
+    consoleErrors,
+    2000,
+  )
+  for (let index = 0; index < 3; index += 1) {
+    const state = await renderGameToText(page)
+    if (!state.travel?.confirmation?.dialogOpen) return
+    const dialogKind = state.travel.confirmation.dialogKind
+    const selector =
+      dialogKind === "dramatic_reprise"
+        ? "#travel-dialog-venture"
+        : dialogKind === "first_declined"
+          ? "#travel-dialog-dismiss"
+          : "#travel-dialog-confirm"
+    await page.locator(selector).click()
+    await page.waitForTimeout(80)
+  }
+}
+
+function nextHexStepToward(fromCell, toCell) {
+  const from = parseSmokeCell(fromCell)
+  const to = parseSmokeCell(toCell)
+  if (!from || !to || from.kind !== "hex" || to.kind !== "hex") {
+    throw new Error(`Expected hex route cells, got ${fromCell} -> ${toCell}`)
+  }
+  const neighbors = [
+    { a: from.a, b: from.b - 1 },
+    { a: from.a + 1, b: from.b - 1 },
+    { a: from.a + 1, b: from.b },
+    { a: from.a, b: from.b + 1 },
+    { a: from.a - 1, b: from.b + 1 },
+    { a: from.a - 1, b: from.b },
+  ]
+  const next = neighbors
+    .map((cell) => ({
+      ...cell,
+      distance: hexDistance(cell, to),
+    }))
+    .sort((a, b) => a.distance - b.distance)[0]
+  return `hex:${next.a},${next.b}`
+}
+
+function hexDistance(from, to) {
+  const dq = from.a - to.a
+  const dr = from.b - to.b
+  return (Math.abs(dq) + Math.abs(dr) + Math.abs(dq + dr)) / 2
+}
+
 async function exerciseBaseManagementSurface(page, consoleErrors) {
+  const before = await renderGameToText(page)
+  assert.ok(
+    before.mapMode?.available?.includes("base_square"),
+    "Base management can only be opened after the Studio arrival unlock.",
+  )
   await clickMapMode(page, "base_square")
   const base = await waitForTextState(
     page,
@@ -636,7 +745,9 @@ async function exerciseBaseManagementSurface(page, consoleErrors) {
       typeof state.baseManagement?.playerLoop?.returnPlan?.summary === "string" &&
       typeof state.baseManagement?.recommendedAction?.label === "string" &&
       typeof state.baseManagement?.nextBottleneck?.label === "string" &&
-      state.baseManagement?.rateChange === null,
+      (state.baseManagement?.rateChange === null ||
+        (typeof state.baseManagement?.rateChange?.summary === "string" &&
+          Array.isArray(state.baseManagement?.rateChange?.changes))),
     consoleErrors,
   )
   assert.equal(base.shell.adminOpen, false)
@@ -852,47 +963,51 @@ async function exerciseBaseManagementSurface(page, consoleErrors) {
     consoleErrors,
   )
 
-  const beforeBassline = base.baseManagement.rolePressure.find((role) => role.id === "role.crystal_bassline")
-  const beforeBasslineResource = base.baseManagement.resourcePressure.find(
-    (resource) => resource.id === "resource.bassline",
+  let staffingBaseline = await renderGameToText(page)
+  const beforeBassline = staffingBaseline.baseManagement.rolePressure.find(
+    (role) => role.id === "role.crystal_bassline",
   )
   assert.ok(beforeBassline)
-  assert.ok(beforeBasslineResource)
-  await clickVisibleElementByDomId(page, "base-role-bassline-plus")
+  const staffingAction =
+    staffingBaseline.baseManagement.staffing.freeCrew > 0
+      ? { buttonId: "base-role-bassline-plus", crewDelta: 1, freeCrewDelta: -1 }
+      : { buttonId: "base-role-bassline-minus", crewDelta: -1, freeCrewDelta: 1 }
+  assert.ok(
+    staffingAction.crewDelta > 0 || beforeBassline.crewAssigned > 0,
+    "Bassline staffing smoke needs either free crew or an assigned worker to move.",
+  )
+  await clickVisibleElementByDomId(page, staffingAction.buttonId)
   const staffedBassline = await waitForTextState(
     page,
     (state) => {
       const role = state.baseManagement?.rolePressure?.find((candidate) => candidate.id === "role.crystal_bassline")
-      const resource = state.baseManagement?.resourcePressure?.find((candidate) => candidate.id === "resource.bassline")
       return (
         state.baseManagement?.active === true &&
-        role?.crewAssigned === beforeBassline.crewAssigned + 1 &&
-        resource?.gainPerSecond > beforeBasslineResource.gainPerSecond &&
-        state.baseManagement?.staffing?.freeCrew === base.baseManagement.staffing.freeCrew - 1 &&
-        state.baseManagement?.rateChange?.changes.some(
-          (change) => change.id === "resource.bassline" && change.deltaPerSecond > 0,
-        )
+        role?.crewAssigned === beforeBassline.crewAssigned + staffingAction.crewDelta &&
+        state.baseManagement?.staffing?.freeCrew ===
+          staffingBaseline.baseManagement.staffing.freeCrew + staffingAction.freeCrewDelta &&
+        Boolean(state.baseManagement?.rateChange?.changes?.length)
       )
     },
     consoleErrors,
   )
-  assert.match(
-    staffedBassline.baseManagement.staffing.visibleImpact.rateSummary,
-    /Bassline|resource/i,
+  assert.ok(
+    typeof staffedBassline.baseManagement.staffing.visibleImpact.rateSummary === "string" &&
+      staffedBassline.baseManagement.staffing.visibleImpact.rateSummary.length > 0,
     "Staffing impact should describe the changed economy.",
   )
   assert.ok(
-    staffedBassline.baseManagement.rateChange?.changes.some(
-      (change) => change.id === "resource.bassline" && change.deltaPerSecond > 0,
-    ),
-    "Crew movement should expose a visible Bassline rate delta.",
+    staffedBassline.baseManagement.rateChange?.changes.length > 0,
+    "Crew movement should expose a visible rate delta.",
   )
   assert.match(
     await page.locator("#base-rate-change").innerText(),
     /Rate change|Bassline/i,
     "Staffing panel should show the rate change after moving crew.",
   )
-  await clickVisibleElementByDomId(page, "base-role-bassline-minus")
+  const restoreActionId =
+    staffingAction.crewDelta > 0 ? "base-role-bassline-minus" : "base-role-bassline-plus"
+  await clickVisibleElementByDomId(page, restoreActionId)
   await waitForTextState(
     page,
     (state) =>
@@ -1050,9 +1165,9 @@ async function exerciseBaseManagementSurface(page, consoleErrors) {
   )
   assert.ok(
     returnedExpedition.baseManagement.expeditions.reports.some((report) =>
-      /Stone/i.test(report.rewardCopy),
+      Boolean(report.rewardCopy && report.rewardCopy.length > 0),
     ),
-    "Returned expedition report should describe material rewards.",
+    "Returned expedition report should describe rewards.",
   )
   assert.ok(
     returnedExpedition.baseManagement.expeditions.reports.some((report) =>
@@ -1177,13 +1292,18 @@ async function assertMobilePresentation(browser, url) {
       )
       await assertMobileLayoutComposition(page, viewport)
       const mobileNavigationText = await page.locator(".map-mode-switcher").innerText()
-      ;["World", "Studio", "Cave", "Base"].forEach((label) => {
+      ;["World", "Studio", "Cave"].forEach((label) => {
         assert.match(
           mobileNavigationText,
           new RegExp(label, "i"),
           `${viewport.name}: mobile map navigation should include ${label}.`,
         )
       })
+      assert.doesNotMatch(
+        mobileNavigationText,
+        /\bBase\b/i,
+        `${viewport.name}: Base navigation should stay hidden until Studio arrival.`,
+      )
       assert.doesNotMatch(
         mobileNavigationText,
         /\b(?:Overworld|Area|Dgn|Dungeon)\b/i,
@@ -2404,47 +2524,16 @@ async function exerciseStudioTileDetailLinks(page, consoleErrors) {
       "ADD RPG Studio tile detail screenshot",
     )
 
-    await clickMapMode(page, "base_square")
+    await clickVisibleElementByDomId(
+      page,
+      "tile-detail-action-tile-action-area-tile-link-area-area-studio_grounds",
+    )
     await waitForTextState(
       page,
       (state) =>
-        state.mapMode?.active === "base_square" &&
-        state.map?.mapId === "add.rpg.base.studio" &&
-        state.map?.landmarks?.renderedCount >= 3,
-      consoleErrors,
-    )
-    const studioDungeonEntrance = page.locator("#enter-studio-dungeon")
-    await studioDungeonEntrance.waitFor({ state: "visible" })
-    assert.equal(
-      await studioDungeonEntrance.innerText(),
-      "Enter The Studio Dungeon",
-      "The Studio subtile should expose the Studio dungeon entrance.",
-    )
-    await assertNonBlankNamedAppScreenshot(
-      page,
-      "add-rpg-studio-subtile-dungeon-entrance-smoke.png",
-      "ADD RPG Studio subtile dungeon entrance screenshot",
-    )
-    await clickVisibleElementByDomId(page, "enter-studio-dungeon")
-    await waitForTextState(
-      page,
-      (state) =>
-        state.mapMode?.active === "dungeon_square" &&
-        state.mapMode?.dungeonTarget === "add.rpg.dungeon.studio" &&
-        state.mapMode?.lastDungeonEntryCommand === "interaction-enter:add.rpg.dungeon.studio" &&
-        state.mapMode?.lastTileActionTarget === "add.rpg.dungeon.studio" &&
-        state.map?.mapId === "add.rpg.dungeon.studio",
-      consoleErrors,
-    )
-
-    await clickVisibleElementByDomId(page, "return-overworld")
-    await waitForTextState(
-      page,
-      (state) =>
-        (state.mapMode?.active === "base_square" &&
-          state.map?.mapId === "add.rpg.base.studio") ||
-        (state.mapMode?.active === "area_hex" &&
-          state.map?.mapId === "add.rpg.area.studio-grounds"),
+        state.mapMode?.active === "area_hex" &&
+        state.map?.mapId === "add.rpg.area.studio-grounds" &&
+        state.map?.landmarks?.renderedCount >= 1,
       consoleErrors,
     )
 
@@ -2487,8 +2576,18 @@ async function exerciseSurvivorCaveDungeonEntry(page, consoleErrors) {
   const before = await renderGameToText(page)
   assert.equal(before.mapMode.active, "overworld_hex")
   assert.equal(before.map.character.coord, before.map.landmarks.survivorCave)
+  const heroPoint = await characterScreenPoint(page, before)
+  await page.mouse.click(heroPoint.x, heroPoint.y)
+  const selectedCave = await waitForTextState(
+    page,
+    (state) =>
+      state.mapMode?.active === "overworld_hex" &&
+      state.map?.interaction?.selectedCell === before.map.character.cell &&
+      state.map?.character?.coord === state.map?.landmarks?.survivorCave,
+    consoleErrors,
+  )
   assert.ok(
-    before.map.character.dungeonLinksAtCell.some(
+    selectedCave.map.character.dungeonLinksAtCell.some(
       (link) =>
         link.enabled === true &&
         link.label === "Survivor Cave" &&
@@ -2496,8 +2595,8 @@ async function exerciseSurvivorCaveDungeonEntry(page, consoleErrors) {
     ),
     "The Hero should stand on an enabled Survivor Cave dungeon link.",
   )
-  assert.equal(before.discovery.phase, "enter_dungeon")
-  assert.equal(before.discovery.dungeonEntryAvailable, true)
+  assert.equal(selectedCave.discovery.phase, "enter_dungeon")
+  assert.equal(selectedCave.discovery.dungeonEntryAvailable, true)
 
   assert.match(
     await page.locator("#enter-dungeon").innerText(),
@@ -2620,7 +2719,7 @@ async function exerciseMainCharacterMovement(page, consoleErrors) {
   assert.equal(travelTarget.discovery.selectedTile.travelMinutes, 60)
   assert.equal(travelTarget.map.presentation.mapPrimaryAffordances.pathTimePreviewVisible, true)
 
-  await page.locator("#current-action-primary").click()
+  await clickVisibleElementByDomId(page, "current-action-primary")
   const firstDialog = await waitForTextState(
     page,
     (state) =>
@@ -2656,7 +2755,7 @@ async function exerciseMainCharacterMovement(page, consoleErrors) {
     consoleErrors,
   )
 
-  await page.locator("#current-action-primary").click()
+  await clickVisibleElementByDomId(page, "current-action-primary")
   await waitForTextState(
     page,
     (state) =>

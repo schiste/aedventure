@@ -2982,3 +2982,9 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   landmark context, keeping exact names in the side panel. The ADD smoke map-mode
   tab helper was also hardened against harmless live re-renders, and
   `npm run smoke:add-rpg:built` passed.
+- Gated Base navigation behind actual Studio arrival. The Base topbar entry is
+  now hidden until the Hero reaches The Studio or opens Base through a validated
+  Studio action, and reset clears the unlock. Telemetry now reports only visible
+  map-mode entries, so smoke can assert Base is absent on boot/mobile and appears
+  only after the real travel path to Studio. Verification passed with
+  `npm run smoke:add-rpg:built` and `npm run agent:verify:add-ui`.
