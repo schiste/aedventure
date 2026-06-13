@@ -1940,11 +1940,16 @@ function copyDisclosure(
 // player does not see several competing "next actions" at once.
 function storyMomentBlock(): unknown {
   const moment = storyMoment()
-  if (!moment || !moment.awaitingChoice) return null
+  // Show the active beat as the always-on narrative driver: the body for every
+  // beat (the current story chapter / ongoing goal), with choices only when the
+  // beat is actually a decision. (Previously gated to awaitingChoice, which left
+  // the surface blank for the 7 no-choice spine beats.)
+  if (!moment) return null
   return html`
     <div
       class="story-moment"
       data-arc=${moment.arc}
+      data-awaiting=${moment.awaitingChoice}
       aria-label=${`Story moment: ${moment.label}`}
     >
       <div class="story-moment-kicker">${moment.label}</div>
@@ -1956,23 +1961,27 @@ function storyMomentBlock(): unknown {
         leadUiCopy(moment.body, 96),
         "story-moment-detail",
       )}
-      <details class="story-moment-options">
-        <summary>Other story choices</summary>
-        <div class="story-moment-choices">
-          ${moment.choices.map(
-            (choice) => html`
-              <button
-                type="button"
-                class="story-moment-choice"
-                data-choice-id=${choice.id}
-                onClick=${() => void chooseStoryOption(moment.beatId, choice.id)}
-              >
-                ${choice.label}
-              </button>
-            `,
-          )}
-        </div>
-      </details>
+      ${moment.choices.length > 0
+        ? html`
+            <details class="story-moment-options">
+              <summary>Story choices</summary>
+              <div class="story-moment-choices">
+                ${moment.choices.map(
+                  (choice) => html`
+                    <button
+                      type="button"
+                      class="story-moment-choice"
+                      data-choice-id=${choice.id}
+                      onClick=${() => void chooseStoryOption(moment.beatId, choice.id)}
+                    >
+                      ${choice.label}
+                    </button>
+                  `,
+                )}
+              </div>
+            </details>
+          `
+        : null}
     </div>
   `
 }
