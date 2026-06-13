@@ -2963,3 +2963,10 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   and uses a stronger map path preview instead of an on-map text badge. The ADD
   smoke now asserts this player path so future map-label or CTA regressions are
   caught.
+- Polished the first ADD movement micro-loop from map selection through arrival.
+  The first travel smoke path now selects a reachable hex, confirms through the
+  side-panel CTA, exercises the first-travel dialog, observes synchronized Hero,
+  clock, and reveal-halo animation, and asserts the arrival "Changed" feedback.
+  Current Action now exposes transient Travel/Arrival states ahead of tutorial
+  actions while the crossing resolves, and the Phaser map no longer draws generic
+  `Inspect` badges for non-portal tiles; tile facts stay in the Discovery panel.

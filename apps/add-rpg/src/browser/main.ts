@@ -2170,6 +2170,9 @@ function currentActionState(
 
   const firstPlayable = uiState()?.firstPlayable
   const firstStep = currentFirstPlayableStep()
+  const travelLoop = travelLoopCurrentAction()
+  if (travelLoop) return travelLoop
+
   const selectedTravel = selectedTravelCurrentAction()
   if (selectedTravel) return selectedTravel
 
@@ -2223,6 +2226,50 @@ function currentActionState(
   }
 }
 
+function travelLoopCurrentAction(): AddCurrentActionState | null {
+  const experience = travelExperience()
+  if (!experience) return null
+
+  if (experience.phase === "traveling") {
+    const minutes = Math.max(1, experience.toClockSeconds - experience.fromClockSeconds)
+    return {
+      source: "discovery",
+      sourceLabel: "Travel",
+      label: `Crossing to ${experience.event.destinationLabel}`,
+      detail:
+        "The Hero is spending the crossing hour now. Watch the clock, movement, and reveal halo finish together before choosing the next region.",
+      kind: "traveling",
+      enabled: false,
+      primaryLabel: null,
+      primaryEnabled: false,
+      metaLabel: `${Math.round(minutes)} min`,
+      progressLabel: "Hero moving · clock advancing · visibility opening",
+      actionId: null,
+    }
+  }
+
+  if (experience.phase === "arrived") {
+    const movement = lastDiscoveryMovement()
+    return {
+      source: "discovery",
+      sourceLabel: "Arrival",
+      label: `Arrived at ${experience.event.destinationLabel}`,
+      detail: movement
+        ? movementChangedCopy(movement)
+        : "The crossing is complete. Use the newly visible map edge to decide where to scout next.",
+      kind: "arrived",
+      enabled: true,
+      primaryLabel: null,
+      primaryEnabled: false,
+      metaLabel: titleCase(experience.event.exposureRisk.replaceAll("_", " ")),
+      progressLabel: movement ? movementChangedCopy(movement, { includeDestination: false }) : null,
+      actionId: null,
+    }
+  }
+
+  return null
+}
+
 function selectedTravelCurrentAction(): AddCurrentActionState | null {
   const discovery = discoveryState()
   const selected = discovery?.selectedTile
@@ -2272,19 +2319,16 @@ function interfaceWhereCopy(): string {
 
 function interfaceChangedCopy(): string {
   const experience = travelExperience()
-  if (experience?.phase === "traveling") return `Crossing to ${experience.event.destinationLabel}`
-  if (experience?.phase === "arrived") return `Arrived at ${experience.event.destinationLabel}`
+  if (experience?.phase === "traveling") return `Crossing to ${experience.event.destinationLabel} · 60m passing`
+  if (experience?.phase === "arrived") {
+    const movement = lastDiscoveryMovement()
+    return movement
+      ? movementChangedCopy(movement)
+      : `Arrived at ${experience.event.destinationLabel}`
+  }
 
   const movement = lastDiscoveryMovement()
-  if (movement) {
-    const revealed = movement.discoveredAfter - movement.discoveredBefore
-    const toxicityDelta = movement.toxicityAfter - movement.toxicityBefore
-    const parts: string[] = []
-    if (revealed > 0) parts.push(`${revealed} region${revealed === 1 ? "" : "s"} revealed`)
-    if (toxicityDelta > 0) parts.push(`${Math.round(toxicityDelta * 100)}% toxicity gained`)
-    if (parts.length > 0) return parts.join(" · ")
-    return `Scouted ${movement.destinationLabel}`
-  }
+  if (movement) return movementChangedCopy(movement)
 
   const selected = discoveryState()?.tileDetail?.label ?? mapInfo().interaction.selectedLabel
   if (selected) return `Selected ${selected}`
@@ -2293,6 +2337,23 @@ function interfaceChangedCopy(): string {
   if (base) return base.nextBottleneck.label
 
   return "Opening state is stable"
+}
+
+function movementChangedCopy(
+  movement: AddDiscoveryMovementEvent,
+  options: { readonly includeDestination?: boolean } = {},
+): string {
+  const includeDestination = options.includeDestination ?? true
+  const revealed = movement.discoveredAfter - movement.discoveredBefore
+  const toxicityDelta = movement.toxicityAfter - movement.toxicityBefore
+  const parts: string[] = []
+  if (includeDestination) parts.push(`Arrived at ${movement.destinationLabel}`)
+  if (revealed > 0) parts.push(`${revealed} region${revealed === 1 ? "" : "s"} revealed`)
+  if (toxicityDelta > 0) parts.push(`${Math.round(toxicityDelta * 100)}% toxicity`)
+  if (movement.exposureRisk) {
+    parts.push(titleCase(movement.exposureRisk.replaceAll("_", " ")))
+  }
+  return parts.length > 0 ? parts.join(" · ") : `Scouted ${movement.destinationLabel}`
 }
 
 function interfaceWaitCopy(): string {

@@ -1515,22 +1515,17 @@ export class AddRpgHexScene extends Phaser.Scene {
     if (!primaryInteraction) return affordances
 
     const portal = primaryInteraction.metadata?.dungeonActionsVisible === true
-    const activeReachable = this.activeAdjacentPreviewCoord(
-      context,
-      this.reachableCellsForContext(context),
-    )
-    if (!portal && activeReachable && sameCoord(activeReachable, primaryCoord)) {
-      return affordances
-    }
+    if (!portal) return affordances
+
     affordances.push({
       id: `primary:${primaryInteraction.id}`,
       coord: primaryCoord,
-      kind: portal ? "portal" : "inspect",
+      kind: "portal",
       label: primaryInteraction.label,
-      actionLabel: portal ? "Enter" : "Inspect",
+      actionLabel: "Enter",
       enabled: primaryInteraction.enabled,
       emphasis: "primary",
-      color: portal ? 0xe3a64a : 0x2f8f63,
+      color: 0xe3a64a,
     })
     return affordances
   }

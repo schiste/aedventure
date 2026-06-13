@@ -225,7 +225,7 @@ async function assertBootAndRenderTextContract(page, consoleErrors) {
       state.map?.interaction?.activeCell === state.map?.interaction?.selectedCell &&
       state.map?.interaction?.lastInput === "none" &&
       state.map?.interaction?.markerVisible === true &&
-      state.map?.interaction?.primaryMarkerVisible === true &&
+      state.map?.interaction?.primaryMarkerVisible === false &&
       state.map?.presentation?.terrainArt === "procedural_painterly_topology" &&
       state.map?.presentation?.bubbleEffects === "animated_halo_edge" &&
       state.map?.presentation?.landmarkSprites === "procedural_sprite_stack" &&
@@ -2580,7 +2580,15 @@ async function exerciseMainCharacterMovement(page, consoleErrors) {
     "opening_reach_base_from_survivor_cave",
   )
 
-  await page.keyboard.press("ArrowLeft")
+  const heroPoint = await characterScreenPoint(page, before)
+  const travelTarget = await clickReachableTravelCandidate(page, heroPoint, consoleErrors)
+  const expectedDestinationCell = travelTarget.discovery.selectedTile.cell
+  assert.equal(travelTarget.shell.currentAction.primaryLabel, "Travel to this region")
+  assert.equal(travelTarget.shell.currentAction.kind, "travel")
+  assert.equal(travelTarget.discovery.selectedTile.travelMinutes, 60)
+  assert.equal(travelTarget.map.presentation.mapPrimaryAffordances.pathTimePreviewVisible, true)
+
+  await page.locator("#current-action-primary").click()
   const firstDialog = await waitForTextState(
     page,
     (state) =>
@@ -2595,6 +2603,7 @@ async function exerciseMainCharacterMovement(page, consoleErrors) {
     firstDialog.travel.confirmation.reason,
     "opening_reach_base_from_survivor_cave",
   )
+  assert.equal(firstDialog.shell.currentAction.primaryLabel, "Travel to this region")
 
   await page.locator("#travel-dialog-cancel").click()
   await waitForTextState(
@@ -2615,7 +2624,7 @@ async function exerciseMainCharacterMovement(page, consoleErrors) {
     consoleErrors,
   )
 
-  await page.keyboard.press("ArrowLeft")
+  await page.locator("#current-action-primary").click()
   await waitForTextState(
     page,
     (state) =>
@@ -2649,9 +2658,9 @@ async function exerciseMainCharacterMovement(page, consoleErrors) {
         presentationClockSeconds >= minimumArrivalClockSeconds &&
         authoritativeClockSeconds - presentationClockSeconds <= 1.1
       return (
-        state.map?.character?.lastMoveDirection === "left" &&
+        typeof state.map?.character?.lastMoveDirection === "string" &&
         state.map?.character?.lastMoveAccepted === true &&
-        state.map?.character?.cell !== before.map.character.cell &&
+        state.map?.character?.cell === expectedDestinationCell &&
         state.map?.character?.moving === false &&
         state.snapshot?.clockSeconds >= minimumArrivalClockSeconds &&
         state.snapshot?.discoveredCellCount > before.snapshot.discoveredCellCount &&
@@ -2693,6 +2702,14 @@ async function exerciseMainCharacterMovement(page, consoleErrors) {
   assert.equal(moved.map.interaction.activeSource, "selection")
   assert.equal(moved.map.interaction.activeCell, moved.map.character.cell)
   assert.equal(moved.map.interaction.selectedCell, moved.map.character.cell)
+  assert.equal(moved.shell.currentAction.source, "discovery")
+  assert.equal(moved.shell.currentAction.sourceLabel, "Arrival")
+  assert.equal(moved.shell.currentAction.kind, "arrived")
+  assert.match(
+    moved.shell.interfaceHierarchy.questions.whatChanged,
+    /Arrived at|region.*revealed|Toxic/i,
+    "Arrival should update the Changed answer with travel results.",
+  )
   assert.equal(moved.discovery.phase, "movement")
   assert.equal(typeof moved.discovery.nextAction.label, "string")
   assert.ok(moved.discovery.nextAction.label.length > 0)
@@ -2744,7 +2761,7 @@ async function exerciseMainCharacterMovement(page, consoleErrors) {
   )
   assert.match(
     await page.locator("#current-action-surface").innerText(),
-    /First playable|Discovery|Base loop|Dungeon objective|Return review/i,
+    /First playable|Discovery|Travel|Arrival|Base loop|Dungeon objective|Return review/i,
     "The shared Current Action surface should remain the foreground decision.",
   )
   await page.locator("#toggle-discovery-panel").click()
@@ -2764,7 +2781,7 @@ async function exerciseMainCharacterMovement(page, consoleErrors) {
   )
   assert.match(
     await page.locator("#current-action-surface").innerText(),
-    /First playable|Discovery|Base loop|Dungeon objective|Return review/i,
+    /First playable|Discovery|Travel|Arrival|Base loop|Dungeon objective|Return review/i,
     "Collapsed Discovery panel should still show the shared Current Action surface.",
   )
   await assertNonBlankNamedAppScreenshot(
@@ -2810,12 +2827,17 @@ async function exerciseMainCharacterMovement(page, consoleErrors) {
     "After the crossing the clock should resume ambient ticking, not jump another tile-hour.",
   )
 
-  await page.keyboard.down("ArrowRight")
-  const repeatedRightKey = repeatHeldKey(page, "ArrowRight", 28, 120)
+  const returnKeys = keyboardKeysForCellStep(moved.map.character.cell, before.map.character.cell)
+  const expectedReturnDirection = directionForCellStep(
+    moved.map.character.cell,
+    before.map.character.cell,
+  )
+  for (const key of returnKeys) await page.keyboard.down(key)
+  const repeatedReturnKey = repeatHeldKey(page, returnKeys[0], 28, 120)
   const returned = await waitForTextState(
     page,
     (state) =>
-      state.map?.character?.lastMoveDirection === "right" &&
+      state.map?.character?.lastMoveDirection === expectedReturnDirection &&
       state.map?.character?.lastMoveAccepted === true &&
       state.map?.character?.cell === before.map.character.cell &&
       state.map?.character?.moving === false &&
@@ -2825,8 +2847,8 @@ async function exerciseMainCharacterMovement(page, consoleErrors) {
     consoleErrors,
     8000,
   )
-  await repeatedRightKey
-  await page.keyboard.up("ArrowRight")
+  await repeatedReturnKey
+  for (const key of returnKeys) await page.keyboard.up(key)
   const afterHeldReturn = await waitForTextState(
     page,
     (state) =>
@@ -2898,7 +2920,7 @@ async function interactWithMap(page, consoleErrors) {
       state.map.interaction.lastInput === "pointer" &&
       state.map.interaction.activeSource === "selection" &&
       state.map.interaction.activeCell === state.map.interaction.selectedCell &&
-      state.map.interaction.primaryMarkerVisible === true &&
+      state.map.interaction.primaryMarkerVisible === false &&
       typeof state.map.interaction.activeLabel === "string" &&
       state.discovery?.selectedTile !== null &&
       state.discovery?.tileDetail !== null &&
@@ -2935,9 +2957,9 @@ async function interactWithMap(page, consoleErrors) {
   assert.equal(travelTarget.discovery.selectedTile.canTravelNow, true)
   assert.equal(travelTarget.map.presentation.mapPrimaryAffordances.pathTimePreviewVisible, true)
   assert.equal(
-    travelTarget.map.interaction.primaryMarkerVisible,
-    false,
-    "Reachable travel targets should use path preview and side-panel CTA, not an on-map Inspect label.",
+    travelTarget.discovery.tileDetail.primaryAction.label,
+    "Travel here",
+    "Reachable travel targets should use the side-panel travel CTA as the action label.",
   )
 
   await openDetailsSection(page, "#tile-choices-section")
@@ -3046,6 +3068,64 @@ async function clickReachableTravelCandidate(page, heroPoint, consoleErrors) {
       selectedTile: lastState.discovery?.selectedTile,
     })}`,
   )
+}
+
+function keyboardKeysForCellStep(fromCell, toCell) {
+  const direction = directionForCellStep(fromCell, toCell)
+  switch (direction) {
+    case "up":
+    case "north_west":
+      return ["ArrowUp"]
+    case "right":
+      return ["ArrowRight"]
+    case "down":
+    case "south_east":
+      return ["ArrowDown"]
+    case "left":
+      return ["ArrowLeft"]
+    case "north_east":
+      return ["ArrowUp", "ArrowRight"]
+    case "south_west":
+      return ["ArrowDown", "ArrowLeft"]
+    default:
+      throw new Error(`Unsupported reverse movement direction: ${direction}`)
+  }
+}
+
+function directionForCellStep(fromCell, toCell) {
+  const from = parseSmokeCell(fromCell)
+  const to = parseSmokeCell(toCell)
+  if (!from || !to || from.kind !== to.kind) {
+    throw new Error(`Cannot derive movement direction from ${fromCell} to ${toCell}`)
+  }
+
+  const dx = to.a - from.a
+  const dy = to.b - from.b
+  if (from.kind === "square") {
+    if (dx === 0 && dy === -1) return "up"
+    if (dx === 1 && dy === 0) return "right"
+    if (dx === 0 && dy === 1) return "down"
+    if (dx === -1 && dy === 0) return "left"
+    throw new Error(`Cells are not adjacent square cells: ${fromCell} -> ${toCell}`)
+  }
+
+  if (dx === 0 && dy === -1) return "north_west"
+  if (dx === 1 && dy === -1) return "north_east"
+  if (dx === 1 && dy === 0) return "right"
+  if (dx === 0 && dy === 1) return "south_east"
+  if (dx === -1 && dy === 1) return "south_west"
+  if (dx === -1 && dy === 0) return "left"
+  throw new Error(`Cells are not adjacent hex cells: ${fromCell} -> ${toCell}`)
+}
+
+function parseSmokeCell(cell) {
+  const match = /^(hex|square):(-?\d+),(-?\d+)$/.exec(String(cell ?? ""))
+  if (!match) return null
+  return {
+    kind: match[1],
+    a: Number(match[2]),
+    b: Number(match[3]),
+  }
 }
 
 async function assertHiddenMapCellsAreInvisibleToPointer(page, consoleErrors) {
