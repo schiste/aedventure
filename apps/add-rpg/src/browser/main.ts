@@ -25,6 +25,7 @@ import {
   ROLE_FIRE_PIT,
   ROLE_SCAVENGE,
   ROLE_WATER,
+  ADD_DISCOVERY_OPEN_BASE_ACTION_ID,
   SimulationClient,
   addCommandForGameInteraction,
   selectAddBaseManagementState,
@@ -2182,6 +2183,9 @@ function currentActionState(
   const selectedTravel = selectedTravelCurrentAction()
   if (selectedTravel) return selectedTravel
 
+  const baseHandoff = baseHandoffCurrentAction()
+  if (baseHandoff) return baseHandoff
+
   if (firstPlayable && !firstPlayable.complete && firstStep) {
     return {
       source: "first_playable",
@@ -2202,6 +2206,7 @@ function currentActionState(
   if (discovery) {
     const action = discovery.nextAction
     const link = discoveryActionLinkFor(action.actionId)
+    const opensBase = action.actionId === ADD_DISCOVERY_OPEN_BASE_ACTION_ID
     return {
       source: "discovery",
       sourceLabel: "Discovery",
@@ -2209,8 +2214,8 @@ function currentActionState(
       detail: action.detail,
       kind: action.kind,
       enabled: action.enabled,
-      primaryLabel: link ? action.label : null,
-      primaryEnabled: Boolean(link?.enabled),
+      primaryLabel: link || opensBase ? action.label : null,
+      primaryEnabled: Boolean(link?.enabled || (opensBase && action.enabled)),
       metaLabel: discoveryPhaseLabel(),
       progressLabel: action.inputHint,
       actionId: action.actionId,
@@ -2256,6 +2261,20 @@ function travelLoopCurrentAction(): AddCurrentActionState | null {
 
   if (experience.phase === "arrived") {
     const movement = lastDiscoveryMovement()
+    const baseHandoff = baseHandoffCurrentAction()
+    if (baseHandoff) {
+      return {
+        ...baseHandoff,
+        sourceLabel: "Arrival",
+        detail: movement
+          ? `${movementChangedCopy(movement)}. ${baseHandoff.detail}`
+          : baseHandoff.detail,
+        metaLabel: "Studio reached",
+        progressLabel: movement
+          ? movementChangedCopy(movement, { includeDestination: false })
+          : baseHandoff.progressLabel,
+      }
+    }
     return {
       source: "discovery",
       sourceLabel: "Arrival",
@@ -2274,6 +2293,31 @@ function travelLoopCurrentAction(): AddCurrentActionState | null {
   }
 
   return null
+}
+
+function baseHandoffCurrentAction(): AddCurrentActionState | null {
+  if (mapMode() !== "overworld_hex") return null
+  const action = discoveryState()?.nextAction
+  if (
+    !action ||
+    action.kind !== "open_base" ||
+    action.actionId !== ADD_DISCOVERY_OPEN_BASE_ACTION_ID
+  ) {
+    return null
+  }
+  return {
+    source: "discovery",
+    sourceLabel: "Studio reached",
+    label: action.label,
+    detail: action.detail,
+    kind: action.kind,
+    enabled: action.enabled,
+    primaryLabel: action.label,
+    primaryEnabled: action.enabled,
+    metaLabel: "Base",
+    progressLabel: action.inputHint,
+    actionId: action.actionId,
+  }
 }
 
 function selectedTravelCurrentAction(): AddCurrentActionState | null {
@@ -5886,6 +5930,12 @@ async function runCurrentAction(): Promise<void> {
       return
     }
     case "discovery": {
+      if (action.kind === "open_base" && action.actionId === ADD_DISCOVERY_OPEN_BASE_ACTION_ID) {
+        setLastTileActionTarget("base_square")
+        setLastCommand("discovery-open:base")
+        switchMapMode("base_square")
+        return
+      }
       if (action.kind === "travel" && action.actionId === "travel:selected-tile") {
         const detail = discoveryState()?.tileDetail
         if (detail) await runSelectedTileTravelAction(detail)

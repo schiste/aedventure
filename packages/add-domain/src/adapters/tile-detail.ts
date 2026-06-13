@@ -91,7 +91,7 @@ export function selectAddTileDetail(
     gameMinutes: input.travel.gameMinutes,
   })
   const facts = tileFactsSummary(tile)
-  const links = tileLinks(tile, input.heroDungeonLinks)
+  const links = tileLinks(tile, input.heroDungeonLinks, { standingHere })
   const actions = tileActions({ tile, travel, links })
 
   return {
@@ -165,6 +165,7 @@ function tileFactsSummary(tile: AddTileInteractionDetail): AddTileFactsSummary {
 function tileLinks(
   tile: AddTileInteractionDetail,
   heroDungeonLinks: readonly AddDungeonLinkInfo[],
+  context: { readonly standingHere: boolean },
 ): readonly AddTileLink[] {
   if (tile.visibility === "hidden") return []
 
@@ -177,8 +178,10 @@ function tileLinks(
       targetMapMode: "base_square",
       targetMapId: ADD_BASE_SQUARE_MAP_ID,
       visible: true,
-      enabled: true,
-      blockedReason: null,
+      enabled: context.standingHere,
+      blockedReason: context.standingHere
+        ? null
+        : "Reach The Studio with the Hero before opening base management.",
     })
   }
 

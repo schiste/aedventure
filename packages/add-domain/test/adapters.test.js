@@ -13,10 +13,13 @@ const {
   createAddTopologyNavigationPolicy,
   createAddWorldInteractionPolicy,
   selectAddVisibilitySummary,
+  selectAddDiscoverySummary,
   selectAddTile,
   selectAddFirstPlayableSummary,
   selectAddUiState,
   selectAddWorldTimeForClockSeconds,
+  tileInteractionDetailForCoord,
+  addMapCoordKey,
   workerRequestForAddCommand,
 } = require("../dist/index.js")
 const { validateGameWorld } = require("../../game-world/dist/index.js")
@@ -99,6 +102,63 @@ assert.equal(cellPresentationPolicy.cellStyle(baseCell).fill, 0xdedbbf)
 assert.equal(cellPresentationPolicy.cellStyle(baseCell).activity, "inactive")
 assert.equal(cellPresentationPolicy.cellStyle(survivorCaveCell).motif, "none")
 assert.equal(cellPresentationPolicy.fogStyle(baseCell).visible, true)
+const terrainByCoord = new Map(terrain.cells.map((cell) => [addMapCoordKey(cell.coord), cell]))
+const baseTileDetail = tileInteractionDetailForCoord(baseCell.coord, terrainByCoord)
+const remoteBaseDiscovery = selectAddDiscoverySummary({
+  snapshot,
+  catalog,
+  heroCell: "hex:2,-1",
+  selectedTile: baseTileDetail,
+  previewTile: baseTileDetail,
+  heroDungeonLinks: [],
+  selectedDungeonLinks: [],
+  travel: {
+    active: false,
+    phase: "idle",
+    previewCell: null,
+    destinationLabel: null,
+    exposureRisk: null,
+    previewAdjacent: false,
+    gameMinutes: 60,
+  },
+  lastMovement: null,
+})
+assert.equal(remoteBaseDiscovery.tileDetail.links.find((link) => link.kind === "base").enabled, false)
+assert.match(
+  remoteBaseDiscovery.tileDetail.links.find((link) => link.kind === "base").blockedReason,
+  /Reach The Studio/,
+)
+const arrivedBaseDiscovery = selectAddDiscoverySummary({
+  snapshot,
+  catalog,
+  heroCell: "hex:0,0",
+  selectedTile: baseTileDetail,
+  previewTile: baseTileDetail,
+  heroDungeonLinks: [],
+  selectedDungeonLinks: [],
+  travel: {
+    active: false,
+    phase: "idle",
+    previewCell: null,
+    destinationLabel: null,
+    exposureRisk: null,
+    previewAdjacent: false,
+    gameMinutes: 60,
+  },
+  lastMovement: {
+    fromCell: "hex:1,-1",
+    toCell: "hex:0,0",
+    destinationLabel: "The Studio",
+    exposureRisk: "studio",
+    gameMinutes: 60,
+    discoveredBefore: 3,
+    discoveredAfter: 5,
+    toxicityBefore: 0.1,
+    toxicityAfter: 0.1,
+  },
+})
+assert.equal(arrivedBaseDiscovery.nextAction.kind, "open_base")
+assert.equal(arrivedBaseDiscovery.nextAction.actionId, "base:open")
 const worldInteractionPolicy = createAddWorldInteractionPolicy()
 const hiddenInteraction = worldInteractionPolicy.interactionForCell(
   hiddenDungeonCell.coord,

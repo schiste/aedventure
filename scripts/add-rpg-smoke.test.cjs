@@ -2362,7 +2362,12 @@ async function exerciseStudioTileDetailLinks(page, consoleErrors) {
         state.discovery.tileDetail.actionIds.includes(
           "tile-action:base:tile-link:base:studio-echo",
         ) &&
-        state.discovery.tileDetail.enabledLinkIds.some((id) => id.includes("base")) &&
+        !state.discovery.tileDetail.enabledLinkIds.some((id) => id.includes("base")) &&
+        state.discovery.tileDetail.disabledActionReasons.some(
+          (action) =>
+            action.id === "tile-action:base:tile-link:base:studio-echo" &&
+            /Reach The Studio/i.test(action.reason),
+        ) &&
         state.discovery.tileDetail.actionKinds.includes("manage_base") &&
         state.discovery.tileDetail.actionKinds.includes("enter_submap") &&
         !state.discovery.tileDetail.targetMapIds.includes("add.rpg.dungeon.studio"),
@@ -2381,6 +2386,7 @@ async function exerciseStudioTileDetailLinks(page, consoleErrors) {
       "The Studio",
       "Studio Grounds",
       "Open The Studio",
+      "Reach The Studio",
       "Base",
     ].forEach((expectedText) => {
       assert.ok(
@@ -2398,10 +2404,7 @@ async function exerciseStudioTileDetailLinks(page, consoleErrors) {
       "ADD RPG Studio tile detail screenshot",
     )
 
-    await clickVisibleElementByDomId(
-      page,
-      "tile-detail-action-tile-action-base-tile-link-base-studio-echo",
-    )
+    await clickMapMode(page, "base_square")
     await waitForTextState(
       page,
       (state) =>
@@ -2742,7 +2745,11 @@ async function exerciseMainCharacterMovement(page, consoleErrors) {
   assert.equal(moved.discovery.phase, "movement")
   assert.equal(typeof moved.discovery.nextAction.label, "string")
   assert.ok(moved.discovery.nextAction.label.length > 0)
-  assert.ok(["wait", "travel", "inspect", "enter_dungeon", "domain_action", "blocked"].includes(moved.discovery.nextAction.kind))
+  assert.ok(
+    ["wait", "travel", "inspect", "enter_dungeon", "open_base", "domain_action", "blocked"].includes(
+      moved.discovery.nextAction.kind,
+    ),
+  )
   assert.ok(
     moved.discovery.movementDiscoveredDelta > 0,
     "Discovery telemetry should report newly revealed cells after movement.",

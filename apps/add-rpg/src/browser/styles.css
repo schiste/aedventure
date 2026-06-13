@@ -814,6 +814,7 @@ h1 {
 
 .current-action-surface[data-source="first_playable"],
 .current-action-surface[data-kind="enter_dungeon"],
+.current-action-surface[data-kind="open_base"],
 .current-action-surface[data-kind="domain_action"] {
   border-color: rgb(240 185 93 / 42%);
   box-shadow: inset 3px 0 0 #f0b95d;

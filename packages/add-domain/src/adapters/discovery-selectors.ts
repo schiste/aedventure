@@ -25,6 +25,7 @@ import {
 } from "./tile-detail"
 
 export type AddDiscoveryPhase = "movement" | "choose_tile" | "enter_dungeon" | "act"
+export const ADD_DISCOVERY_OPEN_BASE_ACTION_ID = "base:open"
 
 export interface AddDiscoveryMovementEvent {
   readonly fromCell: string
@@ -92,6 +93,7 @@ export interface AddDiscoveryNextAction {
     | "travel"
     | "inspect"
     | "enter_dungeon"
+    | "open_base"
     | "domain_action"
     | "blocked"
   readonly enabled: boolean
@@ -271,6 +273,18 @@ function nextActionFor(options: {
       enabled: true,
       actionId: `dungeon:${dungeonEntry.targetMapId}`,
       inputHint: null,
+    }
+  }
+
+  if (selectedTile?.travel.standingHere && isBaseFeature(input.selectedTile?.feature ?? "none")) {
+    return {
+      label: "Open base management",
+      detail:
+        "The Hero has reached The Studio. Switch into the base view to manage resources, crew, power, and repairs from here.",
+      kind: "open_base",
+      enabled: true,
+      actionId: ADD_DISCOVERY_OPEN_BASE_ACTION_ID,
+      inputHint: "Studio reached",
     }
   }
 
@@ -1058,6 +1072,10 @@ function titleCase(value: string): string {
     .filter(Boolean)
     .map((part) => part[0].toUpperCase() + part.slice(1))
     .join(" ")
+}
+
+function isBaseFeature(feature: AddTileInteractionDetail["feature"]): boolean {
+  return feature === "base" || feature === "base_core"
 }
 
 function ratioPercent(value: number): number {
