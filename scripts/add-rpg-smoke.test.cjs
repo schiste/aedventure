@@ -508,7 +508,7 @@ function assertFirstPlayableComplete(firstPlayable) {
 }
 
 async function exerciseMapModeSwitching(page, consoleErrors) {
-  await page.locator("#map-mode-dungeon_square").click()
+  await clickMapMode(page, "dungeon_square")
   const dungeon = await waitForTextState(
     page,
     (state) =>
@@ -547,7 +547,7 @@ async function exerciseMapModeSwitching(page, consoleErrors) {
     consoleErrors,
   )
 
-  await page.locator("#map-mode-base_square").click()
+  await clickMapMode(page, "base_square")
   await waitForTextState(
     page,
     (state) =>
@@ -561,7 +561,7 @@ async function exerciseMapModeSwitching(page, consoleErrors) {
     consoleErrors,
   )
 
-  await page.locator("#map-mode-overworld_hex").click()
+  await clickMapMode(page, "overworld_hex")
   return waitForTextState(
     page,
     (state) =>
@@ -575,7 +575,7 @@ async function exerciseMapModeSwitching(page, consoleErrors) {
 }
 
 async function exerciseBaseManagementSurface(page, consoleErrors) {
-  await page.locator("#map-mode-base_square").click()
+  await clickMapMode(page, "base_square")
   const base = await waitForTextState(
     page,
     (state) =>
@@ -2100,6 +2100,12 @@ async function assertVisibleText(page, selector, fragments) {
       `Expected ${selector} to include "${fragment}", got: ${text}`,
     )
   }
+}
+
+async function clickMapMode(page, mode) {
+  const locator = page.locator(`#map-mode-${mode}`)
+  await locator.waitFor({ state: "attached" })
+  await locator.dispatchEvent("click")
 }
 
 async function exerciseQuestHud(page, consoleErrors) {

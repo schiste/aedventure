@@ -2976,3 +2976,9 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   demand, and collapses into a small journal chip after the arc completes. The
   ADD smoke contract now asserts the compact default, expansion path, and offline
   return review behavior.
+- Improved ADD landmark/object language on the Phaser map. Cave, Studio/crystal,
+  doors, and dungeon entrances now render as stronger procedural objects/icons;
+  persistent Cave/Studio text plates are removed except for the active selected
+  landmark context, keeping exact names in the side panel. The ADD smoke map-mode
+  tab helper was also hardened against harmless live re-renders, and
+  `npm run smoke:add-rpg:built` passed.

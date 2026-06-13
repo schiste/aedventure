@@ -109,6 +109,8 @@ type MobileEdgeCullObject = Phaser.GameObjects.GameObject & {
   setVisible?: (visible: boolean) => Phaser.GameObjects.GameObject
 }
 
+type AddLandmarkRole = "cave" | "base" | "crystal" | "door" | "interior" | "generic"
+
 export class AddRpgHexScene extends Phaser.Scene {
   private readonly hostOptions: AddRpgPhaserMapHostOptions
   private readonly cellPresentationPolicy = createAddCellPresentationPolicy()
@@ -592,21 +594,26 @@ export class AddRpgHexScene extends Phaser.Scene {
       const style = glyphs[marker.kind]
       const isEntrance = marker.kind === "entrance"
       const container = this.add.container(center.x + 20, center.y - 20 + index * 15)
-      const shadow = this.add.ellipse(0, 8, isEntrance ? 22 : 24, 8, 0x17140f, 0.18)
-      const badge = this.add.ellipse(0, 0, isEntrance ? 25 : 24, isEntrance ? 22 : 20, 0xfffae2, 0.88)
-      badge.setStrokeStyle(1.2, style.color, 0.58)
       if (isEntrance) {
-        const roof = this.add.triangle(0, -5, -7, 4, 0, -6, 7, 4, style.color, 0.92)
-        const doorway = this.add.rectangle(0, 2, 11, 11, 0x482715, 0.92)
-        const opening = this.add.ellipse(0, 4, 6, 8, 0x17100d, 0.86)
-        const threshold = this.add.line(0, 8, -5, 0, 5, 0, 0xf4c477, 0.48)
-        container.add([shadow, badge, roof, doorway, opening, threshold])
+        const shadow = this.add.ellipse(0, 9, 22, 7, 0x17140f, 0.26)
+        const halo = this.add.ellipse(0, 1, 24, 22, 0xe1a46a, 0.10)
+        const frame = this.add.rectangle(0, 2, 14, 16, 0x7b4929, 0.94)
+        const opening = this.add.rectangle(0, 4, 8, 11, 0x16100d, 0.92)
+        const roof = this.add.triangle(0, -8, -9, 0, 0, -10, 9, 0, 0xbf713c, 0.96)
+        const arrow = this.add.triangle(0, 13, -5, 5, 5, 5, 0, 11, 0xf4c477, 0.78)
+        const rim = this.add.arc(0, 1, 12, 210, 330, false, 0xf4c477, 0.38)
+        frame.setStrokeStyle(1.5, 0x3a2115, 0.86)
+        rim.setStrokeStyle(1.6, 0xf4c477, 0.42)
+        container.add([shadow, halo, frame, opening, roof, rim, arrow])
         container.setDepth(31)
         this.actionMarkerCount += 1
         this.landmarkObjects.push(container)
         this.mobileEdgeCullObjects.push(container)
         return
       }
+      const shadow = this.add.ellipse(0, 8, 24, 8, 0x17140f, 0.18)
+      const badge = this.add.ellipse(0, 0, 24, 20, 0xfffae2, 0.88)
+      badge.setStrokeStyle(1.2, style.color, 0.58)
       const glyph = this.add.text(0, -1, style.glyph, {
         color: `#${style.color.toString(16).padStart(6, "0")}`,
         fontFamily: "Aptos, Segoe UI, sans-serif",
@@ -869,73 +876,63 @@ export class AddRpgHexScene extends Phaser.Scene {
   }
 
   private drawLandmark(center: Vector2, entity: GameEntity): void {
-    const sourceId = String(entity.metadata?.sourceId ?? "")
-    const isCave = sourceId.includes("cave")
-    const isInteriorFeature = (entity.tags ?? []).includes("interior")
-    const isBase = sourceId.includes("base") || sourceId.includes("crystal_circle")
-    const isCrystal = sourceId.includes("crystal")
-    const isDoor = sourceId.includes("door") || sourceId.includes("gate") || sourceId.includes("exit")
-    const shouldLabel = isCave || isBase || isInteriorFeature
-    const radius = isCave ? 16 : isBase ? 15 : 11
-    const fill = isCave ? 0x7a3d25 : isBase ? 0x2f7d68 : 0xa05f2d
-    const stroke = isCave ? 0x2b170f : isBase ? 0x114538 : 0x5f371d
-    if (isCave || isBase || isInteriorFeature || isDoor || isCrystal) {
-      this.drawLandmarkBeacon(center, isCave ? 0xe1a46a : isBase || isCrystal ? 0x7de5cb : 0xf0b95d, radius)
-    }
-    const shadow = this.add.ellipse(center.x, center.y + 14, radius * 1.75, 8, 0x1f1b14, 0.24)
-    shadow.setDepth(24)
-    const markerPoints = isCave
-      ? [0, -radius, radius, 0, 0, radius, -radius, 0]
-      : isDoor
-        ? [-radius * 0.72, radius, -radius * 0.72, -radius * 0.36, 0, -radius, radius * 0.72, -radius * 0.36, radius * 0.72, radius]
-        : [0, -radius, radius * 0.9, -3, radius * 0.5, radius, -radius * 0.5, radius, -radius * 0.9, -3]
-    const marker = this.add.polygon(center.x, center.y, markerPoints, fill, isCave ? 1 : 0.96)
-    marker.setStrokeStyle(isCave ? 2.8 : 2, stroke, isCave ? 0.96 : 0.86)
-    marker.setDepth(25)
-    this.landmarkObjects.push(shadow, marker)
+    const role = this.landmarkRoleFor(entity)
+    const radius = role === "cave" ? 20 : role === "base" ? 18 : role === "crystal" ? 15 : 12
+    const beaconColor = role === "cave" ? 0xe1a46a : role === "base" || role === "crystal" ? 0x7de5cb : 0xf0b95d
 
-    if (isBase || isCrystal) {
-      const glow = this.add.ellipse(center.x, center.y + 1, radius * 1.65, radius * 1.2, 0x84e4d3, isBase ? 0.15 : 0.22)
-      const core = this.add.polygon(center.x, center.y - 3, [0, -9, 6, 0, 0, 11, -6, 0], isBase ? 0x7de5cb : 0x88d8ff, 0.94)
-      glow.setDepth(23)
-      core.setDepth(26)
-      core.setStrokeStyle(1.4, 0xffffff, 0.58)
-      this.landmarkObjects.push(glow, core)
-    } else if (isCave) {
+    if (role !== "generic") this.drawLandmarkBeacon(center, beaconColor, radius)
+
+    if (role === "cave") {
       this.drawCaveMouthSilhouette(center, radius)
-    } else if (isDoor) {
-      const seam = this.add.line(center.x, center.y + 2, 0, -8, 0, 10, 0x3b2b21, 0.7)
-      seam.setDepth(27)
-      this.landmarkObjects.push(seam)
+    } else if (role === "base" || role === "crystal") {
+      this.drawStudioLandmarkObject(center, radius, role === "crystal")
+    } else if (role === "door" || role === "interior") {
+      this.drawDoorLandmarkObject(center, radius, role === "interior")
+    } else {
+      this.drawGenericLandmarkObject(center, radius)
     }
 
-    if (!shouldLabel) return
-    const labelText = isCave
-      ? "Survivor Cave"
-      : isInteriorFeature
-        ? entity.label ?? "Interior"
-        : isBase
-          ? "Studio"
-          : entity.label ?? "Landmark"
-    const labelSharesCharacterCell =
-      isCave && this.characterCoord && entity.coord
-        ? sameCoord(this.characterCoord, entity.coord)
-        : false
-    const labelOffsetY = labelSharesCharacterCell
+    if (!this.shouldShowLandmarkLabel(entity, role)) return
+    this.drawSelectedLandmarkLabel(center, entity, role)
+  }
+
+  private landmarkRoleFor(entity: GameEntity): AddLandmarkRole {
+    const sourceId = String(entity.metadata?.sourceId ?? "")
+    const tags = new Set(entity.tags ?? [])
+    if (sourceId.includes("cave")) return "cave"
+    if (sourceId.includes("base") || sourceId.includes("crystal_circle")) return "base"
+    if (sourceId.includes("crystal")) return "crystal"
+    if (sourceId.includes("door") || sourceId.includes("gate") || sourceId.includes("exit")) return "door"
+    if (tags.has("interior")) return "interior"
+    return "generic"
+  }
+
+  private shouldShowLandmarkLabel(entity: GameEntity, role: AddLandmarkRole): boolean {
+    if (!entity.coord || role === "generic" || role === "crystal" || role === "door") return false
+    const activeCoord = this.hoveredCoord ?? this.selectedCoord
+    return Boolean(activeCoord && sameCoord(activeCoord, entity.coord))
+  }
+
+  private drawSelectedLandmarkLabel(center: Vector2, entity: GameEntity, role: AddLandmarkRole): void {
+    const labelText =
+      role === "cave"
+        ? "Survivor Cave"
+        : role === "interior"
+          ? entity.label ?? "Interior"
+          : "Studio"
+    const labelOffsetY = role === "cave" && this.characterCoord && entity.coord && sameCoord(this.characterCoord, entity.coord)
       ? 48
-      : isCave
-        ? 42
-        : 28
+      : 34
     const label = this.add.text(center.x, center.y + labelOffsetY, labelText, {
       color: "#1f2a25",
       fontFamily: "Aptos, Segoe UI, sans-serif",
-      fontSize: isCave ? "11px" : "12px",
+      fontSize: role === "cave" ? "11px" : "12px",
       fontStyle: "800",
       align: "center",
-      backgroundColor: isCave ? "rgba(255, 250, 226, 0.80)" : "rgba(255, 250, 226, 0.86)",
+      backgroundColor: role === "cave" ? "rgba(255, 250, 226, 0.80)" : "rgba(255, 250, 226, 0.86)",
       stroke: "rgba(255, 255, 255, 0.42)",
       strokeThickness: 2,
-      padding: { x: isCave ? 5 : 6, y: isCave ? 2 : 3 },
+      padding: { x: role === "cave" ? 5 : 6, y: role === "cave" ? 2 : 3 },
     })
     setCrispText(label)
     label.setShadow(0, 1, "rgba(255, 255, 255, 0.65)", 0, true, true)
@@ -943,6 +940,52 @@ export class AddRpgHexScene extends Phaser.Scene {
     label.setDepth(26)
     this.landmarkObjects.push(label)
     this.mobileEdgeCullObjects.push(label)
+  }
+
+  private drawStudioLandmarkObject(center: Vector2, radius: number, crystalOnly: boolean): void {
+    const shadow = this.add.ellipse(center.x, center.y + radius * 0.72, radius * 2.1, radius * 0.62, 0x17251f, 0.24)
+    const base = this.add.ellipse(center.x, center.y + radius * 0.22, radius * 1.72, radius * 1.16, 0x173d35, 0.92)
+    const platform = this.add.ellipse(center.x, center.y + radius * 0.36, radius * 1.45, radius * 0.76, 0x285c52, 0.92)
+    const core = this.add.polygon(
+      center.x,
+      center.y - radius * 0.24,
+      [0, -radius * 1.04, radius * 0.46, -radius * 0.22, radius * 0.22, radius * 0.72, -radius * 0.34, radius * 0.56, -radius * 0.58, -radius * 0.16],
+      crystalOnly ? 0x8fdcff : 0x6fe0c7,
+      0.96,
+    )
+    const glint = this.add.line(center.x + radius * 0.12, center.y - radius * 0.54, 0, -radius * 0.32, 0, radius * 0.42, 0xffffff, 0.44)
+    const sideTower = this.add.rectangle(center.x - radius * 0.58, center.y + radius * 0.02, radius * 0.22, radius * 0.92, 0x244238, 0.74)
+    base.setStrokeStyle(2.2, 0x0f302a, 0.88)
+    platform.setStrokeStyle(1.4, 0x91fff0, 0.30)
+    core.setStrokeStyle(1.5, 0xf8fffb, 0.58)
+    sideTower.setStrokeStyle(1, 0x88d8ce, 0.28)
+    ;[shadow, base, platform, sideTower, core, glint].forEach((object, index) => object.setDepth(24 + index * 0.24))
+    this.landmarkObjects.push(shadow, base, platform, sideTower, core, glint)
+  }
+
+  private drawDoorLandmarkObject(center: Vector2, radius: number, interior: boolean): void {
+    const shadow = this.add.ellipse(center.x, center.y + radius * 0.78, radius * 1.55, radius * 0.45, 0x1f1711, 0.22)
+    const frame = this.add.rectangle(center.x, center.y + radius * 0.12, radius * 1.05, radius * 1.75, interior ? 0x6a5039 : 0x8a562f, 0.9)
+    const opening = this.add.rectangle(center.x, center.y + radius * 0.24, radius * 0.62, radius * 1.18, 0x17100d, 0.9)
+    const lintel = this.add.line(center.x, center.y - radius * 0.62, -radius * 0.52, 0, radius * 0.52, 0, 0xf0b95d, 0.45)
+    frame.setStrokeStyle(1.8, 0x3d2615, 0.85)
+    ;[shadow, frame, opening, lintel].forEach((object, index) => object.setDepth(24.5 + index * 0.16))
+    this.landmarkObjects.push(shadow, frame, opening, lintel)
+  }
+
+  private drawGenericLandmarkObject(center: Vector2, radius: number): void {
+    const shadow = this.add.ellipse(center.x, center.y + 12, radius * 1.55, 7, 0x1f1b14, 0.18)
+    const marker = this.add.polygon(
+      center.x,
+      center.y,
+      [0, -radius, radius * 0.9, -3, radius * 0.5, radius, -radius * 0.5, radius, -radius * 0.9, -3],
+      0xa05f2d,
+      0.9,
+    )
+    marker.setStrokeStyle(1.6, 0x5f371d, 0.78)
+    shadow.setDepth(24)
+    marker.setDepth(25)
+    this.landmarkObjects.push(shadow, marker)
   }
 
   private drawLandmarkBeacon(center: Vector2, color: number, radius: number): void {
