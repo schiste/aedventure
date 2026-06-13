@@ -1309,14 +1309,34 @@ export class AddRpgHexScene extends Phaser.Scene {
     from: Vector2,
     to: Vector2,
   ): void {
-    graphics.lineStyle(5, 0x1a1e18, 0.20)
+    const angle = Math.atan2(to.y - from.y, to.x - from.x)
+    const mid = {
+      x: Phaser.Math.Linear(from.x, to.x, 0.56),
+      y: Phaser.Math.Linear(from.y, to.y, 0.56),
+    }
+    const pulse = (Math.sin(this.frameCount / 10) + 1) / 2
+
+    graphics.lineStyle(9, 0x101815, 0.28)
     graphics.lineBetween(from.x, from.y, to.x, to.y)
-    graphics.lineStyle(2.4, 0xf0b95d, 0.86)
+    graphics.lineStyle(5, 0xfff1c6, 0.24 + pulse * 0.08)
     graphics.lineBetween(from.x, from.y, to.x, to.y)
+    graphics.lineStyle(2.8, 0xf0b95d, 0.92)
+    graphics.lineBetween(from.x, from.y, to.x, to.y)
+    graphics.fillStyle(0xf0b95d, 0.12 + pulse * 0.08)
+    graphics.fillEllipse(mid.x, mid.y, 24 + pulse * 6, 13 + pulse * 4)
     graphics.fillStyle(0xfff1c6, 0.92)
-    graphics.fillCircle(to.x, to.y, 4.4)
-    graphics.lineStyle(1.4, 0x9b5637, 0.72)
-    graphics.strokeCircle(to.x, to.y, 6.8)
+    graphics.fillCircle(to.x, to.y, 5.6)
+    graphics.lineStyle(1.8, 0x9b5637, 0.78)
+    graphics.strokeCircle(to.x, to.y, 8.6)
+    graphics.fillStyle(0xf0b95d, 0.94)
+    graphics.fillTriangle(
+      to.x + Math.cos(angle) * 13,
+      to.y + Math.sin(angle) * 13,
+      to.x + Math.cos(angle + 2.42) * 8,
+      to.y + Math.sin(angle + 2.42) * 8,
+      to.x + Math.cos(angle - 2.42) * 8,
+      to.y + Math.sin(angle - 2.42) * 8,
+    )
   }
 
   /** Compute the cartographic scale bar: a "nice" 1/2/5 distance and its on-screen
@@ -1495,6 +1515,13 @@ export class AddRpgHexScene extends Phaser.Scene {
     if (!primaryInteraction) return affordances
 
     const portal = primaryInteraction.metadata?.dungeonActionsVisible === true
+    const activeReachable = this.activeAdjacentPreviewCoord(
+      context,
+      this.reachableCellsForContext(context),
+    )
+    if (!portal && activeReachable && sameCoord(activeReachable, primaryCoord)) {
+      return affordances
+    }
     affordances.push({
       id: `primary:${primaryInteraction.id}`,
       coord: primaryCoord,

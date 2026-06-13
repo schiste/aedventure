@@ -2956,3 +2956,10 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   Survivor Cave as a valid ADD square dungeon fixture, because the topology gate
   is about proving the square Phaser renderer, not a specific product route.
   Full `npm run check` passed after the QA contract update.
+- Made reachable hex selection feel like a real travel decision. Hovering or
+  clicking a reachable region now promotes it into the Discovery decision state,
+  switches the primary action to "Travel to this region," shows the 60-minute
+  cost, risk, known/unknown facts, and why the region matters in the side panel,
+  and uses a stronger map path preview instead of an on-map text badge. The ADD
+  smoke now asserts this player path so future map-label or CTA regressions are
+  caught.

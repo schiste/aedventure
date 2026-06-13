@@ -1172,6 +1172,16 @@ h1 {
   box-shadow: inset 3px 0 0 rgb(247 238 210 / 28%);
 }
 
+.discovery-selected-tile[data-actionable="true"] {
+  border-color: rgb(240 185 93 / 46%);
+  background:
+    linear-gradient(180deg, rgb(240 185 93 / 16%), rgb(95 209 216 / 7%)),
+    rgb(18 32 29 / 82%);
+  box-shadow:
+    inset 3px 0 0 #f0b95d,
+    0 0 0 1px rgb(240 185 93 / 10%);
+}
+
 .discovery-selected-tile header {
   display: flex;
   align-items: start;
@@ -1206,6 +1216,37 @@ h1 {
   color: rgb(247 238 210 / 78%);
   font-size: 0.66rem;
   font-weight: 900;
+}
+
+.selected-tile-command {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.22rem 0.6rem;
+  border-radius: 7px;
+  padding: 0.58rem 0.62rem;
+  background: rgb(9 22 20 / 62%);
+  border: 1px solid rgb(255 244 201 / 10%);
+}
+
+.selected-tile-command strong {
+  color: #fff2bd;
+  font-size: 0.9rem;
+  font-weight: 950;
+}
+
+.selected-tile-command span {
+  justify-self: end;
+  color: #f0b95d;
+  font-size: 0.7rem;
+  font-weight: 950;
+}
+
+.selected-tile-command small {
+  grid-column: 1 / -1;
+  color: rgb(247 238 210 / 62%);
+  font-size: 0.65rem;
+  font-weight: 780;
 }
 
 .selected-tile-metrics {

@@ -390,6 +390,7 @@ const discoveryState = createModuleMemo(() => {
   if (!currentSnapshot || !currentCatalog) return null
 
   const info = mapInfo()
+  const activeTile = info.interaction.hoveredDetail ?? info.interaction.selectedDetail
   const experience = travelExperience()
   const travelPhase =
     experience?.phase ?? (info.travel.previewCell ? "preview" : "idle")
@@ -397,8 +398,8 @@ const discoveryState = createModuleMemo(() => {
     snapshot: currentSnapshot,
     catalog: currentCatalog,
     heroCell: info.character.cell,
-    selectedTile: info.interaction.selectedDetail,
-    previewTile: info.interaction.hoveredDetail ?? info.interaction.selectedDetail,
+    selectedTile: activeTile,
+    previewTile: activeTile,
     heroDungeonLinks: info.character.dungeonLinksAtCell,
     selectedDungeonLinks: info.dungeonLinks.selected,
     travel: {
@@ -2169,6 +2170,9 @@ function currentActionState(
 
   const firstPlayable = uiState()?.firstPlayable
   const firstStep = currentFirstPlayableStep()
+  const selectedTravel = selectedTravelCurrentAction()
+  if (selectedTravel) return selectedTravel
+
   if (firstPlayable && !firstPlayable.complete && firstStep) {
     return {
       source: "first_playable",
@@ -2216,6 +2220,26 @@ function currentActionState(
     metaLabel: ready() ? "Ready" : "Starting",
     progressLabel: null,
     actionId: null,
+  }
+}
+
+function selectedTravelCurrentAction(): AddCurrentActionState | null {
+  const discovery = discoveryState()
+  const selected = discovery?.selectedTile
+  if (!discovery || !selected?.travel.canTravelNow) return null
+
+  return {
+    source: "discovery",
+    sourceLabel: "Travel",
+    label: "Travel here",
+    detail: `${selected.travel.gameMinutes} min will pass. ${selected.travel.copy}`,
+    kind: "travel",
+    enabled: true,
+    primaryLabel: "Travel to this region",
+    primaryEnabled: true,
+    metaLabel: selected.label,
+    progressLabel: `${selected.travel.gameMinutes} min · ${titleCase(selected.travel.risk.replaceAll("_", " "))}`,
+    actionId: "travel:selected-tile",
   }
 }
 
@@ -3538,16 +3562,24 @@ function discoverySelectedTileCard(): unknown {
       id="selected-tile-decision"
       class="discovery-selected-tile"
       data-usefulness=${() => decision?.usefulness.level ?? "low"}
+      data-actionable=${() => (detail.travel.canTravelNow ? "true" : "false")}
       data-visibility=${detail.visibility}
       data-risk=${detail.travel.risk}
     >
       <header>
         <span>
-          Selected tile
+          Target region
           <strong>${detail.label}</strong>
         </span>
         <small>${selectedTileStatusLabel(detail)}</small>
       </header>
+      <div class="selected-tile-command">
+        <strong>${selectedTileCommandLabel(detail)}</strong>
+        <span>
+          ${detail.travel.gameMinutes} min · ${titleCase(detail.travel.risk.replaceAll("_", " "))}
+        </span>
+        <small>${selectedTileCommandHint(detail)}</small>
+      </div>
       <p
         class="selected-tile-summary"
         title=${decision?.travel.copy ?? detail.travel.copy}
@@ -3617,6 +3649,19 @@ function selectedTileStatusLabel(detail: AddTileDetailSummary): string {
   if (detail.travel.standingHere) return "Current tile"
   if (detail.travel.canTravelNow) return "Adjacent route"
   return "Known region"
+}
+
+function selectedTileCommandLabel(detail: AddTileDetailSummary): string {
+  if (detail.travel.canTravelNow) return "Travel here"
+  if (detail.travel.standingHere) return "You are here"
+  return "Inspect only"
+}
+
+function selectedTileCommandHint(detail: AddTileDetailSummary): string {
+  if (detail.travel.canTravelNow) return "Use the primary action to spend the crossing hour."
+  if (detail.travel.standingHere) return "Choose a neighboring region to preview movement."
+  if (detail.travel.adjacent) return "Known enough to inspect, but not currently commandable."
+  return "Move closer before this can become a travel target."
 }
 
 function selectedTileUsefulnessSummary(reasons: readonly string[]): string {
@@ -5736,6 +5781,11 @@ async function runCurrentAction(): Promise<void> {
       return
     }
     case "discovery": {
+      if (action.kind === "travel" && action.actionId === "travel:selected-tile") {
+        const detail = discoveryState()?.tileDetail
+        if (detail) await runSelectedTileTravelAction(detail)
+        return
+      }
       const link = discoveryActionLinkFor(action.actionId)
       if (link) await runDiscoveryAction(link)
       return

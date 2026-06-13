@@ -289,12 +289,12 @@ function nextActionFor(options: {
   if (selectedTile) {
     if (selectedTile.travel.canTravelNow) {
       return {
-        label: `Cross to ${selectedTile.label}`,
+        label: "Travel here",
         detail: `${selectedTile.travel.gameMinutes} in-game minutes will pass. ${selectedTile.travel.copy}`,
         kind: "travel",
         enabled: true,
-        actionId: null,
-        inputHint: "Use arrows or tap the adjacent region.",
+        actionId: "travel:selected-tile",
+        inputHint: `${selectedTile.travel.gameMinutes} min · ${titleCase(selectedTile.travel.risk.replaceAll("_", " "))}`,
       }
     }
     if (selectedTile.visibility === "hidden") {

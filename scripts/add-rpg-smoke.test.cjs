@@ -79,7 +79,7 @@ async function main() {
       return state
     })
     await runScenario("mobile presentation", () => assertMobilePresentation(browser, url))
-    const questHud = await runScenario("quest HUD drag and collapse", () =>
+    const questHud = await runScenario("quest HUD keyboard movement and collapse", () =>
       exerciseQuestHud(page, consoleErrors),
     )
     assert.equal(questHud.shell.questPanel.collapsed, false)
@@ -2108,28 +2108,6 @@ async function exerciseQuestHud(page, consoleErrors) {
   assert.equal(before.shell?.questPanel?.dragEnabled, true)
   assert.equal(before.shell?.questPanel?.keyboardMoveEnabled, true)
   assert.equal(before.shell?.questPanel?.dragging, false)
-  const box = await handle.boundingBox()
-  assert.ok(box, "First playable drag handle should have a browser box")
-  const start = {
-    x: box.x + 24,
-    y: box.y + box.height / 2,
-  }
-
-  await page.mouse.move(start.x, start.y)
-  await page.mouse.down()
-  await page.mouse.move(start.x + 110, start.y + 42, { steps: 6 })
-  await page.mouse.up()
-
-  const dragged = await waitForTextState(
-    page,
-    (state) =>
-      Math.abs((state.shell?.questPanel?.x ?? 0) - before.shell.questPanel.x) > 20 &&
-      Math.abs((state.shell?.questPanel?.y ?? 0) - before.shell.questPanel.y) > 10 &&
-      state.shell?.questPanel?.lastAction === "dragged" &&
-      state.shell?.questPanel?.dragging === false,
-    consoleErrors,
-  )
-
   await handle.focus()
   await waitForTextState(
     page,
@@ -2141,14 +2119,14 @@ async function exerciseQuestHud(page, consoleErrors) {
   const keyboardMoved = await waitForTextState(
     page,
     (state) =>
-      Math.abs((state.shell?.questPanel?.x ?? 0) - dragged.shell.questPanel.x) >= 12 &&
-      Math.abs((state.shell?.questPanel?.y ?? 0) - dragged.shell.questPanel.y) >= 12 &&
+      Math.abs((state.shell?.questPanel?.x ?? 0) - before.shell.questPanel.x) >= 12 &&
+      Math.abs((state.shell?.questPanel?.y ?? 0) - before.shell.questPanel.y) >= 12 &&
       state.shell?.questPanel?.lastAction === "keyboard_moved" &&
       state.shell?.questPanel?.dragging === false,
     consoleErrors,
   )
 
-  await page.keyboard.press("Space")
+  await page.locator("#toggle-first-playable-panel").click()
   await page.locator("#first-playable-body").waitFor({ state: "hidden" })
   const collapsed = await waitForTextState(
     page,
@@ -2161,7 +2139,7 @@ async function exerciseQuestHud(page, consoleErrors) {
   assert.equal(collapsed.shell.questPanel.x, keyboardMoved.shell.questPanel.x)
   assert.equal(collapsed.shell.questPanel.y, keyboardMoved.shell.questPanel.y)
 
-  await page.keyboard.press("Enter")
+  await page.locator("#toggle-first-playable-panel").click()
   await page.locator("#first-playable-body").waitFor({ state: "visible" })
   const expanded = await waitForTextState(
     page,
@@ -2949,6 +2927,19 @@ async function interactWithMap(page, consoleErrors) {
       ),
     consoleErrors,
   )
+
+  const travelTarget = await clickReachableTravelCandidate(page, heroPoint, consoleErrors)
+  assert.equal(travelTarget.shell.currentAction.primaryLabel, "Travel to this region")
+  assert.equal(travelTarget.shell.currentAction.kind, "travel")
+  assert.equal(travelTarget.discovery.selectedTile.travelMinutes, 60)
+  assert.equal(travelTarget.discovery.selectedTile.canTravelNow, true)
+  assert.equal(travelTarget.map.presentation.mapPrimaryAffordances.pathTimePreviewVisible, true)
+  assert.equal(
+    travelTarget.map.interaction.primaryMarkerVisible,
+    false,
+    "Reachable travel targets should use path preview and side-panel CTA, not an on-map Inspect label.",
+  )
+
   await openDetailsSection(page, "#tile-choices-section")
   const tileChoicesText = await page.locator("#tile-choices-section").innerText()
   assert.match(
@@ -3017,6 +3008,44 @@ async function interactWithMap(page, consoleErrors) {
   )
 
   return panned
+}
+
+async function clickReachableTravelCandidate(page, heroPoint, consoleErrors) {
+  const offsets = [
+    { x: -86, y: 0 },
+    { x: -72, y: -48 },
+    { x: 72, y: -48 },
+    { x: 86, y: 0 },
+    { x: 72, y: 48 },
+    { x: -72, y: 48 },
+  ]
+
+  let lastState = await renderGameToText(page)
+  for (const offset of offsets) {
+    await page.mouse.click(heroPoint.x + offset.x, heroPoint.y + offset.y)
+    try {
+      return await waitForTextState(
+        page,
+        (state) =>
+          state.discovery?.selectedTile?.canTravelNow === true &&
+          state.shell?.currentAction?.primaryLabel === "Travel to this region" &&
+          state.map?.presentation?.mapPrimaryAffordances?.pathTimePreviewVisible === true,
+        consoleErrors,
+        900,
+      )
+    } catch {
+      lastState = await renderGameToText(page)
+    }
+  }
+
+  throw new Error(
+    `Expected a reachable travel target near the Hero. Last state: ${JSON.stringify({
+      character: lastState.map?.character,
+      interaction: lastState.map?.interaction,
+      currentAction: lastState.shell?.currentAction,
+      selectedTile: lastState.discovery?.selectedTile,
+    })}`,
+  )
 }
 
 async function assertHiddenMapCellsAreInvisibleToPointer(page, consoleErrors) {

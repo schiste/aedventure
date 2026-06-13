@@ -232,7 +232,7 @@ function tileActions(input: {
     actions.push({
       id: `tile-action:travel:${input.tile.cell}`,
       kind: "travel",
-      label: input.tile.visibility === "hidden" ? "Scout edge" : `Cross to ${tileDetailLabel(input.tile)}`,
+      label: input.tile.visibility === "hidden" ? "Scout edge" : "Travel here",
       enabled: input.travel.canTravelNow,
       blockedReason: input.travel.canTravelNow
         ? null
