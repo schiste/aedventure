@@ -3473,6 +3473,13 @@ impl Simulation {
     }
 
     pub(crate) fn apply_effects(&mut self, effects: &[EffectDef]) {
+        // Validate-then-commit: if any cost in the batch can't be paid, reject
+        // the whole batch (no partial application) and surface why.
+        if let Some(reason) = self.unaffordable_effect_reason(effects) {
+            self.push_note(reason.clone());
+            self.push_event(crate::state::GameEvent::EffectRejected { reason });
+            return;
+        }
         for effect in effects {
             match *effect {
                 EffectDef::SetFlag { flag_id, value } => self.set_flag(flag_id, value),
@@ -3727,6 +3734,68 @@ impl Simulation {
     fn push_event(&mut self, event: crate::state::GameEvent) {
         self.state.events.push(event);
     }
+
+    /// If a batch's resource costs can't be paid, the reason; else `None`.
+    ///
+    /// Spends of the same resource are summed and checked against the current
+    /// balance. Only known spendable resources are validated — an unrecognized
+    /// resource id no-ops on spend (as before), so it isn't treated as a cost.
+    fn unaffordable_effect_reason(&self, effects: &[EffectDef]) -> Option<String> {
+        use std::collections::BTreeMap;
+        let mut required: BTreeMap<&'static str, f64> = BTreeMap::new();
+        for effect in effects {
+            if let EffectDef::SpendResource {
+                resource_id,
+                amount,
+            } = *effect
+            {
+                if is_known_spendable(resource_id) {
+                    *required.entry(resource_id).or_insert(0.0) += amount.max(0.0);
+                }
+            }
+        }
+        for (resource_id, amount) in required {
+            if !self.can_afford(resource_id, amount) {
+                return Some(format!(
+                    "Not enough {} for the effect.",
+                    self.resource_label(resource_id)
+                ));
+            }
+        }
+        None
+    }
+
+    /// Advance the deterministic PRNG (splitmix64) and return the next value.
+    /// Mutates the persisted `rng_seed`, so the stream survives save/reload.
+    pub(crate) fn next_rng_u64(&mut self) -> u64 {
+        self.state.rng_seed = self.state.rng_seed.wrapping_add(0x9E37_79B9_7F4A_7C15);
+        let mut z = self.state.rng_seed;
+        z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+        z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+        z ^ (z >> 31)
+    }
+
+    /// Next PRNG draw as an `f64` in `[0.0, 1.0)`.
+    pub(crate) fn next_rng_f64(&mut self) -> f64 {
+        // Top 53 bits give a uniform double without bias.
+        (self.next_rng_u64() >> 11) as f64 / ((1u64 << 53) as f64)
+    }
+
+    /// Next PRNG draw as an index in `0..bound` (returns 0 when `bound == 0`).
+    pub(crate) fn next_rng_below(&mut self, bound: u64) -> u64 {
+        if bound == 0 {
+            return 0;
+        }
+        self.next_rng_u64() % bound
+    }
+}
+
+/// Whether `spend_resource` recognizes (and can actually deduct) this resource.
+fn is_known_spendable(resource_id: &str) -> bool {
+    matches!(
+        resource_id,
+        RESOURCE_BASSLINE | RESOURCE_CHORUS | RESOURCE_HARMONICS | RESOURCE_STONE | RESOURCE_WATER
+    )
 }
 
 fn hex_distance(q1: i8, r1: i8, q2: i8, r2: i8) -> u8 {

@@ -16,6 +16,17 @@ pub const SURVIVOR_CAVE_R: i8 = 0;
 pub const REACH_OBJECTIVE_TARGET: u8 = 3;
 pub const RECRUITMENT_RANGE_TILES: u8 = 3;
 
+/// Initial seed/state for the sim's deterministic PRNG. A new game starts here;
+/// the value evolves as draws are taken and persists in the save, so a reload
+/// continues the same stream (deterministic + replayable).
+pub const DEFAULT_RNG_SEED: u64 = 0x0ADD_5EED_2026;
+
+/// serde default for [`GameState::rng_seed`] — old saves resume from the
+/// default stream.
+pub fn default_rng_seed() -> u64 {
+    DEFAULT_RNG_SEED
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct GameState {
@@ -59,6 +70,10 @@ pub struct GameState {
     /// events) and stripped from exported saves.
     #[serde(default, skip_deserializing)]
     pub events: Vec<GameEvent>,
+    /// State of the deterministic PRNG (splitmix64). Persisted so randomized
+    /// outcomes (loot, combat) replay identically across save/reload.
+    #[serde(default = "default_rng_seed")]
+    pub rng_seed: u64,
     /// Authoritative open/closed state for dungeon doors, keyed by
     /// `${dungeonId}:${x}:${y}`. A key present here means that door is open.
     #[serde(default)]
@@ -118,6 +133,9 @@ pub enum GameEvent {
     BubbleFrontierCollapsed,
     /// The Survivor Cave recruitment gate opened (reach objective met).
     RecruitmentGateOpened,
+    /// An effect batch was rejected atomically because a cost could not be paid
+    /// (nothing in the batch was applied).
+    EffectRejected { reason: String },
 }
 
 impl GameState {
@@ -190,6 +208,7 @@ impl GameState {
                 "Bassline, Chorus, and Harmonics now drive the base economy.".to_string(),
             ],
             events: Vec::new(),
+            rng_seed: DEFAULT_RNG_SEED,
             open_doors: BTreeSet::new(),
             acquired_perks: BTreeSet::new(),
             inventory: BTreeMap::new(),

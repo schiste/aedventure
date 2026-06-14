@@ -301,6 +301,7 @@ export type AddGameEvent =
   | { kind: "hero_recovered" }
   | { kind: "bubble_frontier_collapsed" }
   | { kind: "recruitment_gate_opened" }
+  | { kind: "effect_rejected"; reason: string }
 
 export interface SimulationSnapshot {
   schemaVersion: number

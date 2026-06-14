@@ -181,6 +181,61 @@ mod tests {
         assert!(loaded.events.is_empty());
     }
 
+    #[test]
+    fn effect_batch_is_rejected_atomically_when_unaffordable() {
+        let mut simulation = Simulation::new();
+        let skins_before = simulation.state().base.skins;
+        let bassline_before = simulation.state().resources.bassline;
+
+        // A batch whose spend exceeds the balance must apply nothing.
+        simulation.apply_effects(&[
+            EffectDef::AddSkins { amount: 5 },
+            EffectDef::SpendResource {
+                resource_id: RESOURCE_BASSLINE,
+                amount: 1_000_000.0,
+            },
+        ]);
+
+        assert_eq!(simulation.state().base.skins, skins_before, "no partial apply");
+        assert_eq!(simulation.state().resources.bassline, bassline_before);
+        assert!(
+            simulation
+                .state()
+                .events
+                .iter()
+                .any(|event| matches!(event, crate::GameEvent::EffectRejected { .. })),
+            "an unaffordable batch should emit EffectRejected"
+        );
+    }
+
+    #[test]
+    fn rng_stream_is_deterministic_across_save_reload() {
+        let mut a = Simulation::new();
+        let first: Vec<u64> = (0..3).map(|_| a.next_rng_u64()).collect();
+
+        // Save mid-stream and resume on a fresh simulation.
+        let raw = export_save(a.state()).unwrap();
+        let mut b = Simulation::from_state(import_save(&raw).unwrap());
+
+        let continued_a: Vec<u64> = (0..3).map(|_| a.next_rng_u64()).collect();
+        let continued_b: Vec<u64> = (0..3).map(|_| b.next_rng_u64()).collect();
+        assert_eq!(continued_a, continued_b, "reloaded stream must match");
+
+        // A fresh sim from the default seed reproduces the whole sequence.
+        let mut c = Simulation::new();
+        let all: Vec<u64> = (0..6).map(|_| c.next_rng_u64()).collect();
+        assert_eq!(all, [first, continued_a].concat());
+    }
+
+    #[test]
+    fn rng_helpers_have_expected_ranges() {
+        let mut simulation = Simulation::new();
+        let f = simulation.next_rng_f64();
+        assert!((0.0..1.0).contains(&f));
+        assert!(simulation.next_rng_below(10) < 10);
+        assert_eq!(simulation.next_rng_below(0), 0);
+    }
+
     fn advance_intro_to_investigate(simulation: &mut Simulation) {
         simulation.apply(GameCommand::ChooseStoryOption {
             beat_id: STORY_BEAT_ROAD_TO_BASE.to_string(),
