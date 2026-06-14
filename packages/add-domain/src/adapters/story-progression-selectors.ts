@@ -8,6 +8,7 @@ import type {
   StoryPrimaryActionDef,
   UnlockDef,
 } from "../runtime/protocol"
+import { RESOURCE_BASSLINE, ROLE_CRYSTAL_BASSLINE } from "./add-ids"
 
 const FIRST_PLAYABLE_FALLBACK_ARC = "base_onboarding"
 
@@ -282,13 +283,18 @@ function actionForStoryPrimaryAction(
         ? storyChoiceAction(snapshot, activeBeat)
         : { actionLabel: null, action: null }
     case "world_action":
-      return worldActionStepAction(snapshot, activeBeat, beat, actionDef.actionId)
+      return worldActionStepAction(
+        snapshot,
+        activeBeat,
+        beat,
+        storyActionString(actionDef, "actionId", "action_id") ?? beat.worldActionId,
+      )
     case "construction":
       return constructionStepAction(snapshot, catalog, actionDef)
     case "assign_role":
       return assignRoleAction(snapshot, actionDef)
     case "tick":
-      return { actionLabel: "Let time pass", action: { type: "tick", seconds: actionDef.seconds } }
+      return tickStepAction(snapshot, beat, actionDef)
     case "recruit_from_survivor_cave":
       return recruitFromSurvivorCaveAction(snapshot, actionDef)
     case "none":
@@ -300,8 +306,9 @@ function worldActionStepAction(
   snapshot: SimulationSnapshot,
   activeBeat: StoryBeatDef | null,
   beat: StoryBeatDef,
-  actionId: string,
+  actionId: string | null,
 ): Pick<AddFirstPlayableStep, "actionLabel" | "action"> {
+  if (!actionId) return { actionLabel: null, action: null }
   if (snapshot.activeWorldAction?.actionId === actionId) {
     return {
       actionLabel: "Advance action",
@@ -323,11 +330,13 @@ function constructionStepAction(
   catalog: CatalogSnapshot,
   action: Extract<StoryPrimaryActionDef, { kind: "construction" }>,
 ): Pick<AddFirstPlayableStep, "actionLabel" | "action"> {
-  const option = catalog.constructionOptions.find((candidate) => candidate.id === action.optionId)
-  const buildRoleId = action.buildRoleId ?? null
-  const gatherRoleId = action.gatherRoleId ?? null
-  const targetCrew = action.crew ?? 1
-  if (snapshot.activeConstruction?.optionId === action.optionId) {
+  const optionId = storyActionString(action, "optionId", "option_id")
+  if (!optionId) return { actionLabel: null, action: null }
+  const option = catalog.constructionOptions.find((candidate) => candidate.id === optionId)
+  const buildRoleId = storyActionString(action, "buildRoleId", "build_role_id")
+  const gatherRoleId = storyActionString(action, "gatherRoleId", "gather_role_id")
+  const targetCrew = storyActionNumber(action, "crew", "crew") ?? 1
+  if (snapshot.activeConstruction?.optionId === optionId) {
     if (buildRoleId && (!snapshot.roster.heroAssigned || snapshot.roster.heroRoleId !== buildRoleId)) {
       return { actionLabel: "Send Hero to build", action: { type: "set_hero_role", roleId: buildRoleId } }
     }
@@ -346,11 +355,11 @@ function constructionStepAction(
     if (gatherRoleId && roleCrew(snapshot, gatherRoleId) < 1) {
       return { actionLabel: "Assign gather crew", action: { type: "set_role_crew", roleId: gatherRoleId, crew: targetCrew } }
     }
-    return { actionLabel: "Gather resources", action: { type: "tick", seconds: action.waitSeconds } }
+    return { actionLabel: "Gather resources", action: { type: "tick", seconds: storyActionWaitSeconds(action) } }
   }
   return {
     actionLabel: option ? `Start ${option.label}` : "Start construction",
-    action: { type: "start_construction", optionId: action.optionId },
+    action: { type: "start_construction", optionId },
   }
 }
 
@@ -358,12 +367,15 @@ function assignRoleAction(
   snapshot: SimulationSnapshot,
   action: Extract<StoryPrimaryActionDef, { kind: "assign_role" }>,
 ): Pick<AddFirstPlayableStep, "actionLabel" | "action"> {
-  if (action.assignHero && (!snapshot.roster.heroAssigned || snapshot.roster.heroRoleId !== action.roleId)) {
-    return { actionLabel: "Assign Hero", action: { type: "set_hero_role", roleId: action.roleId } }
+  const roleId = storyActionString(action, "roleId", "role_id")
+  if (!roleId) return { actionLabel: null, action: null }
+  const assignHero = storyActionBoolean(action, "assignHero", "assign_hero") ?? false
+  if (assignHero && (!snapshot.roster.heroAssigned || snapshot.roster.heroRoleId !== roleId)) {
+    return { actionLabel: "Assign Hero", action: { type: "set_hero_role", roleId } }
   }
-  const crew = action.crew ?? 1
-  if (roleCrew(snapshot, action.roleId) < crew) {
-    return { actionLabel: "Assign crew", action: { type: "set_role_crew", roleId: action.roleId, crew } }
+  const crew = storyActionNumber(action, "crew", "crew") ?? 1
+  if (roleCrew(snapshot, roleId) < crew) {
+    return { actionLabel: "Assign crew", action: { type: "set_role_crew", roleId, crew } }
   }
   return { actionLabel: null, action: null }
 }
@@ -373,16 +385,80 @@ function recruitFromSurvivorCaveAction(
   action: Extract<StoryPrimaryActionDef, { kind: "recruit_from_survivor_cave" }>,
 ): Pick<AddFirstPlayableStep, "actionLabel" | "action"> {
   if (!snapshot.objectives.recruitmentEnabled) {
-    return { actionLabel: "Hold the field", action: { type: "tick", seconds: action.waitSeconds } }
+    return { actionLabel: "Hold the field", action: { type: "tick", seconds: storyActionWaitSeconds(action) } }
   }
   if (snapshot.resources.vibes < snapshot.recruitment.nextRecruitCost) {
-    const vibesRoleId = action.vibesRoleId ?? null
+    const vibesRoleId = storyActionString(action, "vibesRoleId", "vibes_role_id")
     if (vibesRoleId && roleCrew(snapshot, vibesRoleId) < 1) {
       return { actionLabel: "Assign Fire Pit crew", action: { type: "set_role_crew", roleId: vibesRoleId, crew: 1 } }
     }
-    return { actionLabel: "Build Vibes", action: { type: "tick", seconds: action.waitSeconds } }
+    return { actionLabel: "Build Vibes", action: { type: "tick", seconds: storyActionWaitSeconds(action) } }
   }
   return { actionLabel: "Recruit survivor", action: { type: "recruit_from_survivor_cave" } }
+}
+
+function tickStepAction(
+  snapshot: SimulationSnapshot,
+  beat: StoryBeatDef,
+  action: Extract<StoryPrimaryActionDef, { kind: "tick" }>,
+): Pick<AddFirstPlayableStep, "actionLabel" | "action"> {
+  if (tickNeedsBasslineStaff(beat) && roleCrew(snapshot, ROLE_CRYSTAL_BASSLINE) < 1) {
+    return {
+      actionLabel: "Staff Bassline",
+      action: { type: "set_role_crew", roleId: ROLE_CRYSTAL_BASSLINE, crew: 2 },
+    }
+  }
+  return {
+    actionLabel: beat.progression?.presentation?.ctaCopy ?? "Let time pass",
+    action: { type: "tick", seconds: storyActionWaitSeconds(action) },
+  }
+}
+
+function tickNeedsBasslineStaff(beat: StoryBeatDef): boolean {
+  return (
+    beat.relatedIds.includes(RESOURCE_BASSLINE) ||
+    (beat.progression?.blockers ?? []).some((blocker) =>
+      blocker.relatedIds.includes(RESOURCE_BASSLINE),
+    )
+  )
+}
+
+function storyActionString(
+  action: StoryPrimaryActionDef,
+  camelKey: string,
+  snakeKey: string,
+): string | null {
+  const record = action as unknown as Record<string, unknown>
+  const value = record[camelKey] ?? record[snakeKey]
+  return typeof value === "string" && value.length > 0 ? value : null
+}
+
+function storyActionNumber(
+  action: StoryPrimaryActionDef,
+  camelKey: string,
+  snakeKey: string,
+): number | null {
+  const record = action as unknown as Record<string, unknown>
+  const value = record[camelKey] ?? record[snakeKey]
+  return typeof value === "number" && Number.isFinite(value) ? value : null
+}
+
+function storyActionBoolean(
+  action: StoryPrimaryActionDef,
+  camelKey: string,
+  snakeKey: string,
+): boolean | null {
+  const record = action as unknown as Record<string, unknown>
+  const value = record[camelKey] ?? record[snakeKey]
+  return typeof value === "boolean" ? value : null
+}
+
+function storyActionWaitSeconds(action: StoryPrimaryActionDef): number {
+  return (
+    storyActionNumber(action, "waitSeconds", "wait_seconds") ??
+    storyActionNumber(action, "seconds", "seconds") ??
+    0
+  )
 }
 
 function selectActiveStoryBeat(

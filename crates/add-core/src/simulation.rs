@@ -1269,6 +1269,7 @@ impl Simulation {
         self.progress_recruitment(safe_seconds);
         self.refresh_bubble_state();
         self.refresh_objectives();
+        self.refresh_narrative_state();
 
         self.push_note(format!(
             "Advanced simulation by {:.1}s, +{:.1} Bassline, +{:.1} Chorus, +{:.1} Harmonics, +{:.1} Stone, +{:.1} Water, {:.1} Vibes, reach {}.",

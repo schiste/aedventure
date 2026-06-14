@@ -1202,7 +1202,42 @@
       "relatedIds": [
         "tile.base_core",
         "structure.base"
-      ]
+      ],
+      "progression": {
+        "track": "first_playable",
+        "stepId": "reach-base",
+        "presentation": {
+          "shortLabel": "Reach the Studio",
+          "playerHint": "Travel from the Survivor Cave to the Studio before the Base loop can open.",
+          "ctaCopy": "Preview route to Studio",
+          "primaryRiskCopy": "Each region crossing takes one in-game hour outside safety.",
+          "displayPriority": 1000,
+          "reveal": "default"
+        },
+        "primaryAction": {
+          "kind": "preview_route_to_base"
+        },
+        "blockers": [
+          {
+            "kind": "reach_locked",
+            "label": "The Base is not usable until the Hero reaches the Studio.",
+            "relatedIds": [
+              "tile.base_core",
+              "tile.survivor_cave"
+            ]
+          }
+        ],
+        "unlocks": [
+          {
+            "kind": "story",
+            "label": "Reaching the Studio starts the Base onboarding arc.",
+            "relatedIds": [
+              "story.beat.investigate_base",
+              "ui.panel.base"
+            ]
+          }
+        ]
+      }
     },
     {
       "id": "story.beat.first_glimpse",
@@ -1228,7 +1263,32 @@
         "tile.ridge_line",
         "tile.base_core",
         "structure.crystal_circle"
-      ]
+      ],
+      "progression": {
+        "track": "first_playable",
+        "stepId": "first-glimpse",
+        "presentation": {
+          "shortLabel": "First Glimpse",
+          "playerHint": "Read the Base from the ridge and choose what the Hero notices first.",
+          "ctaCopy": "Study the Base",
+          "primaryRiskCopy": "The Studio is close, but the outside air is still unsafe.",
+          "displayPriority": 998,
+          "reveal": "default"
+        },
+        "primaryAction": {
+          "kind": "story_choice"
+        },
+        "blockers": [],
+        "unlocks": [
+          {
+            "kind": "story",
+            "label": "The first glimpse leads to crossing into the Bubble.",
+            "relatedIds": [
+              "story.beat.enter_the_bubble"
+            ]
+          }
+        ]
+      }
     },
     {
       "id": "story.beat.enter_the_bubble",
@@ -1254,7 +1314,32 @@
         "resource.bassline",
         "station.crystal_circle",
         "tile.base_core"
-      ]
+      ],
+      "progression": {
+        "track": "first_playable",
+        "stepId": "enter-bubble",
+        "presentation": {
+          "shortLabel": "Enter the Bubble",
+          "playerHint": "Cross the boundary and decide how the Hero understands the sound wall.",
+          "ctaCopy": "Enter the Bubble",
+          "primaryRiskCopy": "Inside the Bubble the pressure drops, but the Base is still fragile.",
+          "displayPriority": 996,
+          "reveal": "default"
+        },
+        "primaryAction": {
+          "kind": "story_choice"
+        },
+        "blockers": [],
+        "unlocks": [
+          {
+            "kind": "story",
+            "label": "Entering the Bubble starts Base investigation.",
+            "relatedIds": [
+              "story.beat.investigate_base"
+            ]
+          }
+        ]
+      }
     },
     {
       "id": "story.beat.investigate_base",
@@ -1280,7 +1365,42 @@
         "world_action.investigate_base",
         "story.beat.explore_base",
         "structure.base"
-      ]
+      ],
+      "progression": {
+        "track": "first_playable",
+        "stepId": "investigate-base",
+        "presentation": {
+          "shortLabel": "Investigate Base",
+          "playerHint": "Choose an approach, then send the Hero through the first Base sweep.",
+          "ctaCopy": "Start investigation",
+          "primaryRiskCopy": "The Hero must be free before Base actions can start.",
+          "displayPriority": 990,
+          "reveal": "default"
+        },
+        "primaryAction": {
+          "kind": "world_action",
+          "action_id": "world_action.investigate_base"
+        },
+        "blockers": [
+          {
+            "kind": "busy",
+            "label": "The Hero must be assigned and available for the first sweep.",
+            "relatedIds": [
+              "world_action.investigate_base",
+              "role.crystal_bassline"
+            ]
+          }
+        ],
+        "unlocks": [
+          {
+            "kind": "story",
+            "label": "Investigating unlocks the deeper Base exploration beat.",
+            "relatedIds": [
+              "story.beat.explore_base"
+            ]
+          }
+        ]
+      }
     },
     {
       "id": "story.beat.explore_base",
@@ -1307,7 +1427,42 @@
         "project.restore_studio",
         "construction.removing_moss",
         "resource.water"
-      ]
+      ],
+      "progression": {
+        "track": "first_playable",
+        "stepId": "explore-base",
+        "presentation": {
+          "shortLabel": "Explore Base",
+          "playerHint": "Push deeper to unlock the first repair projects and utility loops.",
+          "ctaCopy": "Explore the ruin",
+          "primaryRiskCopy": "Exploration is a Hero-only online action and briefly leaves the safe core.",
+          "displayPriority": 980,
+          "reveal": "default"
+        },
+        "primaryAction": {
+          "kind": "world_action",
+          "action_id": "world_action.explore_base"
+        },
+        "blockers": [
+          {
+            "kind": "busy",
+            "label": "The Hero must be free to explore the ruin.",
+            "relatedIds": [
+              "world_action.explore_base"
+            ]
+          }
+        ],
+        "unlocks": [
+          {
+            "kind": "construction",
+            "label": "Exploring unlocks Studio restoration and water collection.",
+            "relatedIds": [
+              "project.restore_studio",
+              "resource.water"
+            ]
+          }
+        ]
+      }
     },
     {
       "id": "story.beat.restore_studio",
@@ -1322,7 +1477,54 @@
         "project.restore_studio",
         "resource.chorus",
         "project.build_fire_pit"
-      ]
+      ],
+      "progression": {
+        "track": "first_playable",
+        "stepId": "restore-studio",
+        "presentation": {
+          "shortLabel": "Restore Studio",
+          "playerHint": "Gather enough Stone, start the Studio project, then staff construction until it finishes.",
+          "ctaCopy": "Restore Studio",
+          "primaryRiskCopy": "Stone and builder availability are the first hard construction bottlenecks.",
+          "displayPriority": 970,
+          "reveal": "default"
+        },
+        "primaryAction": {
+          "kind": "construction",
+          "option_id": "project.restore_studio",
+          "gather_role_id": "role.scavenge",
+          "build_role_id": "role.construction",
+          "crew": 2,
+          "wait_seconds": 8.0
+        },
+        "blockers": [
+          {
+            "kind": "missing_resource",
+            "label": "Stone is required before the Studio can be repaired.",
+            "relatedIds": [
+              "project.restore_studio",
+              "resource.stone"
+            ]
+          },
+          {
+            "kind": "missing_staff",
+            "label": "Construction Crew must work the active repair.",
+            "relatedIds": [
+              "role.construction"
+            ]
+          }
+        ],
+        "unlocks": [
+          {
+            "kind": "power",
+            "label": "Restoring the Studio opens Chorus, bunks, and Fire Pit construction.",
+            "relatedIds": [
+              "resource.chorus",
+              "project.build_fire_pit"
+            ]
+          }
+        ]
+      }
     },
     {
       "id": "story.beat.build_fire_pit",
@@ -1338,7 +1540,47 @@
         "station.fire_pit",
         "story.beat.reach_survivor_cave",
         "ui.action.recruit"
-      ]
+      ],
+      "progression": {
+        "track": "first_playable",
+        "stepId": "build-fire-pit",
+        "presentation": {
+          "shortLabel": "Build Fire Pit",
+          "playerHint": "Build the Fire Pit so the Base can generate Vibes and support recruitment.",
+          "ctaCopy": "Build Fire Pit",
+          "primaryRiskCopy": "Without Vibes, recruitment stays out of reach.",
+          "displayPriority": 960,
+          "reveal": "default"
+        },
+        "primaryAction": {
+          "kind": "construction",
+          "option_id": "project.build_fire_pit",
+          "gather_role_id": "role.scavenge",
+          "build_role_id": "role.construction",
+          "crew": 2,
+          "wait_seconds": 8.0
+        },
+        "blockers": [
+          {
+            "kind": "missing_resource",
+            "label": "Fire Pit construction needs a smaller Stone reserve.",
+            "relatedIds": [
+              "project.build_fire_pit",
+              "resource.stone"
+            ]
+          }
+        ],
+        "unlocks": [
+          {
+            "kind": "station",
+            "label": "The Fire Pit unlocks Vibes and the first recruitment loop.",
+            "relatedIds": [
+              "station.fire_pit",
+              "ui.action.recruit"
+            ]
+          }
+        ]
+      }
     },
     {
       "id": "story.beat.reach_survivor_cave",
@@ -1353,7 +1595,43 @@
         "tile.survivor_cave",
         "ui.map.cave_gate",
         "story.beat.first_recruit"
-      ]
+      ],
+      "progression": {
+        "track": "first_playable",
+        "stepId": "bubble-reach",
+        "presentation": {
+          "shortLabel": "Reach Survivor Cave",
+          "playerHint": "Keep Bassline staffed and let the Bubble reach the Survivor Cave.",
+          "ctaCopy": "Hold the field",
+          "primaryRiskCopy": "Pulling too much crew away from Bassline slows the Bubble.",
+          "displayPriority": 950,
+          "reveal": "default"
+        },
+        "primaryAction": {
+          "kind": "tick",
+          "seconds": 120.0
+        },
+        "blockers": [
+          {
+            "kind": "reach_locked",
+            "label": "The cave must be inside Bubble reach before recruitment opens.",
+            "relatedIds": [
+              "tile.survivor_cave",
+              "resource.bassline"
+            ]
+          }
+        ],
+        "unlocks": [
+          {
+            "kind": "reach",
+            "label": "Reaching the cave unlocks the first recruit action.",
+            "relatedIds": [
+              "story.beat.first_recruit",
+              "ui.action.recruit"
+            ]
+          }
+        ]
+      }
     },
     {
       "id": "story.beat.first_recruit",
@@ -1369,7 +1647,43 @@
         "tile.survivor_cave",
         "ui.status.base.recruits",
         "story.beat.await_survivor_arrival"
-      ]
+      ],
+      "progression": {
+        "track": "first_playable",
+        "stepId": "recruit-once",
+        "presentation": {
+          "shortLabel": "Recruit Once",
+          "playerHint": "Generate enough Vibes, then recruit once from the Survivor Cave.",
+          "ctaCopy": "Recruit survivor",
+          "primaryRiskCopy": "Recruiting grows the Base but adds pressure to housing and morale.",
+          "displayPriority": 940,
+          "reveal": "default"
+        },
+        "primaryAction": {
+          "kind": "recruit_from_survivor_cave",
+          "vibes_role_id": "role.fire_pit",
+          "wait_seconds": 120.0
+        },
+        "blockers": [
+          {
+            "kind": "missing_resource",
+            "label": "Vibes pay the first recruitment cost.",
+            "relatedIds": [
+              "resource.vibes",
+              "station.fire_pit"
+            ]
+          }
+        ],
+        "unlocks": [
+          {
+            "kind": "story",
+            "label": "The first recruit transitions the opening arc into stabilization.",
+            "relatedIds": [
+              "story.beat.await_survivor_arrival"
+            ]
+          }
+        ]
+      }
     },
     {
       "id": "story.beat.await_survivor_arrival",
@@ -1383,7 +1697,42 @@
       "relatedIds": [
         "ui.status.base.recruits",
         "story.beat.stabilize_base"
-      ]
+      ],
+      "progression": {
+        "track": "first_playable",
+        "stepId": "await-survivor-arrival",
+        "presentation": {
+          "shortLabel": "Await Arrival",
+          "playerHint": "Keep the field stable while the first recruit commits to the route.",
+          "ctaCopy": "Keep the Base steady",
+          "primaryRiskCopy": "The Base still needs enough reach to prove the route is safe.",
+          "displayPriority": 930,
+          "reveal": "default"
+        },
+        "primaryAction": {
+          "kind": "tick",
+          "seconds": 120.0
+        },
+        "blockers": [
+          {
+            "kind": "reach_locked",
+            "label": "The Bubble must keep expanding after recruitment starts.",
+            "relatedIds": [
+              "resource.bassline",
+              "ui.status.base.recruits"
+            ]
+          }
+        ],
+        "unlocks": [
+          {
+            "kind": "story",
+            "label": "Arrival hands off into broader Base stabilization.",
+            "relatedIds": [
+              "story.beat.stabilize_base"
+            ]
+          }
+        ]
+      }
     },
     {
       "id": "story.beat.stabilize_base",
@@ -1399,7 +1748,33 @@
         "resource.harmonics",
         "ui.panel.power",
         "ui.panel.base"
-      ]
+      ],
+      "progression": {
+        "track": "first_playable",
+        "stepId": "stabilize-base",
+        "presentation": {
+          "shortLabel": "Stabilize Base",
+          "playerHint": "The first arc is complete once the Base can hand off into power, staffing, and processing.",
+          "ctaCopy": null,
+          "primaryRiskCopy": "This is the handoff from tutorial growth into the wider idle game.",
+          "displayPriority": 920,
+          "reveal": "default"
+        },
+        "primaryAction": {
+          "kind": "none"
+        },
+        "blockers": [],
+        "unlocks": [
+          {
+            "kind": "story",
+            "label": "Stabilization opens independent Base, Discovery, and Dungeon growth.",
+            "relatedIds": [
+              "ui.panel.power",
+              "ui.panel.base"
+            ]
+          }
+        ]
+      }
     },
     {
       "id": "story.beat.hero_exposed",
@@ -1418,7 +1793,8 @@
       ],
       "relatedIds": [
         "story.beat.explore_base"
-      ]
+      ],
+      "progression": null
     }
   ],
   "flags": [

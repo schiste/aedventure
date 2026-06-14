@@ -383,7 +383,7 @@ export const STORY_BEATS: readonly StoryBeatDef[] = [
         ]),
       ],
     }),
-    preconditions: [{ kind: "recruited_any" }], autoCompleteWhen: [{ kind: "bubble_reach_at_least", n: 4 }], priority: 0, repeatable: false,
+    preconditions: [{ kind: "recruited_any" }], autoCompleteWhen: [{ kind: "bubble_reach_at_least", n: 3 }], priority: 0, repeatable: false,
   },
   {
     id: "story.beat.stabilize_base", schemaId: "story.beat.stabilize_base", label: "Stabilize the Base",
