@@ -5,8 +5,8 @@ use crate::topology::{AxialBounds, Landmark, MapCell, MapDefinition, TerrainRegi
 mod catalog;
 use catalog::{
     BALANCE, CONSTRUCTION_OPTIONS, CREATURES, ENTITY_SCHEMAS, EXPEDITION_TARGETS, FLAGS, FLORA,
-    ITEMS, PERKS, PROCESSING_RECIPES, RESONANCE_RECIPES, RESOURCES, ROLES, STATIONS, STORY_BEATS,
-    STRUCTURES, TILES, UI_ELEMENTS, WORLD_ACTIONS,
+    ITEMS, OBJECTIVES, PERKS, PROCESSING_RECIPES, RESONANCE_RECIPES, RESOURCES, ROLES, STATIONS,
+    STORY_BEATS, STRUCTURES, TILES, UI_ELEMENTS, WORLD_ACTIONS,
 };
 
 pub const RESOURCE_BASSLINE: &str = "resource.bassline";
@@ -422,6 +422,22 @@ pub struct CreatureDef {
     pub attack: f64,
     pub threat: f64,
     pub xp_reward: f64,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ObjectiveDef {
+    pub id: &'static str,
+    pub label: &'static str,
+    pub description: &'static str,
+    pub sequence: u16,
+    /// Conditions that must all hold to complete the objective. Evaluated in the
+    /// sim; omitted from the serialized snapshot (the selector runs in Rust).
+    #[serde(skip)]
+    pub conditions: &'static [Condition],
+    /// Effects applied once when the objective completes.
+    #[serde(skip)]
+    pub rewards: &'static [EffectDef],
 }
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
@@ -1011,6 +1027,7 @@ pub struct CatalogSnapshot {
     pub expedition_targets: Vec<ExpeditionTargetDef>,
     pub resonance_recipes: Vec<ResonanceRecipeDef>,
     pub story_beats: Vec<StoryBeatDef>,
+    pub objectives: Vec<ObjectiveDef>,
     pub flags: Vec<FlagDef>,
     pub models: Vec<ModelDef>,
     pub flora: Vec<FloraDef>,
@@ -2341,6 +2358,7 @@ pub fn catalog_snapshot() -> CatalogSnapshot {
         expedition_targets: EXPEDITION_TARGETS.to_vec(),
         resonance_recipes: RESONANCE_RECIPES.to_vec(),
         story_beats: STORY_BEATS.to_vec(),
+        objectives: OBJECTIVES.to_vec(),
         flags: FLAGS.to_vec(),
         models: model_snapshot(),
         flora: FLORA.to_vec(),
@@ -2544,6 +2562,14 @@ pub fn creatures() -> &'static [CreatureDef] {
 
 pub fn creature_def(id: &str) -> Option<&'static CreatureDef> {
     CREATURES.iter().find(|creature| creature.id == id)
+}
+
+pub fn objectives() -> &'static [ObjectiveDef] {
+    OBJECTIVES
+}
+
+pub fn objective_def(id: &str) -> Option<&'static ObjectiveDef> {
+    OBJECTIVES.iter().find(|objective| objective.id == id)
 }
 
 pub fn balance_snapshot() -> BalanceSnapshot {

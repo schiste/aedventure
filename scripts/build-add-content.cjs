@@ -56,6 +56,7 @@ const balance = content("balance")
 const perks = content("perks")
 const items = content("items")
 const creatures = content("creatures")
+const objectives = content("objectives")
 const dungeons = require(path.join(ROOT, "packages/add-domain/dist/dungeons/registry.js"))
 const areas = require(path.join(ROOT, "packages/add-domain/dist/areas/registry.js"))
 
@@ -849,6 +850,28 @@ const FILES = [
             { name: "attack", kind: "f64" },
             { name: "threat", kind: "f64" },
             { name: "xp_reward", kind: "f64" },
+          ],
+        },
+      },
+    ],
+  },
+  {
+    sourceModule: "packages/add-domain/src/content/objectives.ts",
+    rustPath: "crates/add-core/src/game_data/catalog/objectives.rs",
+    consts: [
+      {
+        entries: objectives.OBJECTIVES,
+        spec: {
+          constName: "OBJECTIVES",
+          rustType: "ObjectiveDef",
+          visibility: VIS,
+          fields: [
+            { name: "id", kind: "string" },
+            { name: "label", kind: "string" },
+            { name: "description", kind: "string" },
+            { name: "sequence", kind: "i64" },
+            conditionsField("conditions"),
+            effectsField("rewards"),
           ],
         },
       },

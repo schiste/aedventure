@@ -269,6 +269,10 @@ export interface ObjectiveSnapshot {
   recruitmentRangeTiles: number
   recruitmentEnabled: boolean
   survivorCaveInBubble: boolean
+  /** The active quest objective id (lowest-sequence incomplete), or null. */
+  activeObjectiveId: string | null
+  /** Completed quest objective ids, in completion order. */
+  completedObjectiveIds: string[]
 }
 
 export interface HexSnapshot {
@@ -306,6 +310,7 @@ export type AddGameEvent =
   | { kind: "effect_rejected"; reason: string }
   | { kind: "hero_leveled_up"; track: string; level: number }
   | { kind: "combat_resolved"; creatureId: string; outcome: "victory" | "retreat" }
+  | { kind: "objective_completed"; objectiveId: string }
 
 export interface CombatLogEntrySnapshot {
   round: number
@@ -841,6 +846,14 @@ export interface EntitySchemaDef {
   visibility: VisibilityDef | null
 }
 
+export interface ObjectiveDef {
+  id: string
+  label: string
+  description: string
+  sequence: number
+  // conditions/rewards are sim-internal (serde-skip) and not surfaced here.
+}
+
 export interface CatalogSnapshot {
   resources: ResourceDef[]
   roles: RoleDef[]
@@ -851,6 +864,7 @@ export interface CatalogSnapshot {
   expeditionTargets: ExpeditionTargetDef[]
   resonanceRecipes: ResonanceRecipeDef[]
   storyBeats: StoryBeatDef[]
+  objectives: ObjectiveDef[]
   flags: FlagDef[]
   models: ModelDef[]
   flora: FloraDef[]

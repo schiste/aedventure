@@ -355,6 +355,55 @@ mod tests {
     }
 
     #[test]
+    fn quest_objectives_advance_and_apply_rewards() {
+        let mut simulation = Simulation::new();
+        simulation.refresh_quest_objectives();
+        assert_eq!(
+            simulation.state().objectives.active_objective_id.as_deref(),
+            Some("objective.restore_studio"),
+            "the first objective is active at start"
+        );
+        assert!(simulation.state().objectives.completed_objective_ids.is_empty());
+
+        let vibes_before = simulation.state().resources.vibes;
+        {
+            let state = simulation.state_mut();
+            state.base.studio_restored = true;
+            state.base.fire_pit_built = true;
+            state.bubble.reach_from_base = 3;
+            state.recruitment.total_recruited_this_run = 1;
+        }
+        simulation.refresh_quest_objectives();
+
+        let completed = simulation.state().objectives.completed_objective_ids.clone();
+        for id in [
+            "objective.restore_studio",
+            "objective.build_fire_pit",
+            "objective.reach_ring_3",
+            "objective.first_recruit",
+        ] {
+            assert!(completed.contains(&id.to_string()), "{id} should be complete");
+        }
+        assert_eq!(
+            simulation.state().objectives.active_objective_id,
+            None,
+            "no objectives remain active"
+        );
+        assert!(
+            simulation.state().resources.vibes >= vibes_before + 25.0 - 0.01,
+            "the reach_ring_3 reward granted vibes"
+        );
+        assert!(
+            simulation
+                .state()
+                .events
+                .iter()
+                .any(|event| matches!(event, crate::GameEvent::ObjectiveCompleted { .. })),
+            "completing an objective emits ObjectiveCompleted"
+        );
+    }
+
+    #[test]
     fn balance_override_applies_live_and_resets() {
         let mut simulation = Simulation::new();
         let baseline = crate::balance_snapshot().combat.base_attack;

@@ -1797,6 +1797,32 @@
       "progression": null
     }
   ],
+  "objectives": [
+    {
+      "id": "objective.restore_studio",
+      "label": "Restore the Studio",
+      "description": "Repair the Studio so it can anchor the base.",
+      "sequence": 1
+    },
+    {
+      "id": "objective.build_fire_pit",
+      "label": "Build the Fire Pit",
+      "description": "Raise morale by lighting the Fire Pit.",
+      "sequence": 2
+    },
+    {
+      "id": "objective.reach_ring_3",
+      "label": "Expand the Bubble to Ring 3",
+      "description": "Stabilize the field out to the third ring, within reach of the Survivor Cave.",
+      "sequence": 3
+    },
+    {
+      "id": "objective.first_recruit",
+      "label": "Recruit a Survivor",
+      "description": "Bring the first survivor home from the cave.",
+      "sequence": 4
+    }
+  ],
   "flags": [
     {
       "id": "base.studio_restore_unlocked",

@@ -15,7 +15,7 @@ use crate::game_data::{
     RequirementDef, ResonanceEffectDef, ResonanceRecipeDef, ResonanceTuningTrackDef, RoleSlotPool,
     STATION_MIX_CONSOLE, STATION_RESEARCH_BOOTH, STATION_RESONANCE_CHAMBER, STATION_WORKSHOP,
     TileFeature, balance_snapshot, construction_option_def, creature_def, expedition_target_def,
-    item_def,
+    item_def, objective_def, objectives,
     perk_def, processing_recipe_def, recruit_cost_for_index, resonance_recipe_def, role_def,
     station_def, stations, story_beat_def, story_beats, tile_def, world_action_def,
 };
@@ -2333,6 +2333,50 @@ impl Simulation {
         if !previous_cave_in_bubble && self.state.objectives.survivor_cave_in_bubble {
             self.push_note("Survivor Cave is now inside the bubble.");
         }
+
+        self.refresh_quest_objectives();
+    }
+
+    /// Data-driven quest objectives, advanced by the same salience pattern as
+    /// storylets: the active objective is the lowest-`sequence` incomplete one;
+    /// when its conditions all hold it completes (rewards fire once), and the
+    /// next becomes active — cascading through any already-satisfied objectives.
+    pub(crate) fn refresh_quest_objectives(&mut self) {
+        loop {
+            let active = self.next_incomplete_objective();
+            self.state.objectives.active_objective_id = active.clone();
+            let Some(active_id) = active else { break };
+            let Some(def) = objective_def(&active_id) else { break };
+            if !self.evaluate_conditions(def.conditions) {
+                break;
+            }
+            self.apply_effects(def.rewards);
+            self.state
+                .objectives
+                .completed_objective_ids
+                .push(active_id.clone());
+            self.push_note(format!("Objective complete: {}", def.label));
+            self.push_event(crate::state::GameEvent::ObjectiveCompleted {
+                objective_id: active_id,
+            });
+        }
+    }
+
+    /// The lowest-`sequence` objective not yet completed, if any.
+    fn next_incomplete_objective(&self) -> Option<String> {
+        let mut pending: Vec<&'static crate::game_data::ObjectiveDef> = objectives()
+            .iter()
+            .filter(|objective| {
+                !self
+                    .state
+                    .objectives
+                    .completed_objective_ids
+                    .iter()
+                    .any(|id| id == objective.id)
+            })
+            .collect();
+        pending.sort_by_key(|objective| objective.sequence);
+        pending.first().map(|objective| objective.id.to_string())
     }
 
     /// Salience selection over the storylet pool (replaces the hardcoded intro

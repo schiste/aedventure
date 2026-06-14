@@ -144,6 +144,8 @@ pub enum GameEvent {
     HeroLeveledUp { track: String, level: u16 },
     /// An auto-battler skirmish finished. `outcome` is "victory" or "retreat".
     CombatResolved { creature_id: String, outcome: String },
+    /// A quest objective's conditions were met (rewards applied this frame).
+    ObjectiveCompleted { objective_id: String },
 }
 
 /// One simulated round of an auto-battler skirmish, for the combat log.
@@ -909,6 +911,13 @@ pub struct ObjectiveState {
     pub recruitment_range_tiles: u8,
     pub recruitment_enabled: bool,
     pub survivor_cave_in_bubble: bool,
+    /// The current quest objective (lowest-sequence incomplete one), or None when
+    /// all are done. Advanced by the data-driven objective selector.
+    #[serde(default)]
+    pub active_objective_id: Option<String>,
+    /// Objectives whose conditions have been met, in completion order.
+    #[serde(default)]
+    pub completed_objective_ids: Vec<String>,
 }
 
 impl ObjectiveState {
@@ -920,6 +929,8 @@ impl ObjectiveState {
             recruitment_range_tiles: RECRUITMENT_RANGE_TILES,
             recruitment_enabled: false,
             survivor_cave_in_bubble: false,
+            active_objective_id: None,
+            completed_objective_ids: Vec::new(),
         }
     }
 }
