@@ -3017,3 +3017,12 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   after runtime ticks, and aligned the first-playable arrival gate with the
   current economy. Verification passed with the ADD browser build,
   `npm run smoke:add-rpg:built`, and `npm run agent:verify:add-ui`.
+- Completed Phase 9's first content-authoring refactor. Story content is now
+  split into `content/story/arcs/pre-arrival.ts`,
+  `content/story/arcs/base-onboarding.ts`, and
+  `content/story/arcs/ambient.ts`, with shared authoring helpers in
+  `content/story/helpers.ts` and a typed `content/content-validation` entry
+  point for conventions. The old `content/story.ts` path remains a compatibility
+  re-export, while codegen now points at `content/story/index.ts`. Verification
+  passed with `npm run content:check`, `npm run content:validate`, and
+  `npm run agent:verify:add-ui`.

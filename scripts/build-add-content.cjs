@@ -564,7 +564,7 @@ const FILES = [
     ],
   },
   {
-    sourceModule: "packages/add-domain/src/content/story.ts",
+    sourceModule: "packages/add-domain/src/content/story/index.ts",
     rustPath: "crates/add-core/src/game_data/catalog/story_beats.rs",
     consts: [
       {
