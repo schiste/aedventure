@@ -10,6 +10,11 @@ let runtimeReady: Promise<void> | null = null
 // top-level sections (a delta) on subsequent updates.
 let lastSnapshot: SimulationSnapshot | null = null
 
+interface OptionalTuningRuntime {
+  setBalanceOverride?: (path: string, value: number) => void
+  resetBalanceOverrides?: () => void
+}
+
 self.addEventListener('message', (event: MessageEvent<WorkerRequest>) => {
   void handleMessage(event.data)
 })
@@ -124,11 +129,11 @@ async function handleMessage(message: WorkerRequest) {
         postSnapshotUpdate()
         break
       case 'setBalanceOverride':
-        runtime?.setBalanceOverride(message.path, message.value)
+        runtimeTuningApi().setBalanceOverride(message.path, message.value)
         postSnapshotUpdate()
         break
       case 'resetBalanceOverrides':
-        runtime?.resetBalanceOverrides()
+        runtimeTuningApi().resetBalanceOverrides()
         postSnapshotUpdate()
         break
       case 'exportSave':
@@ -193,6 +198,14 @@ function snapshot(): SimulationSnapshot {
 
 function catalog(): CatalogSnapshot {
   return runtime?.catalog() as CatalogSnapshot
+}
+
+function runtimeTuningApi(): Required<OptionalTuningRuntime> {
+  const tuningRuntime = runtime as (WebRuntime & OptionalTuningRuntime) | null
+  if (!tuningRuntime?.setBalanceOverride || !tuningRuntime.resetBalanceOverrides) {
+    throw new Error('Balance tuning is not available in this WASM build.')
+  }
+  return tuningRuntime as Required<OptionalTuningRuntime>
 }
 
 function postWorkerEvent(message: WorkerEvent) {
