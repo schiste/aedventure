@@ -2988,3 +2988,11 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   map-mode entries, so smoke can assert Base is absent on boot/mobile and appears
   only after the real travel path to Studio. Verification passed with
   `npm run smoke:add-rpg:built` and `npm run agent:verify:add-ui`.
+- Made "Reach the Base" a real route objective instead of a story-choice CTA.
+  The first playable now exposes "Preview route to Studio," selects the next
+  Studio-bound step on the map, shows the 60-minute crossing path/decision state,
+  and only unlocks Base once the Hero has actually reached The Studio. The
+  hidden pre-arrival story beats are resolved at the Studio/Base handoff so the
+  old narrative gate no longer blocks product actions. Verification passed with
+  full `npm run smoke:add-rpg`, focused `npm run agent:verify:add-ui`, and
+  visual inspection of `tmp/add-rpg-map-smoke.png`.

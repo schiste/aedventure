@@ -271,6 +271,11 @@ async function assertBootAndRenderTextContract(page, consoleErrors) {
     ["first_playable", "discovery"].includes(initial.shell.currentAction.source),
     "Initial current action should be owned by the tutorial or discovery loop.",
   )
+  assert.equal(initial.shell.currentAction.source, "first_playable")
+  assert.equal(initial.shell.currentAction.kind, "route_to_studio")
+  assert.equal(initial.shell.currentAction.primaryLabel, "Preview route to Studio")
+  assert.match(initial.shell.currentAction.detail, /unlock Base management/i)
+  assert.equal(initial.ui.firstPlayable.currentAction.type, "preview_route_to_base")
   assert.equal(initial.shell.currentAction.primaryEnabled, true)
   assert.match(initial.shell.interfaceHierarchy.tertiary.waitForecast, /60m|Clock/)
   assertV1InterfaceContext(initial, "discovery", {
@@ -579,6 +584,14 @@ async function unlockBaseNavigationByTravelingToStudio(page, consoleErrors) {
   let state = await renderGameToText(page)
   const targetCell = `hex:${state.map?.landmarks?.baseCenter}`
   assert.ok(/^hex:-?\d+,-?\d+$/.test(targetCell), "Studio base center should be a hex cell.")
+  if (state.map?.character?.cell === targetCell) {
+    assert.ok(
+      state.mapMode?.available?.includes("base_square"),
+      "Base navigation should be available once the Hero is already at The Studio.",
+    )
+    await assertMapModeNavigationLabels(page, ["World", "Studio", "Cave", "Base"])
+    return state
+  }
   assert.ok(
     !state.mapMode?.available?.includes("base_square"),
     "Base navigation should be hidden before the Hero reaches The Studio.",
@@ -1108,6 +1121,7 @@ async function exerciseBaseManagementSurface(page, consoleErrors) {
     "ADD RPG social pressure surface screenshot",
   )
 
+  await ensureFreeExpeditionCrew(page, consoleErrors)
   await clickVisibleElementByDomId(page, "base-tab-expeditions")
   const expeditions = await waitForTextState(
     page,
@@ -1259,6 +1273,54 @@ async function exerciseBaseManagementSurface(page, consoleErrors) {
     "ADD RPG desktop Base layout hierarchy screenshot",
   )
   return returnToOverworld(page, consoleErrors)
+}
+
+async function ensureFreeExpeditionCrew(page, consoleErrors) {
+  let state = await renderGameToText(page)
+  if (freeRuntimeCrew(state) >= 1) return
+
+  await clickVisibleElementByDomId(page, "base-tab-crew")
+  state = await waitForTextState(
+    page,
+    (nextState) => nextState.baseManagement?.active === true && nextState.baseManagement?.selectedTab === "crew",
+    consoleErrors,
+  )
+
+  const releasableRole = ["role.fire_pit", "role.crystal_bassline", "role.scavenge", "role.water"].find(
+    (roleId) => roleCrewAssigned(state, roleId) > 0,
+  )
+  assert.ok(releasableRole, "Expedition smoke needs one assigned crew member it can release.")
+
+  await clickVisibleElementByDomId(page, `base-role-${roleSmokeSlug(releasableRole)}-minus`)
+  await waitForTextState(
+    page,
+    (nextState) =>
+      nextState.baseManagement?.selectedTab === "crew" &&
+      roleCrewAssigned(nextState, releasableRole) === roleCrewAssigned(state, releasableRole) - 1 &&
+      freeRuntimeCrew(nextState) >= 1,
+    consoleErrors,
+  )
+}
+
+function freeRuntimeCrew(state) {
+  const totalCrew = state.snapshot?.roster?.totalCrew ?? 0
+  const roleCrew = Object.values(state.snapshot?.roster?.crewByRole ?? {}).reduce(
+    (total, crew) => total + Number(crew ?? 0),
+    0,
+  )
+  const expeditionCrew = (state.snapshot?.expeditions?.activeJobs ?? []).reduce(
+    (total, job) => total + Number(job.assignedCrew ?? 0),
+    0,
+  )
+  return Math.max(0, totalCrew - roleCrew - expeditionCrew)
+}
+
+function roleCrewAssigned(state, roleId) {
+  return Number(state.snapshot?.roster?.crewByRole?.[roleId] ?? 0)
+}
+
+function roleSmokeSlug(roleId) {
+  return roleId.replace("role.", "").replaceAll("_", "-")
 }
 
 async function assertMobilePresentation(browser, url) {
@@ -1860,7 +1922,77 @@ async function completeFirstPlayableArc(page, consoleErrors) {
         state.ui?.firstPlayable,
       )}`,
     )
+    if (state.shell?.currentAction?.actionId === "first-playable:reach-base-route") {
+      await clickVisibleElementByDomId(page, "current-action-primary")
+      await waitForTextState(
+        page,
+        (nextState) =>
+          nextState.shell?.currentAction?.kind === "travel" &&
+          nextState.shell.currentAction.primaryLabel === "Travel to this region" &&
+          nextState.discovery?.selectedTile?.canTravelNow === true &&
+          nextState.map?.presentation?.mapPrimaryAffordances?.pathTimePreviewVisible === true,
+        consoleErrors,
+        4000,
+      )
+      continue
+    }
+
+    if (
+      state.shell?.currentAction?.source === "discovery" &&
+      state.shell.currentAction.kind === "travel" &&
+      state.shell.currentAction.actionId === "travel:selected-tile"
+    ) {
+      const beforeDigest = firstPlayableDigest(state)
+      await clickVisibleElementByDomId(page, "current-action-primary")
+      await resolveTravelDialogIfNeeded(page, consoleErrors)
+      await waitForTextState(
+        page,
+        (nextState) =>
+          nextState.runtime?.error === null &&
+          nextState.map?.character?.moving === false &&
+          nextState.ui?.worldTime?.animating === false &&
+          firstPlayableDigest(nextState) !== beforeDigest,
+        consoleErrors,
+        12000,
+      )
+      continue
+    }
+
+    if (
+      state.shell?.currentAction?.source === "discovery" &&
+      state.shell.currentAction.kind === "arrived"
+    ) {
+      await waitForTextState(
+        page,
+        (nextState) =>
+          nextState.runtime?.error === null &&
+          nextState.shell?.currentAction?.kind !== "arrived",
+        consoleErrors,
+        5000,
+      )
+      continue
+    }
+
+    if (
+      state.shell?.currentAction?.source === "discovery" &&
+      state.shell.currentAction.kind === "open_base" &&
+      state.shell.currentAction.actionId === "base:open"
+    ) {
+      await clickVisibleElementByDomId(page, "current-action-primary")
+      await waitForTextState(
+        page,
+        (nextState) =>
+          nextState.runtime?.error === null &&
+          nextState.mapMode?.active === "base_square" &&
+          nextState.ui?.firstPlayable?.currentStepId !== "reach-base",
+        consoleErrors,
+        5000,
+      )
+      continue
+    }
+
     const beforeDigest = firstPlayableDigest(state)
+    const beforeProgressDigest = firstPlayableProgressDigest(state)
     assert.equal(
       state.shell?.currentAction?.source,
       "first_playable",
@@ -1888,7 +2020,9 @@ async function completeFirstPlayableArc(page, consoleErrors) {
       page,
       (nextState) =>
         nextState.runtime?.error === null &&
-        firstPlayableDigest(nextState) !== beforeDigest,
+        (action.type === "tick"
+          ? firstPlayableDigest(nextState) !== beforeDigest
+          : firstPlayableProgressDigest(nextState) !== beforeProgressDigest),
       consoleErrors,
       action.type === "tick" ? 18000 : 8000,
     )
@@ -1915,6 +2049,17 @@ async function waitForCompletedObjectiveChip(page, consoleErrors) {
 function firstPlayableDigest(state) {
   return JSON.stringify({
     clockSeconds: Math.round(state.snapshot?.clockSeconds ?? 0),
+    ...firstPlayableProgressDigestObject(state),
+  })
+}
+
+function firstPlayableProgressDigest(state) {
+  return JSON.stringify(firstPlayableProgressDigestObject(state))
+}
+
+function firstPlayableProgressDigestObject(state) {
+  return {
+    heroMap: state.snapshot?.heroMap,
     heroAssigned: state.snapshot?.heroAssigned,
     activeWorldAction: state.snapshot?.activeWorldAction,
     resources: state.snapshot?.resources,
@@ -1925,7 +2070,7 @@ function firstPlayableDigest(state) {
     activeConstruction: state.snapshot?.activeConstruction,
     activeStoryBeatId: state.ui?.activeStoryBeatId,
     firstPlayable: state.ui?.firstPlayable,
-  })
+  }
 }
 
 async function exerciseSaveReloadOfflineAndReset(page, advanced, consoleErrors) {
@@ -2576,10 +2721,10 @@ async function exerciseSurvivorCaveDungeonEntry(page, consoleErrors) {
   const before = await renderGameToText(page)
   assert.equal(before.mapMode.active, "overworld_hex")
   assert.equal(before.map.character.coord, before.map.landmarks.survivorCave)
-  const heroPoint = await characterScreenPoint(page, before)
-  await page.mouse.click(heroPoint.x, heroPoint.y)
-  const selectedCave = await waitForTextState(
+  assert.ok(before.map.landmarks.survivorCaveViewport, "Survivor Cave viewport point should be available.")
+  const selectedCave = await clickViewportPointUntilSelected(
     page,
+    before.map.landmarks.survivorCaveViewport,
     (state) =>
       state.mapMode?.active === "overworld_hex" &&
       state.map?.interaction?.selectedCell === before.map.character.cell &&
@@ -2604,6 +2749,7 @@ async function exerciseSurvivorCaveDungeonEntry(page, consoleErrors) {
     "The overworld action should invite the player into the Survivor Cave.",
   )
 
+  await page.waitForTimeout(160)
   await clickVisibleElementByDomId(page, "enter-dungeon")
   const dungeon = await waitForTextState(
     page,

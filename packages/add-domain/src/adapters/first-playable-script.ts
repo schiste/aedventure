@@ -18,6 +18,7 @@ const PRE_ARRIVAL_STORY_BEATS = new Set([
 
 export type AddFirstPlayableAction =
   | { readonly type: "choose_story_option"; readonly beatId: string; readonly optionId: string }
+  | { readonly type: "preview_route_to_base" }
   | { readonly type: "assign_hero"; readonly assigned: boolean }
   | { readonly type: "set_hero_role"; readonly roleId: string }
   | { readonly type: "set_role_crew"; readonly roleId: string; readonly crew: number }
@@ -62,7 +63,7 @@ export const ADD_FIRST_PLAYABLE_SCRIPT: readonly AddFirstPlayableScriptStep[] = 
   {
     id: "reach-base",
     label: "Reach the Base",
-    evaluate: ({ snapshot, activeBeat }) => preArrivalStep(snapshot, activeBeat),
+    evaluate: ({ snapshot, catalog, activeBeat }) => preArrivalStep(snapshot, catalog, activeBeat),
   },
   {
     id: "assign-hero-crew",
@@ -150,14 +151,34 @@ function selectActiveStoryBeat(
 
 function preArrivalStep(
   snapshot: SimulationSnapshot,
+  catalog: CatalogSnapshot,
   activeBeat: StoryBeatDef | null,
 ): AddFirstPlayableStepResult {
-  const complete = !activeBeat || !PRE_ARRIVAL_STORY_BEATS.has(activeBeat.id)
+  const reachedBase = heroReachedBase(snapshot, catalog)
+  const complete = reachedBase || !activeBeat || !PRE_ARRIVAL_STORY_BEATS.has(activeBeat.id)
   return {
     complete,
-    detail: complete ? "The Hero has crossed into the Base arc." : activeBeat.body,
-    ...storyChoiceAction(snapshot, activeBeat),
+    detail: complete
+      ? "The Hero has reached The Studio. Base management can now open from here."
+      : "Move across adjacent regions toward The Studio. Each crossing takes 60 minutes; reaching the Studio unlocks Base management.",
+    actionLabel: complete ? null : "Preview route to Studio",
+    action: complete ? null : { type: "preview_route_to_base" },
   }
+}
+
+function heroReachedBase(snapshot: SimulationSnapshot, catalog: CatalogSnapshot): boolean {
+  const baseTileIds = new Set(
+    catalog.tiles
+      .filter((tile) => tile.feature === "base" || tile.tags.includes("base"))
+      .map((tile) => tile.id),
+  )
+  if (baseTileIds.size === 0) return false
+  return snapshot.hexes.some(
+    (hex) =>
+      hex.q === snapshot.heroMap.q &&
+      hex.r === snapshot.heroMap.r &&
+      baseTileIds.has(hex.tileId),
+  )
 }
 
 function heroAndCrewStep(snapshot: SimulationSnapshot): AddFirstPlayableStepResult {

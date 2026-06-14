@@ -112,6 +112,12 @@ import {
 import "./styles.css"
 
 const OPENING_TRAVEL_STEP_ID = "reach-base"
+const OPENING_ROUTE_ACTION_ID = "first-playable:reach-base-route"
+const PRE_ARRIVAL_ROUTE_STORY_BEAT_IDS = new Set([
+  "story.beat.road_to_base",
+  "story.beat.first_glimpse",
+  "story.beat.enter_the_bubble",
+])
 
 const moduleRootDisposers: Array<() => void> = []
 
@@ -2164,6 +2170,38 @@ function currentActionState(
     }
   }
 
+  const firstPlayable = uiState()?.firstPlayable
+  const firstStep = currentFirstPlayableStep()
+  const travelLoop = travelLoopCurrentAction()
+  if (travelLoop) return travelLoop
+
+  const selectedTravel = selectedTravelCurrentAction()
+  if (selectedTravel) return selectedTravel
+
+  const baseHandoff = baseHandoffCurrentAction()
+  if (baseHandoff) return baseHandoff
+
+  if (firstPlayable && !firstPlayable.complete && firstStep) {
+    const routeStep =
+      firstStep.id === OPENING_TRAVEL_STEP_ID
+        ? openingRouteCurrentAction(firstPlayable.completedCount, firstPlayable.totalCount)
+        : null
+    if (routeStep) return routeStep
+    return {
+      source: "first_playable",
+      sourceLabel: "First playable",
+      label: firstStep.actionLabel ?? firstStep.label,
+      detail: firstStep.detail,
+      kind: firstStep.id,
+      enabled: Boolean(firstStep.action),
+      primaryLabel: firstStep.actionLabel,
+      primaryEnabled: Boolean(firstStep.action),
+      metaLabel: `${firstPlayable.completedCount}/${firstPlayable.totalCount}`,
+      progressLabel: firstStep.label,
+      actionId: firstStep.action ? `first-playable:${firstStep.id}` : null,
+    }
+  }
+
   const base = baseManagementState()
   if (mapMode() === "base_square" && base) {
     const action = base.recommendedAction
@@ -2179,33 +2217,6 @@ function currentActionState(
       metaLabel: base.playerLoop.currentStepId.replaceAll("_", " "),
       progressLabel: base.playerLoop.decisionHint,
       actionId: action.targetId,
-    }
-  }
-
-  const firstPlayable = uiState()?.firstPlayable
-  const firstStep = currentFirstPlayableStep()
-  const travelLoop = travelLoopCurrentAction()
-  if (travelLoop) return travelLoop
-
-  const selectedTravel = selectedTravelCurrentAction()
-  if (selectedTravel) return selectedTravel
-
-  const baseHandoff = baseHandoffCurrentAction()
-  if (baseHandoff) return baseHandoff
-
-  if (firstPlayable && !firstPlayable.complete && firstStep) {
-    return {
-      source: "first_playable",
-      sourceLabel: "First playable",
-      label: firstStep.actionLabel ?? firstStep.label,
-      detail: firstStep.detail,
-      kind: firstStep.id,
-      enabled: Boolean(firstStep.action),
-      primaryLabel: firstStep.actionLabel,
-      primaryEnabled: Boolean(firstStep.action),
-      metaLabel: `${firstPlayable.completedCount}/${firstPlayable.totalCount}`,
-      progressLabel: firstStep.label,
-      actionId: firstStep.action ? `first-playable:${firstStep.id}` : null,
     }
   }
 
@@ -2241,6 +2252,32 @@ function currentActionState(
     metaLabel: ready() ? "Ready" : "Starting",
     progressLabel: null,
     actionId: null,
+  }
+}
+
+function openingRouteCurrentAction(
+  completedCount: number,
+  totalCount: number,
+): AddCurrentActionState | null {
+  if (mapMode() !== "overworld_hex") return null
+  const info = mapInfo()
+  if (heroIsAtStudio(info)) return null
+  const nextCell = nextOpeningRouteCell(info)
+  if (!nextCell) return null
+  const direction = routeDirectionLabel(info.character.cell, nextCell)
+  const targetLabel = info.landmarks.baseCenter ? "The Studio" : "Base"
+  return {
+    source: "first_playable",
+    sourceLabel: "Route objective",
+    label: `Reach ${targetLabel}`,
+    detail: `Move across adjacent regions toward ${targetLabel} to unlock Base management. Preview the next step, then confirm the 60-minute crossing from the travel card.`,
+    kind: "route_to_studio",
+    enabled: true,
+    primaryLabel: "Preview route to Studio",
+    primaryEnabled: true,
+    metaLabel: `${completedCount}/${totalCount}`,
+    progressLabel: direction ? `Next step ${direction} · 60 min crossing` : "Next step · 60 min crossing",
+    actionId: OPENING_ROUTE_ACTION_ID,
   }
 }
 
@@ -3906,6 +3943,67 @@ function selectDiscoveryChoice(cell: string): void {
   const selected = mapHost?.selectCell(cell) ?? false
   if (selected) refreshMapInfo()
   openContextDetailSection("selected-tile-section")
+}
+
+function previewOpeningRouteToStudio(): void {
+  const nextCell = nextOpeningRouteCell()
+  if (!nextCell) return
+  setLastCommand("route-preview:studio")
+  selectDiscoveryChoice(nextCell)
+}
+
+function nextOpeningRouteCell(currentMapInfo: AddPhaserMapInfo = mapInfo()): string | null {
+  const from = parseAddDisplayCell(currentMapInfo.character.cell)
+  const baseCenter = currentMapInfo.landmarks.baseCenter
+  const to = parseAddDisplayCell(baseCenter ? `hex:${baseCenter}` : null)
+  if (!from || !to || from.kind !== "hex" || to.kind !== "hex") return null
+  if (from.a === to.a && from.b === to.b) return null
+
+  const neighbors = [
+    { a: from.a, b: from.b - 1 },
+    { a: from.a + 1, b: from.b - 1 },
+    { a: from.a + 1, b: from.b },
+    { a: from.a, b: from.b + 1 },
+    { a: from.a - 1, b: from.b + 1 },
+    { a: from.a - 1, b: from.b },
+  ]
+  const next = neighbors
+    .map((cell) => ({ ...cell, distance: hexRouteDistance(cell, to) }))
+    .sort((left, right) => left.distance - right.distance)[0]
+  return next ? `hex:${next.a},${next.b}` : null
+}
+
+function hexRouteDistance(
+  from: { readonly a: number; readonly b: number },
+  to: { readonly a: number; readonly b: number },
+): number {
+  const dq = from.a - to.a
+  const dr = from.b - to.b
+  return (Math.abs(dq) + Math.abs(dr) + Math.abs(dq + dr)) / 2
+}
+
+function routeDirectionLabel(fromCell: string | null, toCell: string | null): string | null {
+  const direction = directionBetweenAddCells(fromCell, toCell)
+  switch (direction) {
+    case "north_west":
+      return "north-west"
+    case "north_east":
+      return "north-east"
+    case "south_east":
+      return "south-east"
+    case "south_west":
+      return "south-west"
+    case "up":
+      return "up"
+    case "right":
+      return "right"
+    case "down":
+      return "down"
+    case "left":
+      return "left"
+    default:
+      return null
+  }
 }
 
 function openContextDetailSection(id: string): void {
@@ -5958,6 +6056,7 @@ async function runCurrentAction(): Promise<void> {
         setLastTileActionTarget("base_square")
         setLastCommand("discovery-open:base")
         setBaseNavigationUnlocked(true)
+        await completePreArrivalStoryBeatsForRoute()
         switchMapMode("base_square")
         return
       }
@@ -5971,6 +6070,10 @@ async function runCurrentAction(): Promise<void> {
       return
     }
     case "first_playable":
+      if (action.actionId === OPENING_ROUTE_ACTION_ID) {
+        previewOpeningRouteToStudio()
+        return
+      }
       await runFirstPlayableAction()
       return
     case "runtime":
@@ -6006,6 +6109,16 @@ async function runFirstPlayableAction(): Promise<void> {
   await runAddAction(action)
 }
 
+async function completePreArrivalStoryBeatsForRoute(): Promise<void> {
+  for (let index = 0; index < PRE_ARRIVAL_ROUTE_STORY_BEAT_IDS.size; index += 1) {
+    const moment = storyMoment()
+    if (!moment || !PRE_ARRIVAL_ROUTE_STORY_BEAT_IDS.has(moment.beatId)) return
+    const choice = moment.choices[0]
+    if (!choice) return
+    await chooseStoryOption(moment.beatId, choice.id)
+  }
+}
+
 async function runDiscoveryAction(link: AddDiscoveryActionLink): Promise<void> {
   if (!link.enabled) return
   if (link.kind === "dungeon_entry") {
@@ -6025,6 +6138,9 @@ function enterDiscoveryDungeon(): void {
 
 async function runAddAction(action: AddFirstPlayableAction): Promise<void> {
   switch (action.type) {
+    case "preview_route_to_base":
+      previewOpeningRouteToStudio()
+      return
     case "choose_story_option":
       await chooseStoryOption(action.beatId, action.optionId)
       return
