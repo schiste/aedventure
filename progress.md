@@ -3046,3 +3046,15 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   visible, and that narrative cards cannot be mounted directly under the map
   header. Focused verification passed; the broader built smoke later reached an
   unrelated ADD runtime numeric-conversion error during base management.
+- Reworked ADD clean-start discovery to be runtime-event driven. Raw
+  `GameState::new()` now starts with no authored discovered cells; the
+  simulation bootstrap emits a typed `starting_area_discovered` event and reveals
+  only the open radius-1 cells around Survivor Cave. The Studio/base hex stays
+  hidden and unselectable on boot while Phaser renders a small objective label as
+  the only distant information. Reset now returns to the same cave-local
+  discovery shape. The pass also fixed optional `activeConstruction`
+  projection checks and string-serialized the deterministic RNG seed so
+  expedition returns no longer fail WASM snapshot conversion. Verification
+  passed with `cargo test -p add-core`, `npm run agent:verify:add-ui`,
+  `npm --workspace @aedventure/add-rpg run build`, `npm run
+  smoke:add-rpg:built`, and a local web-game client no-crash render pass.

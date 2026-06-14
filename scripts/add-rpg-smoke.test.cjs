@@ -63,8 +63,8 @@ async function main() {
     )
     await runScenario("ambient clock", () => assertIdleAmbientClockAdvances(page))
     await runScenario("hero spawn placement", () => assertHeroStartsAtSurvivorCave(page, initial))
-    await runScenario("Studio tile detail links", () =>
-      exerciseStudioTileDetailLinks(page, consoleErrors),
+    await runScenario("Studio objective marker is label-only", () =>
+      assertStudioObjectiveMarkerIsLabelOnly(page, consoleErrors),
     )
     await runScenario("survivor cave dungeon entry loop", () =>
       exerciseSurvivorCaveDungeonEntry(page, consoleErrors),
@@ -106,6 +106,9 @@ async function main() {
 
     await runScenario("Studio arrival unlocks Base navigation", () =>
       unlockBaseNavigationByTravelingToStudio(page, consoleErrors),
+    )
+    await runScenario("Studio tile detail links", () =>
+      exerciseStudioTileDetailLinks(page, consoleErrors),
     )
     await runScenario("base management surface", () =>
       exerciseBaseManagementSurface(page, consoleErrors),
@@ -208,7 +211,7 @@ async function assertBootAndRenderTextContract(page, consoleErrors) {
       state.map?.topology?.kind === "hex" &&
       state.map?.topology?.fixture === false &&
       state.snapshot?.hexCount > 0 &&
-      state.snapshot?.discoveredCellCount === 2 &&
+      initialDiscoveryShapeReady(state) &&
       typeof state.snapshot?.heroMap === "string" &&
       state.map?.cells?.total === state.snapshot.hexCount &&
       state.map?.dungeonLinks?.total > 0 &&
@@ -229,7 +232,7 @@ async function assertBootAndRenderTextContract(page, consoleErrors) {
       state.map?.interaction?.activeCell === state.map?.interaction?.selectedCell &&
       state.map?.interaction?.lastInput === "none" &&
       state.map?.interaction?.markerVisible === true &&
-      state.map?.interaction?.primaryMarkerVisible === false &&
+      state.map?.interaction?.primaryMarkerVisible === true &&
       state.map?.presentation?.terrainArt === "procedural_painterly_topology" &&
       state.map?.presentation?.bubbleEffects === "animated_halo_edge" &&
       state.map?.presentation?.landmarkSprites === "procedural_sprite_stack" &&
@@ -249,7 +252,7 @@ async function assertBootAndRenderTextContract(page, consoleErrors) {
       state.discovery?.dungeonEntryAvailable === true &&
       state.discovery?.dungeonEntryTarget === "add.rpg.dungeon.survivor-cave" &&
       state.discovery?.enabledActionIds?.includes("dungeon:add.rpg.dungeon.survivor-cave") &&
-      state.discovery?.enabledActionIds?.includes("first-playable:reach-base") &&
+      state.shell?.currentAction?.actionId === "first-playable:reach-base-route" &&
       state.dungeonObjective === null &&
       state.ui?.worldTime?.day >= 1 &&
       state.ui?.worldTime?.season === "spring" &&
@@ -257,7 +260,7 @@ async function assertBootAndRenderTextContract(page, consoleErrors) {
       typeof state.ui?.worldTime?.sunrise === "string" &&
       typeof state.ui?.worldTime?.sunset === "string" &&
       state.storyAgent?.contract === "agent_story_v1" &&
-      state.storyAgent?.contentValidationVersion === "content_tooling_v1" &&
+      state.storyAgent?.contentValidationVersion === "content_authoring_model_v1" &&
       state.storyAgent?.activeBeat?.id === "story.beat.road_to_base" &&
       state.storyAgent?.activeArc === "pre_arrival" &&
       state.storyAgent?.currentBlocker?.kind === "first_playable" &&
@@ -527,7 +530,11 @@ function assertInitialVisibilityContract(initial) {
   assert.ok(initial.map.knownFacts.dynamicRiskKnownCells < initial.map.cells.total)
   assert.equal(initial.map.visibility.hiddenCells, initial.map.knownFacts.hiddenCells)
   assert.ok(initial.map.visibility.visibleCells > 0)
-  assert.ok(initial.map.visibility.discoveredCells > 0)
+  assert.equal(
+    initial.map.visibility.discoveredCells,
+    0,
+    "Initial cave-radius cells should be currently visible, not stale remembered cells.",
+  )
   assert.equal(initial.map.visibility.fogRendering, "phaser_visual_overlay")
   assert.equal(initial.map.visibility.affectsAuthority, false)
   assert.equal(initial.map.visibility.travelRevealPreviewActive, false)
@@ -540,11 +547,7 @@ function assertInitialVisibilityContract(initial) {
   assert.equal(initial.map.interaction.visibilitySamples.hidden.knownInfoLevel, "unknown")
   assert.equal(initial.map.interaction.visibilitySamples.hidden.dungeonLinks.length, 0)
   assert.equal(initial.map.interaction.visibilitySamples.hidden.dungeonActionsVisible, false)
-  assert.equal(
-    initial.map.interaction.visibilitySamples.discovered.knownInfoLevel,
-    "known_static",
-  )
-  assert.match(initial.map.interaction.visibilitySamples.discovered.label, /·/)
+  assert.equal(initial.map.interaction.visibilitySamples.discovered, null)
   assert.equal(initial.map.interaction.visibilitySamples.visible.knownInfoLevel, "full_current")
   assert.ok(
     initial.map.character.dungeonLinksAtCell.length > 0,
@@ -1984,13 +1987,41 @@ function assertV1InterfaceGateComplete() {
   )
 }
 
-function assertInitialDiscoveryAnchors(state) {
-  assert.equal(state.snapshot.discoveredCellCount, 2)
-  assert.deepEqual(
-    sortedCells(state.snapshot.discoveredCells),
-    sortedCells([state.map.landmarks.survivorCave, state.map.landmarks.baseCenter]),
-    "Initial discovery should contain exactly Survivor Cave and the Studio/base anchor.",
+function initialDiscoveryShapeReady(state) {
+  const discovered = state.snapshot?.discoveredCells
+  const cave = state.map?.landmarks?.survivorCave
+  const base = state.map?.landmarks?.baseCenter
+  return (
+    Array.isArray(discovered) &&
+    typeof cave === "string" &&
+    typeof base === "string" &&
+    discovered.length > 1 &&
+    discovered.includes(cave) &&
+    !discovered.includes(base)
   )
+}
+
+function assertInitialDiscoveryAnchors(state) {
+  const discovered = sortedCells(state.snapshot.discoveredCells)
+  const cave = parseHexCoord(state.map.landmarks.survivorCave)
+  assert.ok(
+    discovered.includes(state.map.landmarks.survivorCave),
+    "Initial discovery should include the Survivor Cave.",
+  )
+  assert.ok(
+    !discovered.includes(state.map.landmarks.baseCenter),
+    "Initial discovery should not reveal the Studio/base hex.",
+  )
+  assert.ok(discovered.length > 1, "Initial discovery should include cells around the cave.")
+  assert.equal(state.snapshot.discoveredCellCount, discovered.length)
+  assert.ok(
+    discovered.every((cell) => {
+      const coord = parseHexCoord(cell)
+      return hexDistance({ a: cave.q, b: cave.r }, { a: coord.q, b: coord.r }) <= 1
+    }),
+    "Initial discovery should be limited to the Survivor Cave radius.",
+  )
+  assert.equal(state.map.landmarks.studioLabelVisible, true)
 }
 
 async function completeFirstPlayableArc(page, consoleErrors) {
@@ -2017,12 +2048,6 @@ async function completeFirstPlayableArc(page, consoleErrors) {
     }
 
     const action = state.ui?.firstPlayable?.currentAction
-    assert.ok(
-      action,
-      `First playable should expose an action before completion: ${JSON.stringify(
-        state.ui?.firstPlayable,
-      )}`,
-    )
     if (state.shell?.currentAction?.actionId === "first-playable:reach-base-route") {
       await clickVisibleElementByDomId(page, "current-action-primary")
       await waitForTextState(
@@ -2126,7 +2151,8 @@ async function completeFirstPlayableArc(page, consoleErrors) {
           )}`,
         )
       }
-      const shouldAdvanceClock = state.shell.currentAction.kind === "wait" || action.type === "tick"
+      const shouldAdvanceClock =
+        state.shell.currentAction.kind === "wait" || action?.type === "tick"
       await clickVisibleElementByDomId(page, "current-action-primary")
       await waitForTextState(
         page,
@@ -2146,6 +2172,12 @@ async function completeFirstPlayableArc(page, consoleErrors) {
       "first_playable",
       `The shared current action should own first-playable progression: ${JSON.stringify(
         state.shell?.currentAction,
+      )}`,
+    )
+    assert.ok(
+      action,
+      `First playable should expose an action before completion: ${JSON.stringify(
+        state.ui?.firstPlayable,
       )}`,
     )
     const actionDisabled = await isElementDisabledByDomId(page, "current-action-primary")
@@ -2432,11 +2464,12 @@ async function exerciseSaveReloadOfflineAndReset(page, advanced, consoleErrors) 
       state.persistence?.resetCount > 0 &&
       state.snapshot?.clockSeconds < RESET_CLOCK_TOLERANCE_SECONDS &&
       state.snapshot?.heroAssigned === false &&
-      state.snapshot?.discoveredCellCount === 2 &&
+      initialDiscoveryShapeReady(state) &&
       state.snapshot?.heroMap === state.map?.landmarks?.survivorCave,
     consoleErrors,
   )
   assert.equal(reset.snapshot.heroAssigned, false)
+  assertInitialDiscoveryAnchors(reset)
 
   await page.locator("#save-payload").fill("{ invalid add save")
   assert.equal(await page.locator("#save-payload").inputValue(), "{ invalid add save")
@@ -2740,6 +2773,54 @@ async function clickViewportPointUntilSelected(page, viewportPoint, predicate, c
   throw lastError ?? new Error("No viewport-point candidate selected the expected cell.")
 }
 
+async function assertStudioObjectiveMarkerIsLabelOnly(page, consoleErrors) {
+  const before = await renderGameToText(page)
+  assertInitialDiscoveryAnchors(before)
+  const studioCell = `hex:${before.map.landmarks.baseCenter}`
+
+  for (let index = 0; index < 3; index += 1) {
+    await page.locator("#map-zoom-out").click()
+  }
+
+  const zoomed = await waitForTextState(
+    page,
+    (state) =>
+      state.mapMode?.active === "overworld_hex" &&
+      state.map?.landmarks?.studioLabelVisible === true &&
+      state.map?.landmarks?.baseCenterViewport !== null &&
+      !state.snapshot?.discoveredCells?.includes(state.map.landmarks.baseCenter),
+    consoleErrors,
+  )
+
+  const canvas = page.locator("#add-world canvas")
+  await canvas.waitFor({ state: "visible" })
+  const box = await canvas.boundingBox()
+  assert.ok(box, "ADD RPG Phaser canvas should have a browser box")
+  await page.mouse.click(
+    box.x + zoomed.map.landmarks.baseCenterViewport.x,
+    box.y + zoomed.map.landmarks.baseCenterViewport.y,
+  )
+  await page.waitForTimeout(120)
+
+  const after = await renderGameToText(page)
+  assert.equal(after.map.landmarks.studioLabelVisible, true)
+  assert.ok(
+    !after.snapshot.discoveredCells.includes(after.map.landmarks.baseCenter),
+    "The distant Studio objective label must not reveal the hidden Studio hex.",
+  )
+  assert.notEqual(
+    after.map.interaction.selectedCell,
+    studioCell,
+    "Clicking the distant Studio label must not select a hidden hex.",
+  )
+  assert.notEqual(
+    after.discovery?.tileDetail?.cell,
+    studioCell,
+    "Clicking the distant Studio label must not expose Studio tile details.",
+  )
+  return after
+}
+
 async function exerciseStudioTileDetailLinks(page, consoleErrors) {
   const before = await renderGameToText(page)
   const restoreQuestPanel = before.shell?.questPanel?.collapsed === false
@@ -2785,12 +2866,7 @@ async function exerciseStudioTileDetailLinks(page, consoleErrors) {
         state.discovery.tileDetail.actionIds.includes(
           "tile-action:base:tile-link:base:studio-echo",
         ) &&
-        !state.discovery.tileDetail.enabledLinkIds.some((id) => id.includes("base")) &&
-        state.discovery.tileDetail.disabledActionReasons.some(
-          (action) =>
-            action.id === "tile-action:base:tile-link:base:studio-echo" &&
-            /Reach The Studio/i.test(action.reason),
-        ) &&
+        state.discovery.tileDetail.enabledLinkIds.some((id) => id.includes("base")) &&
         state.discovery.tileDetail.actionKinds.includes("manage_base") &&
         state.discovery.tileDetail.actionKinds.includes("enter_submap") &&
         !state.discovery.tileDetail.targetMapIds.includes("add.rpg.dungeon.studio"),
@@ -2809,7 +2885,6 @@ async function exerciseStudioTileDetailLinks(page, consoleErrors) {
       "The Studio",
       "Studio Grounds",
       "Open The Studio",
-      "Reach The Studio",
       "Base",
     ].forEach((expectedText) => {
       assert.ok(
