@@ -3039,3 +3039,10 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   modal/admin surfaces, and the smoke suite now verifies visible primary actions
   are not blocked at their click centers. The pass also re-ordered the Base
   current action so its primary CTA is reachable without scrolling on desktop.
+- Fixed the road-to-base story copy placement. The active story moment no
+  longer renders as a direct child of the Phaser world beneath the status bar;
+  it now lives inside the Discovery contextual panel, preserving the map as the
+  primary play surface. Smoke coverage now asserts the topbar remains pinned and
+  visible, and that narrative cards cannot be mounted directly under the map
+  header. Focused verification passed; the broader built smoke later reached an
+  unrelated ADD runtime numeric-conversion error during base management.

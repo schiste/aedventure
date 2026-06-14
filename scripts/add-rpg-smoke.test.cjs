@@ -1728,6 +1728,7 @@ async function assertLayoutHierarchy(
       : []
     const primaryText = visibleTextFor(document.querySelector("#add-world"))
     const activeContextPanel = document.getElementById(expectedPanelId)
+    const topbar = document.querySelector(".map-topbar")
     const visiblePrimaryActions = activeContextPanel instanceof HTMLElement
       ? Array.from(activeContextPanel.querySelectorAll(".primary-action"))
           .filter(isVisible)
@@ -1736,6 +1737,14 @@ async function assertLayoutHierarchy(
             text: element.textContent?.trim() ?? "",
           }))
       : []
+    const directWorldStoryMoments = Array.from(
+      document.querySelectorAll("#add-world > .story-moment"),
+    )
+      .filter(isVisible)
+      .map((element) => ({
+        text: element.textContent?.trim() ?? "",
+        rect: rectFor(element),
+      }))
 
     return {
       visibleContextPanelIds,
@@ -1746,11 +1755,14 @@ async function assertLayoutHierarchy(
       adminMenuActionVisible: isVisible(document.querySelector("#open-admin")),
       mapStageSurface: document.querySelector("#add-world")?.getAttribute("data-visual-surface"),
       topbarSurface: document.querySelector(".map-topbar")?.getAttribute("data-visual-surface"),
+      topbarVisible: isVisible(topbar),
+      topbar: rectFor(topbar),
       objectiveSurface: document.querySelector("#first-playable-panel")?.getAttribute("data-visual-surface"),
       mapHudSurface: document.querySelector(".map-hud")?.getAttribute("data-visual-surface"),
       mapHud: rectFor(mapHud),
       mapHudChildren,
       cameraControls: rectFor(document.querySelector(".map-camera-controls")),
+      directWorldStoryMoments,
       visibleDebugSelectors: debugSelectors.filter((selector) => isVisible(document.querySelector(selector))),
       primaryText,
       viewport: {
@@ -1800,8 +1812,21 @@ async function assertLayoutHierarchy(
   }
   assert.equal(hierarchy.mapStageSurface, "map-stage")
   assert.equal(hierarchy.topbarSurface, "status")
+  assert.equal(hierarchy.topbarVisible, true, "The top status/navigation bar should be visible.")
+  assert.ok(hierarchy.topbar, "Top status/navigation bar should have layout bounds.")
+  assert.ok(
+    hierarchy.topbar.top >= -1 && hierarchy.topbar.bottom <= 58,
+    `Top status/navigation bar should stay pinned to the top edge, saw ${JSON.stringify(
+      hierarchy.topbar,
+    )}.`,
+  )
   assert.equal(hierarchy.objectiveSurface, "objective")
   assert.equal(hierarchy.mapHudSurface, "map-controls")
+  assert.deepEqual(
+    hierarchy.directWorldStoryMoments,
+    [],
+    "Story/narrative copy should live inside the contextual panel, not directly under the map header.",
+  )
   assert.equal(hierarchy.adminViewVisible, false, "Admin drawer should be hidden.")
   assert.equal(hierarchy.shellMenuVisible, true, "Menu button should expose Admin access.")
   assert.equal(hierarchy.adminMenuActionVisible, false, "Admin action should stay hidden until Menu opens.")

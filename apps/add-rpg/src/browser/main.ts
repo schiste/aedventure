@@ -873,7 +873,6 @@ function AddRpgApp() {
               </div>
             </div>
           </div>
-          ${() => storyMomentBlock()}
           ${() => contextualPanel()}
           ${() => travelDialogView()}
           <section
@@ -4052,6 +4051,7 @@ function discoveryPanelBody(): unknown {
   if (discoveryPanelCollapsed()) return null
   return html`
     <div id="discovery-panel-body" class="discovery-panel-body">
+      ${() => storyMomentBlock()}
       <div class="discovery-movement">
         <span>${() => discoveryState()?.movement.title ?? "Scout one step at a time"}</span>
         <small>${() => discoveryMovementMetricCopy()}</small>
