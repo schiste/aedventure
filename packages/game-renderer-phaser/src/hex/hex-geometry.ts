@@ -21,7 +21,7 @@ export function hexCellPolygonPoints(
   radius: number,
 ): readonly TopologyVector2[] {
   return Array.from({ length: 6 }, (_, side) => {
-    const angle = ((60 * side - 30) * Math.PI) / 180
+    const angle = (60 * side * Math.PI) / 180
     return {
       x: center.x + radius * Math.cos(angle),
       y: center.y + radius * Math.sin(angle),

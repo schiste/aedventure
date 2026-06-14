@@ -57,7 +57,7 @@ async function main() {
       "@aedventure/game-renderer-phaser/hex-geometry",
     ])
     assert.match(initial.coordinateSystem, /square uses x\/y/i)
-    assert.match(initial.coordinateSystem, /hex uses pointy-top axial q\/r/i)
+    assert.match(initial.coordinateSystem, /hex uses flat-top axial q\/r/i)
 
     await page.evaluate(() => window.advanceTime?.(120))
     const advanced = await renderGameToText(page)

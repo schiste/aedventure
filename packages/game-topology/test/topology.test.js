@@ -105,12 +105,12 @@ const hex = createHexTopology({
 assert.equal(hex.kind, "hex")
 assert.deepEqual(roundVector(hex.cellToWorld(createHexCoord(0, 0))), { x: 100, y: 50 })
 assert.deepEqual(roundVector(hex.cellToWorld(createHexCoord(1, 0))), {
-  x: 117.321,
-  y: 50,
+  x: 115,
+  y: 58.66,
 })
 assert.deepEqual(roundVector(hex.cellToWorld(createHexCoord(0, 1))), {
-  x: 108.66,
-  y: 65,
+  x: 100,
+  y: 67.321,
 })
 assert.deepEqual(hex.worldToCell(hex.cellToWorld(createHexCoord(1, -1))), createHexCoord(1, -1))
 assert.deepEqual(hex.worldToCell({ x: 500, y: 500 }), null)
@@ -142,8 +142,8 @@ assert.equal(hexCoordInBounds(createHexCoord(1, -1), hexBoundsFromRadius(1)), tr
 assert.equal(hexCoordInBounds(createHexCoord(1, 1), hexBoundsFromRadius(1)), false)
 
 assert.deepEqual(roundVector(hexToWorld(createHexCoord(-1, 2), 12)), {
-  x: 0,
-  y: 36,
+  x: -18,
+  y: 31.177,
 })
 assert.deepEqual(worldToHex(hexToWorld(createHexCoord(-1, 2), 12), 12), createHexCoord(-1, 2))
 

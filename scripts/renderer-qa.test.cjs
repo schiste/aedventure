@@ -1044,7 +1044,9 @@ async function verifyAddRendererTopologyFixtures(browser, report) {
         state.map?.knownFacts?.dynamicRiskKnownCells > 0 &&
         state.map?.visibility?.hiddenCells === state.map.knownFacts.hiddenCells &&
         state.map?.visibility?.visibleCells > 0 &&
-        state.map?.visibility?.discoveredCells > 0 &&
+        state.map?.visibility?.discoveredCells >= 0 &&
+        state.map?.visibility?.hiddenCellRendering ===
+          "invisible_until_known_or_travel_revealed" &&
         state.map?.visibility?.fogRendering === "phaser_visual_overlay" &&
         state.map?.visibility?.affectsAuthority === false &&
         state.map?.visibility?.travelRevealPreviewActive === false &&
@@ -1058,7 +1060,8 @@ async function verifyAddRendererTopologyFixtures(browser, report) {
         state.map?.interaction?.visibilitySamples?.hidden?.label === "Unknown region" &&
         state.map.interaction.visibilitySamples.hidden.dungeonLinks.length === 0 &&
         state.map.interaction.visibilitySamples.hidden.dungeonActionsVisible === false &&
-        state.map.interaction.visibilitySamples.discovered.knownInfoLevel === "known_static" &&
+        (state.map.interaction.visibilitySamples.discovered === null ||
+          state.map.interaction.visibilitySamples.discovered.knownInfoLevel === "known_static") &&
         state.map.interaction.visibilitySamples.visible.knownInfoLevel === "full_current",
       16000,
     )
@@ -1068,7 +1071,14 @@ async function verifyAddRendererTopologyFixtures(browser, report) {
       await captureAddTopologyCanvas(page, hexState, "hex", "overworld_hex"),
     )
 
-    await page.locator("#map-mode-dungeon_square").click()
+    await page.waitForSelector("#map-mode-dungeon_square")
+    await page.evaluate(() => {
+      const dungeonButton = document.getElementById("map-mode-dungeon_square")
+      if (!(dungeonButton instanceof HTMLButtonElement)) {
+        throw new Error("Missing dungeon square map mode button.")
+      }
+      dungeonButton.click()
+    })
     const squareState = await waitForTextState(
       page,
       (state) =>

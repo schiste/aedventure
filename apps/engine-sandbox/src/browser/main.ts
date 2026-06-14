@@ -832,7 +832,7 @@ function createTextState(): SandboxTextState {
   return {
     app: "engine-sandbox",
     coordinateSystem:
-      "origin top-left, x right, y down; square uses x/y cells; hex uses pointy-top axial q/r cells",
+      "origin top-left, x right, y down; square uses x/y cells; hex uses flat-top axial q/r cells",
     engineBoundary: {
       domain: "neutral-engine-fixture",
       renderer: "canvas-topology-fixture",
