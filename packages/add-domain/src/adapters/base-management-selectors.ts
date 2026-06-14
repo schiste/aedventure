@@ -1872,10 +1872,10 @@ function selectRecommendedBaseAction(
   return {
     id: "wait",
     label: "Let the base run",
-    detail: "No immediate player action is available; time or exploration should unlock the next move.",
+    detail: "Advance the base by 1 minute using current assignments and rates.",
     kind: "wait",
-    targetId: null,
-    enabled: false,
+    targetId: "wait:60",
+    enabled: true,
   }
 }
 

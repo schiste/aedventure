@@ -15,6 +15,11 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   the objective tracker auto-collapses once into an "Arc complete" journal chip
   instead of competing with Return/Base/Dungeon panels. Smoke now asserts the
   completed tracker is compact during the offline return review.
+- ADD Base is now the earned next mode after Studio arrival: once the Base view
+  opens, the shared current-action surface prioritizes the `base_loop` action,
+  assigns the Hero through the recommended Base role so rate changes are
+  visible, and exposes an enabled 1m "Let the base run" command tied to the
+  wait forecast.
 - Verification: `npm --workspace @aedventure/add-rpg run build`, `npm run
   smoke:add-rpg`, local web-game client against `http://127.0.0.1:5177/app/`,
   and full `npm run check` passed. The in-app Browser plugin was unavailable in

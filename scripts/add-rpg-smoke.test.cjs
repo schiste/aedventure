@@ -903,8 +903,9 @@ async function exerciseBaseManagementSurface(page, consoleErrors) {
     "Health",
     "Bottleneck",
     "Why now",
-    "Use the highlighted action",
+    "Start with the highlighted Base action",
     "Action",
+    "If I wait",
     "Return",
     "Rates",
     "Check base health",
@@ -2000,7 +2001,7 @@ async function completeFirstPlayableArc(page, consoleErrors) {
         "ADD RPG Studio arrival handoff screenshot",
       )
       await clickVisibleElementByDomId(page, "current-action-primary")
-      await waitForTextState(
+      const openedBase = await waitForTextState(
         page,
         (nextState) =>
           nextState.runtime?.error === null &&
@@ -2010,11 +2011,39 @@ async function completeFirstPlayableArc(page, consoleErrors) {
         consoleErrors,
         5000,
       )
+      assert.equal(openedBase.shell?.currentAction?.source, "base_loop")
+      assert.equal(openedBase.shell?.currentAction?.kind, "assign_role")
+      assert.equal(openedBase.shell?.currentAction?.label, "Assign the Hero")
+      assert.equal(openedBase.baseManagement?.economy?.waitForecasts?.[0]?.label, "1m")
       continue
     }
 
     const beforeDigest = firstPlayableDigest(state)
     const beforeProgressDigest = firstPlayableProgressDigest(state)
+    if (state.shell?.currentAction?.source === "base_loop") {
+      const actionDisabled = await isElementDisabledByDomId(page, "current-action-primary")
+      if (actionDisabled) {
+        throw new Error(
+          `Base loop action disabled before first playable completion: ${JSON.stringify(
+            state.shell?.currentAction,
+          )}`,
+        )
+      }
+      const shouldAdvanceClock = state.shell.currentAction.kind === "wait" || action.type === "tick"
+      await clickVisibleElementByDomId(page, "current-action-primary")
+      await waitForTextState(
+        page,
+        (nextState) =>
+          nextState.runtime?.error === null &&
+          (shouldAdvanceClock
+            ? firstPlayableDigest(nextState) !== beforeDigest
+            : firstPlayableProgressDigest(nextState) !== beforeProgressDigest),
+        consoleErrors,
+        shouldAdvanceClock ? 18000 : 8000,
+      )
+      continue
+    }
+
     assert.equal(
       state.shell?.currentAction?.source,
       "first_playable",
@@ -2749,8 +2778,9 @@ async function exerciseSurvivorCaveDungeonEntry(page, consoleErrors) {
     before.map.landmarks.survivorCaveViewport,
     (state) =>
       state.mapMode?.active === "overworld_hex" &&
-      state.map?.interaction?.selectedCell === before.map.character.cell &&
-      state.map?.character?.coord === state.map?.landmarks?.survivorCave,
+      state.map?.character?.coord === state.map?.landmarks?.survivorCave &&
+      state.discovery?.phase === "enter_dungeon" &&
+      state.discovery?.dungeonEntryAvailable === true,
     consoleErrors,
   )
   assert.ok(

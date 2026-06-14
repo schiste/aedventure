@@ -1667,7 +1667,7 @@ function baseManagementCommandStrip(state: AddBaseManagementState): unknown {
       <div class="base-bottleneck-rates" aria-label="Current base rates">
         ${() => baseRateWatchChips(state)}
       </div>
-      <span class="base-command-note">Use the highlighted action above when you are ready.</span>
+      <span class="base-command-note">Start with the highlighted Base action, then watch rates and the 1m forecast change.</span>
     </article>
   `
 }
@@ -2201,6 +2201,45 @@ function currentActionState(
   const baseHandoff = baseHandoffCurrentAction()
   if (baseHandoff) return baseHandoff
 
+  const base = baseManagementState()
+  if (mapMode() === "base_square" && base) {
+    if (
+      firstPlayable &&
+      !firstPlayable.complete &&
+      firstStep?.action &&
+      !(firstStep.id === "assign-hero-crew" && !snapshot()?.roster.heroAssigned)
+    ) {
+      return {
+        source: "base_loop",
+        sourceLabel: "Base loop",
+        label: firstStep.actionLabel ?? firstStep.label,
+        detail: firstStep.detail,
+        kind: firstStep.id,
+        enabled: true,
+        primaryLabel: firstStep.actionLabel,
+        primaryEnabled: true,
+        metaLabel: base.playerLoop.currentStepId.replaceAll("_", " "),
+        progressLabel: firstStep.label,
+        actionId: `first-playable:${firstStep.id}`,
+      }
+    }
+
+    const action = base.recommendedAction
+    return {
+      source: "base_loop",
+      sourceLabel: "Base loop",
+      label: action.label,
+      detail: action.detail,
+      kind: action.kind,
+      enabled: action.enabled,
+      primaryLabel: action.enabled && action.targetId ? action.label : null,
+      primaryEnabled: action.enabled && Boolean(action.targetId),
+      metaLabel: base.playerLoop.currentStepId.replaceAll("_", " "),
+      progressLabel: base.playerLoop.decisionHint,
+      actionId: action.targetId,
+    }
+  }
+
   if (firstPlayable && !firstPlayable.complete && firstStep) {
     const routeStep =
       firstStep.id === OPENING_TRAVEL_STEP_ID
@@ -2219,24 +2258,6 @@ function currentActionState(
       metaLabel: `${firstPlayable.completedCount}/${firstPlayable.totalCount}`,
       progressLabel: firstStep.label,
       actionId: firstStep.action ? `first-playable:${firstStep.id}` : null,
-    }
-  }
-
-  const base = baseManagementState()
-  if (mapMode() === "base_square" && base) {
-    const action = base.recommendedAction
-    return {
-      source: "base_loop",
-      sourceLabel: "Base loop",
-      label: action.label,
-      detail: action.detail,
-      kind: action.kind,
-      enabled: action.enabled,
-      primaryLabel: action.enabled && action.targetId ? action.label : null,
-      primaryEnabled: action.enabled && Boolean(action.targetId),
-      metaLabel: base.playerLoop.currentStepId.replaceAll("_", " "),
-      progressLabel: base.playerLoop.decisionHint,
-      actionId: action.targetId,
     }
   }
 
@@ -2499,6 +2520,7 @@ function interfaceStatusCopy(): string {
 function basePlayerLoopPanel(state: AddBaseManagementState): unknown {
   const loop = state.playerLoop
   const currentStep = loop.steps.find((step) => step.status === "current")
+  const waitForecast = state.economy.waitForecasts[0] ?? null
   return html`
     <section
       id="base-player-loop"
@@ -2509,7 +2531,9 @@ function basePlayerLoopPanel(state: AddBaseManagementState): unknown {
       <header>
         <span>Player loop</span>
         <strong>${currentStep?.label ?? "Decide"}</strong>
-        <small title=${loop.summary}>${leadUiCopy(loop.summary, 74)}</small>
+        <small title=${loop.summary}>
+          Assign the Hero, check the bottleneck, watch rates, then decide if waiting helps.
+        </small>
       </header>
       <div class="base-loop-focus-grid">
         <article data-severity=${loop.health.severity}>
@@ -2526,6 +2550,13 @@ function basePlayerLoopPanel(state: AddBaseManagementState): unknown {
           <span>Action</span>
           <strong>${state.recommendedAction.label}</strong>
           <small title=${state.recommendedAction.detail}>${leadUiCopy(state.recommendedAction.detail, 50)}</small>
+        </article>
+        <article data-severity="neutral">
+          <span>If I wait</span>
+          <strong>${waitForecast?.label ?? "Forecast"}</strong>
+          <small title=${waitForecast?.summary ?? state.economy.offlinePreview.summary}>
+            ${leadUiCopy(waitForecast?.summary ?? state.economy.offlinePreview.summary, 50)}
+          </small>
         </article>
         <article data-severity="neutral">
           <span>Return</span>
@@ -6048,10 +6079,7 @@ async function runBaseRecommendedAction(state: AddBaseManagementState): Promise<
   switch (action.kind) {
     case "assign_role":
       if (!snapshot()?.roster.heroAssigned) {
-        await sendAndWaitForSnapshot(() => {
-          setLastCommand("assign_hero")
-          client.assignHero(true)
-        })
+        await setHeroRole(action.targetId)
         return
       }
       await setRoleCrew(
@@ -6079,8 +6107,11 @@ async function runBaseRecommendedAction(state: AddBaseManagementState): Promise<
     case "recruit_survivor":
       await recruitFromSurvivorCave()
       return
-    case "wait":
+    case "wait": {
+      const horizonSeconds = state.economy.waitForecasts[0]?.horizonSeconds ?? 60
+      await tickRuntime(horizonSeconds, { queue: true })
       return
+    }
   }
 }
 
@@ -6096,6 +6127,10 @@ async function runCurrentAction(): Promise<void> {
       returnToOverworldFromDungeon()
       return
     case "base_loop": {
+      if (action.actionId?.startsWith("first-playable:")) {
+        await runFirstPlayableAction()
+        return
+      }
       const state = baseManagementState()
       if (state) await runBaseRecommendedAction(state)
       return
