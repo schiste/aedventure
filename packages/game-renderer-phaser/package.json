@@ -18,7 +18,7 @@
   },
   "scripts": {
     "build": "tsc -b",
-    "test": "node test/renderer-boundary.test.js"
+    "test": "node test/renderer-boundary.test.js && node test/frame-budget.test.js"
   },
   "dependencies": {
     "@aedventure/game-assets": "0.1.0",

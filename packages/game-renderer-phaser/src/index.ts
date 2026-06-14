@@ -6,6 +6,13 @@ export type { RendererHostOptions } from "./shared/renderer-host"
 export { TileWorldScene } from "./renderer/tile-world-scene"
 export { RendererSceneManager } from "./renderer/renderer-scene-manager"
 export {
+  type FrameBudget,
+  type FrameBudgetResult,
+  SMOKE_FRAME_BUDGET,
+  createFramePacer,
+  evaluateFrameBudget,
+} from "./renderer/frame-budget"
+export {
   SquareTilemapRenderer,
   SquareTilemapRenderer as TilemapRenderer,
 } from "./square/square-tilemap-renderer"

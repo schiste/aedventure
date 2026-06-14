@@ -72,3 +72,46 @@ for the big-map gate:
 The renderer QA artifact also records per-size sample counts, render duration,
 display object count, texture count, visible/culled object counts, and culling
 ratio so regressions are diagnosable without opening the app manually.
+
+## Frame pacing (optional)
+
+`createFramePacer(targetFps)` (from `@aedventure/game-renderer-phaser`) gives the
+render loop an optional cap: call `shouldRender(now)` each animation frame and
+only draw when it returns true. `targetFps <= 0` disables pacing (render every
+frame). Use it to trade smoothness for battery/heat on weak devices or when the
+tab is backgrounded — wire it in the app's render loop and drive `setTargetFps`
+from a settings preference. Deterministic (caller supplies `now`), so it's
+testable.
+
+## Perf regression check (smoke + CI)
+
+`evaluateFrameBudget(samples, budget)` reduces a list of frame durations to
+`{ averageMs, p95Ms, maxMs, pass, breaches }` against a `FrameBudget`. The
+default `SMOKE_FRAME_BUDGET` mirrors the headless thresholds above (avg 50 /
+p95 90 / max 250 ms). The smoke collects RAF frame times over a benchmark map
+and asserts `evaluateFrameBudget(samples).pass`:
+
+```ts
+import { evaluateFrameBudget } from "@aedventure/game-renderer-phaser"
+const result = evaluateFrameBudget(collectedFrameMs)
+assert.ok(result.pass, `frame budget breached: ${result.breaches.join("; ")}`)
+```
+
+Run per benchmark map (20x15 / 50x40 / 100x80) so a regression on the large map
+fails CI. Pure + unit-tested in `test/frame-budget.test.js`.
+
+## Delta snapshots (main-thread payload)
+
+The worker sends only changed top-level snapshot sections (see T1.5
+`snapshot-delta`), so the large, rarely-changing arrays (e.g. ~91 hexes) are
+omitted from most `postMessage` payloads. This shrinks structured-clone +
+main-thread merge cost per tick, protecting the UI thread's frame budget. The
+diff runs on the worker thread, off the render path.
+
+## LOD / culling
+
+Object sprites use viewport culling with a pixel margin (`OBJECT_CULL_MARGIN_PX`,
+reported in renderer telemetry). Future knob: a distance/zoom LOD that drops
+sub-pixel or low-salience objects on the large benchmark map when the visible
+sprite count exceeds a threshold — gated behind the same frame-budget check so
+its effect is measured, not assumed.
