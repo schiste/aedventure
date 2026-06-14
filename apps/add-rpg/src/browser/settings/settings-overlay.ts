@@ -10,7 +10,10 @@ import { createSignal } from "solid-js"
 import html from "solid-js/html"
 import { render } from "solid-js/web"
 
+import { PSEUDO_LOCALE, onLocaleChange, t } from "@aedventure/add-domain"
+
 import "./settings.css"
+import "../i18n/boot" // registers the catalog + sets the initial locale
 import {
   type AddSettings,
   type ColorBlindMode,
@@ -22,6 +25,15 @@ import {
 
 const [settings, setSettings] = createSignal<AddSettings>(loadSettings())
 const [open, setOpen] = createSignal(false)
+
+// Re-render labels when the locale changes. `tr` reads the tick inside a
+// reactive scope so Solid re-evaluates every label on a locale switch.
+const [localeTick, setLocaleTick] = createSignal(0)
+onLocaleChange(() => setLocaleTick((n) => n + 1))
+function tr(key: string): string {
+  localeTick()
+  return t(key)
+}
 
 // Apply persisted render preferences immediately on boot.
 applyDomSettings(settings())
@@ -54,7 +66,13 @@ const COLOR_BLIND_OPTIONS: readonly ColorBlindMode[] = [
   "tritanopia",
 ]
 
-const LANGUAGE_OPTIONS = ["en"] as const
+// "en" is the baseline; the pseudo-locale flips every translated string so
+// untranslated/hardcoded text stands out (a translation QA aid).
+const LANGUAGE_OPTIONS = ["en", PSEUDO_LOCALE] as const
+const LANGUAGE_LABELS: Record<string, string> = {
+  en: "English",
+  [PSEUDO_LOCALE]: "Pseudo (QA)",
+}
 
 function pct(value: number): string {
   return `${Math.round(value * 100)}`
@@ -65,8 +83,8 @@ function SettingsOverlay() {
     <button
       class="add-settings-button"
       type="button"
-      aria-label="Open settings"
-      title="Settings"
+      aria-label=${() => tr("settings.open")}
+      title=${() => tr("settings.title")}
       onClick=${() => setOpen(true)}
     >
       ⚙
@@ -84,16 +102,18 @@ function SettingsOverlay() {
               }}
             >
               <div class="add-settings-panel">
-                <h2>Settings</h2>
+                <h2>${() => tr("settings.title")}</h2>
 
-                <div class="add-settings-section">Audio</div>
-                ${volumeRow("Master", "masterVolume")}
-                ${volumeRow("Music", "musicVolume")}
-                ${volumeRow("Sound effects", "sfxVolume")}
+                <div class="add-settings-section">${() => tr("settings.section.audio")}</div>
+                ${volumeRow("settings.master", "masterVolume")}
+                ${volumeRow("settings.music", "musicVolume")}
+                ${volumeRow("settings.sfx", "sfxVolume")}
 
-                <div class="add-settings-section">Accessibility</div>
+                <div class="add-settings-section">
+                  ${() => tr("settings.section.accessibility")}
+                </div>
                 <div class="add-settings-row">
-                  <label for="add-set-reduced">Reduced motion</label>
+                  <label for="add-set-reduced">${() => tr("settings.reducedMotion")}</label>
                   <input
                     id="add-set-reduced"
                     type="checkbox"
@@ -103,7 +123,7 @@ function SettingsOverlay() {
                   />
                 </div>
                 <div class="add-settings-row">
-                  <label for="add-set-cb">Color-blind mode</label>
+                  <label for="add-set-cb">${() => tr("settings.colorBlind")}</label>
                   <select
                     id="add-set-cb"
                     onChange=${(event: Event) =>
@@ -114,14 +134,14 @@ function SettingsOverlay() {
                     ${COLOR_BLIND_OPTIONS.map(
                       (mode) => html`
                         <option value=${mode} selected=${() => settings().colorBlindMode === mode}>
-                          ${mode}
+                          ${() => tr(`colorBlind.${mode}`)}
                         </option>
                       `,
                     )}
                   </select>
                 </div>
                 <div class="add-settings-row">
-                  <label for="add-set-scale">Text size</label>
+                  <label for="add-set-scale">${() => tr("settings.textSize")}</label>
                   <input
                     id="add-set-scale"
                     type="range"
@@ -135,9 +155,9 @@ function SettingsOverlay() {
                   <span class="add-settings-value">${() => pct(settings().textScale)}%</span>
                 </div>
 
-                <div class="add-settings-section">Language</div>
+                <div class="add-settings-section">${() => tr("settings.section.language")}</div>
                 <div class="add-settings-row">
-                  <label for="add-set-lang">Language</label>
+                  <label for="add-set-lang">${() => tr("settings.language")}</label>
                   <select
                     id="add-set-lang"
                     onChange=${(event: Event) =>
@@ -146,26 +166,25 @@ function SettingsOverlay() {
                     ${LANGUAGE_OPTIONS.map(
                       (lang) => html`
                         <option value=${lang} selected=${() => settings().language === lang}>
-                          ${lang}
+                          ${LANGUAGE_LABELS[lang] ?? lang}
                         </option>
                       `,
                     )}
                   </select>
                 </div>
 
-                <p class="add-settings-note">
-                  Motion, color, and text settings apply instantly. Volume and language take effect
-                  as the audio and localization systems adopt them.
-                </p>
+                <p class="add-settings-note">${() => tr("settings.note")}</p>
 
                 <div class="add-settings-actions">
                   <button
                     type="button"
                     onClick=${() => update({ ...DEFAULT_SETTINGS })}
                   >
-                    Reset to defaults
+                    ${() => tr("settings.reset")}
                   </button>
-                  <button type="button" onClick=${() => setOpen(false)}>Done</button>
+                  <button type="button" onClick=${() => setOpen(false)}>
+                    ${() => tr("settings.done")}
+                  </button>
                 </div>
               </div>
             </div>
@@ -174,11 +193,11 @@ function SettingsOverlay() {
   `
 }
 
-function volumeRow(label: string, key: "masterVolume" | "musicVolume" | "sfxVolume") {
+function volumeRow(labelKey: string, key: "masterVolume" | "musicVolume" | "sfxVolume") {
   const inputId = `add-set-${key}`
   return html`
     <div class="add-settings-row">
-      <label for=${inputId}>${label}</label>
+      <label for=${inputId}>${() => tr(labelKey)}</label>
       <input
         id=${inputId}
         type="range"
