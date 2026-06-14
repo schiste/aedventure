@@ -354,6 +354,146 @@ mod tests {
     }
 
     #[test]
+    fn harmonics_tier_steps_at_each_threshold() {
+        let simulation = Simulation::new();
+        let power = crate::balance_snapshot().power;
+        // research_harmonic_study_level 0 → no threshold reduction.
+        assert_eq!(simulation.harmonics_tier_from_rate(0.0), 0);
+        assert_eq!(
+            simulation.harmonics_tier_from_rate(power.harmonics_tier_one_threshold - 0.001),
+            0
+        );
+        assert_eq!(
+            simulation.harmonics_tier_from_rate(power.harmonics_tier_one_threshold),
+            1
+        );
+        assert_eq!(
+            simulation.harmonics_tier_from_rate(power.harmonics_tier_two_threshold),
+            2
+        );
+        assert_eq!(
+            simulation.harmonics_tier_from_rate(power.harmonics_tier_three_threshold),
+            3
+        );
+    }
+
+    #[test]
+    fn brownout_severity_scales_and_tolerances_reduce_it() {
+        let mut simulation = Simulation::new();
+        // No shortfall → no brownout.
+        assert_eq!(simulation.brownout_severity(10.0, 10.0, 0), 0.0);
+
+        // Half the requested upkeep is met → raw severity 0.5 at tier 0.
+        let raw = simulation.brownout_severity(10.0, 5.0, 0);
+        assert!((raw - 0.5).abs() < 1e-6, "raw severity should be 0.5, got {raw}");
+
+        // Higher harmonics tiers carry brownout tolerance, reducing severity.
+        let tier2 = simulation.brownout_severity(10.0, 5.0, 2);
+        let tier3 = simulation.brownout_severity(10.0, 5.0, 3);
+        assert!(tier2 < raw, "tier 2 tolerance should reduce severity");
+        assert!(tier3 < tier2, "tier 3 adds more tolerance");
+
+        // A powered Mix Console adds tolerance too.
+        {
+            let state = simulation.state_mut();
+            state.base.mix_console_built = true;
+            state.stations.insert(
+                "station.mix_console".to_string(),
+                StationState {
+                    requested_enabled: true,
+                    is_powered: true,
+                    power_order: 40,
+                },
+            );
+        }
+        let with_mix = simulation.brownout_severity(10.0, 5.0, 0);
+        assert!(with_mix < raw, "mix console tolerance should reduce severity");
+    }
+
+    #[test]
+    fn recovery_is_blocked_by_a_severe_brownout() {
+        let mut simulation = Simulation::new();
+        let survival = crate::balance_snapshot().survival;
+
+        // Severe brownout (at/over the stop threshold) halts recovery entirely.
+        {
+            let state = simulation.state_mut();
+            state.power.brownout_active = true;
+            state.power.brownout_severity = survival.recovery_brownout_stop_threshold + 0.01;
+        }
+        assert_eq!(simulation.hero_recovery_rate_multiplier(), 0.0);
+
+        // A milder brownout slows recovery without stopping it.
+        {
+            let state = simulation.state_mut();
+            state.power.brownout_severity =
+                (survival.recovery_brownout_stop_threshold - 0.05).max(0.01);
+        }
+        let mild = simulation.hero_recovery_rate_multiplier();
+        assert!(mild > 0.0 && mild < 1.0, "mild brownout should slow recovery, got {mild}");
+
+        // No brownout → full-speed recovery.
+        {
+            let state = simulation.state_mut();
+            state.power.brownout_active = false;
+            state.power.brownout_severity = 0.0;
+        }
+        assert_eq!(simulation.hero_recovery_rate_multiplier(), 1.0);
+    }
+
+    #[test]
+    fn brownout_cascade_drops_highest_power_order_station_first() {
+        let mut simulation = Simulation::new();
+        {
+            let state = simulation.state_mut();
+            // Two manual-power stations: Resonance Chamber (order 30) and
+            // Research Booth (order 60). Zero staff → no life-support draw.
+            state.base.resonance_chamber_built = true;
+            state.base.research_booth_built = true;
+            state.roster.total_crew = 0;
+            state.roster.hero_assigned = false;
+            state.roster.crew_by_role.clear();
+            state.stations.insert(
+                "station.resonance_chamber".to_string(),
+                StationState {
+                    requested_enabled: true,
+                    is_powered: true,
+                    power_order: 30,
+                },
+            );
+            state.stations.insert(
+                "station.research_booth".to_string(),
+                StationState {
+                    requested_enabled: true,
+                    is_powered: true,
+                    power_order: 60,
+                },
+            );
+            // Covers one station's upkeep (0.12) but not both (0.12 + 0.14).
+            state.resources.chorus = 0.20;
+        }
+
+        simulation.resolve_station_power(1.0);
+
+        let powered = |id: &str| {
+            simulation
+                .state()
+                .stations
+                .get(id)
+                .map(|station| station.is_powered)
+                .unwrap_or(false)
+        };
+        assert!(
+            powered("station.resonance_chamber"),
+            "the lower power-order station is kept"
+        );
+        assert!(
+            !powered("station.research_booth"),
+            "the higher power-order station is dropped first"
+        );
+    }
+
+    #[test]
     fn rng_helpers_have_expected_ranges() {
         let mut simulation = Simulation::new();
         let f = simulation.next_rng_f64();

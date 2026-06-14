@@ -127,6 +127,13 @@ impl Simulation {
         self.state
     }
 
+    /// Mutable state access for tests that need to construct specific scenarios
+    /// (e.g. a brownout) without driving the full sim to reach them.
+    #[cfg(test)]
+    pub(crate) fn state_mut(&mut self) -> &mut GameState {
+        &mut self.state
+    }
+
     pub fn apply(&mut self, command: GameCommand) {
         // `events` reflects only what this command/tick produced.
         self.state.events.clear();
@@ -815,7 +822,7 @@ impl Simulation {
             / self.perk_multiplier(PerkStat::HeroRecovery)
     }
 
-    fn hero_recovery_rate_multiplier(&self) -> f64 {
+    pub(crate) fn hero_recovery_rate_multiplier(&self) -> f64 {
         if self.state.power.brownout_active
             && self.state.power.brownout_severity
                 >= self.balance().survival.recovery_brownout_stop_threshold
@@ -2681,7 +2688,7 @@ impl Simulation {
         }
     }
 
-    fn brownout_severity(
+    pub(crate) fn brownout_severity(
         &self,
         requested_upkeep: f64,
         active_upkeep: f64,
@@ -2850,7 +2857,7 @@ impl Simulation {
         balance_snapshot()
     }
 
-    fn harmonics_tier_from_rate(&self, harmonics_per_second: f64) -> u8 {
+    pub(crate) fn harmonics_tier_from_rate(&self, harmonics_per_second: f64) -> u8 {
         let power = self.balance().power;
         let threshold_multiplier = (1.0
             - f64::from(self.state.processing.research_harmonic_study_level)
@@ -3025,7 +3032,7 @@ impl Simulation {
         self.state.power.field_multiplier = field_multiplier;
     }
 
-    fn resolve_station_power(&mut self, seconds: f64) {
+    pub(crate) fn resolve_station_power(&mut self, seconds: f64) {
         self.normalize_station_state();
         let mandatory_upkeep = self.life_support_upkeep_per_second() * seconds;
         let mut candidates = stations()
