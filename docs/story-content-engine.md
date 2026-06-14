@@ -212,8 +212,9 @@ These are accepted short-term gaps, not desired end state:
 - `ADD_FIRST_PLAYABLE_SCRIPT` duplicates part of the story/onboarding spine.
 - current-action routing still has app-level glue for some first-playable and
   Base handoff behavior.
-- TypeScript `ConditionDef` and content codegen currently expose fewer condition
-  variants than the Rust condition engine supports.
+- TypeScript `ConditionDef` and content codegen intentionally expose only flat
+  condition variants for now; recursive `all` / `any` / `not` authoring is
+  deferred until content needs nested logic.
 - story choices can surface through story moment UI, map interactions, and
   first-playable action paths instead of one canonical command projection.
 
@@ -231,4 +232,3 @@ Phase 0 is accepted when:
 - dependency direction is explicit
 - known transitional gaps are recorded
 - future agents have no ambiguity about where story logic belongs
-

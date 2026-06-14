@@ -8,8 +8,30 @@ import type { ConditionDef, StoryBeatDef } from "../runtime/protocol"
 // whole spine (including the formerly-orphaned 6-11) is now data-driven.
 // `worldActionId`/`relatedIds`/condition ids reference other catalogs by value.
 
-const flagSet = (flag_id: string): ConditionDef => ({ kind: "flag_set", flag_id })
-const beatDone = (beat_id: string): ConditionDef => ({ kind: "beat_completed", beat_id })
+export const storyCondition = {
+  always: (): ConditionDef => ({ kind: "always" }),
+  flagSet: (flag_id: string): ConditionDef => ({ kind: "flag_set", flag_id }),
+  flagUnset: (flag_id: string): ConditionDef => ({ kind: "flag_unset", flag_id }),
+  resourceAtLeast: (resource_id: string, amount: number): ConditionDef => ({
+    kind: "resource_at_least",
+    resource_id,
+    amount,
+  }),
+  bubbleReachAtLeast: (n: number): ConditionDef => ({ kind: "bubble_reach_at_least", n }),
+  clockSecondsAtLeast: (seconds: number): ConditionDef => ({ kind: "clock_seconds_at_least", seconds }),
+  qualityAtLeast: (key: string, value: number): ConditionDef => ({ kind: "quality_at_least", key, value }),
+  beatDone: (beat_id: string): ConditionDef => ({ kind: "beat_completed", beat_id }),
+  choiceMade: (beat_id: string, option_id: string): ConditionDef => ({ kind: "choice_made", beat_id, option_id }),
+  roleAvailable: (role_id: string): ConditionDef => ({ kind: "role_available", role_id }),
+  recruitmentEnabled: (): ConditionDef => ({ kind: "recruitment_enabled" }),
+  recruitedAny: (): ConditionDef => ({ kind: "recruited_any" }),
+  heroOutsideBubble: (): ConditionDef => ({ kind: "hero_outside_bubble" }),
+  heroForcedReturn: (): ConditionDef => ({ kind: "hero_forced_return" }),
+  heroRecovering: (): ConditionDef => ({ kind: "hero_recovering" }),
+}
+
+const flagSet = storyCondition.flagSet
+const beatDone = storyCondition.beatDone
 const NONE: ConditionDef[] = []
 
 export const STORY_BEATS: readonly StoryBeatDef[] = [

@@ -622,10 +622,16 @@ export type ConditionDef =
   | { kind: 'flag_unset'; flag_id: string }
   | { kind: 'resource_at_least'; resource_id: string; amount: number }
   | { kind: 'bubble_reach_at_least'; n: number }
+  | { kind: 'clock_seconds_at_least'; seconds: number }
+  | { kind: 'quality_at_least'; key: string; value: number }
   | { kind: 'beat_completed'; beat_id: string }
+  | { kind: 'choice_made'; beat_id: string; option_id: string }
+  | { kind: 'role_available'; role_id: string }
   | { kind: 'recruitment_enabled' }
   | { kind: 'recruited_any' }
   | { kind: 'hero_outside_bubble' }
+  | { kind: 'hero_forced_return' }
+  | { kind: 'hero_recovering' }
 
 export interface FlagDef {
   id: string
