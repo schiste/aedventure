@@ -11,6 +11,7 @@ const {
   createAddCellPresentationPolicy,
   createAddTopologyNavigationPolicy,
   createAddWorldInteractionPolicy,
+  selectAddAvailableCommands,
   selectAddVisibilitySummary,
   selectAddDiscoverySummary,
   selectAddTile,
@@ -305,18 +306,122 @@ assert.deepEqual(storyProgression.firstPlayable, firstPlayable)
 assert.equal(storyProgression.telemetrySummary.activeBeatId, "story.beat.road_to_base")
 assert.equal(ui.storyProgression.telemetrySummary.primaryActionSource, "first_playable")
 
+const availableCommands = selectAddAvailableCommands(snapshot, catalog)
+assert.ok(availableCommands.commands.every((command) => command.workerRequest?.type))
+assert.equal(availableCommands.telemetrySummary.total, availableCommands.commands.length)
+assert.equal(availableCommands.enabledCommands.every((command) => command.enabled), true)
+assert.equal(availableCommands.disabledCommands.every((command) => !command.enabled), true)
+assert.ok(
+  availableCommands.commands.some(
+    (command) =>
+      command.kind === "story_choice" &&
+      command.workerRequest.type === "chooseStoryOption" &&
+      command.related.beatId === "story.beat.road_to_base",
+  ),
+)
+assert.ok(
+  availableCommands.commands.some(
+    (command) =>
+      command.kind === "world_action" &&
+      command.workerRequest.type === "startWorldAction" &&
+      command.related.actionId === "world_action.explore_base",
+  ),
+)
+const constructionCommand = availableCommands.commands.find(
+  (command) => command.id === "construction:project.restore_studio",
+)
+assert.equal(constructionCommand.kind, "construction")
+assert.equal(constructionCommand.enabled, false)
+assert.equal(constructionCommand.workerRequest.type, "startConstruction")
+assert.match(constructionCommand.disabledReason, /Stone/)
+const exploreBaseCommand = availableCommands.commands.find(
+  (command) => command.id === "world-action:world_action.explore_base",
+)
+const heroOnlyCommand = availableCommands.commands.find(
+  (command) => command.id === "world-action:world_action.hero_only",
+)
+assert.equal(exploreBaseCommand.enabled, true)
+assert.equal(heroOnlyCommand.enabled, false)
+assert.equal(
+  heroOnlyCommand.disabledReason,
+  "Assign the Hero before starting this action.",
+)
+assert.ok(
+  availableCommands.commands.some(
+    (command) =>
+      command.kind === "recruitment" &&
+      command.workerRequest.type === "recruitFromSurvivorCave" &&
+      command.related.resourceIds.includes("resource.vibes"),
+  ),
+)
+assert.ok(
+  availableCommands.commands.some(
+    (command) =>
+      command.kind === "wait" &&
+      command.workerRequest.type === "tick" &&
+      command.workerRequest.seconds === 60,
+  ),
+)
+assert.ok(
+  availableCommands.commands.some(
+    (command) =>
+      command.kind === "base_assignment" &&
+      command.workerRequest.type === "assignHero",
+  ),
+)
+assert.ok(
+  availableCommands.commands.some(
+    (command) =>
+      command.kind === "base_assignment" &&
+      command.workerRequest.type === "setRoleCrew" &&
+      command.related.roleId === "role.crystal_bassline",
+  ),
+)
+
 function createCatalogFixture() {
   return {
     resources: [
       resource("resource.bassline", "Bassline", "band", 100),
       resource("resource.chorus", "Chorus", "band", 50),
       resource("resource.harmonics", "Harmonics", "band", 30),
+      resource("resource.stone", "Stone", "material", 10),
       resource("resource.water", "Water", "material", 20),
       resource("resource.vibes", "Vibes", "run_scoped_pool", 10),
     ],
-    roles: [],
+    roles: [
+      {
+        id: "role.crystal_bassline",
+        schemaId: "role.crystal_bassline",
+        label: "Bassline",
+        slotPool: "crystal_circle",
+        heroAllowed: true,
+        crewAllowed: true,
+        maxCrewSlots: 2,
+        uiSection: "crystal",
+        uiOrder: 1,
+      },
+    ],
     stations: [],
-    constructionOptions: [],
+    constructionOptions: [
+      {
+        id: "project.restore_studio",
+        schemaId: "project.restore_studio",
+        label: "Restore Studio",
+        group: "base_project",
+        cost: {
+          kind: "upfront",
+          resource_id: "resource.stone",
+          amount: 3,
+        },
+        duration: {
+          kind: "fixed",
+          seconds: 30,
+        },
+        requirements: [],
+        effects: [],
+        uiOrder: 1,
+      },
+    ],
     processingRecipes: [],
     worldActions: [
       worldAction("world_action.explore_base", "Explore base", false),

@@ -1,18 +1,31 @@
 import type { GameInteraction } from "@aedventure/game-world"
 
-import type { WorkerRequest } from "../runtime/protocol"
+import type { StationSpecializationPath, WorkerRequest } from "../runtime/protocol"
 
 export type AddDomainCommand =
+  | { readonly kind: "tick"; readonly seconds: number }
   | { readonly kind: "start_world_action"; readonly actionId: string }
   | { readonly kind: "choose_story_option"; readonly beatId: string; readonly optionId: string }
   | { readonly kind: "assign_hero"; readonly assigned: boolean }
   | { readonly kind: "set_hero_role"; readonly roleId: string }
   | { readonly kind: "set_role_crew"; readonly roleId: string; readonly crew: number }
+  | { readonly kind: "set_station_enabled"; readonly stationId: string; readonly enabled: boolean }
   | { readonly kind: "start_construction"; readonly optionId: string }
+  | { readonly kind: "start_processing"; readonly recipeId: string }
+  | { readonly kind: "start_resonance_recipe"; readonly recipeId: string }
+  | {
+      readonly kind: "set_station_specialization"
+      readonly stationId: string
+      readonly path: StationSpecializationPath
+    }
+  | { readonly kind: "start_expedition"; readonly targetId: string; readonly assignedCrew: number }
+  | { readonly kind: "clear_expedition_reports" }
   | { readonly kind: "recruit_from_survivor_cave" }
 
 export function workerRequestForAddCommand(command: AddDomainCommand): WorkerRequest {
   switch (command.kind) {
+    case "tick":
+      return { type: "tick", seconds: command.seconds }
     case "start_world_action":
       return { type: "startWorldAction", actionId: command.actionId }
     case "choose_story_option":
@@ -27,8 +40,32 @@ export function workerRequestForAddCommand(command: AddDomainCommand): WorkerReq
       return { type: "setHeroRole", roleId: command.roleId }
     case "set_role_crew":
       return { type: "setRoleCrew", roleId: command.roleId, crew: command.crew }
+    case "set_station_enabled":
+      return {
+        type: "setStationEnabled",
+        stationId: command.stationId,
+        enabled: command.enabled,
+      }
     case "start_construction":
       return { type: "startConstruction", optionId: command.optionId }
+    case "start_processing":
+      return { type: "startProcessing", recipeId: command.recipeId }
+    case "start_resonance_recipe":
+      return { type: "startResonanceRecipe", recipeId: command.recipeId }
+    case "set_station_specialization":
+      return {
+        type: "setStationSpecialization",
+        stationId: command.stationId,
+        path: command.path,
+      }
+    case "start_expedition":
+      return {
+        type: "startExpedition",
+        targetId: command.targetId,
+        assignedCrew: command.assignedCrew,
+      }
+    case "clear_expedition_reports":
+      return { type: "clearExpeditionReports" }
     case "recruit_from_survivor_cave":
       return { type: "recruitFromSurvivorCave" }
   }
@@ -38,6 +75,10 @@ export function addCommandForGameInteraction(
   interaction: GameInteraction,
 ): AddDomainCommand | null {
   switch (interaction.action) {
+    case "add.tick": {
+      const seconds = numberMetadata(interaction, "seconds")
+      return seconds !== undefined ? { kind: "tick", seconds } : null
+    }
     case "add.start_world_action": {
       const actionId = stringMetadata(interaction, "actionId")
       return actionId ? { kind: "start_world_action", actionId } : null
