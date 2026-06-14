@@ -355,6 +355,64 @@ mod tests {
     }
 
     #[test]
+    fn echo_scars_reduce_hero_stats() {
+        let mut simulation = Simulation::new();
+        let base_attack = simulation.hero_stats().attack;
+        {
+            let state = simulation.state_mut();
+            state.hero_survival.echo_scars = 5;
+        }
+        let scarred = simulation.hero_stats().attack;
+        // 5 scars * 2% = 10% reduction.
+        assert!(scarred < base_attack, "echo scars should weaken the Hero");
+        assert!((scarred - base_attack * 0.9).abs() < 1e-6, "expected ~10% reduction");
+    }
+
+    #[test]
+    fn resource_grants_are_capped() {
+        let mut simulation = Simulation::new();
+        let cap = simulation.state().resources.bassline_cap;
+        simulation.apply_effects(&[EffectDef::GrantResource {
+            resource_id: RESOURCE_BASSLINE,
+            amount: cap * 1000.0,
+        }]);
+        assert!(
+            (simulation.state().resources.bassline - cap).abs() < 1e-6,
+            "a grant beyond the cap is clamped to the cap"
+        );
+    }
+
+    #[test]
+    fn crew_assignment_never_exceeds_available() {
+        let mut simulation = Simulation::new();
+        // Request far more crew than exist on a role.
+        simulation.apply(GameCommand::SetRoleCrew {
+            role_id: ROLE_CRYSTAL_BASSLINE.to_string(),
+            crew: 200,
+        });
+        let assigned = *simulation
+            .state()
+            .roster
+            .crew_by_role
+            .get(ROLE_CRYSTAL_BASSLINE)
+            .unwrap_or(&0);
+        assert!(
+            assigned <= simulation.state().roster.total_crew,
+            "assigned crew never exceeds the total roster"
+        );
+    }
+
+    #[test]
+    fn recruit_cost_increases_with_index() {
+        let first = crate::recruit_cost_for_index(1);
+        let tenth = crate::recruit_cost_for_index(10);
+        let hundredth = crate::recruit_cost_for_index(100);
+        assert!(first > 0.0);
+        assert!(tenth > first, "cost should climb with each recruit");
+        assert!(hundredth > tenth, "cost keeps climbing");
+    }
+
+    #[test]
     fn quest_objectives_advance_and_apply_rewards() {
         let mut simulation = Simulation::new();
         simulation.refresh_quest_objectives();

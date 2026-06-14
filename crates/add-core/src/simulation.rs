@@ -37,6 +37,11 @@ const RESONANCE_SUPPORT_DURATION_REDUCTION_CAP: f64 = 0.35;
 const STATION_SPECIALIZATION_CONVERSION_SPEED_BONUS: f64 = 0.2;
 const STATION_SPECIALIZATION_FIELD_DURATION_BONUS: f64 = 0.12;
 
+/// Per-echo-scar multiplicative penalty to Hero combat stats, floored so scars
+/// chip away at effectiveness without ever zeroing it.
+const ECHO_SCAR_STAT_PENALTY: f64 = 0.02;
+const ECHO_SCAR_STAT_FLOOR: f64 = 0.7;
+
 #[derive(Debug, Clone)]
 pub struct Simulation {
     state: GameState,
@@ -2031,9 +2036,15 @@ impl Simulation {
         job: &ExpeditionJob,
         target_def: &ExpeditionTargetDef,
     ) -> ExpeditionReport {
-        let stone_gained = self.add_capped_resource(RESOURCE_STONE, target_def.expected_loot.stone);
-        let water_gained = self.add_capped_resource(RESOURCE_WATER, target_def.expected_loot.water);
-        let vibes_gained = self.add_capped_resource(RESOURCE_VIBES, target_def.expected_loot.vibes);
+        // Risk drives reward variance (and wound chance below): higher risk =
+        // wider swings + more danger. Seeded RNG keeps it deterministic/replayable.
+        let variance = expedition_risk_variance(job.risk);
+        let stone_amount = self.vary_reward(target_def.expected_loot.stone, variance);
+        let stone_gained = self.add_capped_resource(RESOURCE_STONE, stone_amount);
+        let water_amount = self.vary_reward(target_def.expected_loot.water, variance);
+        let water_gained = self.add_capped_resource(RESOURCE_WATER, water_amount);
+        let vibes_amount = self.vary_reward(target_def.expected_loot.vibes, variance);
+        let vibes_gained = self.add_capped_resource(RESOURCE_VIBES, vibes_amount);
         let echo_shards_gained =
             self.expedition_material_reward(target_def.expected_loot.echo_shards);
         let signal_scrap_gained =
@@ -2043,6 +2054,15 @@ impl Simulation {
         self.add_resonance_material(RESONANCE_MATERIAL_ECHO_SHARDS, echo_shards_gained);
         self.add_resonance_material(RESONANCE_MATERIAL_SIGNAL_SCRAP, signal_scrap_gained);
         self.add_resonance_material(RESONANCE_MATERIAL_HARMONIC_RESIDUE, harmonic_residue_gained);
+
+        // Wounds: a risk-driven chance, mitigated by the Hero's resilience
+        // (combat max_hp). A tougher Hero shrugs off more expedition danger.
+        let mitigation = (self.hero_stats().max_hp / 200.0).min(0.5);
+        let wound_chance = (expedition_risk_wound_chance(job.risk) * (1.0 - mitigation)).max(0.0);
+        let mut wounds = target_def.expected_loot.wounds;
+        if self.next_rng_f64() < wound_chance {
+            wounds = wounds.saturating_add(1);
+        }
 
         ExpeditionReport {
             id: job.id,
@@ -2056,7 +2076,7 @@ impl Simulation {
             echo_shards_gained,
             signal_scrap_gained,
             harmonic_residue_gained,
-            wounds: target_def.expected_loot.wounds,
+            wounds,
             clues: target_def.expected_loot.clues,
             dungeon_leads: target_def.expected_loot.dungeon_leads,
         }
@@ -3952,14 +3972,26 @@ impl Simulation {
         self.next_rng_u64() % bound
     }
 
+    /// Scale a base reward by `±variance` using the seeded PRNG (0 stays 0).
+    fn vary_reward(&mut self, base: f64, variance: f64) -> f64 {
+        if base <= 0.0 {
+            return 0.0;
+        }
+        base * (1.0 - variance + 2.0 * variance * self.next_rng_f64())
+    }
+
     /// The Hero's aggregated combat stats. Today this is base + per-level scaling;
     /// the single seam where skills and gear bonuses will fold in (T2.1 step 2/3).
     pub(crate) fn hero_stats(&self) -> HeroStats {
         let combat = self.balance().combat;
         let level = f64::from(self.hero_total_level());
+        // Echo scars (accrued on every forced return) are a permanent, minor
+        // drag on the Hero's effectiveness — a lasting cost for over-extending.
+        let scars = f64::from(self.state.hero_survival.echo_scars);
+        let scar_factor = (1.0 - scars * ECHO_SCAR_STAT_PENALTY).max(ECHO_SCAR_STAT_FLOOR);
         HeroStats {
-            attack: combat.base_attack + level * combat.attack_per_level,
-            max_hp: combat.base_hp + level * combat.hp_per_level,
+            attack: (combat.base_attack + level * combat.attack_per_level) * scar_factor,
+            max_hp: (combat.base_hp + level * combat.hp_per_level) * scar_factor,
         }
     }
 
@@ -4125,6 +4157,24 @@ impl Simulation {
 pub(crate) struct HeroStats {
     pub attack: f64,
     pub max_hp: f64,
+}
+
+/// Reward variance fraction for an expedition risk tier (wider swings = riskier).
+fn expedition_risk_variance(risk: ExpeditionRiskState) -> f64 {
+    match risk {
+        ExpeditionRiskState::Low => 0.10,
+        ExpeditionRiskState::Medium => 0.20,
+        ExpeditionRiskState::High => 0.35,
+    }
+}
+
+/// Base chance an expedition inflicts an extra wound, before Hero mitigation.
+fn expedition_risk_wound_chance(risk: ExpeditionRiskState) -> f64 {
+    match risk {
+        ExpeditionRiskState::Low => 0.0,
+        ExpeditionRiskState::Medium => 0.30,
+        ExpeditionRiskState::High => 0.60,
+    }
 }
 
 /// Whether `spend_resource` recognizes (and can actually deduct) this resource.
