@@ -123,6 +123,14 @@ async function handleMessage(message: WorkerRequest) {
         runtime?.spendBassline(message.amount)
         postSnapshotUpdate()
         break
+      case 'setBalanceOverride':
+        runtime?.setBalanceOverride(message.path, message.value)
+        postSnapshotUpdate()
+        break
+      case 'resetBalanceOverrides':
+        runtime?.resetBalanceOverrides()
+        postSnapshotUpdate()
+        break
       case 'exportSave':
         postWorkerEvent({
           type: 'save',

@@ -5,6 +5,7 @@ pub mod save;
 pub mod simulation;
 pub mod state;
 pub mod topology;
+pub mod tuning;
 
 pub use command::GameCommand;
 pub use game_data::{
@@ -351,6 +352,34 @@ mod tests {
             simulation.state().hero_survival.forced_return.is_some(),
             "a downed Hero is forced to return"
         );
+    }
+
+    #[test]
+    fn balance_override_applies_live_and_resets() {
+        let mut simulation = Simulation::new();
+        let baseline = crate::balance_snapshot().combat.base_attack;
+        assert!((simulation.hero_stats().attack - baseline).abs() < 1e-9);
+
+        // Override raises hero attack live (no rebuild).
+        simulation.apply(GameCommand::SetBalanceOverride {
+            path: "combat.baseAttack".to_string(),
+            value: baseline + 10.0,
+        });
+        assert!(
+            (simulation.hero_stats().attack - (baseline + 10.0)).abs() < 1e-9,
+            "override should change the derived stat live"
+        );
+
+        // An unknown path is ignored (and noted), not applied.
+        simulation.apply(GameCommand::SetBalanceOverride {
+            path: "combat.notAField".to_string(),
+            value: 999.0,
+        });
+        assert!((simulation.hero_stats().attack - (baseline + 10.0)).abs() < 1e-9);
+
+        // Reset restores the authored baseline.
+        simulation.apply(GameCommand::ResetBalanceOverrides);
+        assert!((simulation.hero_stats().attack - baseline).abs() < 1e-9);
     }
 
     #[test]

@@ -137,6 +137,14 @@ export class SimulationClient {
     this.post({ type: 'spendBassline', amount })
   }
 
+  setBalanceOverride(path: string, value: number) {
+    this.post({ type: 'setBalanceOverride', path, value })
+  }
+
+  resetBalanceOverrides() {
+    this.post({ type: 'resetBalanceOverrides' })
+  }
+
   exportSave() {
     this.post({ type: 'exportSave' })
   }

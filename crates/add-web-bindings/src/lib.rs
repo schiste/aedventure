@@ -208,6 +208,19 @@ impl WebRuntime {
         self.simulation.apply(GameCommand::SpendBassline { amount });
     }
 
+    #[wasm_bindgen(js_name = setBalanceOverride)]
+    pub fn set_balance_override(&mut self, path: &str, value: f64) {
+        self.simulation.apply(GameCommand::SetBalanceOverride {
+            path: path.to_string(),
+            value,
+        });
+    }
+
+    #[wasm_bindgen(js_name = resetBalanceOverrides)]
+    pub fn reset_balance_overrides(&mut self) {
+        self.simulation.apply(GameCommand::ResetBalanceOverrides);
+    }
+
     #[wasm_bindgen(js_name = exportSave)]
     pub fn export_save(&self) -> Result<String, JsValue> {
         export_save(self.simulation.state()).map_err(|error| JsValue::from_str(&error.to_string()))

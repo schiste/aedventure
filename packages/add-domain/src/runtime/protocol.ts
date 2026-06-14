@@ -1040,6 +1040,8 @@ export type WorkerRequest =
   | { type: 'useItem'; itemId: string }
   | { type: 'acquirePerk'; perkId: string }
   | { type: 'spendBassline'; amount: number }
+  | { type: 'setBalanceOverride'; path: string; value: number }
+  | { type: 'resetBalanceOverrides' }
   | { type: 'importSave'; payload: string }
   | { type: 'exportSave' }
 

@@ -85,5 +85,12 @@ pub enum GameCommand {
     RunOfflineCatchup {
         elapsed_seconds: f64,
     },
+    /// Dev-only live tuning: override a balance field by dotted camelCase path.
+    SetBalanceOverride {
+        path: String,
+        value: f64,
+    },
+    /// Dev-only: drop all balance overrides, restoring the authored baseline.
+    ResetBalanceOverrides,
     ResetRun,
 }

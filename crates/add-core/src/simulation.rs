@@ -40,6 +40,13 @@ const STATION_SPECIALIZATION_FIELD_DURATION_BONUS: f64 = 0.12;
 #[derive(Debug, Clone)]
 pub struct Simulation {
     state: GameState,
+    /// Dev-time balance overrides (dotted camelCase path -> value). Ephemeral:
+    /// not persisted in saves, applied over the baseline to produce
+    /// `effective_balance`.
+    balance_overrides: std::collections::BTreeMap<String, f64>,
+    /// Baseline balance with any overrides applied; what `balance()` returns.
+    /// Recomputed only when overrides change (so the hot path stays a cheap copy).
+    effective_balance: BalanceSnapshot,
 }
 
 impl Default for Simulation {
@@ -52,6 +59,8 @@ impl Simulation {
     pub fn new() -> Self {
         let mut simulation = Self {
             state: GameState::new(),
+            balance_overrides: std::collections::BTreeMap::new(),
+            effective_balance: balance_snapshot(),
         };
         simulation.normalize_assignment();
         simulation.refresh_hero_survival_state();
@@ -105,7 +114,11 @@ impl Simulation {
                 });
         }
 
-        let mut simulation = Self { state };
+        let mut simulation = Self {
+            state,
+            balance_overrides: std::collections::BTreeMap::new(),
+            effective_balance: balance_snapshot(),
+        };
         simulation.normalize_discovery_state();
         simulation.normalize_assignment();
         simulation.refresh_hero_survival_state();
@@ -187,6 +200,10 @@ impl Simulation {
             GameCommand::RunOfflineCatchup { elapsed_seconds } => {
                 self.tick_internal(elapsed_seconds, true)
             }
+            GameCommand::SetBalanceOverride { path, value } => {
+                self.set_balance_override(&path, value)
+            }
+            GameCommand::ResetBalanceOverrides => self.reset_balance_overrides(),
             GameCommand::ResetRun => {
                 self.state = GameState::new();
                 self.refresh_hero_survival_state();
@@ -2872,7 +2889,45 @@ impl Simulation {
     }
 
     fn balance(&self) -> BalanceSnapshot {
-        balance_snapshot()
+        self.effective_balance
+    }
+
+    /// Recompute the effective balance from the baseline + current overrides.
+    fn recompute_effective_balance(&mut self) {
+        let mut balance = balance_snapshot();
+        for (path, value) in &self.balance_overrides {
+            crate::tuning::apply_balance_override(&mut balance, path, *value);
+        }
+        self.effective_balance = balance;
+    }
+
+    /// Re-apply derived state after a balance change so it takes effect at once.
+    fn refresh_after_balance_change(&mut self) {
+        self.recompute_effective_balance();
+        self.refresh_base_pressure_state();
+        self.refresh_power_state();
+        self.state.resources.water_cap = self.water_cap();
+        self.refresh_bubble_state();
+    }
+
+    /// Set (or update) a dev balance override and apply it live.
+    pub(crate) fn set_balance_override(&mut self, path: &str, value: f64) {
+        let mut probe = balance_snapshot();
+        if !crate::tuning::apply_balance_override(&mut probe, path, value) {
+            self.push_note(format!("Unknown balance path: {path}."));
+            return;
+        }
+        self.balance_overrides.insert(path.to_string(), value);
+        self.refresh_after_balance_change();
+    }
+
+    /// Drop all dev balance overrides, restoring the authored baseline.
+    pub(crate) fn reset_balance_overrides(&mut self) {
+        if self.balance_overrides.is_empty() {
+            return;
+        }
+        self.balance_overrides.clear();
+        self.refresh_after_balance_change();
     }
 
     pub(crate) fn harmonics_tier_from_rate(&self, harmonics_per_second: f64) -> u8 {
