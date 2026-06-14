@@ -285,6 +285,8 @@ export interface HexCoordSnapshot {
 
 export interface SimulationSnapshot {
   schemaVersion: number
+  /** Content catalog identity this save was authored against (see save migration). */
+  catalogVersion: number
   clockSeconds: number
   resources: ResourceSnapshot
   roster: RosterSnapshot

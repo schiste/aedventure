@@ -1,5 +1,6 @@
 pub mod command;
 pub mod game_data;
+pub mod migrations;
 pub mod save;
 pub mod simulation;
 pub mod state;
@@ -27,7 +28,8 @@ pub use game_data::{
     story_beat_def, story_beats, structure_def, structures, terrain_profile_for, tile_def,
     tile_id_for, world_action_def, world_actions,
 };
-pub use save::{export_save, import_save};
+pub use migrations::{CURRENT_CATALOG_VERSION, CURRENT_SCHEMA_VERSION, MigrationError};
+pub use save::{SaveError, export_save, import_save};
 pub use simulation::Simulation;
 pub use state::{
     BaseState, BubbleState, ConstructionJob, CrystalCircleState, CrystalTuningState,
@@ -73,6 +75,48 @@ mod tests {
         },
         import_save,
     };
+
+    #[test]
+    fn old_save_without_catalog_version_loads_to_current() {
+        // Simulate a pre-migration save: an older schema version and no
+        // `catalogVersion` field at all.
+        let state = GameState::new();
+        let mut value: serde_json::Value =
+            serde_json::from_str(&export_save(&state).unwrap()).unwrap();
+        let object = value.as_object_mut().unwrap();
+        object.insert("schemaVersion".to_string(), serde_json::json!(1));
+        object.remove("catalogVersion");
+        let raw = serde_json::to_string(&value).unwrap();
+
+        let loaded = import_save(&raw).expect("old save should migrate and load");
+        assert_eq!(loaded.schema_version, crate::CURRENT_SCHEMA_VERSION);
+        assert_eq!(loaded.catalog_version, crate::CURRENT_CATALOG_VERSION);
+    }
+
+    #[test]
+    fn future_save_is_rejected_on_import() {
+        let state = GameState::new();
+        let mut value: serde_json::Value =
+            serde_json::from_str(&export_save(&state).unwrap()).unwrap();
+        value.as_object_mut().unwrap().insert(
+            "schemaVersion".to_string(),
+            serde_json::json!(crate::CURRENT_SCHEMA_VERSION + 1),
+        );
+        let raw = serde_json::to_string(&value).unwrap();
+
+        match import_save(&raw) {
+            Err(crate::SaveError::Migration(_)) => {}
+            other => panic!("expected migration rejection of a future save, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn export_then_import_round_trips() {
+        let state = GameState::new();
+        let raw = export_save(&state).unwrap();
+        let loaded = import_save(&raw).expect("freshly exported save must load");
+        assert_eq!(loaded, state);
+    }
 
     fn advance_intro_to_investigate(simulation: &mut Simulation) {
         simulation.apply(GameCommand::ChooseStoryOption {

@@ -64,8 +64,10 @@ impl Simulation {
 
     pub fn from_state(mut state: GameState) -> Self {
         let balance = balance_snapshot();
-        if state.schema_version < 15 {
-            state.schema_version = 15;
+        // `import_save` already migrates + stamps the version before deserialize;
+        // this also covers states built directly (tests, resets). Idempotent.
+        if state.schema_version < crate::migrations::CURRENT_SCHEMA_VERSION {
+            state.schema_version = crate::migrations::CURRENT_SCHEMA_VERSION;
         }
         state.resources.bassline_cap = state
             .resources

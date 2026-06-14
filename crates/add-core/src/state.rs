@@ -6,6 +6,7 @@ use crate::game_data::{
     ROLE_CONSTRUCTION, ROLE_CRYSTAL_BASSLINE, ROLE_CRYSTAL_CHORUS, ROLE_CRYSTAL_HARMONICS,
     ROLE_FIRE_PIT, ROLE_SCAVENGE, ROLE_WATER, balance_snapshot, stations, tile_id_for,
 };
+use crate::migrations::{CURRENT_CATALOG_VERSION, CURRENT_SCHEMA_VERSION, default_catalog_version};
 
 pub const DEFAULT_BASE_SLOTS: u8 = 3;
 pub const DEFAULT_TOTAL_CREW: u8 = 2;
@@ -19,6 +20,10 @@ pub const RECRUITMENT_RANGE_TILES: u8 = 3;
 #[serde(rename_all = "camelCase")]
 pub struct GameState {
     pub schema_version: u16,
+    /// Identity of the content catalog this save was authored against. Defaults
+    /// to the current catalog for saves written before the field existed.
+    #[serde(default = "default_catalog_version")]
+    pub catalog_version: u16,
     pub clock_seconds: f64,
     pub resources: ResourcePools,
     pub roster: RosterState,
@@ -78,7 +83,8 @@ impl GameState {
     pub fn new() -> Self {
         let balance = balance_snapshot();
         Self {
-            schema_version: 15,
+            schema_version: CURRENT_SCHEMA_VERSION,
+            catalog_version: CURRENT_CATALOG_VERSION,
             clock_seconds: 0.0,
             resources: ResourcePools {
                 bassline: 0.0,
