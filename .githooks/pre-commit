@@ -1,0 +1,10 @@
+#!/usr/bin/env sh
+# Local CI (pre-commit): the correctness gate — TS build, content/codegen check,
+# Rust sim tests incl. the golden snapshot, and every package's unit tests.
+# Browser smoke runs on push (pre-push) to keep commits responsive.
+#
+# Activated by `npm run setup:hooks` (or automatically via `prepare` on
+# `npm install`). Bypass one commit with `git commit --no-verify`.
+set -e
+echo "[pre-commit] local CI: npm run verify"
+npm run verify

@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+# Local CI (pre-push): the full gate — pre-commit checks plus the add-rpg
+# browser smoke (boot + render contract + console-error check).
+# Bypass with `git push --no-verify`.
+set -e
+echo "[pre-push] full local CI: npm run verify:full"
+npm run verify:full
