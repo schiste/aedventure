@@ -57,7 +57,10 @@ export const BALANCE: BalanceSnapshot = {
   "progression": {
     "levelMultiplierA": 0.2,
     "xp0": 50,
-    "xpGrowth": 1.28
+    "xpGrowth": 1.28,
+    "xpPerLocationClear": 8,
+    "xpPerExpedition": 25,
+    "xpPerStoryBeat": 12
   },
   "survival": {
     "heroTimeSeconds0To1": 24,

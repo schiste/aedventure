@@ -1051,6 +1051,33 @@ pub struct ProgressionBalance {
     pub level_multiplier_a: f64,
     pub xp0: f64,
     pub xp_growth: f64,
+    /// Flat XP for clearing a location (awarded to the Drummer track).
+    pub xp_per_location_clear: f64,
+    /// Flat XP for a returned expedition (awarded to the Synth track).
+    pub xp_per_expedition: f64,
+    /// Flat XP for completing a story beat (awarded to the Vocalist track).
+    pub xp_per_story_beat: f64,
+}
+
+/// The three Hero progression tracks. Crystal work feeds them by resource
+/// (Bassline→Drummer, Chorus→Vocalist, Harmonics→Synth); discrete events feed
+/// one track each (clears→Drummer, expeditions→Synth, beats→Vocalist).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HeroTrack {
+    Drummer,
+    Vocalist,
+    Synth,
+}
+
+impl HeroTrack {
+    /// Lowercase identifier used in events/snapshots.
+    pub fn key(self) -> &'static str {
+        match self {
+            HeroTrack::Drummer => "drummer",
+            HeroTrack::Vocalist => "vocalist",
+            HeroTrack::Synth => "synth",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq)]

@@ -13,7 +13,7 @@ pub use game_data::{
     CrystalBalance, CrystalTrack, EffectDef, EntityKind, EntityPresentationDef, EntitySchemaDef,
     EntitySchemaSnapshot, EntityVisibilityDef, ExpeditionRewardDef, ExpeditionRiskDef,
     ExpeditionSupportDef, ExpeditionTargetDef, FirePitBalance, FloraDef, FloraKind, FlowCadence,
-    FlowDef, FlowDirection, HeroExposureDef, ModelKind, ModelRefDef, PersistenceDef,
+    FlowDef, FlowDirection, HeroExposureDef, HeroTrack, ModelKind, ModelRefDef, PersistenceDef,
     PersistenceScope, PowerBalance, PowerFallbackMode, PowerProfileDef, PresentationDef,
     PresentationReveal, ProcessingRecipeDef, ProcessingTrack, ProgressionBalance,
     RecruitmentBalance, RequirementDef, ResonanceEffectDef, ResonanceMaterialCostDef,
@@ -225,6 +225,41 @@ mod tests {
         let mut c = Simulation::new();
         let all: Vec<u64> = (0..6).map(|_| c.next_rng_u64()).collect();
         assert_eq!(all, [first, continued_a].concat());
+    }
+
+    #[test]
+    fn granting_track_xp_levels_up_and_yields_perk_points() {
+        let mut simulation = Simulation::new();
+        assert_eq!(simulation.perk_points_available(), 0);
+
+        // A large lump crosses at least the first level threshold.
+        simulation.grant_track_xp(crate::HeroTrack::Drummer, 1000.0);
+
+        assert!(simulation.state().hero_progress.drummer_level >= 1);
+        assert!(simulation.perk_points_available() >= 1);
+        assert!(
+            simulation
+                .state()
+                .events
+                .iter()
+                .any(|event| matches!(event, crate::GameEvent::HeroLeveledUp { .. })),
+            "leveling a track should emit HeroLeveledUp"
+        );
+    }
+
+    #[test]
+    fn clearing_a_location_grants_drummer_xp() {
+        let mut simulation = Simulation::new();
+        let before = simulation.state().hero_progress.drummer_xp;
+        simulation.apply(GameCommand::ClearLocation {
+            key: "studio:1:1".to_string(),
+            loot_item: None,
+            loot_qty: 0,
+        });
+        assert!(
+            simulation.state().hero_progress.drummer_xp > before,
+            "clearing a location should award Drummer XP"
+        );
     }
 
     #[test]

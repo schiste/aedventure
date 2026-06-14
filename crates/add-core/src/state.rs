@@ -136,6 +136,8 @@ pub enum GameEvent {
     /// An effect batch was rejected atomically because a cost could not be paid
     /// (nothing in the batch was applied).
     EffectRejected { reason: String },
+    /// A Hero progression track leveled up this frame.
+    HeroLeveledUp { track: String, level: u16 },
 }
 
 impl GameState {

@@ -59,6 +59,9 @@ pub(in crate::game_data) const BALANCE: BalanceSnapshot = BalanceSnapshot {
         level_multiplier_a: 0.2,
         xp0: 50.0,
         xp_growth: 1.28,
+        xp_per_location_clear: 8.0,
+        xp_per_expedition: 25.0,
+        xp_per_story_beat: 12.0,
     },
     survival: SurvivalBalance {
         hero_time_seconds_0_to_1: 24.0,

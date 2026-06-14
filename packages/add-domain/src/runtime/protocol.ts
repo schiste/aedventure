@@ -302,6 +302,7 @@ export type AddGameEvent =
   | { kind: "bubble_frontier_collapsed" }
   | { kind: "recruitment_gate_opened" }
   | { kind: "effect_rejected"; reason: string }
+  | { kind: "hero_leveled_up"; track: string; level: number }
 
 export interface SimulationSnapshot {
   schemaVersion: number
@@ -876,6 +877,9 @@ export interface ProgressionBalance {
   levelMultiplierA: number
   xp0: number
   xpGrowth: number
+  xpPerLocationClear: number
+  xpPerExpedition: number
+  xpPerStoryBeat: number
 }
 
 export interface SurvivalBalance {

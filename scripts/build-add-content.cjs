@@ -649,7 +649,7 @@ const FILES = [
                 ...f64s("research_harmonics_threshold_reduction_per_level"),
               ],
             },
-            { name: "progression", kind: "struct", structType: "ProgressionBalance", fields: f64s("level_multiplier_a", "xp0", "xp_growth") },
+            { name: "progression", kind: "struct", structType: "ProgressionBalance", fields: f64s("level_multiplier_a", "xp0", "xp_growth", "xp_per_location_clear", "xp_per_expedition", "xp_per_story_beat") },
             {
               name: "survival", kind: "struct", structType: "SurvivalBalance",
               fields: f64s("hero_time_seconds_0_to_1", "normal_human_time_seconds_0_to_1", "recovery_time_seconds_1_to_0", "sustain_bonus_per_level", "tier_one_threshold_ratio", "tier_two_threshold_ratio", "tier_three_threshold_ratio", "tier_one_work_efficiency_multiplier", "tier_two_work_efficiency_multiplier", "tier_three_work_efficiency_multiplier", "tier_one_movement_speed_multiplier", "tier_two_movement_speed_multiplier", "tier_three_movement_speed_multiplier", "tier_one_encounter_rate_multiplier", "tier_two_encounter_rate_multiplier", "tier_three_encounter_rate_multiplier", "recovery_brownout_penalty_weight", "recovery_brownout_stop_threshold"),

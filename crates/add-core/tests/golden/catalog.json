@@ -11213,7 +11213,10 @@
     "progression": {
       "levelMultiplierA": 0.2,
       "xp0": 50.0,
-      "xpGrowth": 1.28
+      "xpGrowth": 1.28,
+      "xpPerLocationClear": 8.0,
+      "xpPerExpedition": 25.0,
+      "xpPerStoryBeat": 12.0
     },
     "survival": {
       "heroTimeSeconds0To1": 24.0,

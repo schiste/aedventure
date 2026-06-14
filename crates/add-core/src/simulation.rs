@@ -7,7 +7,7 @@ use crate::game_data::{
     FLAG_BASE_TUTORIAL_INVESTIGATED, FLAG_BASE_WATER_COLLECTION_UNLOCKED, FLAG_BASE_WORKSHOP_BUILT,
     FLAG_CRYSTAL_REMOVING_MOSS_COMPLETED, FLAG_CRYSTAL_REMOVING_MOSS_UNLOCKED,
     FLAG_HERO_FORCED_RETURN_ACTIVE, FLAG_HERO_OUTSIDE_BUBBLE, FLAG_HERO_RECOVERING_AT_STUDIO,
-    HeroExposureDef, INTRO_STORY_BEAT_IDS, ItemEffectKind, PerkStat, ProcessingTrack,
+    HeroExposureDef, HeroTrack, INTRO_STORY_BEAT_IDS, ItemEffectKind, PerkStat, ProcessingTrack,
     RESONANCE_MATERIAL_ECHO_SHARDS, RESONANCE_MATERIAL_HARMONIC_RESIDUE,
     RESONANCE_MATERIAL_SIGNAL_SCRAP, RESOURCE_BASSLINE, RESOURCE_CHORUS, RESOURCE_HARMONICS,
     RESOURCE_STONE, RESOURCE_VIBES, RESOURCE_WATER, ROLE_CONSTRUCTION, ROLE_CRYSTAL_BASSLINE,
@@ -1404,6 +1404,8 @@ impl Simulation {
         if let Some(item_id) = loot_item {
             self.grant_item(&item_id, loot_qty);
         }
+        let xp = self.balance().progression.xp_per_location_clear;
+        self.grant_track_xp(HeroTrack::Drummer, xp);
     }
 
     /// Move `qty` of an item from the Hero inventory onto the ground at `key`.
@@ -1882,6 +1884,8 @@ impl Simulation {
                 target_id: job.target_id.clone(),
                 label: target_def.label.to_string(),
             });
+            let xp = self.balance().progression.xp_per_expedition;
+            self.grant_track_xp(HeroTrack::Synth, xp);
         }
         self.normalize_assignment();
     }
@@ -2382,6 +2386,8 @@ impl Simulation {
         if let Some(beat) = story_beat_def(beat_id) {
             self.apply_effects(beat.on_complete);
         }
+        let xp = self.balance().progression.xp_per_story_beat;
+        self.grant_track_xp(HeroTrack::Vocalist, xp);
     }
 
     fn story_action_allowed(&mut self, action_id: &str) -> bool {
@@ -2523,28 +2529,46 @@ impl Simulation {
         }
     }
 
+    /// Map a crystal work role to the progression track it feeds.
+    fn track_for_role(role_id: &str) -> Option<HeroTrack> {
+        match role_id {
+            ROLE_CRYSTAL_BASSLINE => Some(HeroTrack::Drummer),
+            ROLE_CRYSTAL_CHORUS => Some(HeroTrack::Vocalist),
+            ROLE_CRYSTAL_HARMONICS => Some(HeroTrack::Synth),
+            _ => None,
+        }
+    }
+
     fn award_hero_band_xp(&mut self, role_id: &str, xp_gain: f64) {
+        if let Some(track) = Self::track_for_role(role_id) {
+            self.grant_track_xp(track, xp_gain);
+        }
+    }
+
+    /// Add XP to a progression track, leveling it up across the shared curve and
+    /// emitting a HeroLeveledUp event per level reached. The single entry point
+    /// for all XP sources (crystal work, clears, expeditions, beats, combat).
+    pub(crate) fn grant_track_xp(&mut self, track: HeroTrack, xp_gain: f64) {
         if xp_gain <= 0.0 {
             return;
         }
 
-        let (label, mut xp_value, mut level_value) = match role_id {
-            ROLE_CRYSTAL_BASSLINE => (
+        let (label, mut xp_value, mut level_value) = match track {
+            HeroTrack::Drummer => (
                 "Drummer",
                 self.state.hero_progress.drummer_xp,
                 self.state.hero_progress.drummer_level,
             ),
-            ROLE_CRYSTAL_CHORUS => (
+            HeroTrack::Vocalist => (
                 "Vocalist",
                 self.state.hero_progress.vocalist_xp,
                 self.state.hero_progress.vocalist_level,
             ),
-            ROLE_CRYSTAL_HARMONICS => (
+            HeroTrack::Synth => (
                 "Synth",
                 self.state.hero_progress.synth_xp,
                 self.state.hero_progress.synth_level,
             ),
-            _ => return,
         };
 
         xp_value += xp_gain;
@@ -2561,20 +2585,19 @@ impl Simulation {
             leveled = leveled.saturating_add(1);
         }
 
-        match role_id {
-            ROLE_CRYSTAL_BASSLINE => {
+        match track {
+            HeroTrack::Drummer => {
                 self.state.hero_progress.drummer_xp = xp_value;
                 self.state.hero_progress.drummer_level = level_value;
             }
-            ROLE_CRYSTAL_CHORUS => {
+            HeroTrack::Vocalist => {
                 self.state.hero_progress.vocalist_xp = xp_value;
                 self.state.hero_progress.vocalist_level = level_value;
             }
-            ROLE_CRYSTAL_HARMONICS => {
+            HeroTrack::Synth => {
                 self.state.hero_progress.synth_xp = xp_value;
                 self.state.hero_progress.synth_level = level_value;
             }
-            _ => {}
         }
 
         if leveled > 0 {
@@ -2582,6 +2605,10 @@ impl Simulation {
                 "Hero {} gained {} level(s), now level {}.",
                 label, leveled, level_value
             ));
+            self.push_event(crate::state::GameEvent::HeroLeveledUp {
+                track: track.key().to_string(),
+                level: level_value,
+            });
         }
     }
 
