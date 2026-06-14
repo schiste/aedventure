@@ -117,11 +117,27 @@ export interface AddInterfaceHierarchyState {
     readonly answer: string
     readonly waitForecast: string
   }
-  readonly advanced: {
-    readonly label: "Admin"
+  readonly settings: {
+    readonly label: "Settings"
     readonly hiddenByDefault: true
     readonly open: boolean
-    readonly developerToolsOpen: boolean
+    readonly presentation: "hex_window"
+    readonly motion: "system" | "reduced"
+    readonly autosave: boolean
+    readonly audio: {
+      readonly muted: boolean
+      readonly masterVolume: number
+      readonly musicVolume: number
+      readonly sfxVolume: number
+      readonly effectiveMusicVolume: number
+      readonly effectiveSfxVolume: number
+    }
+  }
+  readonly advanced: {
+    readonly label: "Tools"
+    readonly hiddenByDefault: true
+    readonly adminOpen: boolean
+    readonly developerOpen: boolean
     readonly runtimeInternalsHiddenByDefault: true
   }
   readonly questions: {
@@ -166,6 +182,7 @@ export interface AddRuntimeTelemetryPresenterInput {
   readonly interfaceHierarchy: AddInterfaceHierarchyState
   readonly baseViewTransition: "idle" | "opening" | "settling"
   readonly shellMenuOpen: boolean
+  readonly settingsOpen: boolean
   readonly adminOpen: boolean
   readonly devToolsOpen: boolean
   readonly focusedRegion:
@@ -175,7 +192,9 @@ export interface AddRuntimeTelemetryPresenterInput {
     | "objective_tracker"
     | "map_controls"
     | "menu"
+    | "settings"
     | "admin"
+    | "dev"
     | "unknown"
   readonly discoveryPanelCollapsed: boolean
   readonly firstPlayableCollapsed: boolean
@@ -244,6 +263,7 @@ export interface RuntimeTextState {
     readonly baseViewTransition: "idle" | "opening" | "settling"
     readonly currentAction: AddCurrentActionState
     readonly shellMenuOpen: boolean
+    readonly settingsOpen: boolean
     readonly adminOpen: boolean
     readonly devToolsOpen: boolean
     readonly questPanel: {
@@ -276,7 +296,9 @@ export interface RuntimeTextState {
         | "objective_tracker"
         | "map_controls"
         | "menu"
+        | "settings"
         | "admin"
+        | "dev"
         | "unknown"
       readonly currentActionLiveRegion: "polite"
       readonly contextualPanelsLabelled: true
@@ -1126,6 +1148,7 @@ export function createAddRuntimeTextState(
       baseViewTransition: input.baseViewTransition,
       currentAction: input.currentAction,
       shellMenuOpen: input.shellMenuOpen,
+      settingsOpen: input.settingsOpen,
       adminOpen: input.adminOpen,
       devToolsOpen: input.devToolsOpen,
       questPanel: {
@@ -1150,7 +1173,7 @@ export function createAddRuntimeTextState(
         mobileBottomSheetAvoidsScrollTrap: true,
         shortcuts: [
           "Tab / Shift+Tab moves through panels and controls",
-          "Escape closes the menu or admin view",
+          "Escape closes the menu or open settings/tool window",
           "Arrow keys move the focused objective tracker handle",
           "Enter or Space toggles the focused objective tracker",
         ],

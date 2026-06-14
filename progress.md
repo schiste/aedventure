@@ -3058,3 +3058,52 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   passed with `cargo test -p add-core`, `npm run agent:verify:add-ui`,
   `npm --workspace @aedventure/add-rpg run build`, `npm run
   smoke:add-rpg:built`, and a local web-game client no-crash render pass.
+- Split ADD shell tools into three player/agent-facing drawers: Settings,
+  Admin, and Dev. Settings now owns real player preferences for pace, motion,
+  objective/discovery panel density, and autosave; Admin stays a clean
+  operational/story/recovery surface; Dev owns raw runtime commands and save
+  payload tooling. `render_game_to_text` now reports `settingsOpen`,
+  Settings metadata, and separate Admin/Dev tool state. Built smoke now covers
+  the split with Settings/Admin screenshots and verifies Dev does not leak into
+  player-facing V1 states.
+- Rotated shared hex rendering to flat-top orientation. The neutral topology
+  projection now maps axial q/r cells to flat-top world coordinates, the Phaser
+  hex polygon points use horizontal top/bottom sides, and engine-sandbox
+  telemetry/smoke copy now says "flat-top axial q/r." ADD overworld screenshots
+  and engine-sandbox topology fixtures visually confirm the new orientation.
+  The renderer QA was also updated for the current fog-of-war contract where
+  boot may have hidden cells plus visible cave-adjacent cells but no separate
+  discovered/stale sample yet, and its dungeon-mode switch now uses a stable DOM
+  activation instead of a timing-sensitive pointer click. Verification passed
+  with topology/renderer builds and tests, ADD build/smoke, engine sandbox
+  smoke, `npm run qa:renderer:built`, and `npm run agent:verify`.
+- Added player sound management to the active ADD Settings surface and changed
+  Settings from the shared drawer shell into a centered hex-shaped modal window.
+  The shell now reuses the persisted browser `AddSettings` store, exposes
+  master/music/effects sliders plus a mute toggle, dispatches
+  `add-settings-changed` for the existing music director, and reports audio
+  state/presentation through `render_game_to_text`. The old self-mounted
+  settings overlay script was removed from the ADD HTML entry so there is one
+  player settings surface. Smoke now asserts the hex presentation, audio
+  telemetry, mute/reset behavior, and deterministic settings storage cleanup.
+  Verification passed with `npm --workspace @aedventure/add-rpg run
+  build:types`, `npm --workspace @aedventure/add-rpg run build:browser`, full
+  `npm run smoke:add-rpg:built`, and `npm run agent:verify:add-ui`.
+- Reviewed and tightened the ADD menu hierarchy. The topbar menu now groups
+  player-facing settings separately from operational Admin and raw Dev tools,
+  Admin/Dev drawers have sticky section maps for their internal sections, and
+  the tool drawers use immediate opacity visibility instead of slide-in
+  transforms so screenshots and clicks no longer catch a partially shifted
+  panel. Menu surfaces were made more opaque to keep background map text from
+  bleeding through. Smoke now asserts the grouped shell menu, and verification
+  passed with `npm --workspace @aedventure/add-rpg run build:browser`, full
+  `npm run smoke:add-rpg:built`, and `npm run agent:verify:add-ui`.
+- Made the ADD Menu and Settings surfaces behave like intentional hex UI.
+  The topbar menu now uses a true six-sided clipped hex boundary, and Settings
+  has a deeper hex modal silhouette that can be dragged with the same bounded
+  pointer/keyboard movement model used by other pop-ins. Dev live-tuning no
+  longer auto-mounts from `index.html`; it is hidden by default and can be
+  shown/removed explicitly from the Dev drawer. A Playwright spot-check against
+  `http://127.0.0.1:5180/app/` verified Settings dragging, tuning show/remove,
+  screenshots, and zero console errors. Focused verification passed with
+  `npm run agent:verify:add-ui`.

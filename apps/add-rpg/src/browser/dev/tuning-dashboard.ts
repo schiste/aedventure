@@ -103,21 +103,34 @@ const STYLE = `
   background:rgba(60,40,40,.9);color:#eee;cursor:pointer}
 `
 
-function mount(): void {
+let disposeDashboard: (() => void) | null = null
+
+export function mountTuningDashboard(): void {
   if (document.getElementById("add-tuning-root")) return
   const style = document.createElement("style")
+  style.id = "add-tuning-style"
   style.textContent = STYLE
   document.head.appendChild(style)
   const container = document.createElement("div")
   container.id = "add-tuning-root"
   document.body.appendChild(container)
-  render(TuningDashboard, container)
+  disposeDashboard = render(TuningDashboard, container)
 }
 
-if (DEV && typeof document !== "undefined") {
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", mount, { once: true })
+export function unmountTuningDashboard(): void {
+  disposeDashboard?.()
+  disposeDashboard = null
+  document.getElementById("add-tuning-root")?.remove()
+  document.getElementById("add-tuning-style")?.remove()
+}
+
+export const liveTuningDashboardAvailable = DEV
+
+export function setTuningDashboardMounted(visible: boolean): void {
+  if (!DEV) return
+  if (visible) {
+    mountTuningDashboard()
   } else {
-    mount()
+    unmountTuningDashboard()
   }
 }

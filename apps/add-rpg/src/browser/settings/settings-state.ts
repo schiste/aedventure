@@ -10,6 +10,8 @@ export interface AddSettings {
   masterVolume: number
   musicVolume: number
   sfxVolume: number
+  /** Temporarily silence all non-realtime game audio without losing volume levels. */
+  muted: boolean
   /** Suppress non-essential motion/animation. */
   reducedMotion: boolean
   /** Daltonization filter applied to the whole app. */
@@ -28,6 +30,7 @@ export const DEFAULT_SETTINGS: AddSettings = {
   masterVolume: 0.8,
   musicVolume: 0.6,
   sfxVolume: 0.8,
+  muted: false,
   reducedMotion: false,
   colorBlindMode: "none",
   textScale: 1,
@@ -60,6 +63,7 @@ export function normalizeSettings(raw: unknown): AddSettings {
     masterVolume: clamp(input.masterVolume as number, 0, 1, DEFAULT_SETTINGS.masterVolume),
     musicVolume: clamp(input.musicVolume as number, 0, 1, DEFAULT_SETTINGS.musicVolume),
     sfxVolume: clamp(input.sfxVolume as number, 0, 1, DEFAULT_SETTINGS.sfxVolume),
+    muted: typeof input.muted === "boolean" ? input.muted : DEFAULT_SETTINGS.muted,
     reducedMotion:
       typeof input.reducedMotion === "boolean"
         ? input.reducedMotion
@@ -98,11 +102,11 @@ export function saveSettings(
 
 /** Effective SFX/music gain after the master multiplier. */
 export function effectiveSfxVolume(settings: AddSettings): number {
-  return settings.masterVolume * settings.sfxVolume
+  return settings.muted ? 0 : settings.masterVolume * settings.sfxVolume
 }
 
 export function effectiveMusicVolume(settings: AddSettings): number {
-  return settings.masterVolume * settings.musicVolume
+  return settings.muted ? 0 : settings.masterVolume * settings.musicVolume
 }
 
 /**
