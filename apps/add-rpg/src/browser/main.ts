@@ -113,6 +113,7 @@ import {
   ADD_TILE_TRAVEL_PRESENTATION,
   createAddClockAdvancePresentationTiming,
 } from "./travel-presentation-timing"
+import { installTraceRecorder } from "./dev/trace-recorder"
 import "./styles.css"
 
 const OPENING_TRAVEL_STEP_ID = "reach-base"
@@ -364,11 +365,16 @@ let floatingPanelDrag:
     }
   | null = null
 
+// Local-mode verbose tracing (no-op in production builds). Stamps each line with
+// snapshot context via the `snapshot` accessor declared above.
+const traceRecorder = installTraceRecorder(() => snapshot())
+
 const client = new SimulationClient({
   createWorker: () =>
     new Worker(new URL("../workers/add-runtime.worker.ts", import.meta.url), {
       type: "module",
     }),
+  onTrace: traceRecorder.onTrace,
   onReady(nextSnapshot, nextCatalog) {
     snapshotVersion += 1
     setReady(true)
@@ -413,6 +419,13 @@ const client = new SimulationClient({
     saveRequestInFlight = false
     resolveSaveWaiters(null)
     resolveSnapshotWaiters()
+  },
+  onEvents(events) {
+    // Fan per-frame sim events onto the window bus that music-event-bridge and
+    // the dev trace recorder listen on.
+    for (const event of events) {
+      window.dispatchEvent(new CustomEvent("add-game-event", { detail: event }))
+    }
   },
 })
 
