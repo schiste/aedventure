@@ -378,12 +378,32 @@ function validateRequirements(ctx, label, requirements = []) {
 
 function validateEffects(ctx, label, effects = []) {
   for (const effect of effects) {
-    if (effect.kind === "set_flag") requireKnown(ctx, `${label}.set_flag`, effect.flag_id, ctx.flagIds, "flag")
-    if (effect.kind === "grant_resource" || effect.kind === "spend_resource") {
-      requireKnown(ctx, `${label}.${effect.kind}`, effect.resource_id, ctx.resourceIds, "resource")
+    if (!effect || typeof effect !== "object") {
+      ctx.errors.push(`${label}: effect must be an object`)
+      continue
     }
-    if (effect.kind === "complete_beat") {
-      requireKnown(ctx, `${label}.complete_beat`, effect.beat_id, ctx.storyBeatIds, "story beat")
+
+    switch (effect.kind) {
+      case "set_flag":
+        requireKnown(ctx, `${label}.set_flag`, effect.flag_id, ctx.flagIds, "flag")
+        break
+      case "grant_resource":
+      case "spend_resource":
+        requireKnown(ctx, `${label}.${effect.kind}`, effect.resource_id, ctx.resourceIds, "resource")
+        break
+      case "complete_beat":
+        requireKnown(ctx, `${label}.complete_beat`, effect.beat_id, ctx.storyBeatIds, "story beat")
+        break
+      case "add_bunks":
+      case "add_skins":
+      case "increment_crystal_track":
+      case "increment_processing_track":
+      case "set_quality":
+      case "add_quality":
+      case "note":
+        break
+      default:
+        ctx.errors.push(`${label}: unsupported effect kind "${effect.kind}"`)
     }
   }
 }
