@@ -92,6 +92,12 @@ Codegen must be:
 - strict about unknown schema shapes
 - explicit about generated files
 
+Before emitting Rust, codegen must run semantic content validation. Validation
+should fail loudly for authoring mistakes that TypeScript cannot prove by type
+alone: duplicate IDs, missing references, unreachable story beats, invalid story
+graph cycles, orphaned arc sequence entries, impossible local preconditions, and
+story actions that point at missing world actions.
+
 Generated Rust catalog files are runtime inputs, not the editing surface.
 
 ### Domain Selectors Explain, They Do Not Mutate

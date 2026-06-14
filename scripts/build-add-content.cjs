@@ -37,6 +37,7 @@ execFileSync(path.join(ROOT, "node_modules", ".bin", "tsc"), ["-b", "packages/ad
 })
 
 const { toRustConst, toRustStatic } = require(path.join(ROOT, "packages/game-content/dist/index.js"))
+const { validateAddContent } = require(path.join(__dirname, "add-content-validator.cjs"))
 const content = (name) => require(path.join(ROOT, "packages/add-domain/dist/content", `${name}.js`))
 const resources = content("resources")
 const roles = content("roles")
@@ -54,6 +55,33 @@ const entitySchemas = content("entity-schemas")
 const balance = content("balance")
 const perks = content("perks")
 const items = content("items")
+const dungeons = require(path.join(ROOT, "packages/add-domain/dist/dungeons/registry.js"))
+const areas = require(path.join(ROOT, "packages/add-domain/dist/areas/registry.js"))
+
+try {
+  validateAddContent({
+    resources: resources.RESOURCES,
+    roles: roles.ROLES,
+    flags: flags.FLAGS,
+    flora: flora.FLORA,
+    structures: structures.STRUCTURES,
+    tiles: tiles.TILES,
+    stations: stations.STATIONS,
+    constructionOptions: construction.CONSTRUCTION_OPTIONS,
+    worldActions: worldActions.WORLD_ACTIONS,
+    processingRecipes: processing.PROCESSING_RECIPES,
+    storyBeats: story.STORY_BEATS,
+    uiElements: uiElements.UI_ELEMENTS,
+    entitySchemas: entitySchemas.ENTITY_SCHEMAS,
+    items: items.ITEMS,
+    perks: perks.PERKS,
+    dungeons: dungeons.ADD_DUNGEON_REGISTRY,
+    areas: areas.ADD_AREA_REGISTRY,
+  })
+} catch (err) {
+  console.error(err.message || err)
+  process.exit(1)
+}
 
 const VIS = "pub(in crate::game_data)"
 // Balance is all-numeric; helper for the many f64 fields (from defaults to camelCase).
