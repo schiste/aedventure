@@ -2631,19 +2631,23 @@ function currentActionState(
 
   const base = baseManagementState()
   if (mapMode() === "base_square" && base) {
+    const executableFirstPlayableAction = currentFirstPlayableExecutableAction()
     if (
       firstPlayable &&
       !firstPlayable.complete &&
-      firstStep?.action
+      firstStep &&
+      executableFirstPlayableAction
     ) {
+      const storyPrimary = uiState()?.storyProgression.primaryAction
+      const label = firstStep.actionLabel ?? storyPrimary?.label ?? firstStep.label
       return {
         source: "base_loop",
         sourceLabel: "Base loop",
-        label: firstStep.actionLabel ?? firstStep.label,
-        detail: firstStep.detail,
+        label,
+        detail: firstStep.action ? firstStep.detail : storyPrimary?.detail ?? firstStep.detail,
         kind: firstStep.id,
         enabled: true,
-        primaryLabel: firstStep.actionLabel,
+        primaryLabel: label,
         primaryEnabled: true,
         metaLabel: base.playerLoop.currentStepId.replaceAll("_", " "),
         progressLabel: firstStep.label,
@@ -6655,9 +6659,17 @@ async function resetRuntime(): Promise<void> {
 }
 
 async function runFirstPlayableAction(): Promise<void> {
-  const action = currentFirstPlayableStep()?.action
+  const action = currentFirstPlayableExecutableAction()
   if (!action) return
   await runAddAction(action)
+}
+
+function currentFirstPlayableExecutableAction(): AddFirstPlayableAction | null {
+  const stepAction = currentFirstPlayableStep()?.action ?? null
+  if (stepAction) return stepAction
+  const primaryAction = uiState()?.storyProgression.primaryAction
+  if (primaryAction?.enabled && primaryAction.action) return primaryAction.action
+  return null
 }
 
 async function completePreArrivalRoute(): Promise<void> {

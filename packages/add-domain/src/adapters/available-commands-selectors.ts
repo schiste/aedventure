@@ -180,7 +180,7 @@ function constructionCommands(
   return catalog.constructionOptions.map((option) => {
     const affordability = constructionAffordability(snapshot, option)
     const disabledReason =
-      snapshot.activeConstruction !== null
+      snapshot.activeConstruction
         ? "Construction is already in progress."
         : requirementsDisabledReason(snapshot, option.requirements)
           ?? affordability.disabledReason

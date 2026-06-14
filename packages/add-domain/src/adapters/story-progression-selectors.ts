@@ -3,6 +3,7 @@ import type {
   CatalogSnapshot,
   ConstructionOptionDef,
   CostDef,
+  RequirementDef,
   SimulationSnapshot,
   StoryBeatDef,
   StoryPrimaryActionDef,
@@ -14,6 +15,7 @@ import {
   selectedStoryChoiceId,
   storyBeatCompleted,
   storyChoiceSelected,
+  storyFlagSet,
 } from "./story-state-readers"
 
 const FIRST_PLAYABLE_FALLBACK_ARC = "base_onboarding"
@@ -389,6 +391,11 @@ function constructionStepAction(
   const constructionCommand = projectedCommand(commandProjection, (command) =>
     command.command.kind === "start_construction" && command.command.optionId === optionId,
   )
+  const canStartConstructionNow =
+    option !== undefined &&
+    !snapshot.activeConstruction &&
+    requirementsMet(snapshot, option.requirements) &&
+    canAffordConstruction(snapshot, option)
   const buildRoleId = storyActionString(action, "buildRoleId", "build_role_id")
   const gatherRoleId = storyActionString(action, "gatherRoleId", "gather_role_id")
   const targetCrew = storyActionNumber(action, "crew", "crew") ?? 1
@@ -410,9 +417,8 @@ function constructionStepAction(
       action: { type: "tick", seconds: snapshot.activeConstruction.remainingWorkSeconds + 0.5 },
     }
   }
-  const missingConstructionResources = constructionCommand
-    ? !constructionCommand.enabled && constructionCommand.related.resourceIds.length > 0
-    : option !== undefined && !canAffordConstruction(snapshot, option)
+  const missingConstructionResources =
+    option !== undefined && !canAffordConstruction(snapshot, option)
   if (option && missingConstructionResources) {
     if (gatherRoleId && (!snapshot.roster.heroAssigned || snapshot.roster.heroRoleId !== gatherRoleId)) {
       const heroRole = projectedCommandAction(commandProjection, (command) =>
@@ -432,6 +438,12 @@ function constructionStepAction(
     command.command.kind === "start_construction" && command.command.optionId === optionId,
   )
   if (startConstruction) return startConstruction
+  if (canStartConstructionNow) {
+    return {
+      actionLabel: option ? `Start ${option.label}` : "Start construction",
+      action: { type: "start_construction", optionId },
+    }
+  }
   if (commandProjection) return { actionLabel: null, action: null }
   return {
     actionLabel: option ? `Start ${option.label}` : "Start construction",
@@ -805,6 +817,20 @@ function canAffordConstruction(
   option: ConstructionOptionDef,
 ): boolean {
   return canAffordCost(snapshot, option.cost)
+}
+
+function requirementsMet(
+  snapshot: SimulationSnapshot,
+  requirements: readonly RequirementDef[],
+): boolean {
+  return requirements.every((requirement) => {
+    switch (requirement.kind) {
+      case "flag_set":
+        return storyFlagSet(snapshot, requirement.flag_id)
+      case "flag_unset":
+        return !storyFlagSet(snapshot, requirement.flag_id)
+    }
+  })
 }
 
 function canAffordCost(snapshot: SimulationSnapshot, cost: CostDef): boolean {
