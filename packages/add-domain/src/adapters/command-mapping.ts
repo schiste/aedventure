@@ -6,6 +6,7 @@ export type AddDomainCommand =
   | { readonly kind: "tick"; readonly seconds: number }
   | { readonly kind: "start_world_action"; readonly actionId: string }
   | { readonly kind: "choose_story_option"; readonly beatId: string; readonly optionId: string }
+  | { readonly kind: "complete_pre_arrival_route" }
   | { readonly kind: "assign_hero"; readonly assigned: boolean }
   | { readonly kind: "set_hero_role"; readonly roleId: string }
   | { readonly kind: "set_role_crew"; readonly roleId: string; readonly crew: number }
@@ -34,6 +35,8 @@ export function workerRequestForAddCommand(command: AddDomainCommand): WorkerReq
         beatId: command.beatId,
         optionId: command.optionId,
       }
+    case "complete_pre_arrival_route":
+      return { type: "completePreArrivalRoute" }
     case "assign_hero":
       return { type: "assignHero", assigned: command.assigned }
     case "set_hero_role":

@@ -6,6 +6,7 @@ pub enum GameCommand {
         beat_id: String,
         option_id: String,
     },
+    CompletePreArrivalRoute,
     SetHeroAssigned {
         assigned: bool,
     },

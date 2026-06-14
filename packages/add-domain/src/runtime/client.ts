@@ -45,6 +45,10 @@ export class SimulationClient {
     this.post({ type: 'chooseStoryOption', beatId, optionId })
   }
 
+  completePreArrivalRoute() {
+    this.post({ type: 'completePreArrivalRoute' })
+  }
+
   reset() {
     this.post({ type: 'reset' })
   }

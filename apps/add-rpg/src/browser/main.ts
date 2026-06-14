@@ -117,11 +117,6 @@ import "./styles.css"
 
 const OPENING_TRAVEL_STEP_ID = "reach-base"
 const OPENING_ROUTE_ACTION_ID = "first-playable:reach-base-route"
-const PRE_ARRIVAL_ROUTE_STORY_BEAT_IDS = new Set([
-  "story.beat.road_to_base",
-  "story.beat.first_glimpse",
-  "story.beat.enter_the_bubble",
-])
 
 const moduleRootDisposers: Array<() => void> = []
 
@@ -6605,7 +6600,7 @@ async function runCurrentAction(): Promise<void> {
     }
     case "discovery": {
       if (action.kind === "open_base" && action.actionId === ADD_DISCOVERY_OPEN_BASE_ACTION_ID) {
-        await completePreArrivalStoryBeatsForRoute()
+        await completePreArrivalRoute()
         openBaseManagementView("discovery-open:base")
         return
       }
@@ -6658,14 +6653,11 @@ async function runFirstPlayableAction(): Promise<void> {
   await runAddAction(action)
 }
 
-async function completePreArrivalStoryBeatsForRoute(): Promise<void> {
-  for (let index = 0; index < PRE_ARRIVAL_ROUTE_STORY_BEAT_IDS.size; index += 1) {
-    const moment = storyMoment()
-    if (!moment || !PRE_ARRIVAL_ROUTE_STORY_BEAT_IDS.has(moment.beatId)) return
-    const choice = moment.choices[0]
-    if (!choice) return
-    await chooseStoryOption(moment.beatId, choice.id)
-  }
+async function completePreArrivalRoute(): Promise<void> {
+  await sendAndWaitForSnapshot(() => {
+    setLastCommand("complete_pre_arrival_route")
+    client.completePreArrivalRoute()
+  })
 }
 
 async function runDiscoveryAction(link: AddDiscoveryActionLink): Promise<void> {
@@ -6761,6 +6753,9 @@ function sendWorkerRequest(request: WorkerRequest): void {
       return
     case "chooseStoryOption":
       client.chooseStoryOption(request.beatId, request.optionId)
+      return
+    case "completePreArrivalRoute":
+      client.completePreArrivalRoute()
       return
     case "recruitFromSurvivorCave":
       client.recruitFromSurvivorCave()

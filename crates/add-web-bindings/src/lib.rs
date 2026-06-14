@@ -40,6 +40,11 @@ impl WebRuntime {
         });
     }
 
+    #[wasm_bindgen(js_name = completePreArrivalRoute)]
+    pub fn complete_pre_arrival_route(&mut self) {
+        self.simulation.apply(GameCommand::CompletePreArrivalRoute);
+    }
+
     #[wasm_bindgen(js_name = assignHero)]
     pub fn assign_hero(&mut self, assigned: bool) {
         self.simulation

@@ -40,6 +40,10 @@ async function handleMessage(message: WorkerRequest) {
         runtime?.chooseStoryOption(message.beatId, message.optionId)
         postSnapshotUpdate()
         break
+      case 'completePreArrivalRoute':
+        runtime?.completePreArrivalRoute()
+        postSnapshotUpdate()
+        break
       case 'assignHero':
         runtime?.assignHero(message.assigned)
         postSnapshotUpdate()

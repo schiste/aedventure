@@ -14,8 +14,9 @@ use crate::game_data::{
     ROLE_CRYSTAL_CHORUS, ROLE_CRYSTAL_HARMONICS, ROLE_FIRE_PIT, ROLE_SCAVENGE, ROLE_WATER,
     RequirementDef, ResonanceEffectDef, ResonanceRecipeDef, ResonanceTuningTrackDef, RoleSlotPool,
     STATION_MIX_CONSOLE, STATION_RESEARCH_BOOTH, STATION_RESONANCE_CHAMBER, STATION_WORKSHOP,
-    TileFeature, balance_snapshot, construction_option_def, creature_def, expedition_target_def,
-    item_def, objective_def, objectives,
+    STORY_BEAT_ENTER_THE_BUBBLE, STORY_BEAT_FIRST_GLIMPSE, STORY_BEAT_ROAD_TO_BASE, TileFeature,
+    balance_snapshot, construction_option_def, creature_def, expedition_target_def, item_def,
+    objective_def, objectives,
     perk_def, processing_recipe_def, recruit_cost_for_index, resonance_recipe_def, role_def,
     station_def, stations, story_beat_def, story_beats, tile_def, world_action_def,
 };
@@ -36,6 +37,11 @@ const RESONANCE_SUPPORT_DURATION_REDUCTION_PER_LEVEL: f64 = 0.04;
 const RESONANCE_SUPPORT_DURATION_REDUCTION_CAP: f64 = 0.35;
 const STATION_SPECIALIZATION_CONVERSION_SPEED_BONUS: f64 = 0.2;
 const STATION_SPECIALIZATION_FIELD_DURATION_BONUS: f64 = 0.12;
+const PRE_ARRIVAL_ROUTE_BEAT_IDS: &[&str] = &[
+    STORY_BEAT_ROAD_TO_BASE,
+    STORY_BEAT_FIRST_GLIMPSE,
+    STORY_BEAT_ENTER_THE_BUBBLE,
+];
 
 /// Per-echo-scar multiplicative penalty to Hero combat stats, floored so scars
 /// chip away at effectiveness without ever zeroing it.
@@ -159,6 +165,7 @@ impl Simulation {
             GameCommand::ChooseStoryOption { beat_id, option_id } => {
                 self.choose_story_option(&beat_id, &option_id)
             }
+            GameCommand::CompletePreArrivalRoute => self.complete_pre_arrival_route(),
             GameCommand::SetHeroAssigned { assigned } => self.set_hero_assigned(assigned),
             GameCommand::SetHeroRole { role_id } => self.set_hero_role(&role_id),
             GameCommand::SetRoleCrew { role_id, crew } => self.set_role_crew(&role_id, crew),
@@ -398,6 +405,27 @@ impl Simulation {
         if world_action_none {
             self.mark_story_beat_complete(beat_id);
             self.refresh_narrative_state();
+        }
+    }
+
+    fn complete_pre_arrival_route(&mut self) {
+        for _ in 0..PRE_ARRIVAL_ROUTE_BEAT_IDS.len() {
+            let Some(active_beat_id) = self.state.narrative.active_beat_id.clone() else {
+                return;
+            };
+            if !PRE_ARRIVAL_ROUTE_BEAT_IDS.contains(&active_beat_id.as_str()) {
+                return;
+            }
+
+            let Some(beat) = story_beat_def(&active_beat_id) else {
+                return;
+            };
+            let Some(choice) = beat.choices.first() else {
+                self.mark_story_beat_complete(&active_beat_id);
+                self.refresh_narrative_state();
+                continue;
+            };
+            self.choose_story_option(&active_beat_id, choice.id);
         }
     }
 
@@ -4546,5 +4574,38 @@ mod storylet_runtime_tests {
             reloaded.state.narrative.active_beat_id.as_deref(),
             Some(STORY_BEAT_INVESTIGATE_BASE)
         );
+    }
+
+    #[test]
+    fn complete_pre_arrival_route_is_a_replayable_runtime_command() {
+        let mut simulation = Simulation::new();
+
+        simulation.apply(GameCommand::CompletePreArrivalRoute);
+
+        assert_eq!(
+            simulation.state.narrative.completed_beat_ids,
+            vec![
+                STORY_BEAT_ROAD_TO_BASE.to_string(),
+                STORY_BEAT_FIRST_GLIMPSE.to_string(),
+                STORY_BEAT_ENTER_THE_BUBBLE.to_string(),
+            ]
+        );
+        assert_eq!(
+            simulation.state.narrative.active_beat_id.as_deref(),
+            Some(STORY_BEAT_INVESTIGATE_BASE)
+        );
+        assert_eq!(
+            simulation
+                .state
+                .narrative
+                .choice_by_beat
+                .get(STORY_BEAT_ROAD_TO_BASE)
+                .map(String::as_str),
+            Some("story.choice.road.follow_signal")
+        );
+
+        let narrative_after_first_apply = simulation.state.narrative.clone();
+        simulation.apply(GameCommand::CompletePreArrivalRoute);
+        assert_eq!(simulation.state.narrative, narrative_after_first_apply);
     }
 }

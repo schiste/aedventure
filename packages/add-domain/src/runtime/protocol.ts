@@ -1035,6 +1035,7 @@ export type WorkerRequest =
   | { type: 'tick'; seconds: number }
   | { type: 'offlineCatchup'; elapsedSeconds: number }
   | { type: 'chooseStoryOption'; beatId: string; optionId: string }
+  | { type: 'completePreArrivalRoute' }
   | { type: 'assignHero'; assigned: boolean }
   | { type: 'setHeroRole'; roleId: string }
   | { type: 'setRoleCrew'; roleId: string; crew: number }
