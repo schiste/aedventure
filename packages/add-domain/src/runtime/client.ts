@@ -24,6 +24,10 @@ export interface TraceEntry {
   readonly queueDepth?: number
   /** Monotonic id linking a command to the event(s) and state changes it produced. */
   readonly seq?: number
+  /** Worker-reported handling time (ms), and its snapshot-build / diff components. */
+  readonly workerMs?: number
+  readonly snapshotMs?: number
+  readonly diffMs?: number
   /** The full protocol payload (request or event). */
   readonly payload: WorkerRequest | WorkerEvent
 }
@@ -217,6 +221,9 @@ export class SimulationClient {
         request: this.inFlightRequest?.type,
         queueDepth: this.queue.length,
         seq: this.inFlightSeq,
+        workerMs: message.workerMs,
+        snapshotMs: message.snapshotMs,
+        diffMs: message.diffMs,
         payload: message,
       })
     }

@@ -1083,9 +1083,21 @@ export type WorkerRequest =
  */
 export type SnapshotDelta = Partial<SimulationSnapshot>
 
-export type WorkerEvent =
+/** Optional timing the worker attaches to each event, to localise where sim cost goes. */
+export interface WorkerEventTiming {
+  /** Total time spent in the worker handling the request (ms). */
+  workerMs?: number
+  /** Of which: time building the snapshot — the Rust→JS serialization (ms). */
+  snapshotMs?: number
+  /** Of which: time diffing the snapshot for the delta channel (ms). */
+  diffMs?: number
+}
+
+export type WorkerEvent = (
   | { type: 'ready'; snapshot: SimulationSnapshot; catalog: CatalogSnapshot }
   | { type: 'snapshot'; snapshot: SimulationSnapshot }
   | { type: 'snapshotDelta'; changed: SnapshotDelta }
   | { type: 'save'; payload: string }
   | { type: 'error'; message: string }
+) &
+  WorkerEventTiming
