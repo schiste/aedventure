@@ -170,30 +170,34 @@ const EFFECTS_FIELD = {
 }
 
 // Reusable: a single `Condition` (the unified gating vocabulary, evaluated in the
-// sim). Flat variants only — combinators (All/Any/Not) exist in Rust but are not
-// authored in content (a condition array is implicitly AND).
+// sim). A condition array is implicitly AND; explicit all/any/not lets authors
+// compose richer deterministic gates without leaving the runtime vocabulary.
 const CONDITION = {
   name: "cond",
   kind: "taggedEnum",
   rustEnum: "Condition",
-  variants: {
-    always: { variant: "Always" },
-    flag_set: { variant: "FlagSet", tuple: [{ name: "flag", from: "flag_id", kind: "idConst", prefix: "FLAG_" }] },
-    flag_unset: { variant: "FlagUnset", tuple: [{ name: "flag", from: "flag_id", kind: "idConst", prefix: "FLAG_" }] },
-    resource_at_least: { variant: "ResourceAtLeast", fields: [{ name: "resource_id", from: "resource_id", kind: "string" }, { name: "amount", kind: "f64" }] },
-    bubble_reach_at_least: { variant: "BubbleReachAtLeast", tuple: [{ name: "n", from: "n", kind: "i64" }] },
-    clock_seconds_at_least: { variant: "ClockSecondsAtLeast", tuple: [{ name: "seconds", from: "seconds", kind: "f64" }] },
-    quality_at_least: { variant: "QualityAtLeast", fields: [{ name: "key", from: "key", kind: "string" }, { name: "value", kind: "i64" }] },
-    beat_completed: { variant: "BeatCompleted", tuple: [{ name: "beat", from: "beat_id", kind: "idConst" }] },
-    choice_made: { variant: "ChoiceMade", fields: [{ name: "beat_id", from: "beat_id", kind: "idConst" }, { name: "option_id", from: "option_id", kind: "string" }] },
-    role_available: { variant: "RoleAvailable", tuple: [{ name: "role", from: "role_id", kind: "idConst", prefix: "ROLE_" }] },
-    recruitment_enabled: { variant: "RecruitmentEnabled" },
-    recruited_any: { variant: "RecruitedAny" },
-    hero_outside_bubble: { variant: "HeroOutsideBubble" },
-    hero_forced_return: { variant: "HeroForcedReturn" },
-    hero_recovering: { variant: "HeroRecovering" },
-  },
+  variants: {},
 }
+Object.assign(CONDITION.variants, {
+  always: { variant: "Always" },
+  flag_set: { variant: "FlagSet", tuple: [{ name: "flag", from: "flag_id", kind: "idConst", prefix: "FLAG_" }] },
+  flag_unset: { variant: "FlagUnset", tuple: [{ name: "flag", from: "flag_id", kind: "idConst", prefix: "FLAG_" }] },
+  resource_at_least: { variant: "ResourceAtLeast", fields: [{ name: "resource_id", from: "resource_id", kind: "string" }, { name: "amount", kind: "f64" }] },
+  bubble_reach_at_least: { variant: "BubbleReachAtLeast", tuple: [{ name: "n", from: "n", kind: "i64" }] },
+  clock_seconds_at_least: { variant: "ClockSecondsAtLeast", tuple: [{ name: "seconds", from: "seconds", kind: "f64" }] },
+  quality_at_least: { variant: "QualityAtLeast", fields: [{ name: "key", from: "key", kind: "string" }, { name: "value", kind: "i64" }] },
+  beat_completed: { variant: "BeatCompleted", tuple: [{ name: "beat", from: "beat_id", kind: "idConst" }] },
+  choice_made: { variant: "ChoiceMade", fields: [{ name: "beat_id", from: "beat_id", kind: "idConst" }, { name: "option_id", from: "option_id", kind: "string" }] },
+  role_available: { variant: "RoleAvailable", tuple: [{ name: "role", from: "role_id", kind: "idConst", prefix: "ROLE_" }] },
+  recruitment_enabled: { variant: "RecruitmentEnabled" },
+  recruited_any: { variant: "RecruitedAny" },
+  hero_outside_bubble: { variant: "HeroOutsideBubble" },
+  hero_forced_return: { variant: "HeroForcedReturn" },
+  hero_recovering: { variant: "HeroRecovering" },
+  all: { variant: "All", tuple: [{ name: "conditions", kind: "array", element: CONDITION }] },
+  any: { variant: "Any", tuple: [{ name: "conditions", kind: "array", element: CONDITION }] },
+  not: { variant: "Not", tuple: [{ name: "condition", kind: "ref", element: CONDITION }] },
+})
 const conditionsField = (name) => ({ name, kind: "array", element: CONDITION })
 const effectsField = (name) => ({ ...EFFECTS_FIELD, name })
 

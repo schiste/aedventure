@@ -1,5 +1,5 @@
 import type { StoryBeatDef } from "../../../runtime/protocol"
-import { beatDone, NONE, STORY_ARC_AMBIENT } from "../helpers"
+import { allOf, beatDone, NONE, STORY_ARC_AMBIENT, storyCondition } from "../helpers"
 
 export const AMBIENT_STORY_BEATS: readonly StoryBeatDef[] = [
   // Reactive side-storylet: not on the first-playable spine. Its high priority
@@ -22,7 +22,9 @@ export const AMBIENT_STORY_BEATS: readonly StoryBeatDef[] = [
       },
     ],
     relatedIds: ["story.beat.explore_base"],
-    preconditions: [{ kind: "hero_outside_bubble" }, beatDone("story.beat.explore_base")],
+    preconditions: [
+      allOf([storyCondition.heroOutsideBubble(), beatDone("story.beat.explore_base")]),
+    ],
     autoCompleteWhen: NONE,
     priority: 100,
     repeatable: false,

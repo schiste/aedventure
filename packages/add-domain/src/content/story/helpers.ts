@@ -44,10 +44,22 @@ export const storyCondition = {
   heroOutsideBubble: (): ConditionDef => ({ kind: "hero_outside_bubble" }),
   heroForcedReturn: (): ConditionDef => ({ kind: "hero_forced_return" }),
   heroRecovering: (): ConditionDef => ({ kind: "hero_recovering" }),
+  all: (conditions: readonly ConditionDef[]): ConditionDef => ({
+    kind: "all",
+    conditions: [...conditions],
+  }),
+  any: (conditions: readonly ConditionDef[]): ConditionDef => ({
+    kind: "any",
+    conditions: [...conditions],
+  }),
+  not: (condition: ConditionDef): ConditionDef => ({ kind: "not", condition }),
 }
 
 export const flagSet = storyCondition.flagSet
 export const beatDone = storyCondition.beatDone
+export const allOf = storyCondition.all
+export const anyOf = storyCondition.any
+export const not = storyCondition.not
 export const NONE: ConditionDef[] = []
 
 export function firstPlayableProgression(input: {

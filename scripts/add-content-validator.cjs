@@ -207,24 +207,22 @@ function validateStoryGraph(ctx, beats) {
 
   for (const beat of beats) {
     for (const condition of beat.autoCompleteWhen ?? []) {
-      const key = conditionDependencyKey(condition)
-      if (!key) continue
-      if (!handoffKeysByBeat.has(key)) handoffKeysByBeat.set(key, new Set())
-      handoffKeysByBeat.get(key).add(beat.id)
+      for (const key of conditionDependencyKeys(condition)) {
+        if (!handoffKeysByBeat.has(key)) handoffKeysByBeat.set(key, new Set())
+        handoffKeysByBeat.get(key).add(beat.id)
+      }
     }
   }
 
   for (const beat of beats) {
     for (const condition of beat.preconditions ?? []) {
-      if (condition.kind === "beat_completed" && byId.has(condition.beat_id)) {
-        dependencies.get(beat.id).add(condition.beat_id)
+      for (const dependencyBeatId of conditionStoryBeatDependencies(condition)) {
+        if (byId.has(dependencyBeatId)) dependencies.get(beat.id).add(dependencyBeatId)
       }
-      if (condition.kind === "choice_made" && byId.has(condition.beat_id)) {
-        dependencies.get(beat.id).add(condition.beat_id)
-      }
-      const key = conditionDependencyKey(condition)
-      for (const sourceBeatId of handoffKeysByBeat.get(key) ?? []) {
-        if (sourceBeatId !== beat.id) dependencies.get(beat.id).add(sourceBeatId)
+      for (const key of conditionDependencyKeys(condition)) {
+        for (const sourceBeatId of handoffKeysByBeat.get(key) ?? []) {
+          if (sourceBeatId !== beat.id) dependencies.get(beat.id).add(sourceBeatId)
+        }
       }
     }
   }
@@ -391,61 +389,122 @@ function validateEffects(ctx, label, effects = []) {
 }
 
 function validateConditionSet(ctx, label, conditions = [], owningBeatId = null) {
+  validateConditionList(ctx, label, conditions, owningBeatId, true)
+}
+
+function validateConditionList(ctx, label, conditions = [], owningBeatId = null, andContext = true) {
+  if (!Array.isArray(conditions)) {
+    ctx.errors.push(`${label}: conditions must be an array`)
+    return { flagSets: new Set(), flagUnsets: new Set() }
+  }
+
   const flagSets = new Set()
   const flagUnsets = new Set()
 
   for (const condition of conditions) {
-    switch (condition.kind) {
-      case "flag_set":
-        requireKnown(ctx, `${label}.flag_set`, condition.flag_id, ctx.flagIds, "flag")
-        flagSets.add(condition.flag_id)
-        break
-      case "flag_unset":
-        requireKnown(ctx, `${label}.flag_unset`, condition.flag_id, ctx.flagIds, "flag")
-        flagUnsets.add(condition.flag_id)
-        break
-      case "resource_at_least":
-        requireKnown(ctx, `${label}.resource_at_least`, condition.resource_id, ctx.resourceIds, "resource")
-        if (!Number.isFinite(condition.amount) || condition.amount < 0) {
-          ctx.errors.push(`${label}: resource_at_least for "${condition.resource_id}" needs a non-negative finite amount`)
-        }
-        break
-      case "bubble_reach_at_least":
-        if (!Number.isInteger(condition.n) || condition.n < 0) {
-          ctx.errors.push(`${label}: bubble_reach_at_least needs a non-negative integer`)
-        }
-        break
-      case "clock_seconds_at_least":
-        if (!Number.isFinite(condition.seconds) || condition.seconds < 0) {
-          ctx.errors.push(`${label}: clock_seconds_at_least needs non-negative finite seconds`)
-        }
-        break
-      case "beat_completed":
-        requireKnown(ctx, `${label}.beat_completed`, condition.beat_id, ctx.storyBeatIds, "story beat")
-        if (condition.beat_id === owningBeatId) {
-          ctx.errors.push(`${label}: beat cannot require itself to be completed`)
-        }
-        break
-      case "choice_made":
-        requireKnown(ctx, `${label}.choice_made beat`, condition.beat_id, ctx.storyBeatIds, "story beat")
-        if (condition.beat_id === owningBeatId) {
-          ctx.errors.push(`${label}: beat cannot require its own choice before activation`)
-        }
-        if (!ctx.storyChoicesByBeat.get(condition.beat_id)?.has(condition.option_id)) {
-          ctx.errors.push(`${label}: choice_made references missing option "${condition.option_id}" on beat "${condition.beat_id}"`)
-        }
-        break
-      case "role_available":
-        requireKnown(ctx, `${label}.role_available`, condition.role_id, ctx.roleIds, "role")
-        break
+    const nestedFlags = validateCondition(ctx, label, condition, owningBeatId, andContext)
+    if (andContext) {
+      for (const flagId of nestedFlags.flagSets) flagSets.add(flagId)
+      for (const flagId of nestedFlags.flagUnsets) flagUnsets.add(flagId)
     }
   }
 
-  for (const flagId of flagSets) {
-    if (flagUnsets.has(flagId)) {
-      ctx.errors.push(`${label}: impossible flag precondition requires "${flagId}" to be both set and unset`)
+  if (andContext) {
+    for (const flagId of flagSets) {
+      if (flagUnsets.has(flagId)) {
+        ctx.errors.push(`${label}: impossible flag precondition requires "${flagId}" to be both set and unset`)
+      }
     }
   }
+
+  return { flagSets, flagUnsets }
+}
+
+function validateCondition(ctx, label, condition, owningBeatId = null, andContext = true) {
+  const flagSets = new Set()
+  const flagUnsets = new Set()
+
+  if (!condition || typeof condition !== "object") {
+    ctx.errors.push(`${label}: condition must be an object`)
+    return { flagSets, flagUnsets }
+  }
+
+  switch (condition.kind) {
+    case "flag_set":
+      requireKnown(ctx, `${label}.flag_set`, condition.flag_id, ctx.flagIds, "flag")
+      if (andContext) flagSets.add(condition.flag_id)
+      break
+    case "flag_unset":
+      requireKnown(ctx, `${label}.flag_unset`, condition.flag_id, ctx.flagIds, "flag")
+      if (andContext) flagUnsets.add(condition.flag_id)
+      break
+    case "resource_at_least":
+      requireKnown(ctx, `${label}.resource_at_least`, condition.resource_id, ctx.resourceIds, "resource")
+      if (!Number.isFinite(condition.amount) || condition.amount < 0) {
+        ctx.errors.push(`${label}: resource_at_least for "${condition.resource_id}" needs a non-negative finite amount`)
+      }
+      break
+    case "bubble_reach_at_least":
+      if (!Number.isInteger(condition.n) || condition.n < 0) {
+        ctx.errors.push(`${label}: bubble_reach_at_least needs a non-negative integer`)
+      }
+      break
+    case "clock_seconds_at_least":
+      if (!Number.isFinite(condition.seconds) || condition.seconds < 0) {
+        ctx.errors.push(`${label}: clock_seconds_at_least needs non-negative finite seconds`)
+      }
+      break
+    case "beat_completed":
+      requireKnown(ctx, `${label}.beat_completed`, condition.beat_id, ctx.storyBeatIds, "story beat")
+      if (condition.beat_id === owningBeatId) {
+        ctx.errors.push(`${label}: beat cannot require itself to be completed`)
+      }
+      break
+    case "choice_made":
+      requireKnown(ctx, `${label}.choice_made beat`, condition.beat_id, ctx.storyBeatIds, "story beat")
+      if (condition.beat_id === owningBeatId) {
+        ctx.errors.push(`${label}: beat cannot require its own choice before activation`)
+      }
+      if (!ctx.storyChoicesByBeat.get(condition.beat_id)?.has(condition.option_id)) {
+        ctx.errors.push(`${label}: choice_made references missing option "${condition.option_id}" on beat "${condition.beat_id}"`)
+      }
+      break
+    case "role_available":
+      requireKnown(ctx, `${label}.role_available`, condition.role_id, ctx.roleIds, "role")
+      break
+    case "always":
+    case "recruitment_enabled":
+    case "recruited_any":
+    case "hero_outside_bubble":
+    case "hero_forced_return":
+    case "hero_recovering":
+      break
+    case "all": {
+      const conditions = condition.conditions ?? []
+      if (!Array.isArray(conditions) || conditions.length === 0) {
+        ctx.errors.push(`${label}.all: conditions must be a non-empty array`)
+      }
+      const nested = validateConditionList(ctx, `${label}.all`, conditions, owningBeatId, andContext)
+      for (const flagId of nested.flagSets) flagSets.add(flagId)
+      for (const flagId of nested.flagUnsets) flagUnsets.add(flagId)
+      break
+    }
+    case "any": {
+      const conditions = condition.conditions ?? []
+      if (!Array.isArray(conditions) || conditions.length === 0) {
+        ctx.errors.push(`${label}.any: conditions must be a non-empty array`)
+      }
+      validateConditionList(ctx, `${label}.any`, conditions, owningBeatId, false)
+      break
+    }
+    case "not":
+      validateCondition(ctx, `${label}.not`, condition.condition, owningBeatId, false)
+      break
+    default:
+      ctx.errors.push(`${label}: unsupported condition kind "${condition.kind}"`)
+  }
+
+  return { flagSets, flagUnsets }
 }
 
 function validateVisibility(ctx, label, visibility) {
@@ -482,6 +541,29 @@ function validateIdList(ctx, label, ids = [], knownIds, knownLabel) {
 function requireKnown(ctx, label, id, knownIds, knownLabel) {
   if (id && knownIds.has(id)) return
   ctx.errors.push(`${label}: unknown ${knownLabel} "${id}"`)
+}
+
+function conditionDependencyKeys(condition) {
+  if (!condition || typeof condition !== "object") return []
+  if (condition.kind === "all" || condition.kind === "any") {
+    const conditions = Array.isArray(condition.conditions) ? condition.conditions : []
+    return [...new Set(conditions.flatMap(conditionDependencyKeys))]
+  }
+  if (condition.kind === "not") return []
+  const key = conditionDependencyKey(condition)
+  return key ? [key] : []
+}
+
+function conditionStoryBeatDependencies(condition) {
+  if (!condition || typeof condition !== "object") return []
+  if (condition.kind === "beat_completed" || condition.kind === "choice_made") {
+    return [condition.beat_id]
+  }
+  if (condition.kind === "all" || condition.kind === "any") {
+    const conditions = Array.isArray(condition.conditions) ? condition.conditions : []
+    return [...new Set(conditions.flatMap(conditionStoryBeatDependencies))]
+  }
+  return []
 }
 
 function conditionDependencyKey(condition) {

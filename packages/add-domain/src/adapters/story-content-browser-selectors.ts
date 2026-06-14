@@ -58,6 +58,7 @@ export interface AddStoryConditionEvaluation {
   readonly passed: boolean
   readonly detail: string
   readonly source: "typescript_best_effort"
+  readonly children?: readonly AddStoryConditionEvaluation[]
 }
 
 export interface AddStoryBeatEligibility {
@@ -346,6 +347,41 @@ function evaluateCondition(
         phase ? `Forced return phase is ${phase}.` : "Hero is not recovering.",
       )
     }
+    case "all": {
+      const children = condition.conditions.map((child) => evaluateCondition(snapshot, child, context))
+      const failedCount = children.filter((child) => !child.passed).length
+      const passed = children.every((child) => child.passed)
+      return conditionResult(
+        condition.kind,
+        "All nested conditions",
+        passed,
+        passed ? "All nested conditions pass." : `${failedCount} nested condition(s) blocked.`,
+        children,
+      )
+    }
+    case "any": {
+      const children = condition.conditions.map((child) => evaluateCondition(snapshot, child, context))
+      const passedCount = children.filter((child) => child.passed).length
+      const passed = children.some((child) => child.passed)
+      return conditionResult(
+        condition.kind,
+        "Any nested condition",
+        passed,
+        passed ? `${passedCount} nested condition(s) pass.` : "No nested condition passes.",
+        children,
+      )
+    }
+    case "not": {
+      const child = evaluateCondition(snapshot, condition.condition, context)
+      const passed = !child.passed
+      return conditionResult(
+        condition.kind,
+        `Not: ${child.label}`,
+        passed,
+        passed ? `Nested condition is false: ${child.detail}` : `Nested condition is true: ${child.detail}`,
+        [child],
+      )
+    }
   }
 }
 
@@ -354,8 +390,11 @@ function conditionResult(
   label: string,
   passed: boolean,
   detail: string,
+  children?: readonly AddStoryConditionEvaluation[],
 ): AddStoryConditionEvaluation {
-  return { kind, label, passed, detail, source: "typescript_best_effort" }
+  return children
+    ? { kind, label, passed, detail, source: "typescript_best_effort", children }
+    : { kind, label, passed, detail, source: "typescript_best_effort" }
 }
 
 function storyChoicesMade(

@@ -695,6 +695,9 @@ export type ConditionDef =
   | { kind: 'hero_outside_bubble' }
   | { kind: 'hero_forced_return' }
   | { kind: 'hero_recovering' }
+  | { kind: 'all'; conditions: ConditionDef[] }
+  | { kind: 'any'; conditions: ConditionDef[] }
+  | { kind: 'not'; condition: ConditionDef }
 
 export interface FlagDef {
   id: string

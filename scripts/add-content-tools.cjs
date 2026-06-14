@@ -81,10 +81,10 @@ function analyzeStoryGraph(beats) {
 
   for (const beat of beats) {
     for (const condition of beat.autoCompleteWhen ?? []) {
-      const key = conditionDependencyKey(condition)
-      if (!key) continue
-      if (!handoffKeysByBeat.has(key)) handoffKeysByBeat.set(key, new Set())
-      handoffKeysByBeat.get(key).add(beat.id)
+      for (const key of conditionDependencyKeys(condition)) {
+        if (!handoffKeysByBeat.has(key)) handoffKeysByBeat.set(key, new Set())
+        handoffKeysByBeat.get(key).add(beat.id)
+      }
     }
   }
 
@@ -97,15 +97,13 @@ function analyzeStoryGraph(beats) {
 
   for (const beat of beats) {
     for (const condition of beat.preconditions ?? []) {
-      if (condition.kind === "beat_completed") {
-        addEdge(condition.beat_id, beat.id, "beat_completed")
+      for (const dependencyBeatId of conditionStoryBeatDependencies(condition)) {
+        addEdge(dependencyBeatId, beat.id, `requires:${formatCondition(condition)}`)
       }
-      if (condition.kind === "choice_made") {
-        addEdge(condition.beat_id, beat.id, `choice_made:${condition.option_id}`)
-      }
-      const key = conditionDependencyKey(condition)
-      for (const sourceBeatId of handoffKeysByBeat.get(key) ?? []) {
-        addEdge(sourceBeatId, beat.id, `handoff:${formatCondition(condition)}`)
+      for (const key of conditionDependencyKeys(condition)) {
+        for (const sourceBeatId of handoffKeysByBeat.get(key) ?? []) {
+          addEdge(sourceBeatId, beat.id, `handoff:${formatCondition(condition)}`)
+        }
       }
     }
   }
@@ -379,6 +377,12 @@ function formatCondition(condition) {
       return "hero forced return active"
     case "hero_recovering":
       return "hero recovering"
+    case "all":
+      return `all(${(condition.conditions ?? []).map(formatCondition).join("; ")})`
+    case "any":
+      return `any(${(condition.conditions ?? []).map(formatCondition).join("; ")})`
+    case "not":
+      return `not(${formatCondition(condition.condition)})`
     default:
       return condition.kind
   }
@@ -411,6 +415,29 @@ function formatEffect(effect) {
     default:
       return effect.kind
   }
+}
+
+function conditionDependencyKeys(condition) {
+  if (!condition || typeof condition !== "object") return []
+  if (condition.kind === "all" || condition.kind === "any") {
+    const conditions = Array.isArray(condition.conditions) ? condition.conditions : []
+    return [...new Set(conditions.flatMap(conditionDependencyKeys))]
+  }
+  if (condition.kind === "not") return []
+  const key = conditionDependencyKey(condition)
+  return key ? [key] : []
+}
+
+function conditionStoryBeatDependencies(condition) {
+  if (!condition || typeof condition !== "object") return []
+  if (condition.kind === "beat_completed" || condition.kind === "choice_made") {
+    return [condition.beat_id]
+  }
+  if (condition.kind === "all" || condition.kind === "any") {
+    const conditions = Array.isArray(condition.conditions) ? condition.conditions : []
+    return [...new Set(conditions.flatMap(conditionStoryBeatDependencies))]
+  }
+  return []
 }
 
 function conditionDependencyKey(condition) {

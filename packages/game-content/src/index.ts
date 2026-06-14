@@ -220,6 +220,7 @@ export type RustFieldKind =
   | "bool"
   | "enum"
   | "option"
+  | "ref"
   | "enumArray"
   | "idConstArray"
   | "array"
@@ -245,10 +246,10 @@ export interface RustFieldSpec {
   readonly rustEnum?: string
   /** Required when `kind` is "option": the inner value's kind (null -> None). */
   readonly inner?: RustFieldKind
+  /** Required when `kind` is "ref" or "array": how to emit the nested value. */
+  readonly element?: RustFieldSpec
   /** For "idConst": prefix prepended to the derived const name (e.g. "FLAG_"). */
   readonly prefix?: string
-  /** Required when `kind` is "array": how to emit each element (raw item value). */
-  readonly element?: RustFieldSpec
   /** For "taggedEnum": the discriminant key on the object (defaults to "kind"). */
   readonly tagField?: string
   /** For "taggedEnum": tag value -> Rust variant. */
@@ -308,6 +309,11 @@ function rustFieldValue(spec: RustFieldSpec, raw: unknown): string {
       return raw === null || raw === undefined
         ? "None"
         : `Some(${rustFieldValue({ ...spec, kind: spec.inner ?? "string" }, raw)})`
+    case "ref": {
+      const element = spec.element
+      if (!element) throw new Error(`ref field "${spec.name}" needs an element spec`)
+      return `&${rustFieldValue(element, raw)}`
+    }
     case "enumArray": {
       const values = Array.isArray(raw) ? raw : []
       return `&[${values.map((v) => `${spec.rustEnum}::${pascalCase(String(v))}`).join(", ")}]`
