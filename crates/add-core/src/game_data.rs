@@ -1,5 +1,7 @@
 use serde::Serialize;
 
+use crate::topology::{AxialBounds, Landmark, MapCell, MapDefinition, TerrainRegion};
+
 mod catalog;
 use catalog::{
     BALANCE, CONSTRUCTION_OPTIONS, ENTITY_SCHEMAS, EXPEDITION_TARGETS, FLAGS, FLORA, ITEMS, PERKS,
@@ -2438,86 +2440,110 @@ pub fn balance_snapshot() -> BalanceSnapshot {
     BALANCE
 }
 
-pub fn terrain_profile_for(
-    q: i8,
-    r: i8,
-    distance: u8,
-    survivor_cave_q: i8,
-    survivor_cave_r: i8,
-) -> TerrainProfile {
-    if distance == 0 || (q == survivor_cave_q && r == survivor_cave_r) {
-        return TerrainProfile {
-            terrain: TerrainSnapshot::Plains,
-            impedance: TERRAIN_PLAINS_IMPEDANCE,
-            is_blocker: false,
-        };
-    }
-
-    if r == -2 && (-1..=2).contains(&q) {
-        return TerrainProfile {
-            terrain: TerrainSnapshot::River,
-            impedance: TERRAIN_RIVER_IMPEDANCE,
-            is_blocker: false,
-        };
-    }
-
-    if q <= -3 && r >= 1 {
-        return TerrainProfile {
-            terrain: TerrainSnapshot::Mountain,
-            impedance: TERRAIN_MOUNTAIN_IMPEDANCE,
-            is_blocker: true,
-        };
-    }
-
-    if q >= 2 && r >= 2 {
-        return TerrainProfile {
-            terrain: TerrainSnapshot::Ridge,
-            impedance: TERRAIN_RIDGE_IMPEDANCE,
-            is_blocker: false,
-        };
-    }
-
-    if q <= 0 && r <= -3 {
-        return TerrainProfile {
-            terrain: TerrainSnapshot::Scrub,
-            impedance: TERRAIN_SCRUB_IMPEDANCE,
-            is_blocker: false,
-        };
-    }
-
-    TerrainProfile {
+/// The ADD overworld as data. The base disk, the Survivor Cave landmark, and
+/// the terrain regions that used to be hardcoded in two parallel match ladders
+/// now live here as one [`MapDefinition`]; `tile_id_for`/`terrain_profile_for`
+/// are thin readers over it, so tile identity and terrain can never drift.
+///
+/// Region order is significant (first match wins) — it mirrors the original
+/// ladder: river → mountain → ridge → scrub, over a plains default.
+pub const OVERWORLD_MAP: MapDefinition = MapDefinition {
+    radius: crate::state::GRID_RADIUS,
+    base: MapCell {
+        tile_id: TILE_BASE_CORE,
         terrain: TerrainSnapshot::Plains,
         impedance: TERRAIN_PLAINS_IMPEDANCE,
         is_blocker: false,
-    }
+    },
+    landmarks: &[Landmark {
+        key: "survivor_cave",
+        q: crate::state::SURVIVOR_CAVE_Q,
+        r: crate::state::SURVIVOR_CAVE_R,
+        cell: MapCell {
+            tile_id: TILE_SURVIVOR_CAVE,
+            terrain: TerrainSnapshot::Plains,
+            impedance: TERRAIN_PLAINS_IMPEDANCE,
+            is_blocker: false,
+        },
+    }],
+    regions: &[
+        // River shallows: the r == -2 band across the centre columns.
+        TerrainRegion {
+            bounds: AxialBounds {
+                q_min: -1,
+                q_max: 2,
+                r_min: -2,
+                r_max: -2,
+            },
+            cell: MapCell {
+                tile_id: TILE_RIVER_SHALLOWS,
+                terrain: TerrainSnapshot::River,
+                impedance: TERRAIN_RIVER_IMPEDANCE,
+                is_blocker: false,
+            },
+        },
+        // Mountain wall: the impassable far-northwest wedge (q <= -3, r >= 1).
+        TerrainRegion {
+            bounds: AxialBounds {
+                q_min: i8::MIN,
+                q_max: -3,
+                r_min: 1,
+                r_max: i8::MAX,
+            },
+            cell: MapCell {
+                tile_id: TILE_MOUNTAIN_WALL,
+                terrain: TerrainSnapshot::Mountain,
+                impedance: TERRAIN_MOUNTAIN_IMPEDANCE,
+                is_blocker: true,
+            },
+        },
+        // Ridge line: the southeast highland (q >= 2, r >= 2).
+        TerrainRegion {
+            bounds: AxialBounds {
+                q_min: 2,
+                q_max: i8::MAX,
+                r_min: 2,
+                r_max: i8::MAX,
+            },
+            cell: MapCell {
+                tile_id: TILE_RIDGE_LINE,
+                terrain: TerrainSnapshot::Ridge,
+                impedance: TERRAIN_RIDGE_IMPEDANCE,
+                is_blocker: false,
+            },
+        },
+        // Scrub patch: the northern dry belt (q <= 0, r <= -3).
+        TerrainRegion {
+            bounds: AxialBounds {
+                q_min: i8::MIN,
+                q_max: 0,
+                r_min: i8::MIN,
+                r_max: -3,
+            },
+            cell: MapCell {
+                tile_id: TILE_SCRUB_PATCH,
+                terrain: TerrainSnapshot::Scrub,
+                impedance: TERRAIN_SCRUB_IMPEDANCE,
+                is_blocker: false,
+            },
+        },
+    ],
+    default: MapCell {
+        tile_id: TILE_PLAINS_OPEN,
+        terrain: TerrainSnapshot::Plains,
+        impedance: TERRAIN_PLAINS_IMPEDANCE,
+        is_blocker: false,
+    },
+};
+
+/// Terrain profile for an overworld cell. Thin reader over [`OVERWORLD_MAP`].
+pub fn terrain_profile_for(q: i8, r: i8, distance: u8) -> TerrainProfile {
+    OVERWORLD_MAP.cell_at(q, r, distance).terrain_profile()
 }
 
-pub fn tile_id_for(
-    q: i8,
-    r: i8,
-    distance: u8,
-    survivor_cave_q: i8,
-    survivor_cave_r: i8,
-) -> &'static str {
-    if distance == 0 {
-        return TILE_BASE_CORE;
-    }
-    if q == survivor_cave_q && r == survivor_cave_r {
-        return TILE_SURVIVOR_CAVE;
-    }
-    if r == -2 && (-1..=2).contains(&q) {
-        return TILE_RIVER_SHALLOWS;
-    }
-    if q <= -3 && r >= 1 {
-        return TILE_MOUNTAIN_WALL;
-    }
-    if q >= 2 && r >= 2 {
-        return TILE_RIDGE_LINE;
-    }
-    if q <= 0 && r <= -3 {
-        return TILE_SCRUB_PATCH;
-    }
-    TILE_PLAINS_OPEN
+/// Tile id for an overworld cell. Thin reader over [`OVERWORLD_MAP`].
+pub fn tile_id_for(q: i8, r: i8, distance: u8) -> &'static str {
+    OVERWORLD_MAP.cell_at(q, r, distance).tile_id
 }
 
 pub fn recruit_cost_for_index(index: u16) -> f64 {

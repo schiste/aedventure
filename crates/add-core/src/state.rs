@@ -4,7 +4,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::game_data::{
     ROLE_CONSTRUCTION, ROLE_CRYSTAL_BASSLINE, ROLE_CRYSTAL_CHORUS, ROLE_CRYSTAL_HARMONICS,
-    ROLE_FIRE_PIT, ROLE_SCAVENGE, ROLE_WATER, balance_snapshot, stations, tile_id_for,
+    ROLE_FIRE_PIT, ROLE_SCAVENGE, ROLE_WATER, balance_snapshot, stations,
 };
 use crate::migrations::{CURRENT_CATALOG_VERSION, CURRENT_SCHEMA_VERSION, default_catalog_version};
 
@@ -913,31 +913,27 @@ pub struct WorldAction {
 }
 
 fn initial_hexes() -> Vec<HexState> {
-    let mut hexes = Vec::new();
-
-    for q in -GRID_RADIUS..=GRID_RADIUS {
-        for r in (-GRID_RADIUS).max(-q - GRID_RADIUS)..=(GRID_RADIUS).min(-q + GRID_RADIUS) {
-            let distance = cube_distance(0, 0, q, r);
-            let tile_id = tile_id_for(q, r, distance, SURVIVOR_CAVE_Q, SURVIVOR_CAVE_R);
-            hexes.push(HexState {
-                q,
-                r,
-                distance,
-                tile_id: tile_id.to_string(),
-                state: if distance == 0 {
-                    HexVisualState::Stabilized
-                } else if tile_id == crate::game_data::TILE_MOUNTAIN_WALL {
-                    HexVisualState::Blocked
-                } else {
-                    HexVisualState::Inactive
-                },
-                progress: if distance == 0 { 1.0 } else { 0.0 },
-            });
-        }
-    }
-
-    hexes.sort_by_key(|hex| (hex.distance, hex.q, hex.r));
-    hexes
+    // Generation is delegated to the data-driven overworld map (already sorted
+    // by distance,q,r). Blocked cells fall out of the map's `is_blocker`, so the
+    // visual state is no longer special-cased to the mountain-wall tile.
+    crate::game_data::OVERWORLD_MAP
+        .generated_cells()
+        .into_iter()
+        .map(|generated| HexState {
+            q: generated.q,
+            r: generated.r,
+            distance: generated.distance,
+            tile_id: generated.cell.tile_id.to_string(),
+            state: if generated.distance == 0 {
+                HexVisualState::Stabilized
+            } else if generated.cell.is_blocker {
+                HexVisualState::Blocked
+            } else {
+                HexVisualState::Inactive
+            },
+            progress: if generated.distance == 0 { 1.0 } else { 0.0 },
+        })
+        .collect()
 }
 
 fn initial_station_states() -> BTreeMap<String, StationState> {

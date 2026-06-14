@@ -4,6 +4,7 @@ pub mod migrations;
 pub mod save;
 pub mod simulation;
 pub mod state;
+pub mod topology;
 
 pub use command::GameCommand;
 pub use game_data::{
@@ -26,10 +27,13 @@ pub use game_data::{
     processing_recipe_def, processing_recipes, recruit_cost_for_index, resonance_recipe_def,
     resonance_recipes, resource_def, resources, role_def, roles, station_def, stations,
     story_beat_def, story_beats, structure_def, structures, terrain_profile_for, tile_def,
-    tile_id_for, world_action_def, world_actions,
+    tile_id_for, world_action_def, world_actions, OVERWORLD_MAP,
 };
 pub use migrations::{CURRENT_CATALOG_VERSION, CURRENT_SCHEMA_VERSION, MigrationError};
 pub use save::{SaveError, export_save, import_save};
+pub use topology::{
+    AxialBounds, GeneratedCell, Landmark, MapCell, MapDefinition, TerrainRegion, axial_distance,
+};
 pub use simulation::Simulation;
 pub use state::{
     BaseState, BubbleState, ConstructionJob, CrystalCircleState, CrystalTuningState,
