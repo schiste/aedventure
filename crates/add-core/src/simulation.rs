@@ -2323,12 +2323,16 @@ impl Simulation {
     /// storylet as `active_beat_id`. Reactive/side storylets light up whenever
     /// their preconditions hold — the engine reacts to game state, not a line.
     pub(crate) fn refresh_narrative_state(&mut self) {
+        self.refresh_narrative_state_from(story_beats());
+    }
+
+    fn refresh_narrative_state_from(&mut self, beats: &[crate::game_data::StoryBeatDef]) {
         // Let repeatable beats re-fire on_activate after they lapse: drop any
         // activation marker whose beat is repeatable and no longer eligible.
         let activated: Vec<String> =
             self.state.narrative.activated_beat_ids.iter().cloned().collect();
         for id in activated {
-            if story_beat_def(&id).is_some_and(|beat| {
+            if beats.iter().find(|beat| beat.id == id).is_some_and(|beat| {
                 beat.repeatable && !self.evaluate_conditions(beat.preconditions)
             }) {
                 self.state.narrative.activated_beat_ids.remove(&id);
@@ -2336,18 +2340,21 @@ impl Simulation {
         }
 
         loop {
-            let Some(beat_id) = self.best_eligible_storylet() else {
+            let Some(beat_id) = self.best_eligible_storylet_from(beats) else {
                 self.state.narrative.active_beat_id = None;
                 return;
             };
-            let beat = story_beat_def(&beat_id).expect("eligible beat is in the catalog");
+            let beat = beats
+                .iter()
+                .find(|beat| beat.id == beat_id)
+                .expect("eligible beat is in the provided storylet pool");
             // Non-repeatable spine beats resolve when their state conditions hold;
             // repeatable/reactive beats stay active only while still eligible.
             if !beat.repeatable
                 && !beat.auto_complete_when.is_empty()
                 && self.evaluate_conditions(beat.auto_complete_when)
             {
-                self.mark_story_beat_complete(&beat_id);
+                self.mark_story_beat_complete_from(&beat_id, beats);
                 continue;
             }
             // Fire on_activate once per activation (the lapse cleanup above lets
@@ -2367,8 +2374,11 @@ impl Simulation {
     /// The most salient storylet that can be active now: highest `priority`, then
     /// lowest `sequence`, among storylets whose preconditions all hold and that
     /// aren't already completed (unless `repeatable`).
-    fn best_eligible_storylet(&self) -> Option<String> {
-        story_beats()
+    fn best_eligible_storylet_from(
+        &self,
+        beats: &[crate::game_data::StoryBeatDef],
+    ) -> Option<String> {
+        beats
             .iter()
             .filter(|beat| {
                 (beat.repeatable || !self.story_beat_completed(beat.id))
@@ -2391,6 +2401,14 @@ impl Simulation {
     }
 
     fn mark_story_beat_complete(&mut self, beat_id: &str) {
+        self.mark_story_beat_complete_from(beat_id, story_beats());
+    }
+
+    fn mark_story_beat_complete_from(
+        &mut self,
+        beat_id: &str,
+        beats: &[crate::game_data::StoryBeatDef],
+    ) {
         if self.story_beat_completed(beat_id) {
             return;
         }
@@ -2399,7 +2417,7 @@ impl Simulation {
             .completed_beat_ids
             .push(beat_id.to_string());
         // Fire the beat's one-shot resolution effects (idempotent: guarded above).
-        if let Some(beat) = story_beat_def(beat_id) {
+        if let Some(beat) = beats.iter().find(|beat| beat.id == beat_id) {
             self.apply_effects(beat.on_complete);
         }
         let xp = self.balance().progression.xp_per_story_beat;
@@ -4054,5 +4072,329 @@ fn station_specialization_label(path: StationSpecializationPathState) -> &'stati
         StationSpecializationPathState::Conversion => "Conversion",
         StationSpecializationPathState::Field => "Field",
         StationSpecializationPathState::Extraction => "Extraction",
+    }
+}
+
+#[cfg(test)]
+mod storylet_runtime_tests {
+    use super::*;
+    use crate::game_data::{
+        Condition, EffectDef, StoryBeatDef, STORY_BEAT_ENTER_THE_BUBBLE,
+        STORY_BEAT_FIRST_GLIMPSE, STORY_BEAT_INVESTIGATE_BASE, STORY_BEAT_ROAD_TO_BASE,
+    };
+    use crate::state::{GameEvent, NarrativeState};
+    use crate::{GameCommand, export_save, import_save};
+
+    const TEST_AUTO_A: &str = "test.auto.a";
+    const TEST_AUTO_B: &str = "test.auto.b";
+    const TEST_AUTO_C: &str = "test.auto.c";
+    const TEST_COMPLETE: &str = "test.complete";
+    const TEST_REPEATABLE: &str = "test.repeatable";
+
+    const ALWAYS: &[Condition] = &[Condition::Always];
+    const CASCADE_READY: &[Condition] = &[Condition::QualityAtLeast {
+        key: "cascade",
+        value: 1,
+    }];
+    const AUTO_A_DONE: &[Condition] = &[Condition::BeatCompleted(TEST_AUTO_A)];
+    const AUTO_B_DONE: &[Condition] = &[Condition::BeatCompleted(TEST_AUTO_B)];
+    const REPEATABLE_READY: &[Condition] = &[Condition::QualityAtLeast {
+        key: "repeat_ready",
+        value: 1,
+    }];
+
+    const AUTO_A_COMPLETE_EFFECTS: &[EffectDef] = &[EffectDef::AddQuality {
+        key: "completed_a",
+        amount: 1,
+    }];
+    const AUTO_B_COMPLETE_EFFECTS: &[EffectDef] = &[EffectDef::AddQuality {
+        key: "completed_b",
+        amount: 1,
+    }];
+    const COMPLETE_EFFECTS: &[EffectDef] = &[EffectDef::AddQuality {
+        key: "complete_count",
+        amount: 1,
+    }];
+    const REPEATABLE_ACTIVATE_EFFECTS: &[EffectDef] = &[EffectDef::AddQuality {
+        key: "repeat_activations",
+        amount: 1,
+    }];
+
+    fn test_storylet(
+        id: &'static str,
+        sequence: u16,
+        priority: i16,
+        repeatable: bool,
+        preconditions: &'static [Condition],
+        auto_complete_when: &'static [Condition],
+        on_activate: &'static [EffectDef],
+        on_complete: &'static [EffectDef],
+    ) -> StoryBeatDef {
+        StoryBeatDef {
+            id,
+            schema_id: id,
+            label: id,
+            body: "",
+            arc: "test",
+            sequence,
+            world_action_id: None,
+            choices: &[],
+            related_ids: &[],
+            progression: None,
+            preconditions,
+            auto_complete_when,
+            priority,
+            repeatable,
+            on_complete,
+            on_activate,
+        }
+    }
+
+    fn isolated_storylet_simulation() -> Simulation {
+        let mut simulation = Simulation::new();
+        simulation.state.narrative = NarrativeState::new();
+        simulation.state.events.clear();
+        simulation.state.notes.clear();
+        simulation
+    }
+
+    fn beat_activated_count(simulation: &Simulation, beat_id: &str) -> usize {
+        simulation
+            .state
+            .events
+            .iter()
+            .filter(|event| {
+                matches!(
+                    event,
+                    GameEvent::BeatActivated { beat_id: activated } if activated == beat_id
+                )
+            })
+            .count()
+    }
+
+    #[test]
+    fn storylet_priority_ordering_prefers_highest_priority() {
+        let beats = [
+            test_storylet("test.low_priority", 1, 0, false, ALWAYS, &[], &[], &[]),
+            test_storylet("test.high_priority", 99, 10, false, ALWAYS, &[], &[], &[]),
+        ];
+        let mut simulation = isolated_storylet_simulation();
+
+        simulation.refresh_narrative_state_from(&beats);
+
+        assert_eq!(
+            simulation.state.narrative.active_beat_id.as_deref(),
+            Some("test.high_priority")
+        );
+    }
+
+    #[test]
+    fn storylet_sequence_breaks_equal_priority_ties() {
+        let beats = [
+            test_storylet("test.sequence_late", 20, 0, false, ALWAYS, &[], &[], &[]),
+            test_storylet("test.sequence_early", 10, 0, false, ALWAYS, &[], &[], &[]),
+        ];
+        let mut simulation = isolated_storylet_simulation();
+
+        simulation.refresh_narrative_state_from(&beats);
+
+        assert_eq!(
+            simulation.state.narrative.active_beat_id.as_deref(),
+            Some("test.sequence_early")
+        );
+    }
+
+    #[test]
+    fn storylet_auto_completion_cascades_until_next_playable_beat() {
+        let beats = [
+            test_storylet(
+                TEST_AUTO_A,
+                10,
+                0,
+                false,
+                ALWAYS,
+                CASCADE_READY,
+                &[],
+                AUTO_A_COMPLETE_EFFECTS,
+            ),
+            test_storylet(
+                TEST_AUTO_B,
+                20,
+                0,
+                false,
+                AUTO_A_DONE,
+                CASCADE_READY,
+                &[],
+                AUTO_B_COMPLETE_EFFECTS,
+            ),
+            test_storylet(TEST_AUTO_C, 30, 0, false, AUTO_B_DONE, &[], &[], &[]),
+        ];
+        let mut simulation = isolated_storylet_simulation();
+        simulation.apply_effects(&[EffectDef::SetQuality {
+            key: "cascade",
+            value: 1,
+        }]);
+
+        simulation.refresh_narrative_state_from(&beats);
+
+        assert_eq!(
+            simulation.state.narrative.completed_beat_ids,
+            vec![TEST_AUTO_A.to_string(), TEST_AUTO_B.to_string()]
+        );
+        assert_eq!(
+            simulation.state.narrative.active_beat_id.as_deref(),
+            Some(TEST_AUTO_C)
+        );
+        assert_eq!(simulation.quality("completed_a"), 1);
+        assert_eq!(simulation.quality("completed_b"), 1);
+    }
+
+    #[test]
+    fn repeatable_storylet_reactivates_after_lapsing() {
+        let beats = [test_storylet(
+            TEST_REPEATABLE,
+            10,
+            0,
+            true,
+            REPEATABLE_READY,
+            &[],
+            REPEATABLE_ACTIVATE_EFFECTS,
+            &[],
+        )];
+        let mut simulation = isolated_storylet_simulation();
+
+        simulation.refresh_narrative_state_from(&beats);
+        assert_eq!(simulation.state.narrative.active_beat_id, None);
+
+        simulation.apply_effects(&[EffectDef::SetQuality {
+            key: "repeat_ready",
+            value: 1,
+        }]);
+        simulation.state.events.clear();
+        simulation.refresh_narrative_state_from(&beats);
+        assert_eq!(simulation.quality("repeat_activations"), 1);
+        assert_eq!(beat_activated_count(&simulation, TEST_REPEATABLE), 1);
+
+        simulation.state.events.clear();
+        simulation.refresh_narrative_state_from(&beats);
+        assert_eq!(simulation.quality("repeat_activations"), 1);
+        assert_eq!(beat_activated_count(&simulation, TEST_REPEATABLE), 0);
+
+        simulation.apply_effects(&[EffectDef::SetQuality {
+            key: "repeat_ready",
+            value: 0,
+        }]);
+        simulation.refresh_narrative_state_from(&beats);
+        assert_eq!(simulation.state.narrative.active_beat_id, None);
+        assert!(
+            !simulation
+                .state
+                .narrative
+                .activated_beat_ids
+                .contains(TEST_REPEATABLE)
+        );
+
+        simulation.state.events.clear();
+        simulation.apply_effects(&[EffectDef::SetQuality {
+            key: "repeat_ready",
+            value: 1,
+        }]);
+        simulation.refresh_narrative_state_from(&beats);
+        assert_eq!(simulation.quality("repeat_activations"), 2);
+        assert_eq!(beat_activated_count(&simulation, TEST_REPEATABLE), 1);
+    }
+
+    #[test]
+    fn storylet_on_complete_is_idempotent() {
+        let beats = [test_storylet(
+            TEST_COMPLETE,
+            10,
+            0,
+            false,
+            ALWAYS,
+            &[],
+            &[],
+            COMPLETE_EFFECTS,
+        )];
+        let mut simulation = isolated_storylet_simulation();
+
+        simulation.mark_story_beat_complete_from(TEST_COMPLETE, &beats);
+        simulation.mark_story_beat_complete_from(TEST_COMPLETE, &beats);
+
+        assert_eq!(simulation.quality("complete_count"), 1);
+        assert_eq!(
+            simulation
+                .state
+                .narrative
+                .completed_beat_ids
+                .iter()
+                .filter(|id| id.as_str() == TEST_COMPLETE)
+                .count(),
+            1
+        );
+    }
+
+    #[test]
+    fn save_reload_preserves_story_runtime_state() {
+        let mut simulation = Simulation::new();
+
+        simulation.apply(GameCommand::ChooseStoryOption {
+            beat_id: STORY_BEAT_ROAD_TO_BASE.to_string(),
+            option_id: "story.choice.road.follow_signal".to_string(),
+        });
+
+        let raw = export_save(simulation.state()).unwrap();
+        let loaded = import_save(&raw).unwrap();
+        assert_eq!(loaded.narrative.active_beat_id, simulation.state.narrative.active_beat_id);
+        assert_eq!(
+            loaded.narrative.completed_beat_ids,
+            simulation.state.narrative.completed_beat_ids
+        );
+        assert_eq!(loaded.narrative.choice_by_beat, simulation.state.narrative.choice_by_beat);
+        assert_eq!(loaded.narrative.qualities, simulation.state.narrative.qualities);
+
+        let reloaded = Simulation::from_state(loaded);
+        assert_eq!(
+            reloaded.state.narrative.active_beat_id.as_deref(),
+            Some(STORY_BEAT_FIRST_GLIMPSE)
+        );
+        assert_eq!(reloaded.quality("resolve"), 1);
+    }
+
+    #[test]
+    fn command_log_replay_is_deterministic_across_save_reload() {
+        let command_log = vec![
+            GameCommand::ChooseStoryOption {
+                beat_id: STORY_BEAT_ROAD_TO_BASE.to_string(),
+                option_id: "story.choice.road.follow_signal".to_string(),
+            },
+            GameCommand::ChooseStoryOption {
+                beat_id: STORY_BEAT_FIRST_GLIMPSE.to_string(),
+                option_id: "story.choice.glimpse.watch_lights".to_string(),
+            },
+            GameCommand::ChooseStoryOption {
+                beat_id: STORY_BEAT_ENTER_THE_BUBBLE.to_string(),
+                option_id: "story.choice.bubble.trust_sound".to_string(),
+            },
+        ];
+
+        let mut continuous = Simulation::new();
+        for command in &command_log {
+            continuous.apply(command.clone());
+        }
+
+        let mut reloaded = Simulation::new();
+        reloaded.apply(command_log[0].clone());
+        let raw = export_save(reloaded.state()).unwrap();
+        let mut reloaded = Simulation::from_state(import_save(&raw).unwrap());
+        for command in command_log.iter().skip(1) {
+            reloaded.apply(command.clone());
+        }
+
+        assert_eq!(reloaded.state, continuous.state);
+        assert_eq!(
+            reloaded.state.narrative.active_beat_id.as_deref(),
+            Some(STORY_BEAT_INVESTIGATE_BASE)
+        );
     }
 }
