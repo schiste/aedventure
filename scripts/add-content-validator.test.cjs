@@ -74,4 +74,14 @@ assert.throws(
   /unsupported effect kind "unsupported_effect"/,
 )
 
+assert.throws(
+  () =>
+    validateAddContent(
+      withRootBeat({
+        blocksUnrelatedWorldActions: "yes",
+      }),
+    ),
+  /blocksUnrelatedWorldActions: must be a boolean/,
+)
+
 console.log("ADD content validator tests passed.")

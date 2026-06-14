@@ -635,6 +635,10 @@ export interface StoryBeatDef {
   autoCompleteWhen?: ConditionDef[]
   priority?: number
   repeatable?: boolean
+  /** While active, prevent unrelated world actions until this beat resolves. If
+   * `worldActionId` is set, only that action can proceed. If it is null, all
+   * world actions wait on the beat. */
+  blocksUnrelatedWorldActions?: boolean
   /** Effects applied once when the beat resolves (rewards/quality shifts). */
   onComplete?: EffectDef[]
   /** Effects applied when the beat first becomes active (fires once per

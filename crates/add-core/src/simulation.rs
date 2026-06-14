@@ -7,7 +7,7 @@ use crate::game_data::{
     FLAG_BASE_TUTORIAL_INVESTIGATED, FLAG_BASE_WATER_COLLECTION_UNLOCKED, FLAG_BASE_WORKSHOP_BUILT,
     FLAG_CRYSTAL_REMOVING_MOSS_COMPLETED, FLAG_CRYSTAL_REMOVING_MOSS_UNLOCKED,
     FLAG_HERO_FORCED_RETURN_ACTIVE, FLAG_HERO_OUTSIDE_BUBBLE, FLAG_HERO_RECOVERING_AT_STUDIO,
-    HeroExposureDef, HeroTrack, INTRO_STORY_BEAT_IDS, ItemEffectKind, PerkStat, ProcessingTrack,
+    HeroExposureDef, HeroTrack, ItemEffectKind, PerkStat, ProcessingTrack,
     RESONANCE_MATERIAL_ECHO_SHARDS, RESONANCE_MATERIAL_HARMONIC_RESIDUE,
     RESONANCE_MATERIAL_SIGNAL_SCRAP, RESOURCE_BASSLINE, RESOURCE_CHORUS, RESOURCE_HARMONICS,
     RESOURCE_STONE, RESOURCE_VIBES, RESOURCE_WATER, ROLE_CONSTRUCTION, ROLE_CRYSTAL_BASSLINE,
@@ -2559,7 +2559,7 @@ impl Simulation {
                 }
                 true
             }
-            Some(_) | None if INTRO_STORY_BEAT_IDS.contains(&active_beat_id) => {
+            Some(_) | None if active_beat.blocks_unrelated_world_actions => {
                 self.push_note(format!(
                     "Finish {} before starting a different world action.",
                     active_beat.label
@@ -4259,6 +4259,7 @@ mod storylet_runtime_tests {
     use crate::game_data::{
         Condition, EffectDef, StoryBeatDef, STORY_BEAT_ENTER_THE_BUBBLE,
         STORY_BEAT_FIRST_GLIMPSE, STORY_BEAT_INVESTIGATE_BASE, STORY_BEAT_ROAD_TO_BASE,
+        WORLD_ACTION_EXPLORE_BASE,
     };
     use crate::state::{GameEvent, NarrativeState};
     use crate::{GameCommand, export_save, import_save};
@@ -4323,9 +4324,23 @@ mod storylet_runtime_tests {
             auto_complete_when,
             priority,
             repeatable,
+            blocks_unrelated_world_actions: false,
             on_complete,
             on_activate,
         }
+    }
+
+    #[test]
+    fn content_metadata_blocks_unrelated_world_actions() {
+        let mut simulation = isolated_storylet_simulation();
+        simulation.state.narrative.active_beat_id = Some(STORY_BEAT_ROAD_TO_BASE.to_string());
+
+        assert!(!simulation.story_action_allowed(WORLD_ACTION_EXPLORE_BASE));
+        assert!(simulation
+            .state
+            .notes
+            .iter()
+            .any(|note| note.contains("Finish Road to Base")));
     }
 
     fn isolated_storylet_simulation() -> Simulation {

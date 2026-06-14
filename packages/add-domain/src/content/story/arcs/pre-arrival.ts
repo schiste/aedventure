@@ -57,6 +57,7 @@ export const PRE_ARRIVAL_STORY_BEATS: readonly StoryBeatDef[] = [
     autoCompleteWhen: NONE,
     priority: 0,
     repeatable: false,
+    blocksUnrelatedWorldActions: true,
   },
   {
     id: "story.beat.first_glimpse",
@@ -97,6 +98,7 @@ export const PRE_ARRIVAL_STORY_BEATS: readonly StoryBeatDef[] = [
     autoCompleteWhen: NONE,
     priority: 0,
     repeatable: false,
+    blocksUnrelatedWorldActions: true,
   },
   {
     id: "story.beat.enter_the_bubble",
@@ -137,5 +139,6 @@ export const PRE_ARRIVAL_STORY_BEATS: readonly StoryBeatDef[] = [
     autoCompleteWhen: NONE,
     priority: 0,
     repeatable: false,
+    blocksUnrelatedWorldActions: true,
   },
 ]

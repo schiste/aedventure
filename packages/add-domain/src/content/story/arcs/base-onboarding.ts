@@ -55,6 +55,7 @@ export const BASE_ONBOARDING_STORY_BEATS: readonly StoryBeatDef[] = [
     autoCompleteWhen: [flagSet("base.tutorial_investigated")],
     priority: 0,
     repeatable: false,
+    blocksUnrelatedWorldActions: true,
   },
   {
     id: "story.beat.explore_base",
@@ -106,6 +107,7 @@ export const BASE_ONBOARDING_STORY_BEATS: readonly StoryBeatDef[] = [
     autoCompleteWhen: [flagSet("base.tutorial_explored")],
     priority: 0,
     repeatable: false,
+    blocksUnrelatedWorldActions: true,
   },
   {
     id: "story.beat.restore_studio",

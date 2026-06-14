@@ -186,6 +186,12 @@ function validateStoryReferences(ctx, beats) {
     validateRelatedIds(ctx, `story ${beat.id}.relatedIds`, beat.relatedIds)
     validateConditionSet(ctx, `story ${beat.id}.preconditions`, beat.preconditions ?? [], beat.id)
     validateConditionSet(ctx, `story ${beat.id}.autoCompleteWhen`, beat.autoCompleteWhen ?? [], beat.id)
+    if (
+      beat.blocksUnrelatedWorldActions !== undefined &&
+      typeof beat.blocksUnrelatedWorldActions !== "boolean"
+    ) {
+      ctx.errors.push(`story ${beat.id}.blocksUnrelatedWorldActions: must be a boolean when present`)
+    }
     validateEffects(ctx, `story ${beat.id}.onComplete`, beat.onComplete ?? [])
     validateEffects(ctx, `story ${beat.id}.onActivate`, beat.onActivate ?? [])
 

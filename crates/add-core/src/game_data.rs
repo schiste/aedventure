@@ -89,14 +89,6 @@ pub const STORY_BEAT_AWAIT_SURVIVOR_ARRIVAL: &str = "story.beat.await_survivor_a
 pub const STORY_BEAT_STABILIZE_BASE: &str = "story.beat.stabilize_base";
 pub const STORY_BEAT_HERO_EXPOSED: &str = "story.beat.hero_exposed";
 
-pub const INTRO_STORY_BEAT_IDS: &[&str] = &[
-    STORY_BEAT_ROAD_TO_BASE,
-    STORY_BEAT_FIRST_GLIMPSE,
-    STORY_BEAT_ENTER_THE_BUBBLE,
-    STORY_BEAT_INVESTIGATE_BASE,
-    STORY_BEAT_EXPLORE_BASE,
-];
-
 pub const TILE_BASE_CORE: &str = "tile.base_core";
 pub const TILE_PLAINS_OPEN: &str = "tile.plains_open";
 pub const TILE_RIVER_SHALLOWS: &str = "tile.river_shallows";
@@ -989,6 +981,10 @@ pub struct StoryBeatDef {
     pub priority: i16,
     #[serde(skip)]
     pub repeatable: bool,
+    /// Content-authored gate: while this beat is active, unrelated world actions
+    /// are blocked so the player resolves the current story beat first.
+    #[serde(skip)]
+    pub blocks_unrelated_world_actions: bool,
     /// Effects applied once when this beat resolves (rewards, quality shifts,
     /// follow-on flags). Rust-internal; omitted from the snapshot.
     #[serde(skip)]

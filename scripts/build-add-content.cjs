@@ -607,6 +607,7 @@ const FILES = [
             conditionsField("auto_complete_when"),
             { name: "priority", kind: "i64" },
             { name: "repeatable", kind: "bool" },
+            { name: "blocks_unrelated_world_actions", from: "blocksUnrelatedWorldActions", kind: "bool" },
             effectsField("on_complete"),
             effectsField("on_activate"),
           ],
