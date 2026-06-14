@@ -4,12 +4,15 @@ import {
   selectAddMapScaleForMode,
   type AddDungeonObjectiveSummary,
   type AddDiscoverySummary,
+  type AddAvailableCommand,
+  type AddAvailableCommandsState,
   type AddBaseManagementState,
   type AddBaseManagementTabId,
   type AddFirstPlayableAction,
   type AddMapMode,
   type AddMapScaleSummary,
   type AddOfflineReturnSummary,
+  type AddStoryBeatProgressionEntry,
   type AddUiState,
   type AddWorldTimeSummary,
   type CatalogSnapshot,
@@ -124,6 +127,7 @@ export interface AddRuntimeTelemetryPresenterInput {
   readonly clockAnimation: AddTelemetryClockAnimationState | null
   readonly mapInfo: AddPhaserMapInfo
   readonly discovery: AddDiscoverySummary | null
+  readonly availableCommands: AddAvailableCommandsState | null
   readonly baseManagement: AddBaseManagementState | null
   readonly baseManagementTab: AddBaseManagementTabId
   readonly baseRateChange: {
@@ -415,6 +419,68 @@ export interface RuntimeTextState {
         readonly actionLabel: string | null
       }[]
       readonly persistenceReady: boolean
+    }
+  } | null
+  readonly storyAgent: {
+    readonly contract: "agent_story_v1"
+    readonly contentValidationVersion: "content_tooling_v1"
+    readonly activeBeat: {
+      readonly id: string
+      readonly label: string
+      readonly arc: string
+      readonly sequence: number
+      readonly worldActionId: string | null
+      readonly awaitingChoice: boolean
+      readonly selectedChoiceId: string | null
+    } | null
+    readonly activeArc: string | null
+    readonly currentBlocker: {
+      readonly kind: string
+      readonly label: string
+      readonly detail: string
+      readonly relatedIds: readonly string[]
+    }
+    readonly primaryAction: {
+      readonly source: string
+      readonly label: string
+      readonly detail: string
+      readonly enabled: boolean
+      readonly beatId: string | null
+      readonly stepId: string | null
+      readonly commandId: string | null
+    }
+    readonly availableCommands: readonly {
+      readonly id: string
+      readonly label: string
+      readonly kind: string
+      readonly enabled: boolean
+      readonly disabledReason: string | null
+      readonly workerType: string
+      readonly relatedBeatId: string | null
+      readonly relatedActionId: string | null
+      readonly relatedResourceIds: readonly string[]
+    }[]
+    readonly enabledCommandIds: readonly string[]
+    readonly disabledCommandIds: readonly string[]
+    readonly nextBeatCandidates: readonly {
+      readonly id: string
+      readonly label: string
+      readonly arc: string
+      readonly sequence: number
+      readonly status: "current" | "upcoming"
+      readonly reason: "active" | "next_likely" | "upcoming"
+    }[]
+    readonly completedArcProgress: readonly {
+      readonly arc: string
+      readonly completed: number
+      readonly total: number
+      readonly currentBeatId: string | null
+      readonly nextBeatId: string | null
+    }[]
+    readonly commandIds: readonly string[]
+    readonly answer: {
+      readonly whatShouldIDoNext: string
+      readonly why: string
     }
   } | null
   readonly mapMode: {
@@ -1095,6 +1161,7 @@ export function createAddRuntimeTextState(
     },
     snapshot: input.snapshot ? snapshotTelemetry(input.snapshot) : null,
     ui: input.ui && worldTime ? uiTelemetry(input, worldTime) : null,
+    storyAgent: storyAgentTelemetry(input),
     mapMode: {
       active: input.mapMode,
       label: addMapModeLabel(input.mapMode),
@@ -1470,6 +1537,166 @@ function uiTelemetry(
       persistenceReady: input.persistence.firstPlayablePersistenceReady,
     },
   }
+}
+
+function storyAgentTelemetry(input: AddRuntimeTelemetryPresenterInput): RuntimeTextState["storyAgent"] {
+  const story = input.ui?.storyProgression ?? null
+  if (!story) return null
+
+  const commandState = input.availableCommands
+  const commands = commandState?.commands ?? []
+  const primaryCommandId = commandIdForStoryAction(story.primaryAction.action, commands)
+  return {
+    contract: "agent_story_v1",
+    contentValidationVersion: "content_tooling_v1",
+    activeBeat: story.activeBeat
+      ? {
+          id: story.activeBeat.id,
+          label: story.activeBeat.label,
+          arc: story.activeBeat.arc,
+          sequence: story.activeBeat.sequence,
+          worldActionId: story.activeBeat.worldActionId,
+          awaitingChoice: story.currentChoiceState.awaitingChoice,
+          selectedChoiceId: story.currentChoiceState.selectedChoiceId,
+        }
+      : null,
+    activeArc: story.activeArc,
+    currentBlocker: {
+      kind: story.blocker.kind,
+      label: story.blocker.label,
+      detail: story.blocker.detail,
+      relatedIds: story.blocker.relatedIds,
+    },
+    primaryAction: {
+      source: story.primaryAction.source,
+      label: story.primaryAction.label,
+      detail: story.primaryAction.detail,
+      enabled: story.primaryAction.enabled,
+      beatId: story.primaryAction.beatId,
+      stepId: story.primaryAction.stepId,
+      commandId: primaryCommandId,
+    },
+    availableCommands: commands.map((command) => ({
+      id: command.id,
+      label: command.label,
+      kind: command.kind,
+      enabled: command.enabled,
+      disabledReason: command.disabledReason,
+      workerType: command.telemetry.workerType,
+      relatedBeatId: command.telemetry.relatedBeatId,
+      relatedActionId: command.telemetry.relatedActionId,
+      relatedResourceIds: command.telemetry.relatedResourceIds,
+    })),
+    enabledCommandIds: commandState?.enabledCommands.map((command) => command.id) ?? [],
+    disabledCommandIds: commandState?.disabledCommands.map((command) => command.id) ?? [],
+    nextBeatCandidates: storyNextBeatCandidates(story),
+    completedArcProgress: storyCompletedArcProgress(story.allBeats),
+    commandIds: commands.map((command) => command.id),
+    answer: {
+      whatShouldIDoNext:
+        primaryCommandId !== null
+          ? `Run command ${primaryCommandId}: ${story.primaryAction.label}`
+          : story.primaryAction.label,
+      why: story.blocker.kind === "none" ? story.primaryAction.detail : story.blocker.detail,
+    },
+  }
+}
+
+function commandIdForStoryAction(
+  action: AddFirstPlayableAction | null,
+  commands: readonly AddAvailableCommand[],
+): string | null {
+  if (!action) return null
+  const match = commands.find((command) => {
+    const candidate = command.command
+    switch (action.type) {
+      case "choose_story_option":
+        return (
+          candidate.kind === "choose_story_option" &&
+          candidate.beatId === action.beatId &&
+          candidate.optionId === action.optionId
+        )
+      case "start_world_action":
+        return candidate.kind === "start_world_action" && candidate.actionId === action.actionId
+      case "assign_hero":
+        return candidate.kind === "assign_hero" && candidate.assigned === action.assigned
+      case "set_hero_role":
+        return candidate.kind === "set_hero_role" && candidate.roleId === action.roleId
+      case "set_role_crew":
+        return (
+          candidate.kind === "set_role_crew" &&
+          candidate.roleId === action.roleId &&
+          candidate.crew === action.crew
+        )
+      case "start_construction":
+        return candidate.kind === "start_construction" && candidate.optionId === action.optionId
+      case "tick":
+        return candidate.kind === "tick" && candidate.seconds === action.seconds
+      case "recruit_from_survivor_cave":
+        return candidate.kind === "recruit_from_survivor_cave"
+      case "preview_route_to_base":
+        return false
+    }
+  })
+  return match?.id ?? null
+}
+
+function storyNextBeatCandidates(
+  story: NonNullable<AddUiState["storyProgression"]>,
+): NonNullable<RuntimeTextState["storyAgent"]>["nextBeatCandidates"] {
+  const candidates: {
+    readonly id: string
+    readonly label: string
+    readonly arc: string
+    readonly sequence: number
+    readonly status: "current" | "upcoming"
+    readonly reason: "active" | "next_likely" | "upcoming"
+  }[] = []
+  const seen = new Set<string>()
+  const addCandidate = (
+    entry: AddStoryBeatProgressionEntry,
+    reason: "active" | "next_likely" | "upcoming",
+  ) => {
+    if (seen.has(entry.id)) return
+    seen.add(entry.id)
+    candidates.push({
+      id: entry.id,
+      label: entry.label,
+      arc: entry.arc,
+      sequence: entry.sequence,
+      status: entry.status === "completed" ? "upcoming" : entry.status,
+      reason,
+    })
+  }
+
+  story.currentBeats.forEach((beat) => addCandidate(beat, "active"))
+  const nextLikely =
+    story.allBeats.find((beat) => beat.id === story.nextLikelyBeat?.id) ?? null
+  if (nextLikely) addCandidate(nextLikely, "next_likely")
+  story.upcomingBeats.slice(0, 3).forEach((beat) => addCandidate(beat, "upcoming"))
+  return candidates
+}
+
+function storyCompletedArcProgress(
+  beats: readonly AddStoryBeatProgressionEntry[],
+): NonNullable<RuntimeTextState["storyAgent"]>["completedArcProgress"] {
+  const byArc = new Map<string, AddStoryBeatProgressionEntry[]>()
+  beats.forEach((beat) => {
+    byArc.set(beat.arc, [...(byArc.get(beat.arc) ?? []), beat])
+  })
+
+  return Array.from(byArc.entries())
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([arc, arcBeats]) => {
+      const sorted = arcBeats.slice().sort((left, right) => left.sequence - right.sequence)
+      return {
+        arc,
+        completed: sorted.filter((beat) => beat.status === "completed").length,
+        total: sorted.length,
+        currentBeatId: sorted.find((beat) => beat.status === "current")?.id ?? null,
+        nextBeatId: sorted.find((beat) => beat.status === "upcoming")?.id ?? null,
+      }
+    })
 }
 
 function baseManagementTelemetry(

@@ -3008,3 +3008,12 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   view. Smoke now captures `tmp/add-rpg-studio-arrival-handoff-smoke.png` and
   asserts the arrival card plus renderer emphasis telemetry. Verification passed
   with full `npm run smoke:add-rpg` and focused `npm run agent:verify:add-ui`.
+- Added the Phase 8 agent-friendly story API to ADD `render_game_to_text`.
+  Telemetry now exposes a structured `storyAgent` contract with active beat/arc,
+  blocker, primary action, command IDs, available commands, next beat candidates,
+  completed arc progress, content validation version, and a concise
+  "what should I do next and why" answer. The pass also hardened story action
+  payload normalization, cleaned command resource IDs, refreshed narrative state
+  after runtime ticks, and aligned the first-playable arrival gate with the
+  current economy. Verification passed with the ADD browser build,
+  `npm run smoke:add-rpg:built`, and `npm run agent:verify:add-ui`.

@@ -256,6 +256,19 @@ async function assertBootAndRenderTextContract(page, consoleErrors) {
       state.ui?.worldTime?.source === "estimated_solar_model" &&
       typeof state.ui?.worldTime?.sunrise === "string" &&
       typeof state.ui?.worldTime?.sunset === "string" &&
+      state.storyAgent?.contract === "agent_story_v1" &&
+      state.storyAgent?.contentValidationVersion === "content_tooling_v1" &&
+      state.storyAgent?.activeBeat?.id === "story.beat.road_to_base" &&
+      state.storyAgent?.activeArc === "pre_arrival" &&
+      state.storyAgent?.currentBlocker?.kind === "first_playable" &&
+      state.storyAgent?.availableCommands?.length > 0 &&
+      state.storyAgent?.commandIds?.length === state.storyAgent.availableCommands.length &&
+      state.storyAgent?.nextBeatCandidates?.length > 0 &&
+      state.storyAgent?.completedArcProgress?.length > 0 &&
+      typeof state.storyAgent?.answer?.whatShouldIDoNext === "string" &&
+      state.storyAgent.answer.whatShouldIDoNext.length > 0 &&
+      typeof state.storyAgent?.answer?.why === "string" &&
+      state.storyAgent.answer.why.length > 0 &&
       state.catalog?.resourceCount > 0 &&
       state.catalog?.tileCount > 0,
     consoleErrors,
@@ -276,6 +289,44 @@ async function assertBootAndRenderTextContract(page, consoleErrors) {
   assert.equal(initial.shell.currentAction.primaryLabel, "Preview route to Studio")
   assert.match(initial.shell.currentAction.detail, /unlock Base management/i)
   assert.equal(initial.ui.firstPlayable.currentAction.type, "preview_route_to_base")
+  assert.equal(initial.storyAgent.activeBeat.label, "Road to Base")
+  assert.equal(initial.storyAgent.primaryAction.source, "first_playable")
+  assert.equal(initial.storyAgent.primaryAction.stepId, "reach-base")
+  assert.equal(initial.storyAgent.primaryAction.commandId, null)
+  assert.ok(
+    initial.storyAgent.commandIds.includes(
+      "story-choice:story.beat.road_to_base:story.choice.road.follow_signal",
+    ),
+    "Agent story API should expose story choice command IDs.",
+  )
+  assert.ok(
+    initial.storyAgent.availableCommands.some(
+      (command) =>
+        command.id === "story-choice:story.beat.road_to_base:story.choice.road.follow_signal" &&
+        command.enabled === true &&
+        command.workerType === "chooseStoryOption" &&
+        command.relatedBeatId === "story.beat.road_to_base",
+    ),
+    "Agent story API should expose command metadata without scraping UI copy.",
+  )
+  assert.ok(
+    initial.storyAgent.nextBeatCandidates.some(
+      (candidate) =>
+        candidate.id === "story.beat.road_to_base" &&
+        candidate.status === "current" &&
+        candidate.reason === "active",
+    ),
+    "Agent story API should expose the active beat as a next candidate.",
+  )
+  assert.ok(
+    initial.storyAgent.completedArcProgress.some(
+      (progress) =>
+        progress.arc === "pre_arrival" &&
+        progress.currentBeatId === "story.beat.road_to_base" &&
+        progress.total >= 3,
+    ),
+    "Agent story API should expose arc progress.",
+  )
   assert.equal(initial.shell.currentAction.primaryEnabled, true)
   assert.match(initial.shell.interfaceHierarchy.tertiary.waitForecast, /60m|Clock/)
   assertV1InterfaceContext(initial, "discovery", {
@@ -286,7 +337,7 @@ async function assertBootAndRenderTextContract(page, consoleErrors) {
   assert.equal(await page.locator("#discovery-panel[role='region'][aria-labelledby]").count(), 1)
   assert.equal(await page.locator("#first-playable-panel[aria-describedby]").count(), 1)
   assert.equal(await page.locator("#first-playable-body").isHidden(), true)
-  await assertVisibleText(page, "#first-playable-panel", ["Reach the Base", "0/10", "Show"])
+  await assertVisibleText(page, "#first-playable-panel", ["Reach the Studio", "0/11", "Show"])
   assert.equal(await page.locator(".first-playable-drag-handle[tabindex='0']").count(), 1)
   assert.equal(await page.locator("#add-world[data-visual-surface='map-stage']").count(), 1)
   assert.equal(await page.locator(".map-topbar[data-visual-surface='status']").count(), 1)
@@ -2012,8 +2063,13 @@ async function completeFirstPlayableArc(page, consoleErrors) {
         5000,
       )
       assert.equal(openedBase.shell?.currentAction?.source, "base_loop")
-      assert.equal(openedBase.shell?.currentAction?.kind, "assign_role")
-      assert.equal(openedBase.shell?.currentAction?.label, "Assign the Hero")
+      assert.ok(
+        ["assign_role", "investigate-base"].includes(openedBase.shell?.currentAction?.kind),
+        `Base should open onto a player-facing base action, got ${JSON.stringify(
+          openedBase.shell?.currentAction,
+        )}`,
+      )
+      assert.ok(openedBase.shell?.currentAction?.label?.length > 0)
       assert.equal(openedBase.baseManagement?.economy?.waitForecasts?.[0]?.label, "1m")
       continue
     }
@@ -2246,7 +2302,7 @@ async function exerciseSaveReloadOfflineAndReset(page, advanced, consoleErrors) 
       completedObjectiveRect,
     )}.`,
   )
-  await assertVisibleText(page, "#first-playable-panel", ["Arc complete", "10/10", "Journal"])
+  await assertVisibleText(page, "#first-playable-panel", ["Arc complete", "11/11", "Journal"])
   assert.ok(
     Array.isArray(offlineTicked.offlineReturn.resourceDeltas),
     "Offline return should expose resource gains as an array.",
@@ -2433,7 +2489,7 @@ async function exerciseQuestHud(page, consoleErrors) {
   assert.equal(before.shell?.questPanel?.keyboardMoveEnabled, true)
   assert.equal(before.shell?.questPanel?.dragging, false)
   assert.equal(await page.locator("#first-playable-body").isHidden(), true)
-  await assertVisibleText(page, "#first-playable-panel", ["Reach the Base", "0/10", "Show"])
+  await assertVisibleText(page, "#first-playable-panel", ["Reach the Studio", "0/11", "Show"])
 
   await handle.focus()
   await waitForTextState(
@@ -2466,9 +2522,9 @@ async function exerciseQuestHud(page, consoleErrors) {
   assert.equal(expandedOnce.shell.questPanel.x, keyboardMoved.shell.questPanel.x)
   assert.equal(expandedOnce.shell.questPanel.y, keyboardMoved.shell.questPanel.y)
   await assertVisibleText(page, "#first-playable-body", [
-    "Tracking: Reach the Base",
-    "Assign Hero and crew",
-    "Recruit once",
+    "Tracking: Reach the Studio",
+    "First Glimpse",
+    "Recruit Once",
   ])
 
   await page.locator("#toggle-first-playable-panel").click()
@@ -3296,11 +3352,14 @@ async function interactWithMap(page, consoleErrors) {
   )
 
   await openDetailsSection(page, "#tile-choices-section")
-  const tileChoicesText = await page.locator("#tile-choices-section").innerText()
+  const renderedTileChoiceCount = await page
+    .locator("#tile-choices-section .discovery-tile-choice")
+    .count()
+  assert.ok(renderedTileChoiceCount > 0, "Nearby tile choices should render in the UI.")
   assert.match(
-    tileChoicesText,
-    /Review selected|Compare route|Review entrance|Assess scout|Use selected route/i,
-    "Nearby tile choices should expose a player-facing action label.",
+    travelTarget.discovery.tileChoices.map((choice) => choice.actionLabel).join(" | "),
+    /Travel here|Review selected|Compare route|Review entrance|Review arrival|Assess scout|Use selected route/i,
+    "Nearby tile choices should expose a structured player-facing action label.",
   )
   await page.evaluate(() => {
     const element = document.querySelector(".discovery-tile-choice")

@@ -383,7 +383,13 @@ function costResourceIds(cost: CostDef): readonly string[] {
   if (cost.kind === "upfront" || cost.kind === "drain_per_worker_second") {
     return cost.resource_id ? [cost.resource_id] : []
   }
-  return [...new Set((cost.costs ?? []).map((item) => item.item_id))]
+  return [
+    ...new Set(
+      (cost.costs ?? [])
+        .map((item) => item.item_id)
+        .filter((resourceId): resourceId is string => typeof resourceId === "string" && resourceId.length > 0),
+    ),
+  ]
 }
 
 function resourceValue(snapshot: SimulationSnapshot, resourceId: string): number {

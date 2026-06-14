@@ -28,6 +28,7 @@ import {
   ADD_DISCOVERY_OPEN_BASE_ACTION_ID,
   SimulationClient,
   addCommandForGameInteraction,
+  selectAddAvailableCommands,
   selectAddBaseManagementState,
   selectAddDiscoverySummary,
   selectAddDungeonObjective,
@@ -64,6 +65,7 @@ import {
   type AddTileAction,
   type AddTileDetailSummary,
   type AddWorldTimeSummary,
+  type AddAvailableCommandsState,
   type AddBaseManagementState,
   type AddBaseManagementTabId,
   type CatalogSnapshot,
@@ -386,6 +388,13 @@ const baseManagementState = createModuleMemo<AddBaseManagementState | null>(() =
   const currentCatalog = catalog()
   return currentSnapshot && currentCatalog
     ? selectAddBaseManagementState(currentSnapshot, currentCatalog)
+    : null
+})
+const availableCommandsState = createModuleMemo<AddAvailableCommandsState | null>(() => {
+  const currentSnapshot = snapshot()
+  const currentCatalog = catalog()
+  return currentSnapshot && currentCatalog
+    ? selectAddAvailableCommands(currentSnapshot, currentCatalog)
     : null
 })
 const perkProgress = createModuleMemo(() => {
@@ -5994,6 +6003,18 @@ async function setRoleCrew(
   }
 }
 
+async function setFirstPlayableRoleCrew(roleId: string, crew: number): Promise<void> {
+  const before = captureBaseRateSnapshot()
+  const assignments = uiState()?.roleAssignments ?? []
+  for (const role of assignments) {
+    if (role.id !== roleId && role.crewAssigned > 0) {
+      await setRoleCrew(role.id, 0, { trackRateChange: false })
+    }
+  }
+  await setRoleCrew(roleId, crew, { trackRateChange: false })
+  recordBaseRateChange(before, `Crew moved to ${roleLabelForRateChange(roleId)}.`)
+}
+
 async function applyStaffingPreset(
   presetId: AddBaseManagementState["staffing"]["presets"][number]["id"],
 ): Promise<void> {
@@ -6234,7 +6255,7 @@ async function runAddAction(action: AddFirstPlayableAction): Promise<void> {
       await setHeroRole(action.roleId)
       return
     case "set_role_crew":
-      await setRoleCrew(action.roleId, action.crew)
+      await setFirstPlayableRoleCrew(action.roleId, action.crew)
       return
     case "start_world_action":
       await sendAndWaitForSnapshot(() => {
@@ -6408,6 +6429,7 @@ function toTextState(): RuntimeTextState {
     clockAnimation: clockAnimation(),
     mapInfo: currentMapInfo,
     discovery: currentDiscovery,
+    availableCommands: availableCommandsState(),
     baseManagement: baseManagementState(),
     baseManagementTab: baseManagementTab(),
     baseRateChange: baseRateChange(),
