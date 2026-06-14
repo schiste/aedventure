@@ -27,7 +27,6 @@ import { createAddCatalogIndexes } from "./catalog-selectors"
 export const ADD_HERO_VISION_RADIUS = 1
 
 export type AddVisibilityRevealSource =
-  | "add:base"
   | "add:survivor_cave"
   | "add:runtime"
   | "add:hero"
@@ -137,12 +136,6 @@ export function selectAddVisibilityMap(
     )
   }
 
-  if (baseHex) {
-    visibility = revealKnownCoord(visibility, hexCoord(baseHex), "discovered", {
-      now,
-      revealSource: "add:base",
-    })
-  }
   if (survivorCaveHex) {
     visibility = revealKnownCoord(visibility, hexCoord(survivorCaveHex), "discovered", {
       now,

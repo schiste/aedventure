@@ -48,6 +48,9 @@ export function createRenderContext(map: GameMap, width: number, height: number)
   )
   const baseCell = terrainCells.find((cell) => isBaseFeature(featureForCell(cell)))
   const caveCell = terrainCells.find((cell) => featureForCell(cell) === "survivor_cave")
+  const baseCoord = baseCell?.coord ?? zoneCoord(map, "add.zone.base", "base")
+  const survivorCaveCoord =
+    caveCell?.coord ?? zoneCoord(map, "add.zone.survivor_cave", "survivor_cave")
 
   return {
     map,
@@ -59,13 +62,18 @@ export function createRenderContext(map: GameMap, width: number, height: number)
     terrainByCoord,
     stateCounts,
     bubbleEdgeCoords,
-    baseCoord: baseCell?.coord ?? null,
-    survivorCaveCoord: caveCell?.coord ?? null,
+    baseCoord,
+    survivorCaveCoord,
   }
 }
 
 function terrainCellsFor(map: GameMap): readonly GameCellPlacement[] {
   return map.layers.find((layer) => layer.kind === "terrain")?.cells ?? []
+}
+
+function zoneCoord(map: GameMap, id: string, kind: string): CellCoord | null {
+  const zone = map.zones.find((candidate) => candidate.id === id || candidate.kind === kind)
+  return zone?.cells.find((coord) => coord.kind === map.topology.kind) ?? null
 }
 
 function originForCells(

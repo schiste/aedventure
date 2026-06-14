@@ -450,6 +450,7 @@ export class AddRpgHexScene extends Phaser.Scene {
       (candidate) => displayAddCell(candidate.coord) === cell,
     )
     if (!selectedCell) return false
+    if (!this.cellPresentationPolicy.cellVisible(selectedCell)) return false
     this.selectedCoord = selectedCell.coord
     this.hoveredCoord = null
     this.lastInteractionInput = "programmatic"
@@ -557,6 +558,17 @@ export class AddRpgHexScene extends Phaser.Scene {
     this.landmarkBeaconCount = 0
     this.studioArrivalEmphasisVisible = false
 
+    const baseCell = context.baseCoord
+      ? context.terrainByCoord.get(addMapCoordKey(context.baseCoord))
+      : null
+    if (
+      context.baseCoord &&
+      baseCell &&
+      presentationVisibilityStateForCell(baseCell) === "hidden"
+    ) {
+      this.drawStudioObjectiveLabel(centerFor(context.baseCoord, context))
+    }
+
     for (const entity of context.map.entities) {
       if (!entity.coord || entity.coord.kind !== context.topologyKind) continue
       if (entity.kind === "hero") continue
@@ -584,6 +596,27 @@ export class AddRpgHexScene extends Phaser.Scene {
       const markers = mapMarkersForCell(cell)
       if (markers.length > 0) this.drawCellMarkers(centerFor(cell.coord, context), markers)
     }
+  }
+
+  private drawStudioObjectiveLabel(center: Vector2): void {
+    const label = this.add.text(center.x, center.y - 30, "Studio", {
+      color: "#24342f",
+      fontFamily: "Aptos, Segoe UI, sans-serif",
+      fontSize: "12px",
+      fontStyle: "800",
+      align: "center",
+      backgroundColor: "rgba(255, 250, 226, 0.82)",
+      stroke: "rgba(255, 255, 255, 0.46)",
+      strokeThickness: 2,
+      padding: { x: 7, y: 3 },
+    })
+    setCrispText(label)
+    label.setShadow(0, 1, "rgba(255, 255, 255, 0.62)", 0, true, true)
+    label.setOrigin(0.5, 0.5)
+    label.setDepth(26)
+    this.landmarkBeaconCount += 1
+    this.landmarkObjects.push(label)
+    this.mobileEdgeCullObjects.push(label)
   }
 
   private drawCellMarkers(center: Vector2, markers: readonly AddMapMarker[]): void {
@@ -1983,11 +2016,24 @@ export class AddRpgHexScene extends Phaser.Scene {
   private ensureSelectedCoord(context: RenderContext): void {
     if (
       this.selectedCoord &&
-      context.terrainByCoord.has(addMapCoordKey(this.selectedCoord))
+      context.terrainByCoord.has(addMapCoordKey(this.selectedCoord)) &&
+      this.cellPresentationPolicy.cellVisible(
+        context.terrainByCoord.get(addMapCoordKey(this.selectedCoord))!,
+      )
     ) {
       return
     }
-    this.selectedCoord = context.baseCoord
+    const characterCoord = initialCharacterCoord(context)
+    const characterCell = characterCoord
+      ? context.terrainByCoord.get(addMapCoordKey(characterCoord))
+      : null
+    if (characterCoord && characterCell && this.cellPresentationPolicy.cellVisible(characterCell)) {
+      this.selectedCoord = characterCoord
+      return
+    }
+    this.selectedCoord =
+      context.terrainCells.find((cell) => this.cellPresentationPolicy.cellVisible(cell))?.coord ??
+      null
   }
 }
 

@@ -304,15 +304,12 @@ export function presentationVisibilityStateForCell(
   cell: GameCellPlacement,
 ): AddVisibilityRenderState {
   if (!cellHasVisibilityMetadata(cell)) return "visible"
-  if (visibilityStateForCell(cell) === "hidden" && cellIsStudioAnchor(cell)) {
-    return "discovered"
-  }
   return visibilityStateForCell(cell)
 }
 
 export function cellIsKnownForPresentation(cell: GameCellPlacement): boolean {
   if (!cellHasVisibilityMetadata(cell)) return true
-  return visibilityStateForCell(cell) !== "hidden" || cellIsStudioAnchor(cell)
+  return visibilityStateForCell(cell) !== "hidden"
 }
 
 export function cellHasVisibilityMetadata(cell: GameCellPlacement): boolean {
@@ -381,10 +378,6 @@ function visibilityCounts(cells: readonly GameCellPlacement[]): VisibilityCounts
     },
     { hidden: 0, discovered: 0, visible: 0, stale: 0 },
   )
-}
-
-function cellIsStudioAnchor(cell: GameCellPlacement): boolean {
-  return isBaseFeature(featureForCell(cell))
 }
 
 function serializeHex(coord: HexCoord): string {
