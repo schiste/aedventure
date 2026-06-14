@@ -1,4 +1,5 @@
 import {
+  ADD_CONTENT_VALIDATION_VERSION,
   ADD_DOMAIN_BOUNDARY,
   addMapModeLabel,
   selectAddMapScaleForMode,
@@ -444,7 +445,7 @@ export interface RuntimeTextState {
   } | null
   readonly storyAgent: {
     readonly contract: "agent_story_v1"
-    readonly contentValidationVersion: "content_tooling_v1"
+    readonly contentValidationVersion: typeof ADD_CONTENT_VALIDATION_VERSION
     readonly activeBeat: {
       readonly id: string
       readonly label: string
@@ -1571,7 +1572,7 @@ function storyAgentTelemetry(input: AddRuntimeTelemetryPresenterInput): RuntimeT
   const primaryCommandId = commandIdForStoryAction(story.primaryAction.action, commands)
   return {
     contract: "agent_story_v1",
-    contentValidationVersion: "content_tooling_v1",
+    contentValidationVersion: ADD_CONTENT_VALIDATION_VERSION,
     activeBeat: story.activeBeat
       ? {
           id: story.activeBeat.id,
