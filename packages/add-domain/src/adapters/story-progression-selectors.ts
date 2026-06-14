@@ -1,20 +1,15 @@
-import type { CatalogSnapshot, SimulationSnapshot, StoryBeatDef } from "../runtime/protocol"
-import {
-  PROJECT_BUILD_FIRE_PIT,
-  PROJECT_RESTORE_STUDIO,
-  ROLE_CONSTRUCTION,
-  ROLE_CRYSTAL_BASSLINE,
-  ROLE_FIRE_PIT,
-  ROLE_SCAVENGE,
-  WORLD_ACTION_EXPLORE_BASE,
-  WORLD_ACTION_INVESTIGATE_BASE,
-} from "./add-ids"
+import type {
+  BlockerDef,
+  CatalogSnapshot,
+  ConstructionOptionDef,
+  CostDef,
+  SimulationSnapshot,
+  StoryBeatDef,
+  StoryPrimaryActionDef,
+  UnlockDef,
+} from "../runtime/protocol"
 
-const PRE_ARRIVAL_STORY_BEATS = new Set([
-  "story.beat.road_to_base",
-  "story.beat.first_glimpse",
-  "story.beat.enter_the_bubble",
-])
+const FIRST_PLAYABLE_FALLBACK_ARC = "base_onboarding"
 
 export type AddFirstPlayableAction =
   | { readonly type: "choose_story_option"; readonly beatId: string; readonly optionId: string }
@@ -131,77 +126,10 @@ export interface AddStoryProgressionState {
   readonly telemetrySummary: AddStoryProgressionTelemetrySummary
 }
 
-interface AddFirstPlayableContext {
-  readonly snapshot: SimulationSnapshot
-  readonly catalog: CatalogSnapshot
-  readonly activeBeat: StoryBeatDef | null
-}
-
-type AddFirstPlayableStepResult = Omit<AddFirstPlayableStep, "id" | "label" | "active">
-
-interface AddFirstPlayableScriptStep {
-  readonly id: string
-  readonly label: string
-  readonly evaluate: (context: AddFirstPlayableContext) => AddFirstPlayableStepResult
-}
-
-const FIRST_PLAYABLE_SCRIPT: readonly AddFirstPlayableScriptStep[] = [
-  {
-    id: "reach-base",
-    label: "Reach the Base",
-    evaluate: ({ snapshot, catalog, activeBeat }) => preArrivalStep(snapshot, catalog, activeBeat),
-  },
-  {
-    id: "assign-hero-crew",
-    label: "Assign Hero and crew",
-    evaluate: ({ snapshot }) => heroAndCrewStep(snapshot),
-  },
-  {
-    id: "investigate-base",
-    label: "Investigate the Base",
-    evaluate: ({ snapshot, activeBeat }) => investigateStep(snapshot, activeBeat),
-  },
-  {
-    id: "explore-base",
-    label: "Explore deeper",
-    evaluate: ({ snapshot, activeBeat }) => exploreStep(snapshot, activeBeat),
-  },
-  {
-    id: "generate-resources",
-    label: "Generate first resources",
-    evaluate: ({ snapshot }) => generateResourcesStep(snapshot),
-  },
-  {
-    id: "restore-studio",
-    label: "Restore the Studio",
-    evaluate: ({ snapshot }) => restoreStudioStep(snapshot),
-  },
-  {
-    id: "build-fire-pit",
-    label: "Build the Fire Pit",
-    evaluate: ({ snapshot }) => buildFirePitStep(snapshot),
-  },
-  {
-    id: "bubble-reach",
-    label: "Understand bubble reach",
-    evaluate: ({ snapshot }) => bubbleReachStep(snapshot),
-  },
-  {
-    id: "unlock-recruitment",
-    label: "Unlock recruitment",
-    evaluate: ({ snapshot }) => unlockRecruitmentStep(snapshot),
-  },
-  {
-    id: "recruit-once",
-    label: "Recruit once",
-    evaluate: ({ snapshot }) => recruitOnceStep(snapshot),
-  },
-]
-
-export const ADD_FIRST_PLAYABLE_SCRIPT: readonly Pick<
-  AddFirstPlayableScriptStep,
-  "id" | "label"
->[] = FIRST_PLAYABLE_SCRIPT.map(({ id, label }) => ({ id, label }))
+// Deprecated compatibility export. First-playable steps are now derived from
+// StoryBeatDef.progression metadata in the catalog.
+export const ADD_FIRST_PLAYABLE_SCRIPT: readonly Pick<AddFirstPlayableStep, "id" | "label">[] =
+  []
 
 export function selectAddStoryProgressionState(
   snapshot: SimulationSnapshot,
@@ -217,10 +145,10 @@ export function selectAddStoryProgressionState(
   const currentBeats = allBeats.filter((beat) => beat.status === "current")
   const upcomingBeats = allBeats.filter((beat) => beat.status === "upcoming")
   const currentChoiceState = selectCurrentChoiceState(snapshot, activeBeat)
-  const primaryAction = selectStoryPrimaryAction(snapshot, activeBeat, firstPlayable)
+  const primaryAction = selectStoryPrimaryAction(activeBeat, firstPlayable)
   const blocker = selectStoryProgressionBlocker(activeBeat, currentChoiceState, primaryAction, firstPlayable)
   const nextLikelyBeat = selectNextLikelyBeat(snapshot, catalog, activeBeat)
-  const unlockPreview = selectUnlockPreview(catalog, activeBeat, nextLikelyBeat)
+  const unlockPreview = selectUnlockPreview(catalog, firstPlayable, activeBeat, nextLikelyBeat)
 
   return {
     activeBeat,
@@ -257,21 +185,16 @@ function selectFirstPlayableSummary(
   catalog: CatalogSnapshot,
   activeBeat: StoryBeatDef | null,
 ): AddFirstPlayableSummary {
-  const context: AddFirstPlayableContext = {
-    snapshot,
-    catalog,
-    activeBeat,
-  }
-  const stepsWithoutActive = FIRST_PLAYABLE_SCRIPT.map((scriptStep) => ({
-    id: scriptStep.id,
-    label: scriptStep.label,
-    ...scriptStep.evaluate(context),
-  }))
+  const beats = firstPlayableBeats(catalog)
+  const stepsWithoutActive = beats.map((beat) =>
+    firstPlayableStepForBeat(snapshot, catalog, beat, activeBeat),
+  )
   const currentStepId = stepsWithoutActive.find((step) => !step.complete)?.id ?? null
   const steps = stepsWithoutActive.map((step) => ({
     ...step,
     active: step.id === currentStepId,
   }))
+
   return {
     complete: currentStepId === null,
     completedCount: steps.filter((step) => step.complete).length,
@@ -279,6 +202,187 @@ function selectFirstPlayableSummary(
     currentStepId,
     steps,
   }
+}
+
+function firstPlayableBeats(catalog: CatalogSnapshot): readonly StoryBeatDef[] {
+  return catalog.storyBeats
+    .filter(
+      (beat) =>
+        beat.progression?.track === "first_playable" ||
+        (beat.arc === FIRST_PLAYABLE_FALLBACK_ARC && beat.progression !== null),
+    )
+    .sort(compareFirstPlayableBeats)
+}
+
+function compareFirstPlayableBeats(a: StoryBeatDef, b: StoryBeatDef): number {
+  const sequence = a.sequence - b.sequence
+  if (sequence !== 0) return sequence
+  return a.arc.localeCompare(b.arc)
+}
+
+function firstPlayableStepForBeat(
+  snapshot: SimulationSnapshot,
+  catalog: CatalogSnapshot,
+  beat: StoryBeatDef,
+  activeBeat: StoryBeatDef | null,
+): AddFirstPlayableStep {
+  const progression = beat.progression ?? null
+  const actionDef = progression?.primaryAction ?? inferredPrimaryAction(beat)
+  const action = actionForStoryPrimaryAction(snapshot, catalog, beat, activeBeat, actionDef)
+  return {
+    id: progression?.stepId ?? beat.id,
+    label: progression?.presentation?.shortLabel ?? beat.label,
+    complete: firstPlayableBeatComplete(snapshot, catalog, beat, activeBeat, actionDef),
+    active: false,
+    detail: progression?.presentation?.playerHint ?? beat.body,
+    actionLabel: action.actionLabel ?? progression?.presentation?.ctaCopy ?? null,
+    action: action.action,
+  }
+}
+
+function firstPlayableBeatComplete(
+  snapshot: SimulationSnapshot,
+  catalog: CatalogSnapshot,
+  beat: StoryBeatDef,
+  activeBeat: StoryBeatDef | null,
+  actionDef: StoryPrimaryActionDef | null,
+): boolean {
+  if (storyBeatCompleted(snapshot, beat.id)) return true
+  if (actionDef?.kind === "preview_route_to_base") {
+    return heroReachedBase(snapshot, catalog) && storyBeatCompleted(snapshot, beat.id)
+  }
+  if (actionDef?.kind === "none" && activeBeat?.id === beat.id) return true
+  return false
+}
+
+function inferredPrimaryAction(beat: StoryBeatDef): StoryPrimaryActionDef | null {
+  if (beat.worldActionId) return { kind: "world_action", actionId: beat.worldActionId }
+  if (beat.choices.length > 0) return { kind: "story_choice" }
+  return null
+}
+
+function actionForStoryPrimaryAction(
+  snapshot: SimulationSnapshot,
+  catalog: CatalogSnapshot,
+  beat: StoryBeatDef,
+  activeBeat: StoryBeatDef | null,
+  actionDef: StoryPrimaryActionDef | null,
+): Pick<AddFirstPlayableStep, "actionLabel" | "action"> {
+  if (!actionDef) return { actionLabel: null, action: null }
+  switch (actionDef.kind) {
+    case "story_choice":
+      return activeBeat?.id === beat.id
+        ? storyChoiceAction(snapshot, activeBeat)
+        : { actionLabel: null, action: null }
+    case "preview_route_to_base":
+      if (!heroReachedBase(snapshot, catalog)) {
+        return { actionLabel: "Preview route to Studio", action: { type: "preview_route_to_base" } }
+      }
+      return activeBeat?.id === beat.id
+        ? storyChoiceAction(snapshot, activeBeat)
+        : { actionLabel: null, action: null }
+    case "world_action":
+      return worldActionStepAction(snapshot, activeBeat, beat, actionDef.actionId)
+    case "construction":
+      return constructionStepAction(snapshot, catalog, actionDef)
+    case "assign_role":
+      return assignRoleAction(snapshot, actionDef)
+    case "tick":
+      return { actionLabel: "Let time pass", action: { type: "tick", seconds: actionDef.seconds } }
+    case "recruit_from_survivor_cave":
+      return recruitFromSurvivorCaveAction(snapshot, actionDef)
+    case "none":
+      return { actionLabel: null, action: null }
+  }
+}
+
+function worldActionStepAction(
+  snapshot: SimulationSnapshot,
+  activeBeat: StoryBeatDef | null,
+  beat: StoryBeatDef,
+  actionId: string,
+): Pick<AddFirstPlayableStep, "actionLabel" | "action"> {
+  if (snapshot.activeWorldAction?.actionId === actionId) {
+    return {
+      actionLabel: "Advance action",
+      action: { type: "tick", seconds: snapshot.activeWorldAction.remainingSeconds + 0.25 },
+    }
+  }
+  if (activeBeat?.id === beat.id) {
+    const choice = storyChoiceAction(snapshot, activeBeat)
+    if (choice.action) return choice
+  }
+  if (!snapshot.roster.heroAssigned) {
+    return { actionLabel: "Assign Hero", action: { type: "assign_hero", assigned: true } }
+  }
+  return { actionLabel: beat.progression?.presentation?.ctaCopy ?? beat.label, action: { type: "start_world_action", actionId } }
+}
+
+function constructionStepAction(
+  snapshot: SimulationSnapshot,
+  catalog: CatalogSnapshot,
+  action: Extract<StoryPrimaryActionDef, { kind: "construction" }>,
+): Pick<AddFirstPlayableStep, "actionLabel" | "action"> {
+  const option = catalog.constructionOptions.find((candidate) => candidate.id === action.optionId)
+  const buildRoleId = action.buildRoleId ?? null
+  const gatherRoleId = action.gatherRoleId ?? null
+  const targetCrew = action.crew ?? 1
+  if (snapshot.activeConstruction?.optionId === action.optionId) {
+    if (buildRoleId && (!snapshot.roster.heroAssigned || snapshot.roster.heroRoleId !== buildRoleId)) {
+      return { actionLabel: "Send Hero to build", action: { type: "set_hero_role", roleId: buildRoleId } }
+    }
+    if (buildRoleId && roleCrew(snapshot, buildRoleId) < 1) {
+      return { actionLabel: "Assign build crew", action: { type: "set_role_crew", roleId: buildRoleId, crew: targetCrew } }
+    }
+    return {
+      actionLabel: "Advance construction",
+      action: { type: "tick", seconds: snapshot.activeConstruction.remainingWorkSeconds + 0.5 },
+    }
+  }
+  if (option && !canAffordConstruction(snapshot, option)) {
+    if (gatherRoleId && (!snapshot.roster.heroAssigned || snapshot.roster.heroRoleId !== gatherRoleId)) {
+      return { actionLabel: "Send Hero scavenging", action: { type: "set_hero_role", roleId: gatherRoleId } }
+    }
+    if (gatherRoleId && roleCrew(snapshot, gatherRoleId) < 1) {
+      return { actionLabel: "Assign gather crew", action: { type: "set_role_crew", roleId: gatherRoleId, crew: targetCrew } }
+    }
+    return { actionLabel: "Gather resources", action: { type: "tick", seconds: action.waitSeconds } }
+  }
+  return {
+    actionLabel: option ? `Start ${option.label}` : "Start construction",
+    action: { type: "start_construction", optionId: action.optionId },
+  }
+}
+
+function assignRoleAction(
+  snapshot: SimulationSnapshot,
+  action: Extract<StoryPrimaryActionDef, { kind: "assign_role" }>,
+): Pick<AddFirstPlayableStep, "actionLabel" | "action"> {
+  if (action.assignHero && (!snapshot.roster.heroAssigned || snapshot.roster.heroRoleId !== action.roleId)) {
+    return { actionLabel: "Assign Hero", action: { type: "set_hero_role", roleId: action.roleId } }
+  }
+  const crew = action.crew ?? 1
+  if (roleCrew(snapshot, action.roleId) < crew) {
+    return { actionLabel: "Assign crew", action: { type: "set_role_crew", roleId: action.roleId, crew } }
+  }
+  return { actionLabel: null, action: null }
+}
+
+function recruitFromSurvivorCaveAction(
+  snapshot: SimulationSnapshot,
+  action: Extract<StoryPrimaryActionDef, { kind: "recruit_from_survivor_cave" }>,
+): Pick<AddFirstPlayableStep, "actionLabel" | "action"> {
+  if (!snapshot.objectives.recruitmentEnabled) {
+    return { actionLabel: "Hold the field", action: { type: "tick", seconds: action.waitSeconds } }
+  }
+  if (snapshot.resources.vibes < snapshot.recruitment.nextRecruitCost) {
+    const vibesRoleId = action.vibesRoleId ?? null
+    if (vibesRoleId && roleCrew(snapshot, vibesRoleId) < 1) {
+      return { actionLabel: "Assign Fire Pit crew", action: { type: "set_role_crew", roleId: vibesRoleId, crew: 1 } }
+    }
+    return { actionLabel: "Build Vibes", action: { type: "tick", seconds: action.waitSeconds } }
+  }
+  return { actionLabel: "Recruit survivor", action: { type: "recruit_from_survivor_cave" } }
 }
 
 function selectActiveStoryBeat(
@@ -320,7 +424,7 @@ function storyBeatStatus(
   beatId: string,
   activeBeatId: string | null,
 ): AddStoryBeatProgressionStatus {
-  if (snapshot.narrative.completedBeatIds.includes(beatId)) return "completed"
+  if (storyBeatCompleted(snapshot, beatId)) return "completed"
   if (beatId === activeBeatId) return "current"
   return "upcoming"
 }
@@ -351,21 +455,19 @@ function selectCurrentChoiceState(
 }
 
 function selectStoryPrimaryAction(
-  snapshot: SimulationSnapshot,
   activeBeat: StoryBeatDef | null,
   firstPlayable: AddFirstPlayableSummary,
 ): AddStoryPrimaryAction {
   const activeStep = firstPlayable.steps.find((step) => step.active) ?? null
-  const choiceAction = storyChoiceAction(snapshot, activeBeat)
-  if (choiceAction.action) {
+  if (activeStep?.action) {
     return {
-      source: "story_choice",
-      label: choiceAction.actionLabel ?? "Choose",
-      detail: activeBeat?.body ?? "Choose how this story beat should resolve.",
+      source: "first_playable",
+      label: activeStep.actionLabel ?? activeStep.label,
+      detail: activeStep.detail,
       enabled: true,
-      action: choiceAction.action,
+      action: activeStep.action,
       beatId: activeBeat?.id ?? null,
-      stepId: activeStep?.id ?? null,
+      stepId: activeStep.id,
     }
   }
   if (activeBeat?.worldActionId) {
@@ -377,17 +479,6 @@ function selectStoryPrimaryAction(
       action: { type: "start_world_action", actionId: activeBeat.worldActionId },
       beatId: activeBeat.id,
       stepId: activeStep?.id ?? null,
-    }
-  }
-  if (activeStep?.action) {
-    return {
-      source: "first_playable",
-      label: activeStep.actionLabel ?? activeStep.label,
-      detail: activeStep.detail,
-      enabled: true,
-      action: activeStep.action,
-      beatId: activeBeat?.id ?? null,
-      stepId: activeStep.id,
     }
   }
   if (firstPlayable.complete) {
@@ -418,7 +509,7 @@ function selectStoryProgressionBlocker(
   primaryAction: AddStoryPrimaryAction,
   firstPlayable: AddFirstPlayableSummary,
 ): AddStoryProgressionBlocker {
-  if (choiceState.awaitingChoice) {
+  if (choiceState.awaitingChoice && primaryAction.source !== "first_playable") {
     return {
       kind: "choice_required",
       label: "Choose a story option",
@@ -426,21 +517,14 @@ function selectStoryProgressionBlocker(
       relatedIds: activeBeat ? [activeBeat.id] : [],
     }
   }
-  if (activeBeat?.worldActionId) {
-    return {
-      kind: "action_required",
-      label: "Run the linked world action",
-      detail: `${activeBeat.label} progresses through ${activeBeat.worldActionId}.`,
-      relatedIds: [activeBeat.id, activeBeat.worldActionId],
-    }
-  }
   const activeStep = firstPlayable.steps.find((step) => step.active)
+  const activeBeatBlocker = activeBeat?.progression?.blockers?.[0] ?? null
   if (activeStep && !firstPlayable.complete) {
     return {
       kind: "first_playable",
-      label: activeStep.label,
+      label: activeBeatBlocker?.label ?? activeStep.label,
       detail: activeStep.detail,
-      relatedIds: activeBeat ? [activeBeat.id] : [],
+      relatedIds: activeBeatBlocker?.relatedIds ?? (activeBeat ? [activeBeat.id] : []),
     }
   }
   if (primaryAction.source === "complete") {
@@ -481,9 +565,17 @@ function selectNextLikelyBeat(
 
 function selectUnlockPreview(
   catalog: CatalogSnapshot,
+  firstPlayable: AddFirstPlayableSummary,
   activeBeat: StoryBeatDef | null,
   nextLikelyBeat: StoryBeatDef | null,
 ): readonly AddStoryUnlockPreview[] {
+  const activeStep = firstPlayable.steps.find((step) => step.active) ?? null
+  const activeProgressionBeat = activeStep
+    ? firstPlayableBeats(catalog).find((beat) => (beat.progression?.stepId ?? beat.id) === activeStep.id)
+    : null
+  const authoredUnlocks = activeProgressionBeat?.progression?.unlocks ?? []
+  if (authoredUnlocks.length > 0) return authoredUnlocks.map(unlockPreviewFromUnlock)
+
   const ids = new Set<string>()
   activeBeat?.relatedIds.forEach((id) => ids.add(id))
   nextLikelyBeat?.relatedIds.forEach((id) => ids.add(id))
@@ -491,6 +583,14 @@ function selectUnlockPreview(
     id,
     ...relatedIdPresentation(catalog, id),
   }))
+}
+
+function unlockPreviewFromUnlock(unlock: UnlockDef): AddStoryUnlockPreview {
+  return {
+    id: unlock.relatedIds[0] ?? unlock.label,
+    label: unlock.label,
+    kind: unlock.kind,
+  }
 }
 
 function relatedIdPresentation(
@@ -519,39 +619,6 @@ function relatedIdPresentation(
   return { label: id, kind: idKind(id) }
 }
 
-function idKind(id: string): string {
-  return id.includes(".") ? id.split(".")[0] : "id"
-}
-
-function selectedStoryChoiceId(snapshot: SimulationSnapshot, beatId: string): string | null {
-  const choiceByBeat = snapshot.narrative.choiceByBeat as
-    | Record<string, string>
-    | Map<string, string>
-    | undefined
-  if (!choiceByBeat) return null
-  if (typeof (choiceByBeat as Map<string, string>).get === "function") {
-    return (choiceByBeat as Map<string, string>).get(beatId) ?? null
-  }
-  return (choiceByBeat as Record<string, string>)[beatId] ?? null
-}
-
-function preArrivalStep(
-  snapshot: SimulationSnapshot,
-  catalog: CatalogSnapshot,
-  activeBeat: StoryBeatDef | null,
-): AddFirstPlayableStepResult {
-  const reachedBase = heroReachedBase(snapshot, catalog)
-  const complete = reachedBase || !activeBeat || !PRE_ARRIVAL_STORY_BEATS.has(activeBeat.id)
-  return {
-    complete,
-    detail: complete
-      ? "The Hero has reached The Studio. Base management can now open from here."
-      : "Move across adjacent regions toward The Studio. Each crossing takes 60 minutes; reaching the Studio unlocks Base management.",
-    actionLabel: complete ? null : "Preview route to Studio",
-    action: complete ? null : { type: "preview_route_to_base" },
-  }
-}
-
 function heroReachedBase(snapshot: SimulationSnapshot, catalog: CatalogSnapshot): boolean {
   const baseTileIds = new Set(
     catalog.tiles
@@ -567,276 +634,55 @@ function heroReachedBase(snapshot: SimulationSnapshot, catalog: CatalogSnapshot)
   )
 }
 
-function heroAndCrewStep(snapshot: SimulationSnapshot): AddFirstPlayableStepResult {
-  const heroBusy = Boolean(snapshot.activeWorldAction)
-  const crewReady =
-    roleCrew(snapshot, ROLE_CRYSTAL_BASSLINE) > 0 ||
-    roleCrew(snapshot, ROLE_SCAVENGE) > 0 ||
-    snapshot.base.tutorialInvestigated
-  const complete = (snapshot.roster.heroAssigned || heroBusy) && crewReady
-  if (!snapshot.roster.heroAssigned && !heroBusy) {
-    return {
-      complete,
-      detail: "Put the Hero on duty so the Base can start producing and acting.",
-      actionLabel: "Assign Hero",
-      action: { type: "assign_hero", assigned: true },
-    }
-  }
-  if (roleCrew(snapshot, ROLE_CRYSTAL_BASSLINE) < 1) {
-    return {
-      complete,
-      detail: "Put at least one crew member on Bassline to make the bubble visible.",
-      actionLabel: "Assign Bassline crew",
-      action: { type: "set_role_crew", roleId: ROLE_CRYSTAL_BASSLINE, crew: 1 },
-    }
-  }
-  return {
-    complete,
-    detail: "Hero and crew are contributing to the first loop.",
-    actionLabel: null,
-    action: null,
-  }
-}
-
-function investigateStep(
+function canAffordConstruction(
   snapshot: SimulationSnapshot,
-  activeBeat: StoryBeatDef | null,
-): AddFirstPlayableStepResult {
-  const complete = snapshot.base.tutorialInvestigated
-  return {
-    complete,
-    detail: complete
-      ? "The first sweep identified what can still run."
-      : "Choose how to investigate, then send the Hero through the first sweep.",
-    ...worldActionStepAction(snapshot, activeBeat, WORLD_ACTION_INVESTIGATE_BASE, "Start Investigate Base"),
+  option: ConstructionOptionDef,
+): boolean {
+  return canAffordCost(snapshot, option.cost)
+}
+
+function canAffordCost(snapshot: SimulationSnapshot, cost: CostDef): boolean {
+  if (cost.kind === "time_only") return true
+  if (cost.kind === "upfront" || cost.kind === "drain_per_worker_second") {
+    return resourceValue(snapshot, cost.resource_id ?? "") >= (cost.amount ?? 0)
+  }
+  if (cost.kind === "upfront_bundle") {
+    return (cost.costs ?? []).every((item) => resourceValue(snapshot, item.item_id) >= item.amount)
+  }
+  return false
+}
+
+function resourceValue(snapshot: SimulationSnapshot, resourceId: string): number {
+  switch (resourceId) {
+    case "resource.bassline":
+      return snapshot.resources.bassline
+    case "resource.chorus":
+      return snapshot.resources.chorus
+    case "resource.harmonics":
+      return snapshot.resources.harmonics
+    case "resource.stone":
+      return snapshot.resources.stone
+    case "resource.water":
+      return snapshot.resources.water
+    case "resource.vibes":
+      return snapshot.resources.vibes
+    case "cost.skin":
+      return snapshot.base.skins
+    default:
+      return 0
   }
 }
 
-function exploreStep(
-  snapshot: SimulationSnapshot,
-  activeBeat: StoryBeatDef | null,
-): AddFirstPlayableStepResult {
-  const complete = snapshot.base.tutorialExplored
-  return {
-    complete,
-    detail: complete
-      ? "Studio restoration, water, and moss cleanup are unlocked."
-      : "Explore the ruin to unlock the first repair projects.",
-    ...worldActionStepAction(snapshot, activeBeat, WORLD_ACTION_EXPLORE_BASE, "Start Explore Base"),
+function roleCrew(snapshot: SimulationSnapshot, roleId: string): number {
+  const crewByRole = snapshot.roster.crewByRole as
+    | Record<string, number>
+    | Map<string, number>
+    | undefined
+  if (!crewByRole) return 0
+  if (typeof (crewByRole as Map<string, number>).get === "function") {
+    return Number((crewByRole as Map<string, number>).get(roleId) ?? 0)
   }
-}
-
-function generateResourcesStep(snapshot: SimulationSnapshot): AddFirstPlayableStepResult {
-  const complete = snapshot.resources.stone >= 600 && snapshot.resources.bassline > 0
-  if (snapshot.resources.stone < 600) {
-    if (snapshot.roster.heroRoleId !== ROLE_SCAVENGE || !snapshot.roster.heroAssigned) {
-      return {
-        complete,
-        detail: "Gather Stone for the Studio and keep Bassline visible for bubble reach.",
-        actionLabel: "Send Hero scavenging",
-        action: { type: "set_hero_role", roleId: ROLE_SCAVENGE },
-      }
-    }
-    if (roleCrew(snapshot, ROLE_SCAVENGE) < 1) {
-      return {
-        complete,
-        detail: "Crew scavenging makes the first construction costs readable quickly.",
-        actionLabel: "Assign Scavenge crew",
-        action: { type: "set_role_crew", roleId: ROLE_SCAVENGE, crew: 2 },
-      }
-    }
-    return {
-      complete,
-      detail: `Stone ${formatAmount(snapshot.resources.stone)} / 600 for Studio restoration.`,
-      actionLabel: "Gather resources",
-      action: { type: "tick", seconds: 8 },
-    }
-  }
-  if (snapshot.resources.bassline <= 0) {
-    return {
-      complete,
-      detail: "Bassline is the visible pressure behind bubble reach.",
-      actionLabel: "Generate Bassline",
-      action: { type: "tick", seconds: 8 },
-    }
-  }
-  return {
-    complete,
-    detail: "The Base has enough Stone and Bassline to make the next choice meaningful.",
-    actionLabel: null,
-    action: null,
-  }
-}
-
-function restoreStudioStep(snapshot: SimulationSnapshot): AddFirstPlayableStepResult {
-  return constructionStep(
-    snapshot,
-    "Restore the Studio",
-    snapshot.base.studioRestored,
-    PROJECT_RESTORE_STUDIO,
-    "Start Studio restoration",
-    "The Studio opens Chorus and turns the Base into a real home.",
-  )
-}
-
-function buildFirePitStep(snapshot: SimulationSnapshot): AddFirstPlayableStepResult {
-  return constructionStep(
-    snapshot,
-    "Build the Fire Pit",
-    snapshot.base.firePitBuilt,
-    PROJECT_BUILD_FIRE_PIT,
-    "Start Fire Pit",
-    "The Fire Pit creates Vibes, which make recruitment possible.",
-  )
-}
-
-function bubbleReachStep(snapshot: SimulationSnapshot): AddFirstPlayableStepResult {
-  const complete = snapshot.objectives.reachObjectiveMet
-  if (!complete && snapshot.roster.heroRoleId !== ROLE_CRYSTAL_BASSLINE) {
-    return {
-      complete,
-      detail: `Reach ${snapshot.bubble.reachFromBase} / ${snapshot.objectives.reachObjectiveTarget}; Bassline expands the field.`,
-      actionLabel: "Send Hero to Bassline",
-      action: { type: "set_hero_role", roleId: ROLE_CRYSTAL_BASSLINE },
-    }
-  }
-  if (!complete && roleCrew(snapshot, ROLE_CRYSTAL_BASSLINE) < 2) {
-    if (roleCrew(snapshot, ROLE_SCAVENGE) > 0) {
-      return {
-        complete,
-        detail: "Move the scavenging crew back to Bassline so the bubble can expand.",
-        actionLabel: "Free Bassline crew",
-        action: { type: "set_role_crew", roleId: ROLE_SCAVENGE, crew: 0 },
-      }
-    }
-    if (roleCrew(snapshot, ROLE_CONSTRUCTION) > 0) {
-      return {
-        complete,
-        detail: "Move builders back to Bassline so the bubble can expand.",
-        actionLabel: "Free Bassline crew",
-        action: { type: "set_role_crew", roleId: ROLE_CONSTRUCTION, crew: 0 },
-      }
-    }
-    return {
-      complete,
-      detail: "More Bassline staff make bubble reach climb faster.",
-      actionLabel: "Assign Bassline crew",
-      action: { type: "set_role_crew", roleId: ROLE_CRYSTAL_BASSLINE, crew: 2 },
-    }
-  }
-  return {
-    complete,
-    detail: complete
-      ? "The bubble reached the first target ring."
-      : `Reach ${snapshot.bubble.reachFromBase} / ${snapshot.objectives.reachObjectiveTarget}; field budget ${formatAmount(snapshot.bubble.fieldBudget)}.`,
-    actionLabel: complete ? null : "Let the bubble expand",
-    action: complete ? null : { type: "tick", seconds: 120 },
-  }
-}
-
-function unlockRecruitmentStep(snapshot: SimulationSnapshot): AddFirstPlayableStepResult {
-  const complete = snapshot.objectives.recruitmentEnabled
-  return {
-    complete,
-    detail: complete
-      ? "The Survivor Cave is close enough to recruit from."
-      : `Recruitment opens when the bubble closes the cave gap. Current reach ${snapshot.bubble.reachFromBase}; cave distance ${snapshot.objectives.survivorCaveDistance}.`,
-    actionLabel: complete ? null : "Hold the field",
-    action: complete ? null : { type: "tick", seconds: 120 },
-  }
-}
-
-function recruitOnceStep(snapshot: SimulationSnapshot): AddFirstPlayableStepResult {
-  const complete =
-    snapshot.recruitment.totalRecruitedThisRun > 0 || snapshot.roster.totalCrew > 2
-  if (!complete && !snapshot.objectives.recruitmentEnabled) {
-    return {
-      complete,
-      detail: "Recruitment is waiting on bubble reach.",
-      actionLabel: null,
-      action: null,
-    }
-  }
-  if (!complete && snapshot.resources.vibes < snapshot.recruitment.nextRecruitCost) {
-    if (snapshot.base.firePitBuilt && roleCrew(snapshot, ROLE_FIRE_PIT) < 1) {
-      if (roleCrew(snapshot, ROLE_CRYSTAL_BASSLINE) > 1) {
-        return {
-          complete,
-          detail: "Free one crew member from Bassline so the Fire Pit can start producing Vibes.",
-          actionLabel: "Free Fire Pit crew",
-          action: { type: "set_role_crew", roleId: ROLE_CRYSTAL_BASSLINE, crew: 1 },
-        }
-      }
-      if (roleCrew(snapshot, ROLE_SCAVENGE) > 0) {
-        return {
-          complete,
-          detail: "Move a scavenger into Fire Pit duty to start the recruitment loop.",
-          actionLabel: "Free Fire Pit crew",
-          action: { type: "set_role_crew", roleId: ROLE_SCAVENGE, crew: 0 },
-        }
-      }
-      if (roleCrew(snapshot, ROLE_CONSTRUCTION) > 0) {
-        return {
-          complete,
-          detail: "Move a builder into Fire Pit duty to start the recruitment loop.",
-          actionLabel: "Free Fire Pit crew",
-          action: { type: "set_role_crew", roleId: ROLE_CONSTRUCTION, crew: 0 },
-        }
-      }
-      return {
-        complete,
-        detail: `Need ${formatAmount(snapshot.recruitment.nextRecruitCost)} Vibes for the first recruit.`,
-        actionLabel: "Assign Fire Pit crew",
-        action: { type: "set_role_crew", roleId: ROLE_FIRE_PIT, crew: 1 },
-      }
-    }
-    return {
-      complete,
-      detail: `Vibes ${formatAmount(snapshot.resources.vibes)} / ${formatAmount(snapshot.recruitment.nextRecruitCost)} for the first recruit.`,
-      actionLabel: "Build Vibes",
-      action: { type: "tick", seconds: 120 },
-    }
-  }
-  if (!complete) {
-    return {
-      complete,
-      detail: "The cave is in reach and Vibes can pay the first recruitment cost.",
-      actionLabel: "Recruit survivor",
-      action: { type: "recruit_from_survivor_cave" },
-    }
-  }
-  return {
-    complete,
-    detail: "The first recruit is committed and the run has opened into growth.",
-    actionLabel: null,
-    action: null,
-  }
-}
-
-function worldActionStepAction(
-  snapshot: SimulationSnapshot,
-  activeBeat: StoryBeatDef | null,
-  actionId: string,
-  startLabel: string,
-): Pick<AddFirstPlayableStep, "actionLabel" | "action"> {
-  if (snapshot.activeWorldAction?.actionId === actionId) {
-    return {
-      actionLabel: "Advance action",
-      action: { type: "tick", seconds: snapshot.activeWorldAction.remainingSeconds + 0.25 },
-    }
-  }
-  const choice = storyChoiceAction(snapshot, activeBeat)
-  if (activeBeat?.worldActionId === actionId && choice.action) return choice
-  if (!snapshot.roster.heroAssigned) {
-    return {
-      actionLabel: "Assign Hero",
-      action: { type: "assign_hero", assigned: true },
-    }
-  }
-  return {
-    actionLabel: startLabel,
-    action: { type: "start_world_action", actionId },
-  }
+  return Number((crewByRole as Record<string, number>)[roleId] ?? 0)
 }
 
 function storyChoiceAction(
@@ -860,73 +706,6 @@ function storyChoiceAction(
   }
 }
 
-function constructionStep(
-  snapshot: SimulationSnapshot,
-  label: string,
-  complete: boolean,
-  optionId: string,
-  startLabel: string,
-  copy: string,
-): AddFirstPlayableStepResult {
-  if (complete) {
-    return {
-      complete,
-      detail: `${label} is complete.`,
-      actionLabel: null,
-      action: null,
-    }
-  }
-  if (snapshot.activeConstruction?.optionId === optionId) {
-    if (snapshot.roster.heroRoleId !== ROLE_CONSTRUCTION || !snapshot.roster.heroAssigned) {
-      return {
-        complete,
-        detail: copy,
-        actionLabel: "Send Hero to build",
-        action: { type: "set_hero_role", roleId: ROLE_CONSTRUCTION },
-      }
-    }
-    if (!roleHasWorker(snapshot, ROLE_CONSTRUCTION)) {
-      return {
-        complete,
-        detail: copy,
-        actionLabel: "Assign build crew",
-        action: { type: "set_role_crew", roleId: ROLE_CONSTRUCTION, crew: 2 },
-      }
-    }
-    return {
-      complete,
-      detail: `${copy} Remaining ${formatAmount(snapshot.activeConstruction.remainingWorkSeconds)}s.`,
-      actionLabel: "Advance construction",
-      action: { type: "tick", seconds: snapshot.activeConstruction.remainingWorkSeconds + 0.5 },
-    }
-  }
-  return {
-    complete,
-    detail: copy,
-    actionLabel: startLabel,
-    action: { type: "start_construction", optionId },
-  }
-}
-
-function roleCrew(snapshot: SimulationSnapshot, roleId: string): number {
-  const crewByRole = snapshot.roster.crewByRole as
-    | Record<string, number>
-    | Map<string, number>
-    | undefined
-  if (!crewByRole) return 0
-  if (typeof (crewByRole as Map<string, number>).get === "function") {
-    return Number((crewByRole as Map<string, number>).get(roleId) ?? 0)
-  }
-  return Number((crewByRole as Record<string, number>)[roleId] ?? 0)
-}
-
-function roleHasWorker(snapshot: SimulationSnapshot, roleId: string): boolean {
-  return (
-    roleCrew(snapshot, roleId) > 0 ||
-    (snapshot.roster.heroAssigned && snapshot.roster.heroRoleId === roleId)
-  )
-}
-
 function storyChoiceSelected(snapshot: SimulationSnapshot, beatId: string): boolean {
   const choiceByBeat = snapshot.narrative.choiceByBeat as
     | Record<string, string>
@@ -939,7 +718,22 @@ function storyChoiceSelected(snapshot: SimulationSnapshot, beatId: string): bool
   return Boolean((choiceByBeat as Record<string, string>)[beatId])
 }
 
-function formatAmount(value: number): string {
-  if (Number.isInteger(value)) return String(value)
-  return value.toFixed(1)
+function selectedStoryChoiceId(snapshot: SimulationSnapshot, beatId: string): string | null {
+  const choiceByBeat = snapshot.narrative.choiceByBeat as
+    | Record<string, string>
+    | Map<string, string>
+    | undefined
+  if (!choiceByBeat) return null
+  if (typeof (choiceByBeat as Map<string, string>).get === "function") {
+    return (choiceByBeat as Map<string, string>).get(beatId) ?? null
+  }
+  return (choiceByBeat as Record<string, string>)[beatId] ?? null
+}
+
+function storyBeatCompleted(snapshot: SimulationSnapshot, beatId: string): boolean {
+  return snapshot.narrative.completedBeatIds.includes(beatId)
+}
+
+function idKind(id: string): string {
+  return id.includes(".") ? id.split(".")[0] : "id"
 }

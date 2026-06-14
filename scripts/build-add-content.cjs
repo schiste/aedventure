@@ -247,6 +247,101 @@ const PRESENTATION_FIELD = {
   ],
 }
 
+const UNLOCK_FIELD = {
+  name: "unlock",
+  kind: "struct",
+  structType: "UnlockDef",
+  fields: [
+    { name: "kind", kind: "enum", rustEnum: "UnlockKind" },
+    { name: "label", kind: "string" },
+    { name: "related_ids", kind: "array", element: { name: "id", kind: "string" } },
+  ],
+}
+
+const BLOCKER_FIELD = {
+  name: "blocker",
+  kind: "struct",
+  structType: "BlockerDef",
+  fields: [
+    { name: "kind", kind: "enum", rustEnum: "BlockerKind" },
+    { name: "label", kind: "string" },
+    { name: "related_ids", kind: "array", element: { name: "id", kind: "string" } },
+  ],
+}
+
+const UNLOCKS_FIELD = {
+  name: "unlocks",
+  kind: "array",
+  element: UNLOCK_FIELD,
+}
+
+const BLOCKERS_FIELD = {
+  name: "blockers",
+  kind: "array",
+  element: BLOCKER_FIELD,
+}
+
+const STORY_PRIMARY_ACTION_FIELD = {
+  name: "primary_action",
+  from: "primaryAction",
+  kind: "option",
+  inner: "taggedEnum",
+  rustEnum: "StoryPrimaryActionDef",
+  variants: {
+    story_choice: { variant: "StoryChoice" },
+    preview_route_to_base: { variant: "PreviewRouteToBase" },
+    world_action: {
+      variant: "WorldAction",
+      fields: [{ name: "action_id", from: "actionId", kind: "string" }],
+    },
+    construction: {
+      variant: "Construction",
+      fields: [
+        { name: "option_id", from: "optionId", kind: "string" },
+        { name: "gather_role_id", from: "gatherRoleId", kind: "option", inner: "string" },
+        { name: "build_role_id", from: "buildRoleId", kind: "option", inner: "string" },
+        { name: "crew", kind: "option", inner: "i64" },
+        { name: "wait_seconds", from: "waitSeconds", kind: "f64" },
+      ],
+    },
+    assign_role: {
+      variant: "AssignRole",
+      fields: [
+        { name: "role_id", from: "roleId", kind: "string" },
+        { name: "crew", kind: "option", inner: "i64" },
+        { name: "assign_hero", from: "assignHero", kind: "bool" },
+      ],
+    },
+    tick: {
+      variant: "Tick",
+      fields: [{ name: "seconds", kind: "f64" }],
+    },
+    recruit_from_survivor_cave: {
+      variant: "RecruitFromSurvivorCave",
+      fields: [
+        { name: "vibes_role_id", from: "vibesRoleId", kind: "option", inner: "string" },
+        { name: "wait_seconds", from: "waitSeconds", kind: "f64" },
+      ],
+    },
+    none: { variant: "None" },
+  },
+}
+
+const STORY_PROGRESSION_FIELD = {
+  name: "progression",
+  kind: "option",
+  inner: "struct",
+  structType: "StoryProgressionDef",
+  fields: [
+    { name: "track", kind: "string" },
+    { name: "step_id", from: "stepId", kind: "string" },
+    PRESENTATION_FIELD,
+    STORY_PRIMARY_ACTION_FIELD,
+    BLOCKERS_FIELD,
+    UNLOCKS_FIELD,
+  ],
+}
+
 // One entry per generated Rust file. A file may hold several catalogs (consts);
 // each maps authored TS data → a Rust `const` array via a shape descriptor.
 const FILES = [
@@ -502,6 +597,7 @@ const FILES = [
               },
             },
             { name: "related_ids", kind: "array", element: { name: "r", kind: "string" } },
+            STORY_PROGRESSION_FIELD,
             conditionsField("preconditions"),
             conditionsField("auto_complete_when"),
             { name: "priority", kind: "i64" },
@@ -559,32 +655,10 @@ const FILES = [
               ],
             },
             {
-              name: "unlocks",
-              kind: "array",
-              element: {
-                name: "unlock",
-                kind: "struct",
-                structType: "UnlockDef",
-                fields: [
-                  { name: "kind", kind: "enum", rustEnum: "UnlockKind" },
-                  { name: "label", kind: "string" },
-                  { name: "related_ids", kind: "array", element: { name: "id", kind: "string" } },
-                ],
-              },
+              ...UNLOCKS_FIELD,
             },
             {
-              name: "blockers",
-              kind: "array",
-              element: {
-                name: "blocker",
-                kind: "struct",
-                structType: "BlockerDef",
-                fields: [
-                  { name: "kind", kind: "enum", rustEnum: "BlockerKind" },
-                  { name: "label", kind: "string" },
-                  { name: "related_ids", kind: "array", element: { name: "id", kind: "string" } },
-                ],
-              },
+              ...BLOCKERS_FIELD,
             },
             {
               name: "access_rules",

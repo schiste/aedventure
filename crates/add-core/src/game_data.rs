@@ -906,6 +906,47 @@ pub struct StoryChoiceDef {
 }
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq)]
+#[serde(rename_all = "snake_case", tag = "kind")]
+pub enum StoryPrimaryActionDef {
+    StoryChoice,
+    PreviewRouteToBase,
+    WorldAction {
+        action_id: &'static str,
+    },
+    Construction {
+        option_id: &'static str,
+        gather_role_id: Option<&'static str>,
+        build_role_id: Option<&'static str>,
+        crew: Option<u8>,
+        wait_seconds: f64,
+    },
+    AssignRole {
+        role_id: &'static str,
+        crew: Option<u8>,
+        assign_hero: bool,
+    },
+    Tick {
+        seconds: f64,
+    },
+    RecruitFromSurvivorCave {
+        vibes_role_id: Option<&'static str>,
+        wait_seconds: f64,
+    },
+    None,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct StoryProgressionDef {
+    pub track: &'static str,
+    pub step_id: &'static str,
+    pub presentation: Option<PresentationDef>,
+    pub primary_action: Option<StoryPrimaryActionDef>,
+    pub blockers: &'static [BlockerDef],
+    pub unlocks: &'static [UnlockDef],
+}
+
+#[derive(Debug, Clone, Copy, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct StoryBeatDef {
     pub id: &'static str,
@@ -917,6 +958,7 @@ pub struct StoryBeatDef {
     pub world_action_id: Option<&'static str>,
     pub choices: &'static [StoryChoiceDef],
     pub related_ids: &'static [&'static str],
+    pub progression: Option<StoryProgressionDef>,
     /// Storylet (QBN) fields. The salience selector activates the highest-priority
     /// storylet whose `preconditions` all hold; an active storylet auto-resolves
     /// when its `auto_complete_when` conditions hold. `repeatable` storylets can

@@ -877,14 +877,11 @@ function usefulnessReasonsFor(
   if (tile.exposureRisk === "studio" || tile.exposureRisk === "safe_field") {
     reasons.push("Low-risk staging tile for the next move.")
   }
-  if (
-    (currentStep === "bubble-reach" || currentStep === "unlock-recruitment") &&
-    tile.dungeonLinks.length > 0
-  ) {
+  if (currentStep === "bubble-reach" && tile.dungeonLinks.length > 0) {
     reasons.push("Directly supports the current first-playable reach objective.")
   }
   if (
-    (currentStep === "generate-resources" || currentStep === "restore-studio") &&
+    currentStep === "restore-studio" &&
     (tile.feature === "base" || tile.feature === "base_core" || tile.terrain === "scrub")
   ) {
     reasons.push("Supports the current resource and repair objective.")
@@ -918,12 +915,12 @@ function resourceLinksFor(
   return [
     resourceLink(catalog, snapshot.resources, RESOURCE_STONE, {
       target: 600,
-      relevant: currentStep === "generate-resources" || currentStep === "restore-studio",
+      relevant: currentStep === "restore-studio",
       copy: "Stone turns exploration into Studio repairs and early construction.",
     }),
     resourceLink(catalog, snapshot.resources, RESOURCE_BASSLINE, {
       target: snapshot.objectives.reachObjectiveTarget,
-      relevant: currentStep === "bubble-reach" || currentStep === "unlock-recruitment",
+      relevant: currentStep === "bubble-reach",
       copy: "Bassline pushes the bubble outward, revealing safer choices and recruitment reach.",
     }),
     resourceLink(catalog, snapshot.resources, RESOURCE_VIBES, {

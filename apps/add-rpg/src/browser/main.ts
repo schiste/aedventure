@@ -2206,8 +2206,7 @@ function currentActionState(
     if (
       firstPlayable &&
       !firstPlayable.complete &&
-      firstStep?.action &&
-      !(firstStep.id === "assign-hero-crew" && !snapshot()?.roster.heroAssigned)
+      firstStep?.action
     ) {
       return {
         source: "base_loop",

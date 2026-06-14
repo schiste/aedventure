@@ -618,6 +618,7 @@ export interface StoryBeatDef {
   worldActionId: string | null
   choices: StoryChoiceDef[]
   relatedIds: string[]
+  progression?: StoryProgressionDef | null
   /** Storylet (QBN) fields — authored in content + consumed by the authoritative
    * Rust salience selector (a beat becomes active when all `preconditions` hold,
    * highest `priority` wins; a non-repeatable beat auto-resolves when all
@@ -632,6 +633,32 @@ export interface StoryBeatDef {
   /** Effects applied when the beat first becomes active (fires once per
    * activation). */
   onActivate?: EffectDef[]
+}
+
+export type StoryPrimaryActionDef =
+  | { kind: 'story_choice' }
+  | { kind: 'preview_route_to_base' }
+  | { kind: 'world_action'; actionId: string }
+  | {
+      kind: 'construction'
+      optionId: string
+      gatherRoleId: string | null
+      buildRoleId: string | null
+      crew: number | null
+      waitSeconds: number
+    }
+  | { kind: 'assign_role'; roleId: string; crew: number | null; assignHero: boolean }
+  | { kind: 'tick'; seconds: number }
+  | { kind: 'recruit_from_survivor_cave'; vibesRoleId: string | null; waitSeconds: number }
+  | { kind: 'none' }
+
+export interface StoryProgressionDef {
+  track: 'first_playable'
+  stepId: string
+  presentation: PresentationDef | null
+  primaryAction: StoryPrimaryActionDef | null
+  blockers: BlockerDef[]
+  unlocks: UnlockDef[]
 }
 
 export interface StoryChoiceDef {

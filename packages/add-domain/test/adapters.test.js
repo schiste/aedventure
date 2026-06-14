@@ -5,7 +5,6 @@ const {
   addVisibilityAllowsDynamicDetails,
   addVisibilityAllowsVagueHints,
   addSnapshotToGameWorld,
-  ADD_FIRST_PLAYABLE_SCRIPT,
   ADD_TRAVEL_GAME_MINUTES_PER_TILE,
   ADD_TRAVEL_RUNTIME_SECONDS_PER_TILE,
   createAddCatalogIndexes,
@@ -286,25 +285,11 @@ assert.equal(
   ui.availableWorldActions.find((action) => action.id === "world_action.hero_only").enabled,
   false,
 )
-assert.deepEqual(
-  ADD_FIRST_PLAYABLE_SCRIPT.map((step) => step.id),
-  [
-    "reach-base",
-    "assign-hero-crew",
-    "investigate-base",
-    "explore-base",
-    "generate-resources",
-    "restore-studio",
-    "build-fire-pit",
-    "bubble-reach",
-    "unlock-recruitment",
-    "recruit-once",
-  ],
-)
 const firstPlayable = selectAddFirstPlayableSummary(snapshot, catalog)
-assert.equal(firstPlayable.totalCount, ADD_FIRST_PLAYABLE_SCRIPT.length)
+assert.equal(firstPlayable.totalCount, 1)
 assert.equal(firstPlayable.currentStepId, "reach-base")
 assert.equal(firstPlayable.steps[0].action.type, "preview_route_to_base")
+assert.equal(firstPlayable.steps[0].label, "Reach the Studio")
 assert.deepEqual(ui.firstPlayable, firstPlayable)
 const storyProgression = selectAddStoryProgressionState(snapshot, catalog)
 assert.equal(storyProgression.activeBeat.id, "story.beat.road_to_base")
@@ -314,11 +299,11 @@ assert.deepEqual(
   ["story.beat.road_to_base"],
 )
 assert.equal(storyProgression.currentChoiceState.awaitingChoice, true)
-assert.equal(storyProgression.primaryAction.source, "story_choice")
-assert.equal(storyProgression.primaryAction.action.type, "choose_story_option")
+assert.equal(storyProgression.primaryAction.source, "first_playable")
+assert.equal(storyProgression.primaryAction.action.type, "preview_route_to_base")
 assert.deepEqual(storyProgression.firstPlayable, firstPlayable)
 assert.equal(storyProgression.telemetrySummary.activeBeatId, "story.beat.road_to_base")
-assert.equal(ui.storyProgression.telemetrySummary.primaryActionSource, "story_choice")
+assert.equal(ui.storyProgression.telemetrySummary.primaryActionSource, "first_playable")
 
 function createCatalogFixture() {
   return {
@@ -348,6 +333,21 @@ function createCatalogFixture() {
         worldActionId: null,
         choices: [{ id: "accept", label: "Enter", response: "You step forward." }],
         relatedIds: [],
+        progression: {
+          track: "first_playable",
+          stepId: "reach-base",
+          presentation: {
+            shortLabel: "Reach the Studio",
+            playerHint: "Travel from the Survivor Cave to the Studio.",
+            ctaCopy: "Preview route to Studio",
+            primaryRiskCopy: null,
+            displayPriority: 1000,
+            reveal: "default",
+          },
+          primaryAction: { kind: "preview_route_to_base" },
+          blockers: [],
+          unlocks: [],
+        },
       },
     ],
     flags: [],
