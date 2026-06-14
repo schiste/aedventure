@@ -2996,3 +2996,10 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   old narrative gate no longer blocks product actions. Verification passed with
   full `npm run smoke:add-rpg`, focused `npm run agent:verify:add-ui`, and
   visual inspection of `tmp/add-rpg-map-smoke.png`.
+- Polished the Studio arrival handoff. When the Hero reaches The Studio, the
+  current decision now reads as an Arrival state with "Open base management" as
+  the primary CTA, the Studio landmark gets a stronger glow/label emphasis, and
+  opening Base shows a short map-level transition before landing in the Base
+  view. Smoke now captures `tmp/add-rpg-studio-arrival-handoff-smoke.png` and
+  asserts the arrival card plus renderer emphasis telemetry. Verification passed
+  with full `npm run smoke:add-rpg` and focused `npm run agent:verify:add-ui`.

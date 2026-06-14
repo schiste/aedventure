@@ -129,6 +129,7 @@ export class AddRpgHexScene extends Phaser.Scene {
   private mapPrimaryAffordanceInfo: MapPrimaryAffordanceInfo = emptyMapPrimaryAffordanceInfo()
   private actionMarkerCount = 0
   private landmarkBeaconCount = 0
+  private studioArrivalEmphasisVisible = false
   private mobileEdgeCulledLabelCount = 0
   private readonly doorVisuals = new Map<string, DoorVisual>()
   private readonly transitions = new TransitionRegistry()
@@ -554,6 +555,7 @@ export class AddRpgHexScene extends Phaser.Scene {
     this.mobileEdgeCullObjects = []
     this.actionMarkerCount = 0
     this.landmarkBeaconCount = 0
+    this.studioArrivalEmphasisVisible = false
 
     for (const entity of context.map.entities) {
       if (!entity.coord || entity.coord.kind !== context.topologyKind) continue
@@ -877,10 +879,17 @@ export class AddRpgHexScene extends Phaser.Scene {
 
   private drawLandmark(center: Vector2, entity: GameEntity): void {
     const role = this.landmarkRoleFor(entity)
-    const radius = role === "cave" ? 20 : role === "base" ? 18 : role === "crystal" ? 15 : 12
+    const arrivalEmphasis = this.shouldEmphasizeStudioArrival(entity, role)
+    const baseRadius = role === "cave" ? 20 : role === "base" ? 18 : role === "crystal" ? 15 : 12
+    const radius = baseRadius + (arrivalEmphasis ? 6 : 0)
     const beaconColor = role === "cave" ? 0xe1a46a : role === "base" || role === "crystal" ? 0x7de5cb : 0xf0b95d
 
-    if (role !== "generic") this.drawLandmarkBeacon(center, beaconColor, radius)
+    if (arrivalEmphasis) {
+      this.studioArrivalEmphasisVisible = true
+      this.drawStudioArrivalEmphasis(center, radius)
+    }
+
+    if (role !== "generic") this.drawLandmarkBeacon(center, beaconColor, radius, arrivalEmphasis)
 
     if (role === "cave") {
       this.drawCaveMouthSilhouette(center, radius)
@@ -909,8 +918,18 @@ export class AddRpgHexScene extends Phaser.Scene {
 
   private shouldShowLandmarkLabel(entity: GameEntity, role: AddLandmarkRole): boolean {
     if (!entity.coord || role === "generic" || role === "crystal" || role === "door") return false
+    if (this.shouldEmphasizeStudioArrival(entity, role)) return true
     const activeCoord = this.hoveredCoord ?? this.selectedCoord
     return Boolean(activeCoord && sameCoord(activeCoord, entity.coord))
+  }
+
+  private shouldEmphasizeStudioArrival(entity: GameEntity, role: AddLandmarkRole): boolean {
+    return Boolean(
+      role === "base" &&
+        entity.coord &&
+        this.characterCoord &&
+        sameCoord(entity.coord, this.characterCoord),
+    )
   }
 
   private drawSelectedLandmarkLabel(center: Vector2, entity: GameEntity, role: AddLandmarkRole): void {
@@ -963,6 +982,39 @@ export class AddRpgHexScene extends Phaser.Scene {
     this.landmarkObjects.push(shadow, base, platform, sideTower, core, glint)
   }
 
+  private drawStudioArrivalEmphasis(center: Vector2, radius: number): void {
+    const pulse = (Math.sin(this.frameCount / 18) + 1) / 2
+    const arrivalGlow = this.add.ellipse(
+      center.x,
+      center.y + radius * 0.2,
+      radius * (3.8 + pulse * 0.4),
+      radius * (2.45 + pulse * 0.24),
+      0xf0b95d,
+      0.16 + pulse * 0.05,
+    )
+    const threshold = this.add.ellipse(
+      center.x,
+      center.y + radius * 0.54,
+      radius * 2.35,
+      radius * 0.72,
+      0xfff1b8,
+      0.16,
+    )
+    const ring = this.add.ellipse(
+      center.x,
+      center.y + radius * 0.18,
+      radius * 3.1,
+      radius * 2.05,
+      0xf0b95d,
+      0,
+    )
+    ring.setStrokeStyle(2.4, 0xf0b95d, 0.56 + pulse * 0.16)
+    arrivalGlow.setDepth(21.6)
+    ring.setDepth(22.4)
+    threshold.setDepth(24.1)
+    this.landmarkObjects.push(arrivalGlow, ring, threshold)
+  }
+
   private drawDoorLandmarkObject(center: Vector2, radius: number, interior: boolean): void {
     const shadow = this.add.ellipse(center.x, center.y + radius * 0.78, radius * 1.55, radius * 0.45, 0x1f1711, 0.22)
     const frame = this.add.rectangle(center.x, center.y + radius * 0.12, radius * 1.05, radius * 1.75, interior ? 0x6a5039 : 0x8a562f, 0.9)
@@ -988,15 +1040,15 @@ export class AddRpgHexScene extends Phaser.Scene {
     this.landmarkObjects.push(shadow, marker)
   }
 
-  private drawLandmarkBeacon(center: Vector2, color: number, radius: number): void {
+  private drawLandmarkBeacon(center: Vector2, color: number, radius: number, emphasized = false): void {
     const pulse = (Math.sin(this.frameCount / 22 + center.x * 0.01) + 1) / 2
     const outer = this.add.ellipse(
       center.x,
       center.y + 2,
-      radius * (3.0 + pulse * 0.35),
-      radius * (2.05 + pulse * 0.24),
+      radius * ((emphasized ? 3.35 : 3.0) + pulse * 0.35),
+      radius * ((emphasized ? 2.3 : 2.05) + pulse * 0.24),
       color,
-      0.10 + pulse * 0.04,
+      (emphasized ? 0.15 : 0.10) + pulse * 0.04,
     )
     const ring = this.add.ellipse(
       center.x,
@@ -1006,7 +1058,7 @@ export class AddRpgHexScene extends Phaser.Scene {
       color,
       0.0,
     )
-    ring.setStrokeStyle(1.8, color, 0.42 + pulse * 0.14)
+    ring.setStrokeStyle(emphasized ? 2.6 : 1.8, color, (emphasized ? 0.58 : 0.42) + pulse * 0.14)
     outer.setDepth(22)
     ring.setDepth(22.2)
     this.landmarkBeaconCount += 1
@@ -1226,6 +1278,7 @@ export class AddRpgHexScene extends Phaser.Scene {
       pathTimePreviewVisible,
       actionMarkerCount: this.actionMarkerCount,
       landmarkBeaconCount: this.landmarkBeaconCount,
+      studioArrivalEmphasisVisible: this.studioArrivalEmphasisVisible,
     }
   }
 
@@ -1977,5 +2030,6 @@ function emptyMapPrimaryAffordanceInfo(): MapPrimaryAffordanceInfo {
     pathTimePreviewVisible: false,
     actionMarkerCount: 0,
     landmarkBeaconCount: 0,
+    studioArrivalEmphasisVisible: false,
   }
 }

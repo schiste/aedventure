@@ -68,6 +68,7 @@ export interface PhaserMapPresentationState {
     readonly pathTimePreviewVisible: boolean
     readonly actionMarkerCount: number
     readonly landmarkBeaconCount: number
+    readonly studioArrivalEmphasisVisible: boolean
   }
   readonly visibilityPolish: {
     readonly fogEdge: "soft_feathered_visibility_boundary"

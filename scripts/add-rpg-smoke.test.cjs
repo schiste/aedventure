@@ -623,8 +623,16 @@ async function unlockBaseNavigationByTravelingToStudio(page, consoleErrors) {
       nextState.map?.character?.cell === targetCell &&
       nextState.mapMode?.available?.includes("base_square") &&
       nextState.shell?.currentAction?.kind === "open_base" &&
+      nextState.shell.currentAction.sourceLabel === "Arrival" &&
+      /Arrived at The Studio/i.test(nextState.shell.currentAction.progressLabel ?? "") &&
+      nextState.shell.currentAction.primaryLabel === "Open base management" &&
       nextState.shell.currentAction.primaryEnabled === true,
     consoleErrors,
+  )
+  assert.equal(
+    unlocked.map?.presentation?.mapPrimaryAffordances?.studioArrivalEmphasisVisible,
+    true,
+    "Studio landmark should be visually emphasized once the Hero arrives.",
   )
   await assertMapModeNavigationLabels(page, ["World", "Studio", "Cave", "Base"])
   assert.equal(await page.locator("#map-mode-base_square").count(), 1)
@@ -1978,12 +1986,26 @@ async function completeFirstPlayableArc(page, consoleErrors) {
       state.shell.currentAction.kind === "open_base" &&
       state.shell.currentAction.actionId === "base:open"
     ) {
+      assert.equal(state.shell.currentAction.sourceLabel, "Arrival")
+      assert.match(state.shell.currentAction.progressLabel ?? "", /Arrived at The Studio/i)
+      assert.equal(state.shell.currentAction.primaryLabel, "Open base management")
+      assert.equal(
+        state.map?.presentation?.mapPrimaryAffordances?.studioArrivalEmphasisVisible,
+        true,
+        "Studio landmark should be visually emphasized at the arrival handoff.",
+      )
+      await assertNonBlankNamedMapScreenshot(
+        page,
+        "add-rpg-studio-arrival-handoff-smoke.png",
+        "ADD RPG Studio arrival handoff screenshot",
+      )
       await clickVisibleElementByDomId(page, "current-action-primary")
       await waitForTextState(
         page,
         (nextState) =>
           nextState.runtime?.error === null &&
           nextState.mapMode?.active === "base_square" &&
+          nextState.shell?.baseViewTransition !== "opening" &&
           nextState.ui?.firstPlayable?.currentStepId !== "reach-base",
         consoleErrors,
         5000,

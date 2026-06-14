@@ -223,6 +223,8 @@ type AddFocusedRegion =
   | "admin"
   | "unknown"
 
+type BaseViewTransitionState = "idle" | "opening" | "settling"
+
 declare global {
   interface Window {
     render_game_to_text?: () => string
@@ -288,6 +290,7 @@ const [baseManagementTab, setBaseManagementTab] =
 const [baseRateChange, setBaseRateChange] = createSignal<BaseRateChange | null>(null)
 const [questPanelPosition, setQuestPanelPosition] = createSignal(defaultQuestPanelPosition())
 const [travelExperience, setTravelExperience] = createSignal<TravelExperience | null>(null)
+const [baseViewTransition, setBaseViewTransition] = createSignal<BaseViewTransitionState>("idle")
 const [lastDiscoveryMovement, setLastDiscoveryMovement] =
   createSignal<AddDiscoveryMovementEvent | null>(null)
 const [travelDialog, setTravelDialog] = createSignal<TravelDialogState | null>(null)
@@ -304,6 +307,7 @@ const [lastError, setLastError] = createSignal<string | null>(null)
 let mapHost: AddRpgPhaserMapHost | null = null
 let travelClearTimer: number | undefined
 let clockAnimationFrameId: number | undefined
+let baseViewTransitionTimer: number | undefined
 let travelDramaState: TravelDramaState = "fresh"
 let lastTileActionAtMs = 0
 let pendingOfflineReturnSummary: PendingOfflineReturnSummary | null = null
@@ -634,6 +638,7 @@ function AddRpgApp() {
     if (mapInfoTimer !== undefined) window.clearInterval(mapInfoTimer)
     if (autosaveTimer !== undefined) window.clearInterval(autosaveTimer)
     if (travelClearTimer !== undefined) window.clearTimeout(travelClearTimer)
+    if (baseViewTransitionTimer !== undefined) window.clearTimeout(baseViewTransitionTimer)
     cancelClockAnimation()
     window.removeEventListener("online", handleOnline)
     window.removeEventListener("offline", handleOffline)
@@ -710,6 +715,21 @@ function AddRpgApp() {
             style=${() => toxicityHazeStyle()}
             aria-hidden="true"
           />
+          <div
+            class=${() =>
+              baseViewTransition() === "idle"
+                ? "base-entry-transition hidden"
+                : "base-entry-transition"}
+            data-state=${() => baseViewTransition()}
+            role="status"
+            aria-live="polite"
+          >
+            <span>Studio reached</span>
+            <strong>${() =>
+              baseViewTransition() === "settling"
+                ? "Base management ready"
+                : "Opening base management"}</strong>
+          </div>
           <div
             class="map-topbar"
             data-interface-tier="tertiary"
@@ -2313,11 +2333,11 @@ function travelLoopCurrentAction(): AddCurrentActionState | null {
         detail: movement
           ? `${movementChangedCopy(movement)}. ${baseHandoff.detail}`
           : baseHandoff.detail,
-        metaLabel: "Studio reached",
-        progressLabel: movement
-          ? movementChangedCopy(movement, { includeDestination: false })
-          : baseHandoff.progressLabel,
-      }
+	        metaLabel: "Studio reached",
+	        progressLabel: movement
+	          ? `Arrived at The Studio · ${movementChangedCopy(movement, { includeDestination: false })}`
+	          : baseHandoff.progressLabel,
+	      }
     }
     return {
       source: "discovery",
@@ -2351,15 +2371,18 @@ function baseHandoffCurrentAction(): AddCurrentActionState | null {
   }
   return {
     source: "discovery",
-    sourceLabel: "Studio reached",
+    sourceLabel: "Arrival",
     label: action.label,
-    detail: action.detail,
+    detail: `${action.detail} The Studio is now the active base anchor; opening Base will move from scouting decisions into crew, resources, power, and repairs.`,
     kind: action.kind,
     enabled: action.enabled,
     primaryLabel: action.label,
-    primaryEnabled: action.enabled,
-    metaLabel: "Base",
-    progressLabel: action.inputHint,
+    primaryEnabled: action.enabled && baseViewTransition() === "idle",
+    metaLabel: "Studio reached",
+    progressLabel:
+      baseViewTransition() === "idle"
+        ? "Arrived at The Studio · Base management unlocked"
+        : "Opening The Studio base view",
     actionId: action.actionId,
   }
 }
@@ -5147,6 +5170,33 @@ function travelDialogActions(kind: TravelDialogKind): readonly unknown[] {
   ]
 }
 
+function openBaseManagementView(command: string, target: string = "base_square"): void {
+  setLastTileActionTarget(target)
+  setLastCommand(command)
+  setBaseNavigationUnlocked(true)
+  if (mapMode() === "base_square") {
+    setBaseViewTransition("idle")
+    return
+  }
+
+  clearBaseViewTransitionTimer()
+  setBaseViewTransition("opening")
+  baseViewTransitionTimer = window.setTimeout(() => {
+    switchMapMode("base_square")
+    setBaseViewTransition("settling")
+    baseViewTransitionTimer = window.setTimeout(() => {
+      setBaseViewTransition("idle")
+      baseViewTransitionTimer = undefined
+    }, 520)
+  }, 160)
+}
+
+function clearBaseViewTransitionTimer(): void {
+  if (baseViewTransitionTimer === undefined) return
+  window.clearTimeout(baseViewTransitionTimer)
+  baseViewTransitionTimer = undefined
+}
+
 function switchMapMode(nextMode: AddMapMode, options: { readonly dungeonTargetId?: string } = {}): void {
   if (nextMode === "dungeon_square" && options.dungeonTargetId) {
     setDungeonTarget(options.dungeonTargetId)
@@ -5155,6 +5205,10 @@ function switchMapMode(nextMode: AddMapMode, options: { readonly dungeonTargetId
     setDungeonReturnMode(mapMode() === "base_square" ? "base_square" : "overworld_hex")
   }
   if (mapMode() === nextMode) return
+  if (nextMode !== "base_square") {
+    clearBaseViewTransitionTimer()
+    setBaseViewTransition("idle")
+  }
   setTravelExperience(null)
   setMapMode(nextMode)
   setLastCommand(`map:${nextMode}`)
@@ -5279,10 +5333,7 @@ function runCurrentTileDetailAction(event: Event): void {
     return
   }
   if (targetMapMode === "base_square") {
-    setLastTileActionTarget(targetMapId ?? "base_square")
-    setLastCommand("tile-open:base")
-    setBaseNavigationUnlocked(true)
-    switchMapMode("base_square")
+    openBaseManagementView("tile-open:base", targetMapId ?? "base_square")
     return
   }
   if (targetMapMode === "area_hex" && targetMapId) {
@@ -5312,9 +5363,7 @@ function runTileDetailAction(detail: AddTileDetailSummary, action: AddTileAction
   }
 
   if (link.targetMapMode === "base_square") {
-    setLastCommand("tile-open:base")
-    setBaseNavigationUnlocked(true)
-    switchMapMode("base_square")
+    openBaseManagementView("tile-open:base")
     return
   }
 
@@ -6053,11 +6102,8 @@ async function runCurrentAction(): Promise<void> {
     }
     case "discovery": {
       if (action.kind === "open_base" && action.actionId === ADD_DISCOVERY_OPEN_BASE_ACTION_ID) {
-        setLastTileActionTarget("base_square")
-        setLastCommand("discovery-open:base")
-        setBaseNavigationUnlocked(true)
         await completePreArrivalStoryBeatsForRoute()
-        switchMapMode("base_square")
+        openBaseManagementView("discovery-open:base")
         return
       }
       if (action.kind === "travel" && action.actionId === "travel:selected-tile") {
@@ -6340,6 +6386,7 @@ function toTextState(): RuntimeTextState {
     currentAction: currentActionState(),
     returnReviewNextAction: returnReviewNextAction(),
     interfaceHierarchy: interfaceHierarchyState(),
+    baseViewTransition: baseViewTransition(),
     shellMenuOpen: shellMenuOpen(),
     adminOpen: adminOpen(),
     devToolsOpen: devToolsOpen(),
@@ -6709,6 +6756,7 @@ function emptyMapInfo(): AddPhaserMapInfo {
         pathTimePreviewVisible: false,
         actionMarkerCount: 0,
         landmarkBeaconCount: 0,
+        studioArrivalEmphasisVisible: false,
       },
       visibilityPolish: {
         fogEdge: "soft_feathered_visibility_boundary",

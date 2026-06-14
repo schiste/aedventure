@@ -146,6 +146,7 @@ export interface AddRuntimeTelemetryPresenterInput {
   readonly currentAction: AddCurrentActionState
   readonly returnReviewNextAction: AddCurrentActionState
   readonly interfaceHierarchy: AddInterfaceHierarchyState
+  readonly baseViewTransition: "idle" | "opening" | "settling"
   readonly shellMenuOpen: boolean
   readonly adminOpen: boolean
   readonly devToolsOpen: boolean
@@ -218,6 +219,7 @@ export interface RuntimeTextState {
     readonly surface: "fullscreen_map_shell"
     readonly hostsPhaserMap: boolean
     readonly interfaceHierarchy: AddInterfaceHierarchyState
+    readonly baseViewTransition: "idle" | "opening" | "settling"
     readonly currentAction: AddCurrentActionState
     readonly shellMenuOpen: boolean
     readonly adminOpen: boolean
@@ -1017,6 +1019,7 @@ export function createAddRuntimeTextState(
       surface: "fullscreen_map_shell",
       hostsPhaserMap: true,
       interfaceHierarchy: input.interfaceHierarchy,
+      baseViewTransition: input.baseViewTransition,
       currentAction: input.currentAction,
       shellMenuOpen: input.shellMenuOpen,
       adminOpen: input.adminOpen,

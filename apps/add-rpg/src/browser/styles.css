@@ -705,6 +705,46 @@ h1 {
   animation: toxicity-pulse 2.2s ease-in-out infinite;
 }
 
+.base-entry-transition {
+  position: absolute;
+  top: 5rem;
+  left: 50%;
+  z-index: 8;
+  display: grid;
+  width: min(18rem, calc(100vw - 2rem));
+  gap: 0.16rem;
+  transform: translateX(-50%);
+  border: 1px solid rgb(240 185 93 / 44%);
+  border-radius: var(--radius-ui);
+  padding: 0.62rem 0.8rem;
+  background:
+    linear-gradient(135deg, rgb(240 185 93 / 26%), rgb(134 211 123 / 12%)),
+    rgb(20 27 18 / 88%);
+  color: rgb(255 250 224);
+  box-shadow:
+    var(--shadow-hud),
+    inset 0 1px 0 rgb(255 255 255 / 10%);
+  pointer-events: none;
+  text-align: center;
+}
+
+.base-entry-transition.hidden {
+  display: none;
+}
+
+.base-entry-transition span {
+  color: rgb(255 226 161 / 88%);
+  font-size: 0.68rem;
+  font-weight: 860;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.base-entry-transition strong {
+  font-size: 0.95rem;
+  line-height: 1.1;
+}
+
 @keyframes toxicity-pulse {
   0%,
   100% {
