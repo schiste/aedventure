@@ -211,6 +211,33 @@ Story state must be inspectable without scraping visual UI.
 Agents should be able to answer "what should I do next and why?" from structured
 state, not DOM text.
 
+## Content Tooling
+
+Use the content tooling commands before reading large source files by hand.
+They inspect the authored TypeScript content and print deterministic text output
+for humans and agents.
+
+```sh
+npm run content:validate
+npm run content:graph
+npm run content:timeline
+npm run content:explain -- story.beat.restore_studio
+```
+
+Command intent:
+
+- `content:validate`: runs semantic content validation and prints story
+  reachability.
+- `content:graph`: prints story dependency edges and unreachable story beats.
+- `content:timeline`: prints beats grouped by arc and sequence.
+- `content:explain -- <id>`: explains one story beat, including conditions,
+  effects, related IDs, incoming dependencies, and outgoing dependencies.
+
+These tools read `packages/add-domain/dist`, so the npm scripts build
+`@aedventure/add-domain` before running the inspector. The output is deliberately
+plain text and stable in ordering so it can be pasted into planning notes,
+debugging reports, and agent context.
+
 ## Transitional Known Gaps
 
 These are accepted short-term gaps, not desired end state:
