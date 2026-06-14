@@ -450,6 +450,10 @@ async function assertAdminDeveloperSeparation(page, consoleErrors) {
   const adminText = await page.locator("#admin-view").innerText()
   ;[
     "Run status",
+    "Story content",
+    "Beat eligibility",
+    "Available commands",
+    "Qualities",
     "Run recovery",
     "Developer tools",
     "World actions",
@@ -464,6 +468,11 @@ async function assertAdminDeveloperSeparation(page, consoleErrors) {
     adminText,
     /UI -> Worker|Snapshot|Save payload|Runtime internals|Advance 5s|Import text/i,
     "Clean Admin view should not expose runtime internals or raw save payload tools.",
+  )
+  assert.equal(
+    await page.locator("#admin-story-browser").isVisible(),
+    true,
+    "Clean Admin view should expose the story/content browser.",
   )
   assert.equal(await page.locator("#save-payload").isVisible(), false)
   await assertNonBlankNamedAppScreenshot(

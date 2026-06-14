@@ -54,6 +54,7 @@ import {
   addMapModeLabel,
   createAddWorldForMapMode,
   selectAddStoryMoment,
+  selectAddStoryContentBrowserState,
   type AddStoryMoment,
   type AddUiState,
   type AddDiscoveryActionLink,
@@ -66,6 +67,7 @@ import {
   type AddTileDetailSummary,
   type AddWorldTimeSummary,
   type AddAvailableCommandsState,
+  type AddStoryContentBrowserState,
   type AddBaseManagementState,
   type AddBaseManagementTabId,
   type CatalogSnapshot,
@@ -395,6 +397,14 @@ const availableCommandsState = createModuleMemo<AddAvailableCommandsState | null
   const currentCatalog = catalog()
   return currentSnapshot && currentCatalog
     ? selectAddAvailableCommands(currentSnapshot, currentCatalog)
+    : null
+})
+const storyContentBrowserState = createModuleMemo<AddStoryContentBrowserState | null>(() => {
+  const currentSnapshot = snapshot()
+  const currentCatalog = catalog()
+  const currentCommands = availableCommandsState()
+  return currentSnapshot && currentCatalog && currentCommands
+    ? selectAddStoryContentBrowserState(currentSnapshot, currentCatalog, currentCommands)
     : null
 })
 const perkProgress = createModuleMemo(() => {
@@ -1054,6 +1064,8 @@ function AddRpgApp() {
           </p>
         </section>
 
+        ${() => adminStoryBrowserPanel()}
+
         <section class="panel admin-recovery-panel">
           <div class="panel-heading">
             <span>Run recovery</span>
@@ -1453,6 +1465,173 @@ function resourceRows(): readonly unknown[] {
       </article>
     `,
   )
+}
+
+function adminStoryBrowserPanel(): unknown {
+  const state = storyContentBrowserState()
+  if (!state) {
+    return html`
+      <section id="admin-story-browser" class="panel admin-story-panel">
+        <div class="panel-heading">
+          <span>Story content</span>
+          <span class="small-chip">Waiting</span>
+        </div>
+        <p class="admin-panel-copy">Story diagnostics will appear after the runtime snapshot loads.</p>
+      </section>
+    `
+  }
+  return html`
+    <section id="admin-story-browser" class="panel admin-story-panel">
+      <div class="panel-heading">
+        <span>Story content</span>
+        <span class="small-chip">${state.contentValidationVersion}</span>
+      </div>
+      <p class="admin-panel-copy">
+        Read-only story projection. Rust owns active beat selection, completion, choices, and saved state.
+      </p>
+
+      <div class="story-browser-summary" aria-label="Story content summary">
+        <article>
+          <span>Active</span>
+          <strong>${state.activeBeat?.label ?? "None"}</strong>
+          <code>${state.activeBeat?.id ?? "story.none"}</code>
+        </article>
+        <article>
+          <span>Completed</span>
+          <strong>${state.summary.completedCount}</strong>
+          <code>${`${state.summary.eligibleCount} eligible`}</code>
+        </article>
+        <article>
+          <span>Commands</span>
+          <strong>${state.summary.enabledCommandCount}/${state.summary.commandCount}</strong>
+          <code>enabled</code>
+        </article>
+      </div>
+
+      <details class="story-browser-fold" open>
+        <summary>Active beat</summary>
+        ${state.activeBeat
+          ? html`
+              <article class="story-browser-active">
+                <strong>${state.activeBeat.label}</strong>
+                <code>${state.activeBeat.id}</code>
+                <small>
+                  ${`${state.activeBeat.arc} · sequence ${state.activeBeat.sequence} · priority ${state.activeBeat.priority}`}
+                </small>
+              </article>
+            `
+          : html`<p class="story-browser-empty">No active beat selected by the runtime.</p>`}
+      </details>
+
+      <details class="story-browser-fold">
+        <summary>Completed beats</summary>
+        ${state.completedBeats.length > 0
+          ? html`<ul class="story-browser-list">${state.completedBeats.map(storyBrowserBeatRow)}</ul>`
+          : html`<p class="story-browser-empty">No completed story beats yet.</p>`}
+      </details>
+
+      <details class="story-browser-fold">
+        <summary>Choices made</summary>
+        ${state.choicesMade.length > 0
+          ? html`<ul class="story-browser-list">${state.choicesMade.map(storyBrowserChoiceRow)}</ul>`
+          : html`<p class="story-browser-empty">No story choices committed yet.</p>`}
+      </details>
+
+      <details class="story-browser-fold">
+        <summary>Qualities</summary>
+        ${state.qualities.length > 0
+          ? html`<ul class="story-browser-list story-browser-pair-list">${state.qualities.map(storyBrowserQualityRow)}</ul>`
+          : html`<p class="story-browser-empty">No narrative qualities are set.</p>`}
+      </details>
+
+      <details class="story-browser-fold">
+        <summary>Available commands</summary>
+        <ul class="story-browser-list">${state.availableCommands.map(storyBrowserCommandRow)}</ul>
+      </details>
+
+      <details class="story-browser-fold">
+        <summary>Beat eligibility</summary>
+        <ul class="story-browser-list story-browser-eligibility">
+          ${state.beatEligibility.map(storyBrowserEligibilityRow)}
+        </ul>
+      </details>
+    </section>
+  `
+}
+
+function storyBrowserBeatRow(beat: AddStoryContentBrowserState["completedBeats"][number]): unknown {
+  return html`
+    <li>
+      <span>
+        <strong>${beat.label}</strong>
+        <small>${`${beat.arc} · sequence ${beat.sequence}`}</small>
+      </span>
+      <code>${beat.id}</code>
+    </li>
+  `
+}
+
+function storyBrowserChoiceRow(choice: AddStoryContentBrowserState["choicesMade"][number]): unknown {
+  return html`
+    <li>
+      <span>
+        <strong>${choice.optionLabel}</strong>
+        <small>${choice.beatLabel}</small>
+      </span>
+      <code>${choice.optionId}</code>
+    </li>
+  `
+}
+
+function storyBrowserQualityRow(quality: AddStoryContentBrowserState["qualities"][number]): unknown {
+  return html`
+    <li>
+      <span>${quality.key}</span>
+      <strong>${quality.value}</strong>
+    </li>
+  `
+}
+
+function storyBrowserCommandRow(command: AddStoryContentBrowserState["availableCommands"][number]): unknown {
+  return html`
+    <li class=${command.enabled ? "story-browser-enabled" : "story-browser-disabled"}>
+      <span>
+        <strong>${command.label}</strong>
+        <small>${command.disabledReason ?? `${command.workerType} · ${command.kind}`}</small>
+      </span>
+      <code>${command.id}</code>
+    </li>
+  `
+}
+
+function storyBrowserEligibilityRow(
+  entry: AddStoryContentBrowserState["beatEligibility"][number],
+): unknown {
+  const stateLabel = entry.active
+    ? "Active"
+    : entry.completed
+      ? "Done"
+      : entry.eligible
+        ? "Eligible"
+        : "Blocked"
+  return html`
+    <li class=${entry.eligible || entry.active ? "story-browser-enabled" : "story-browser-disabled"}>
+      <span>
+        <strong>${entry.beat.label}</strong>
+        <small>${entry.reason}</small>
+        ${entry.preconditions.length > 0
+          ? html`
+              <span class="story-browser-condition-line">
+                ${entry.preconditions.map((condition) =>
+                  html`<i data-pass=${condition.passed}>${condition.label}</i>`,
+                )}
+              </span>
+            `
+          : null}
+      </span>
+      <code>${stateLabel}</code>
+    </li>
+  `
 }
 
 function discoveryPhaseLabel(): string {

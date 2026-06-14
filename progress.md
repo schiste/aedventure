@@ -3026,3 +3026,10 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   re-export, while codegen now points at `content/story/index.ts`. Verification
   passed with `npm run content:check`, `npm run content:validate`, and
   `npm run agent:verify:add-ui`.
+- Added the Phase 10 Admin story/content browser. ADD now has a domain-level
+  `selectAddStoryContentBrowserState` projection that exposes active beat,
+  completed beats, choices made, narrative qualities, available commands, and
+  beat eligibility reasons without letting the UI mutate or re-select story
+  state. The Admin drawer renders that read-only browser outside developer
+  internals, and smoke coverage asserts it stays visible on the clean Admin
+  surface.

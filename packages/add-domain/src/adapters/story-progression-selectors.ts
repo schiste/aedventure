@@ -9,6 +9,11 @@ import type {
   UnlockDef,
 } from "../runtime/protocol"
 import { RESOURCE_BASSLINE, ROLE_CRYSTAL_BASSLINE } from "./add-ids"
+import {
+  selectedStoryChoiceId,
+  storyBeatCompleted,
+  storyChoiceSelected,
+} from "./story-state-readers"
 
 const FIRST_PLAYABLE_FALLBACK_ARC = "base_onboarding"
 
@@ -780,34 +785,6 @@ function storyChoiceAction(
       optionId: firstChoice.id,
     },
   }
-}
-
-function storyChoiceSelected(snapshot: SimulationSnapshot, beatId: string): boolean {
-  const choiceByBeat = snapshot.narrative.choiceByBeat as
-    | Record<string, string>
-    | Map<string, string>
-    | undefined
-  if (!choiceByBeat) return false
-  if (typeof (choiceByBeat as Map<string, string>).has === "function") {
-    return (choiceByBeat as Map<string, string>).has(beatId)
-  }
-  return Boolean((choiceByBeat as Record<string, string>)[beatId])
-}
-
-function selectedStoryChoiceId(snapshot: SimulationSnapshot, beatId: string): string | null {
-  const choiceByBeat = snapshot.narrative.choiceByBeat as
-    | Record<string, string>
-    | Map<string, string>
-    | undefined
-  if (!choiceByBeat) return null
-  if (typeof (choiceByBeat as Map<string, string>).get === "function") {
-    return (choiceByBeat as Map<string, string>).get(beatId) ?? null
-  }
-  return (choiceByBeat as Record<string, string>)[beatId] ?? null
-}
-
-function storyBeatCompleted(snapshot: SimulationSnapshot, beatId: string): boolean {
-  return snapshot.narrative.completedBeatIds.includes(beatId)
 }
 
 function idKind(id: string): string {

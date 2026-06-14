@@ -20,6 +20,7 @@ import {
   type AddDomainCommand,
   workerRequestForAddCommand,
 } from "./command-mapping"
+import { selectedStoryChoiceId, storyFlagSet } from "./story-state-readers"
 import { selectAddRoleAssignmentSummaries } from "./ui-selectors"
 
 export type AddAvailableCommandKind =
@@ -349,9 +350,9 @@ function requirementsDisabledReason(
 function requirementMet(snapshot: SimulationSnapshot, requirement: RequirementDef): boolean {
   switch (requirement.kind) {
     case "flag_set":
-      return flagSet(snapshot, requirement.flag_id)
+      return storyFlagSet(snapshot, requirement.flag_id)
     case "flag_unset":
-      return !flagSet(snapshot, requirement.flag_id)
+      return !storyFlagSet(snapshot, requirement.flag_id)
   }
 }
 
@@ -441,32 +442,6 @@ function activeStoryBeat(
   return catalog.storyBeats.find((beat) => beat.id === snapshot.narrative.activeBeatId) ?? null
 }
 
-function selectedStoryChoiceId(snapshot: SimulationSnapshot, beatId: string): string | null {
-  return snapshot.narrative.choiceByBeat[beatId] ?? null
-}
-
-function flagSet(snapshot: SimulationSnapshot, flagId: string): boolean {
-  switch (flagId) {
-    case "base.tutorial_investigated":
-      return snapshot.base.tutorialInvestigated
-    case "base.tutorial_explored":
-      return snapshot.base.tutorialExplored
-    case "base.studio_restored":
-      return snapshot.base.studioRestored
-    case "base.fire_pit_built":
-      return snapshot.base.firePitBuilt
-    case "base.studio_restore_unlocked":
-      return snapshot.base.studioRestoreUnlocked
-    case "base.water_collection_unlocked":
-      return snapshot.base.waterCollectionUnlocked
-    case "crystal.removing_moss_unlocked":
-      return snapshot.crystalCircle.removingMossUnlocked
-    case "crystal.removing_moss_completed":
-      return snapshot.crystalCircle.removingMossCompleted
-    default:
-      return false
-  }
-}
 
 function beatIdForWorldAction(catalog: CatalogSnapshot, actionId: string): string | null {
   return catalog.storyBeats.find((beat) => beat.worldActionId === actionId)?.id ?? null

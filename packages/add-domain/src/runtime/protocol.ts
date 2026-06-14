@@ -67,6 +67,8 @@ export interface NarrativeSnapshot {
   activeBeatId: string | null
   completedBeatIds: string[]
   choiceByBeat: Record<string, string>
+  /** Arbitrary author-defined story variables. Rust owns writes; TS may explain them. */
+  qualities?: Record<string, number>
 }
 
 export interface CrystalCircleSnapshot {
