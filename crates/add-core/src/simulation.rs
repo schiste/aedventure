@@ -126,6 +126,8 @@ impl Simulation {
     }
 
     pub fn apply(&mut self, command: GameCommand) {
+        // `events` reflects only what this command/tick produced.
+        self.state.events.clear();
         match command {
             GameCommand::ChooseStoryOption { beat_id, option_id } => {
                 self.choose_story_option(&beat_id, &option_id)
@@ -951,6 +953,7 @@ impl Simulation {
             "Point of no return crossed. The Hero is auto-returning to safety and cannot be reassigned."
                 .to_string(),
         );
+        self.push_event(crate::state::GameEvent::ForcedReturnTriggered);
         self.refresh_hero_survival_state();
     }
 
@@ -1056,6 +1059,7 @@ impl Simulation {
                     self.push_note(
                         "Hero recovered from forced return and can be assigned again.".to_string(),
                     );
+                    self.push_event(crate::state::GameEvent::HeroRecovered);
                 }
             }
         }
@@ -1651,6 +1655,7 @@ impl Simulation {
             if self.state.bubble.frontier_progress > 0.0 {
                 self.state.bubble.frontier_progress = 0.0;
                 self.push_note("Bubble frontier collapsed before stabilizing.");
+                self.push_event(crate::state::GameEvent::BubbleFrontierCollapsed);
                 continue;
             }
 
@@ -1741,6 +1746,10 @@ impl Simulation {
         self.normalize_station_state();
         self.refresh_power_state();
         self.push_note(format!("{label} completed."));
+        self.push_event(crate::state::GameEvent::ConstructionCompleted {
+            option_id,
+            label: label.to_string(),
+        });
     }
 
     fn progress_processing(&mut self, seconds: f64) {
@@ -1782,6 +1791,10 @@ impl Simulation {
                 self.refresh_power_state();
                 self.refresh_bubble_state();
                 self.push_note(format!("{} completed.", recipe_def.label));
+                self.push_event(crate::state::GameEvent::ProcessingCompleted {
+                    recipe_id: recipe_id.clone(),
+                    label: recipe_def.label.to_string(),
+                });
             }
         }
     }
@@ -1810,6 +1823,7 @@ impl Simulation {
             self.push_note(format!(
                 "{arrivals} recruit(s) arrived from the Survivor Cave."
             ));
+            self.push_event(crate::state::GameEvent::RecruitsArrived { count: arrivals });
         }
     }
 
@@ -1864,6 +1878,10 @@ impl Simulation {
                 self.state.expeditions.completed_reports.remove(0);
             }
             self.push_note(format!("{} returned from expedition.", target_def.label));
+            self.push_event(crate::state::GameEvent::ExpeditionCompleted {
+                target_id: job.target_id.clone(),
+                label: target_def.label.to_string(),
+            });
         }
         self.normalize_assignment();
     }
@@ -1901,6 +1919,10 @@ impl Simulation {
                 self.state.resonance.completed_reports.remove(0);
             }
             self.push_note(format!("{} resonance recipe completed.", recipe_def.label));
+            self.push_event(crate::state::GameEvent::ResonanceCompleted {
+                recipe_id: job.recipe_id.clone(),
+                label: recipe_def.label.to_string(),
+            });
         }
 
         self.refresh_power_state();
@@ -2043,6 +2065,10 @@ impl Simulation {
         if let Some(action_def) = world_action_def(&completed.action_id) {
             self.apply_effects(action_def.effects);
             self.push_note(format!("{} completed.", action_def.label));
+            self.push_event(crate::state::GameEvent::WorldActionCompleted {
+                action_id: completed.action_id.clone(),
+                label: action_def.label.to_string(),
+            });
         }
 
         self.normalize_assignment();
@@ -2253,6 +2279,7 @@ impl Simulation {
 
         if !previous_recruitment && self.state.objectives.recruitment_enabled {
             self.push_note("Survivor Cave recruitment gate is now open.");
+            self.push_event(crate::state::GameEvent::RecruitmentGateOpened);
         } else if previous_recruitment && !self.state.objectives.recruitment_enabled {
             let cancelled = self.state.recruitment.pending_recruits.len();
             self.state.recruitment.pending_recruits.clear();
@@ -2308,6 +2335,9 @@ impl Simulation {
             if !self.state.narrative.activated_beat_ids.contains(&beat_id) {
                 self.state.narrative.activated_beat_ids.insert(beat_id.clone());
                 self.apply_effects(beat.on_activate);
+                self.push_event(crate::state::GameEvent::BeatActivated {
+                    beat_id: beat_id.clone(),
+                });
             }
             self.state.narrative.active_beat_id = Some(beat_id);
             return;
@@ -3689,6 +3719,13 @@ impl Simulation {
             let overflow = self.state.notes.len() - self.balance().notes_limit;
             self.state.notes.drain(0..overflow);
         }
+    }
+
+    /// Record a structured event for this frame. The human-readable `notes` log
+    /// is pushed separately at the same sites, so the two stay in sync while
+    /// consumers migrate from string-sniffing to typed events.
+    fn push_event(&mut self, event: crate::state::GameEvent) {
+        self.state.events.push(event);
     }
 }
 

@@ -283,10 +283,31 @@ export interface HexCoordSnapshot {
   r: number
 }
 
+/**
+ * A structured event produced by the command/tick that yielded this snapshot.
+ * Typed counterpart to the `notes` log — consumers (moment driver, audio,
+ * telemetry) match on `kind` instead of parsing note strings. Ephemeral: it
+ * reflects only the last frame and is never persisted in saves.
+ */
+export type AddGameEvent =
+  | { kind: "construction_completed"; optionId: string; label: string }
+  | { kind: "processing_completed"; recipeId: string; label: string }
+  | { kind: "expedition_completed"; targetId: string; label: string }
+  | { kind: "resonance_completed"; recipeId: string; label: string }
+  | { kind: "world_action_completed"; actionId: string; label: string }
+  | { kind: "recruits_arrived"; count: number }
+  | { kind: "beat_activated"; beatId: string }
+  | { kind: "forced_return_triggered" }
+  | { kind: "hero_recovered" }
+  | { kind: "bubble_frontier_collapsed" }
+  | { kind: "recruitment_gate_opened" }
+
 export interface SimulationSnapshot {
   schemaVersion: number
   /** Content catalog identity this save was authored against (see save migration). */
   catalogVersion: number
+  /** Structured events from the last applied command/tick (ephemeral, not saved). */
+  events: AddGameEvent[]
   clockSeconds: number
   resources: ResourceSnapshot
   roster: RosterSnapshot

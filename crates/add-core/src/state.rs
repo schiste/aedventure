@@ -52,6 +52,13 @@ pub struct GameState {
     pub active_construction: Option<ConstructionJob>,
     pub active_world_action: Option<WorldAction>,
     pub notes: Vec<String>,
+    /// Structured events produced by the command/tick just applied. Rebuilt
+    /// every `apply` (ephemeral, not a rolling log like `notes`), so the
+    /// snapshot carries exactly what happened this frame for the UI, audio, and
+    /// telemetry to react to. Skipped on deserialize (saves never reland stale
+    /// events) and stripped from exported saves.
+    #[serde(default, skip_deserializing)]
+    pub events: Vec<GameEvent>,
     /// Authoritative open/closed state for dungeon doors, keyed by
     /// `${dungeonId}:${x}:${y}`. A key present here means that door is open.
     #[serde(default)]
@@ -77,6 +84,40 @@ pub struct GameState {
     /// Internal; not persisted or surfaced.
     #[serde(skip)]
     pub scavenge_scrap_progress: f64,
+}
+
+/// A structured thing that happened during the last applied command/tick.
+///
+/// This is the typed counterpart to the human-readable `notes` log: consumers
+/// (UI moment driver, audio cues, telemetry) match on the variant instead of
+/// sniffing note strings. Serialized onto the snapshot only — never persisted
+/// (the field is `skip_deserializing` and stripped from exported saves), so the
+/// enum carries owned runtime data and needs only `Serialize`.
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(tag = "kind", rename_all = "snake_case", rename_all_fields = "camelCase")]
+pub enum GameEvent {
+    /// A base construction project finished.
+    ConstructionCompleted { option_id: String, label: String },
+    /// A crystal/processing recipe finished.
+    ProcessingCompleted { recipe_id: String, label: String },
+    /// An expedition returned with its rewards.
+    ExpeditionCompleted { target_id: String, label: String },
+    /// A resonance recipe finished tuning.
+    ResonanceCompleted { recipe_id: String, label: String },
+    /// A hero world action (investigate/explore) finished.
+    WorldActionCompleted { action_id: String, label: String },
+    /// One or more recruits arrived from the Survivor Cave this frame.
+    RecruitsArrived { count: u8 },
+    /// A storylet became the active beat (fired its `on_activate`).
+    BeatActivated { beat_id: String },
+    /// The hero crossed the point of no return and is auto-returning.
+    ForcedReturnTriggered,
+    /// The hero finished recovering and can be reassigned.
+    HeroRecovered,
+    /// The bubble frontier collapsed before stabilizing.
+    BubbleFrontierCollapsed,
+    /// The Survivor Cave recruitment gate opened (reach objective met).
+    RecruitmentGateOpened,
 }
 
 impl GameState {
@@ -148,6 +189,7 @@ impl GameState {
                 "Phase 0 runtime initialized.".to_string(),
                 "Bassline, Chorus, and Harmonics now drive the base economy.".to_string(),
             ],
+            events: Vec::new(),
             open_doors: BTreeSet::new(),
             acquired_perks: BTreeSet::new(),
             inventory: BTreeMap::new(),

@@ -46,7 +46,12 @@ impl From<MigrationError> for SaveError {
 }
 
 pub fn export_save(state: &GameState) -> Result<String, serde_json::Error> {
-    serde_json::to_string_pretty(state)
+    // `events` is an ephemeral per-frame buffer, not save data. Drop it so saves
+    // never carry stale events (they're also `skip_deserializing`, so a save
+    // that somehow contained them would ignore them on load).
+    let mut state = state.clone();
+    state.events.clear();
+    serde_json::to_string_pretty(&state)
 }
 
 /// Load a save string: parse to a raw `Value`, migrate it forward to the

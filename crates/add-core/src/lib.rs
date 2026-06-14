@@ -35,7 +35,8 @@ pub use state::{
     BaseState, BubbleState, ConstructionJob, CrystalCircleState, CrystalTuningState,
     CrystalTuningTrackState, DEFAULT_BASE_SLOTS, DEFAULT_TOTAL_CREW, ExpeditionJob,
     ExpeditionReport, ExpeditionRiskState, ExpeditionState, ForcedReturnPhase, ForcedReturnState,
-    GRID_RADIUS, GameState, HeroLocationState, HeroProgressState, HeroSurvivalState, HexCoordState,
+    GRID_RADIUS, GameEvent, GameState, HeroLocationState, HeroProgressState, HeroSurvivalState,
+    HexCoordState,
     HexState, HexVisualState, NarrativeState, ObjectiveState, PowerState, ProcessingJob,
     ProcessingState, RecruitTravel, RecruitmentState, ResonanceJob, ResonanceMaterialState,
     ResonanceReport, ResonanceState, ResourcePools, RosterState, StationSpecializationPathState,
@@ -116,6 +117,64 @@ mod tests {
         let raw = export_save(&state).unwrap();
         let loaded = import_save(&raw).expect("freshly exported save must load");
         assert_eq!(loaded, state);
+    }
+
+    #[test]
+    fn applying_a_command_emits_structured_events() {
+        let mut simulation = Simulation::new();
+        // The opening choice completes the road beat; the selector then activates
+        // the next beat, firing a BeatActivated event this frame.
+        simulation.apply(GameCommand::ChooseStoryOption {
+            beat_id: STORY_BEAT_ROAD_TO_BASE.to_string(),
+            option_id: "story.choice.road.follow_signal".to_string(),
+        });
+        assert!(
+            simulation
+                .state()
+                .events
+                .iter()
+                .any(|event| matches!(event, crate::GameEvent::BeatActivated { .. })),
+            "a story choice should surface a BeatActivated event, got {:?}",
+            simulation.state().events
+        );
+    }
+
+    #[test]
+    fn events_are_cleared_between_commands() {
+        let mut simulation = Simulation::new();
+        simulation.apply(GameCommand::ChooseStoryOption {
+            beat_id: STORY_BEAT_ROAD_TO_BASE.to_string(),
+            option_id: "story.choice.road.follow_signal".to_string(),
+        });
+        assert!(!simulation.state().events.is_empty());
+        // A tick that completes nothing leaves the buffer empty.
+        simulation.apply(GameCommand::Tick { seconds: 0.0 });
+        assert!(
+            simulation.state().events.is_empty(),
+            "events must reflect only the latest command, got {:?}",
+            simulation.state().events
+        );
+    }
+
+    #[test]
+    fn export_strips_events_and_load_ignores_them() {
+        let mut simulation = Simulation::new();
+        simulation.apply(GameCommand::ChooseStoryOption {
+            beat_id: STORY_BEAT_ROAD_TO_BASE.to_string(),
+            option_id: "story.choice.road.follow_signal".to_string(),
+        });
+        assert!(!simulation.state().events.is_empty());
+
+        let raw = export_save(simulation.state()).unwrap();
+        let value: serde_json::Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(
+            value["events"].as_array().map(Vec::len),
+            Some(0),
+            "exported saves must not carry transient events"
+        );
+
+        let loaded = import_save(&raw).unwrap();
+        assert!(loaded.events.is_empty());
     }
 
     fn advance_intro_to_investigate(simulation: &mut Simulation) {
@@ -421,7 +480,11 @@ mod tests {
         });
         let serialized = export_save(simulation.state()).expect("save should serialize");
         let restored = import_save(&serialized).expect("save should deserialize");
-        assert_eq!(simulation.state(), &restored);
+        // `events` is transient: stripped on export and never deserialized, so a
+        // round-trip drops it. Everything else must round-trip exactly.
+        let mut expected = simulation.state().clone();
+        expected.events.clear();
+        assert_eq!(expected, restored);
     }
 
     #[test]
