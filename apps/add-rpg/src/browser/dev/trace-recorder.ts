@@ -180,6 +180,8 @@ interface PerfMemory {
 
 /** Latest worker back-pressure seen at the boundary, folded into each perf sample. */
 let lastQueueDepth = 0
+/** Seq of the command currently being processed, so game events can be linked to it. */
+let lastSeq = 0
 
 /**
  * One-shot session header: the environment needed to interpret everything else.
@@ -605,11 +607,13 @@ export function installTraceRecorder(getSnapshot: () => SimulationSnapshot | nul
   // Boundary tap: every command out + every worker event in, with latency + back-pressure.
   const onTrace = (entry: TraceEntry): void => {
     if (entry.queueDepth !== undefined) lastQueueDepth = entry.queueDepth
+    if (entry.seq !== undefined) lastSeq = entry.seq
     const changed = entry.dir === "event" ? changedLeaves(entry.payload) : undefined
     enqueue({
       t: entry.at,
       dir: entry.dir,
       kind: entry.kind,
+      ...(entry.seq !== undefined ? { seq: entry.seq } : {}),
       ...(entry.latencyMs !== undefined ? { latencyMs: Math.round(entry.latencyMs) } : {}),
       ...(entry.request ? { request: entry.request } : {}),
       ...(entry.queueDepth !== undefined ? { queueDepth: entry.queueDepth } : {}),
@@ -620,10 +624,12 @@ export function installTraceRecorder(getSnapshot: () => SimulationSnapshot | nul
   }
 
   // Semantic tap: the same add-game-event stream music-event-bridge listens to.
+  // lastSeq links each event to the command that produced it (set on the event
+  // line just above, which fires before main.ts dispatches these).
   window.addEventListener("add-game-event", (event) => {
     const detail = (event as CustomEvent<AddGameEvent>).detail
     if (!detail?.kind) return
-    enqueue({ t: performance.now(), dir: "game", kind: detail.kind, payload: detail, ctx: stamp() })
+    enqueue({ t: performance.now(), dir: "game", kind: detail.kind, seq: lastSeq, payload: detail, ctx: stamp() })
   })
 
   // Performance: one-shot boot timing, then a per-second render/jank/heap sample.
