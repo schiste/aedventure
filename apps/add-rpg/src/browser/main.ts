@@ -1720,7 +1720,8 @@ function adminStoryBrowserPanel(): unknown {
         <span class="small-chip">${state.contentValidationVersion}</span>
       </div>
       <p class="admin-panel-copy">
-        Read-only story projection. Rust owns active beat selection, completion, choices, and saved state.
+        Read-only story projection. Rust owns active beat selection, completion, choices, and saved
+        state; beat eligibility is a TS best-effort diagnostic mirror.
       </p>
 
       <div class="story-browser-summary" aria-label="Story content summary">
@@ -1738,6 +1739,11 @@ function adminStoryBrowserPanel(): unknown {
           <span>Commands</span>
           <strong>${state.summary.enabledCommandCount}/${state.summary.commandCount}</strong>
           <code>enabled</code>
+        </article>
+        <article>
+          <span>Eligibility</span>
+          <strong>TS mirror</strong>
+          <code>${state.authority.beatEligibility}</code>
         </article>
       </div>
 
@@ -1783,7 +1789,7 @@ function adminStoryBrowserPanel(): unknown {
       </details>
 
       <details class="story-browser-fold">
-        <summary>Beat eligibility</summary>
+        <summary>Beat eligibility · TS best-effort</summary>
         <ul class="story-browser-list story-browser-eligibility">
           ${state.beatEligibility.map(storyBrowserEligibilityRow)}
         </ul>

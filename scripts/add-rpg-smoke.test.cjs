@@ -451,7 +451,8 @@ async function assertAdminDeveloperSeparation(page, consoleErrors) {
   ;[
     "Run status",
     "Story content",
-    "Beat eligibility",
+    "Beat eligibility · TS best-effort",
+    "TS best-effort diagnostic mirror",
     "Available commands",
     "Qualities",
     "Run recovery",

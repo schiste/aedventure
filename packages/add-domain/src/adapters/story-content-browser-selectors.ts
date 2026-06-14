@@ -57,9 +57,11 @@ export interface AddStoryConditionEvaluation {
   readonly label: string
   readonly passed: boolean
   readonly detail: string
+  readonly source: "typescript_best_effort"
 }
 
 export interface AddStoryBeatEligibility {
+  readonly authority: "typescript_best_effort"
   readonly beat: AddStoryBrowserBeatRef
   readonly active: boolean
   readonly completed: boolean
@@ -72,7 +74,12 @@ export interface AddStoryBeatEligibility {
 
 export interface AddStoryContentBrowserState {
   readonly contract: "add_story_content_browser_v1"
-  readonly authority: "rust_runtime"
+  readonly authority: {
+    readonly storyState: "rust_runtime"
+    readonly choices: "rust_runtime"
+    readonly commands: "typescript_projection_to_rust_worker"
+    readonly beatEligibility: "typescript_best_effort"
+  }
   readonly contentValidationVersion: string
   readonly activeBeat: AddStoryBrowserBeatRef | null
   readonly completedBeats: readonly AddStoryBrowserBeatRef[]
@@ -109,7 +116,12 @@ export function selectAddStoryContentBrowserState(
 
   return {
     contract: "add_story_content_browser_v1",
-    authority: "rust_runtime",
+    authority: {
+      storyState: "rust_runtime",
+      choices: "rust_runtime",
+      commands: "typescript_projection_to_rust_worker",
+      beatEligibility: "typescript_best_effort",
+    },
     contentValidationVersion: ADD_CONTENT_VALIDATION_VERSION,
     activeBeat: progression.activeBeat ? beatRef(progression.activeBeat) : null,
     completedBeats: progression.completedBeats.map((beat) => ({
@@ -154,6 +166,7 @@ function storyBeatEligibility(
   const autoCompleteReady = autoCompleteWhen.length > 0 && autoCompleteWhen.every((condition) => condition.passed)
 
   return {
+    authority: "typescript_best_effort",
     beat: beatRef(beat),
     active,
     completed,
@@ -180,7 +193,7 @@ function eligibilityReason(input: {
   readonly preconditions: readonly AddStoryConditionEvaluation[]
   readonly autoCompleteReady: boolean
 }): string {
-  if (input.active) return "Selected by the authoritative Rust story runtime."
+  if (input.active) return "Active beat selected by Rust; eligibility details are a TS best-effort mirror."
   if (input.completed && !input.repeatable) return "Completed and non-repeatable."
   const firstBlocked = input.preconditions.find((condition) => !condition.passed)
   if (firstBlocked) return firstBlocked.detail
@@ -342,7 +355,7 @@ function conditionResult(
   passed: boolean,
   detail: string,
 ): AddStoryConditionEvaluation {
-  return { kind, label, passed, detail }
+  return { kind, label, passed, detail, source: "typescript_best_effort" }
 }
 
 function storyChoicesMade(
