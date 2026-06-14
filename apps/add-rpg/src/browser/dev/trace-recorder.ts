@@ -295,6 +295,19 @@ function startPerfSampling(): () => void {
     const p95 = n ? sorted[Math.min(n - 1, Math.floor(0.95 * n))] : 0
     const mem = (performance as unknown as { memory?: PerfMemory }).memory
 
+    // App-supplied accumulator counts (e.g. Phaser display list / tweens). The
+    // renderer publishes this dev-only window hook; absent in prod.
+    const appProbe = (window as unknown as { __ADD_MEM_PROBE?: () => Record<string, number> })
+      .__ADD_MEM_PROBE
+    let probed: Record<string, number> = {}
+    if (appProbe) {
+      try {
+        probed = appProbe()
+      } catch {
+        /* a bad probe must not break sampling */
+      }
+    }
+
     enqueue({
       t: performance.now(),
       dir: "perf",
@@ -307,12 +320,16 @@ function startPerfSampling(): () => void {
       longTasks,
       blockingMs: Math.round(blockingMs),
       queueDepth: lastQueueDepth,
+      // DOM node count is the cheapest, most universal leak signal.
+      domNodes: document.getElementsByTagName("*").length,
       ...(mem
         ? {
             heapUsedMB: Math.round(mem.usedJSHeapSize / 1048576),
+            heapTotalMB: Math.round(mem.totalJSHeapSize / 1048576),
             heapLimitMB: Math.round(mem.jsHeapSizeLimit / 1048576),
           }
         : {}),
+      ...probed,
     })
     longTasks = 0
     blockingMs = 0
