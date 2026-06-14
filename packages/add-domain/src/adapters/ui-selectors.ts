@@ -28,6 +28,7 @@ import {
 } from "./add-ids"
 import type { AddFirstPlayableSummary } from "./first-playable-script"
 import {
+  type AddStoryCommandProjection,
   selectAddStoryProgressionState,
   type AddStoryProgressionState,
 } from "./story-progression-selectors"
@@ -109,8 +110,9 @@ export interface AddUiState {
 export function selectAddUiState(
   snapshot: SimulationSnapshot,
   catalog: CatalogSnapshot,
+  commandProjection: AddStoryCommandProjection | null = null,
 ): AddUiState {
-  const storyProgression = selectAddStoryProgressionState(snapshot, catalog)
+  const storyProgression = selectAddStoryProgressionState(snapshot, catalog, commandProjection)
   return {
     worldTime: selectAddWorldTime(snapshot),
     resources: selectAddResourceSummaries(snapshot, catalog),

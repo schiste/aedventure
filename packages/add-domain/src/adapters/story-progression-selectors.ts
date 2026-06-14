@@ -8,6 +8,7 @@ import type {
   StoryPrimaryActionDef,
   UnlockDef,
 } from "../runtime/protocol"
+import type { AddDomainCommand } from "./command-mapping"
 import { RESOURCE_BASSLINE, ROLE_CRYSTAL_BASSLINE } from "./add-ids"
 import {
   selectedStoryChoiceId,
@@ -116,6 +117,26 @@ export interface AddStoryProgressionTelemetrySummary {
   readonly awaitingChoice: boolean
 }
 
+export interface AddStoryCommandProjectionCommand {
+  readonly id: string
+  readonly label: string
+  readonly enabled: boolean
+  readonly disabledReason: string | null
+  readonly command: AddDomainCommand
+  readonly related: {
+    readonly beatId: string | null
+    readonly optionId: string | null
+    readonly actionId: string | null
+    readonly constructionId: string | null
+    readonly resourceIds: readonly string[]
+    readonly roleId: string | null
+  }
+}
+
+export interface AddStoryCommandProjection {
+  readonly commands: readonly AddStoryCommandProjectionCommand[]
+}
+
 export interface AddStoryProgressionState {
   readonly activeBeat: StoryBeatDef | null
   readonly activeArc: string | null
@@ -140,9 +161,10 @@ export const ADD_FIRST_PLAYABLE_SCRIPT: readonly Pick<AddFirstPlayableStep, "id"
 export function selectAddStoryProgressionState(
   snapshot: SimulationSnapshot,
   catalog: CatalogSnapshot,
+  commandProjection: AddStoryCommandProjection | null = null,
 ): AddStoryProgressionState {
   const activeBeat = selectActiveStoryBeat(snapshot, catalog)
-  const firstPlayable = selectFirstPlayableSummary(snapshot, catalog, activeBeat)
+  const firstPlayable = selectFirstPlayableSummary(snapshot, catalog, activeBeat, commandProjection)
   const allBeats = catalog.storyBeats
     .slice()
     .sort(compareStoryBeats)
@@ -190,10 +212,11 @@ function selectFirstPlayableSummary(
   snapshot: SimulationSnapshot,
   catalog: CatalogSnapshot,
   activeBeat: StoryBeatDef | null,
+  commandProjection: AddStoryCommandProjection | null,
 ): AddFirstPlayableSummary {
   const beats = firstPlayableBeats(catalog)
   const stepsWithoutActive = beats.map((beat) =>
-    firstPlayableStepForBeat(snapshot, catalog, beat, activeBeat),
+    firstPlayableStepForBeat(snapshot, catalog, beat, activeBeat, commandProjection),
   )
   const currentStepId = stepsWithoutActive.find((step) => !step.complete)?.id ?? null
   const steps = stepsWithoutActive.map((step) => ({
@@ -231,10 +254,18 @@ function firstPlayableStepForBeat(
   catalog: CatalogSnapshot,
   beat: StoryBeatDef,
   activeBeat: StoryBeatDef | null,
+  commandProjection: AddStoryCommandProjection | null,
 ): AddFirstPlayableStep {
   const progression = beat.progression ?? null
   const actionDef = progression?.primaryAction ?? inferredPrimaryAction(beat)
-  const action = actionForStoryPrimaryAction(snapshot, catalog, beat, activeBeat, actionDef)
+  const action = actionForStoryPrimaryAction(
+    snapshot,
+    catalog,
+    beat,
+    activeBeat,
+    actionDef,
+    commandProjection,
+  )
   return {
     id: progression?.stepId ?? beat.id,
     label: progression?.presentation?.shortLabel ?? beat.label,
@@ -273,19 +304,20 @@ function actionForStoryPrimaryAction(
   beat: StoryBeatDef,
   activeBeat: StoryBeatDef | null,
   actionDef: StoryPrimaryActionDef | null,
+  commandProjection: AddStoryCommandProjection | null,
 ): Pick<AddFirstPlayableStep, "actionLabel" | "action"> {
   if (!actionDef) return { actionLabel: null, action: null }
   switch (actionDef.kind) {
     case "story_choice":
       return activeBeat?.id === beat.id
-        ? storyChoiceAction(snapshot, activeBeat)
+        ? storyChoiceAction(snapshot, activeBeat, commandProjection)
         : { actionLabel: null, action: null }
     case "preview_route_to_base":
       if (!heroReachedBase(snapshot, catalog)) {
         return { actionLabel: "Preview route to Studio", action: { type: "preview_route_to_base" } }
       }
       return activeBeat?.id === beat.id
-        ? storyChoiceAction(snapshot, activeBeat)
+        ? storyChoiceAction(snapshot, activeBeat, commandProjection)
         : { actionLabel: null, action: null }
     case "world_action":
       return worldActionStepAction(
@@ -293,15 +325,16 @@ function actionForStoryPrimaryAction(
         activeBeat,
         beat,
         storyActionString(actionDef, "actionId", "action_id") ?? beat.worldActionId,
+        commandProjection,
       )
     case "construction":
-      return constructionStepAction(snapshot, catalog, actionDef)
+      return constructionStepAction(snapshot, catalog, actionDef, commandProjection)
     case "assign_role":
-      return assignRoleAction(snapshot, actionDef)
+      return assignRoleAction(snapshot, actionDef, commandProjection)
     case "tick":
       return tickStepAction(snapshot, beat, actionDef)
     case "recruit_from_survivor_cave":
-      return recruitFromSurvivorCaveAction(snapshot, actionDef)
+      return recruitFromSurvivorCaveAction(snapshot, actionDef, commandProjection)
     case "none":
       return { actionLabel: null, action: null }
   }
@@ -312,6 +345,7 @@ function worldActionStepAction(
   activeBeat: StoryBeatDef | null,
   beat: StoryBeatDef,
   actionId: string | null,
+  commandProjection: AddStoryCommandProjection | null,
 ): Pick<AddFirstPlayableStep, "actionLabel" | "action"> {
   if (!actionId) return { actionLabel: null, action: null }
   if (snapshot.activeWorldAction?.actionId === actionId) {
@@ -321,11 +355,24 @@ function worldActionStepAction(
     }
   }
   if (activeBeat?.id === beat.id) {
-    const choice = storyChoiceAction(snapshot, activeBeat)
+    const choice = storyChoiceAction(snapshot, activeBeat, commandProjection)
     if (choice.action) return choice
   }
   if (!snapshot.roster.heroAssigned) {
-    return { actionLabel: "Assign Hero", action: { type: "assign_hero", assigned: true } }
+    const assignHero = projectedCommandAction(commandProjection, (command) =>
+      command.command.kind === "assign_hero" && command.command.assigned === true,
+    )
+    return assignHero ?? { actionLabel: "Assign Hero", action: { type: "assign_hero", assigned: true } }
+  }
+  const worldAction = projectedCommandAction(commandProjection, (command) =>
+    command.command.kind === "start_world_action" && command.command.actionId === actionId,
+  )
+  if (worldAction) return worldAction
+  if (commandProjection) {
+    return {
+      actionLabel: null,
+      action: null,
+    }
   }
   return { actionLabel: beat.progression?.presentation?.ctaCopy ?? beat.label, action: { type: "start_world_action", actionId } }
 }
@@ -334,34 +381,58 @@ function constructionStepAction(
   snapshot: SimulationSnapshot,
   catalog: CatalogSnapshot,
   action: Extract<StoryPrimaryActionDef, { kind: "construction" }>,
+  commandProjection: AddStoryCommandProjection | null,
 ): Pick<AddFirstPlayableStep, "actionLabel" | "action"> {
   const optionId = storyActionString(action, "optionId", "option_id")
   if (!optionId) return { actionLabel: null, action: null }
   const option = catalog.constructionOptions.find((candidate) => candidate.id === optionId)
+  const constructionCommand = projectedCommand(commandProjection, (command) =>
+    command.command.kind === "start_construction" && command.command.optionId === optionId,
+  )
   const buildRoleId = storyActionString(action, "buildRoleId", "build_role_id")
   const gatherRoleId = storyActionString(action, "gatherRoleId", "gather_role_id")
   const targetCrew = storyActionNumber(action, "crew", "crew") ?? 1
   if (snapshot.activeConstruction?.optionId === optionId) {
     if (buildRoleId && (!snapshot.roster.heroAssigned || snapshot.roster.heroRoleId !== buildRoleId)) {
-      return { actionLabel: "Send Hero to build", action: { type: "set_hero_role", roleId: buildRoleId } }
+      const heroRole = projectedCommandAction(commandProjection, (command) =>
+        command.command.kind === "set_hero_role" && command.command.roleId === buildRoleId,
+      )
+      return heroRole ?? { actionLabel: "Send Hero to build", action: { type: "set_hero_role", roleId: buildRoleId } }
     }
     if (buildRoleId && roleCrew(snapshot, buildRoleId) < 1) {
-      return { actionLabel: "Assign build crew", action: { type: "set_role_crew", roleId: buildRoleId, crew: targetCrew } }
+      const crew = projectedCommandAction(commandProjection, (command) =>
+        command.command.kind === "set_role_crew" && command.command.roleId === buildRoleId,
+      )
+      return crew ?? { actionLabel: "Assign build crew", action: { type: "set_role_crew", roleId: buildRoleId, crew: targetCrew } }
     }
     return {
       actionLabel: "Advance construction",
       action: { type: "tick", seconds: snapshot.activeConstruction.remainingWorkSeconds + 0.5 },
     }
   }
-  if (option && !canAffordConstruction(snapshot, option)) {
+  const missingConstructionResources = constructionCommand
+    ? !constructionCommand.enabled && constructionCommand.related.resourceIds.length > 0
+    : option !== undefined && !canAffordConstruction(snapshot, option)
+  if (option && missingConstructionResources) {
     if (gatherRoleId && (!snapshot.roster.heroAssigned || snapshot.roster.heroRoleId !== gatherRoleId)) {
-      return { actionLabel: "Send Hero scavenging", action: { type: "set_hero_role", roleId: gatherRoleId } }
+      const heroRole = projectedCommandAction(commandProjection, (command) =>
+        command.command.kind === "set_hero_role" && command.command.roleId === gatherRoleId,
+      )
+      return heroRole ?? { actionLabel: "Send Hero scavenging", action: { type: "set_hero_role", roleId: gatherRoleId } }
     }
     if (gatherRoleId && roleCrew(snapshot, gatherRoleId) < 1) {
-      return { actionLabel: "Assign gather crew", action: { type: "set_role_crew", roleId: gatherRoleId, crew: targetCrew } }
+      const crew = projectedCommandAction(commandProjection, (command) =>
+        command.command.kind === "set_role_crew" && command.command.roleId === gatherRoleId,
+      )
+      return crew ?? { actionLabel: "Assign gather crew", action: { type: "set_role_crew", roleId: gatherRoleId, crew: targetCrew } }
     }
     return { actionLabel: "Gather resources", action: { type: "tick", seconds: storyActionWaitSeconds(action) } }
   }
+  const startConstruction = projectedCommandAction(commandProjection, (command) =>
+    command.command.kind === "start_construction" && command.command.optionId === optionId,
+  )
+  if (startConstruction) return startConstruction
+  if (commandProjection) return { actionLabel: null, action: null }
   return {
     actionLabel: option ? `Start ${option.label}` : "Start construction",
     action: { type: "start_construction", optionId },
@@ -371,16 +442,23 @@ function constructionStepAction(
 function assignRoleAction(
   snapshot: SimulationSnapshot,
   action: Extract<StoryPrimaryActionDef, { kind: "assign_role" }>,
+  commandProjection: AddStoryCommandProjection | null,
 ): Pick<AddFirstPlayableStep, "actionLabel" | "action"> {
   const roleId = storyActionString(action, "roleId", "role_id")
   if (!roleId) return { actionLabel: null, action: null }
   const assignHero = storyActionBoolean(action, "assignHero", "assign_hero") ?? false
   if (assignHero && (!snapshot.roster.heroAssigned || snapshot.roster.heroRoleId !== roleId)) {
-    return { actionLabel: "Assign Hero", action: { type: "set_hero_role", roleId } }
+    const heroRole = projectedCommandAction(commandProjection, (command) =>
+      command.command.kind === "set_hero_role" && command.command.roleId === roleId,
+    )
+    return heroRole ?? { actionLabel: "Assign Hero", action: { type: "set_hero_role", roleId } }
   }
   const crew = storyActionNumber(action, "crew", "crew") ?? 1
   if (roleCrew(snapshot, roleId) < crew) {
-    return { actionLabel: "Assign crew", action: { type: "set_role_crew", roleId, crew } }
+    const crewCommand = projectedCommandAction(commandProjection, (command) =>
+      command.command.kind === "set_role_crew" && command.command.roleId === roleId,
+    )
+    return crewCommand ?? { actionLabel: "Assign crew", action: { type: "set_role_crew", roleId, crew } }
   }
   return { actionLabel: null, action: null }
 }
@@ -388,6 +466,7 @@ function assignRoleAction(
 function recruitFromSurvivorCaveAction(
   snapshot: SimulationSnapshot,
   action: Extract<StoryPrimaryActionDef, { kind: "recruit_from_survivor_cave" }>,
+  commandProjection: AddStoryCommandProjection | null,
 ): Pick<AddFirstPlayableStep, "actionLabel" | "action"> {
   if (!snapshot.objectives.recruitmentEnabled) {
     return { actionLabel: "Hold the field", action: { type: "tick", seconds: storyActionWaitSeconds(action) } }
@@ -395,11 +474,17 @@ function recruitFromSurvivorCaveAction(
   if (snapshot.resources.vibes < snapshot.recruitment.nextRecruitCost) {
     const vibesRoleId = storyActionString(action, "vibesRoleId", "vibes_role_id")
     if (vibesRoleId && roleCrew(snapshot, vibesRoleId) < 1) {
-      return { actionLabel: "Assign Fire Pit crew", action: { type: "set_role_crew", roleId: vibesRoleId, crew: 1 } }
+      const crew = projectedCommandAction(commandProjection, (command) =>
+        command.command.kind === "set_role_crew" && command.command.roleId === vibesRoleId,
+      )
+      return crew ?? { actionLabel: "Assign Fire Pit crew", action: { type: "set_role_crew", roleId: vibesRoleId, crew: 1 } }
     }
     return { actionLabel: "Build Vibes", action: { type: "tick", seconds: storyActionWaitSeconds(action) } }
   }
-  return { actionLabel: "Recruit survivor", action: { type: "recruit_from_survivor_cave" } }
+  const recruit = projectedCommandAction(commandProjection, (command) =>
+    command.command.kind === "recruit_from_survivor_cave",
+  )
+  return recruit ?? { actionLabel: "Recruit survivor", action: { type: "recruit_from_survivor_cave" } }
 }
 
 function tickStepAction(
@@ -769,10 +854,15 @@ function roleCrew(snapshot: SimulationSnapshot, roleId: string): number {
 function storyChoiceAction(
   snapshot: SimulationSnapshot,
   activeBeat: StoryBeatDef | null,
+  commandProjection: AddStoryCommandProjection | null,
 ): Pick<AddFirstPlayableStep, "actionLabel" | "action"> {
   if (!activeBeat || activeBeat.choices.length === 0) {
     return { actionLabel: null, action: null }
   }
+  const projectedChoice = projectedCommandAction(commandProjection, (command) =>
+    command.command.kind === "choose_story_option" && command.command.beatId === activeBeat.id,
+  )
+  if (projectedChoice) return projectedChoice
   if (storyChoiceSelected(snapshot, activeBeat.id)) {
     return { actionLabel: null, action: null }
   }
@@ -784,6 +874,48 @@ function storyChoiceAction(
       beatId: activeBeat.id,
       optionId: firstChoice.id,
     },
+  }
+}
+
+function projectedCommandAction(
+  projection: AddStoryCommandProjection | null,
+  matches: (command: AddStoryCommandProjectionCommand) => boolean,
+): Pick<AddFirstPlayableStep, "actionLabel" | "action"> | null {
+  const command = projectedCommand(projection, matches)
+  if (!command?.enabled) return null
+  const action = firstPlayableActionFromDomainCommand(command.command)
+  return action ? { actionLabel: command.label, action } : null
+}
+
+function projectedCommand(
+  projection: AddStoryCommandProjection | null,
+  matches: (command: AddStoryCommandProjectionCommand) => boolean,
+): AddStoryCommandProjectionCommand | null {
+  return projection?.commands.find(matches) ?? null
+}
+
+function firstPlayableActionFromDomainCommand(
+  command: AddDomainCommand,
+): AddFirstPlayableAction | null {
+  switch (command.kind) {
+    case "choose_story_option":
+      return { type: "choose_story_option", beatId: command.beatId, optionId: command.optionId }
+    case "assign_hero":
+      return { type: "assign_hero", assigned: command.assigned }
+    case "set_hero_role":
+      return { type: "set_hero_role", roleId: command.roleId }
+    case "set_role_crew":
+      return { type: "set_role_crew", roleId: command.roleId, crew: command.crew }
+    case "start_world_action":
+      return { type: "start_world_action", actionId: command.actionId }
+    case "start_construction":
+      return { type: "start_construction", optionId: command.optionId }
+    case "tick":
+      return { type: "tick", seconds: command.seconds }
+    case "recruit_from_survivor_cave":
+      return { type: "recruit_from_survivor_cave" }
+    default:
+      return null
   }
 }
 

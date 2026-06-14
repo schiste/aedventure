@@ -481,6 +481,7 @@ export interface RuntimeTextState {
       readonly relatedActionId: string | null
       readonly relatedResourceIds: readonly string[]
     }[]
+    readonly commandAuthority: AddAvailableCommandsState["authority"] | null
     readonly enabledCommandIds: readonly string[]
     readonly disabledCommandIds: readonly string[]
     readonly nextBeatCandidates: readonly {
@@ -1609,6 +1610,7 @@ function storyAgentTelemetry(input: AddRuntimeTelemetryPresenterInput): RuntimeT
       relatedActionId: command.telemetry.relatedActionId,
       relatedResourceIds: command.telemetry.relatedResourceIds,
     })),
+    commandAuthority: commandState?.authority ?? null,
     enabledCommandIds: commandState?.enabledCommands.map((command) => command.id) ?? [],
     disabledCommandIds: commandState?.disabledCommands.map((command) => command.id) ?? [],
     nextBeatCandidates: storyNextBeatCandidates(story),

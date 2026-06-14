@@ -107,7 +107,7 @@ export function selectAddStoryContentBrowserState(
   catalog: CatalogSnapshot,
   availableCommands: AddAvailableCommandsState = selectAddAvailableCommands(snapshot, catalog),
 ): AddStoryContentBrowserState {
-  const progression = selectAddStoryProgressionState(snapshot, catalog)
+  const progression = selectAddStoryProgressionState(snapshot, catalog, availableCommands)
   const conditionContext = createConditionEvaluationContext(snapshot, catalog)
   const beatEligibility = catalog.storyBeats
     .slice()

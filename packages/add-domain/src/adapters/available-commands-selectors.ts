@@ -62,6 +62,11 @@ export interface AddAvailableCommand {
 }
 
 export interface AddAvailableCommandsState {
+  readonly authority: {
+    readonly availability: "typescript_projection_pending_rust_explain"
+    readonly workerRequest: "typescript_projection_to_rust_worker"
+    readonly runtimeExecution: "rust_runtime"
+  }
   readonly commands: readonly AddAvailableCommand[]
   readonly enabledCommands: readonly AddAvailableCommand[]
   readonly disabledCommands: readonly AddAvailableCommand[]
@@ -98,6 +103,11 @@ export function selectAddAvailableCommands(
   const disabledCommands = commands.filter((command) => !command.enabled)
 
   return {
+    authority: {
+      availability: "typescript_projection_pending_rust_explain",
+      workerRequest: "typescript_projection_to_rust_worker",
+      runtimeExecution: "rust_runtime",
+    },
     commands,
     enabledCommands,
     disabledCommands,

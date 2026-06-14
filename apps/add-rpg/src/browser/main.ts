@@ -416,11 +416,19 @@ const client = new SimulationClient({
   },
 })
 
-const uiState = createModuleMemo<AddUiState | null>(() => {
+const availableCommandsState = createModuleMemo<AddAvailableCommandsState | null>(() => {
   const currentSnapshot = snapshot()
   const currentCatalog = catalog()
   return currentSnapshot && currentCatalog
-    ? selectAddUiState(currentSnapshot, currentCatalog)
+    ? selectAddAvailableCommands(currentSnapshot, currentCatalog)
+    : null
+})
+const uiState = createModuleMemo<AddUiState | null>(() => {
+  const currentSnapshot = snapshot()
+  const currentCatalog = catalog()
+  const currentCommands = availableCommandsState()
+  return currentSnapshot && currentCatalog
+    ? selectAddUiState(currentSnapshot, currentCatalog, currentCommands)
     : null
 })
 const baseManagementState = createModuleMemo<AddBaseManagementState | null>(() => {
@@ -428,13 +436,6 @@ const baseManagementState = createModuleMemo<AddBaseManagementState | null>(() =
   const currentCatalog = catalog()
   return currentSnapshot && currentCatalog
     ? selectAddBaseManagementState(currentSnapshot, currentCatalog)
-    : null
-})
-const availableCommandsState = createModuleMemo<AddAvailableCommandsState | null>(() => {
-  const currentSnapshot = snapshot()
-  const currentCatalog = catalog()
-  return currentSnapshot && currentCatalog
-    ? selectAddAvailableCommands(currentSnapshot, currentCatalog)
     : null
 })
 const storyContentBrowserState = createModuleMemo<AddStoryContentBrowserState | null>(() => {
