@@ -163,6 +163,14 @@ interface QuestPanelPosition {
   readonly y: number
 }
 
+type FloatingPanelId = "travel_dialog" | "offline_return"
+type FloatingPanelLastAction = "idle" | "dragging" | "dragged" | "keyboard_moved"
+
+interface FloatingPanelPosition {
+  readonly x: number
+  readonly y: number
+}
+
 type DungeonReturnMapMode = Exclude<AddMapMode, "dungeon_square">
 
 interface AddMapModeNavItem {
@@ -293,6 +301,20 @@ const [baseManagementTab, setBaseManagementTab] =
   createSignal<AddBaseManagementTabId>("crystal")
 const [baseRateChange, setBaseRateChange] = createSignal<BaseRateChange | null>(null)
 const [questPanelPosition, setQuestPanelPosition] = createSignal(defaultQuestPanelPosition())
+const [floatingPanelPositions, setFloatingPanelPositions] = createSignal<
+  Record<FloatingPanelId, FloatingPanelPosition | null>
+>({
+  travel_dialog: null,
+  offline_return: null,
+})
+const [floatingPanelLastActions, setFloatingPanelLastActions] = createSignal<
+  Record<FloatingPanelId, FloatingPanelLastAction>
+>({
+  travel_dialog: "idle",
+  offline_return: "idle",
+})
+const [floatingPanelDraggingId, setFloatingPanelDraggingId] =
+  createSignal<FloatingPanelId | null>(null)
 const [travelExperience, setTravelExperience] = createSignal<TravelExperience | null>(null)
 const [baseViewTransition, setBaseViewTransition] = createSignal<BaseViewTransitionState>("idle")
 const [lastDiscoveryMovement, setLastDiscoveryMovement] =
@@ -308,6 +330,16 @@ const [lastDungeonEntryCommand, setLastDungeonEntryCommand] = createSignal<strin
 const [lastTileActionTarget, setLastTileActionTarget] = createSignal<string | null>(null)
 const [lastError, setLastError] = createSignal<string | null>(null)
 
+createModuleEffect(() => {
+  const travelOpen = travelDialog() !== null
+  const offlineOpen = offlineReturnSummary() !== null
+  if (!travelOpen && !offlineOpen) return
+  window.requestAnimationFrame(() => {
+    if (travelOpen) clampFloatingPanelToViewport("travel_dialog")
+    if (offlineOpen) clampFloatingPanelToViewport("offline_return")
+  })
+})
+
 let mapHost: AddRpgPhaserMapHost | null = null
 let travelClearTimer: number | undefined
 let clockAnimationFrameId: number | undefined
@@ -317,6 +349,17 @@ let lastTileActionAtMs = 0
 let pendingOfflineReturnSummary: PendingOfflineReturnSummary | null = null
 let questPanelDrag:
   | {
+      readonly pointerId: number
+      readonly startX: number
+      readonly startY: number
+      readonly originX: number
+      readonly originY: number
+      moved: boolean
+    }
+  | null = null
+let floatingPanelDrag:
+  | {
+      readonly id: FloatingPanelId
       readonly pointerId: number
       readonly startX: number
       readonly startY: number
@@ -645,11 +688,13 @@ function AddRpgApp() {
     window.requestAnimationFrame(() => {
       const current = questPanelPosition()
       setQuestPanelPosition(clampQuestPanelPosition(current.x, current.y))
+      clampFloatingPanelsToViewport()
     })
     mapInfoTimer = window.setInterval(refreshMapInfo, 180)
     autosaveTimer = window.setInterval(maybeRequestAutosave, 3500)
     window.addEventListener("online", handleOnline)
     window.addEventListener("offline", handleOffline)
+    window.addEventListener("resize", clampFloatingPanelsToViewport)
   })
 
   onCleanup(() => {
@@ -661,6 +706,7 @@ function AddRpgApp() {
     cancelClockAnimation()
     window.removeEventListener("online", handleOnline)
     window.removeEventListener("offline", handleOffline)
+    window.removeEventListener("resize", clampFloatingPanelsToViewport)
     mapHost?.destroy()
     client.dispose()
   })
@@ -1290,7 +1336,7 @@ function handleShellFocusIn(event: FocusEvent): void {
     setFocusedRegion("objective_tracker")
   } else if (
     target.closest(
-      "#discovery-panel, #base-management-panel, #dungeon-context-panel, #offline-return-panel",
+      "#discovery-panel, #base-management-panel, #dungeon-context-panel, #offline-return-panel, #travel-confirmation-dialog",
     )
   ) {
     setFocusedRegion("context_panel")
@@ -1347,6 +1393,199 @@ function questPanelStyle(): Record<string, string> {
     "--quest-panel-x": `${position.x}px`,
     "--quest-panel-y": `${position.y}px`,
   }
+}
+
+function floatingPanelStyle(id: FloatingPanelId): Record<string, string> {
+  const position = floatingPanelPosition(id)
+  return {
+    "--floating-panel-x": `${position.x}px`,
+    "--floating-panel-y": `${position.y}px`,
+  }
+}
+
+function floatingPanelPosition(id: FloatingPanelId): FloatingPanelPosition {
+  return floatingPanelPositions()[id] ?? defaultFloatingPanelPosition(id)
+}
+
+function floatingPanelTelemetry() {
+  const travel = floatingPanelPosition("travel_dialog")
+  const offline = floatingPanelPosition("offline_return")
+  return {
+    travelDialog: {
+      open: travelDialog() !== null,
+      x: travel.x,
+      y: travel.y,
+      dragging: floatingPanelDraggingId() === "travel_dialog",
+      lastAction: floatingPanelLastActions().travel_dialog,
+      dragEnabled: true,
+      bounded: floatingPanelWithinBounds("travel_dialog"),
+      layer: "modal",
+    },
+    offlineReturn: {
+      open: offlineReturnSummary() !== null,
+      x: offline.x,
+      y: offline.y,
+      dragging: floatingPanelDraggingId() === "offline_return",
+      lastAction: floatingPanelLastActions().offline_return,
+      dragEnabled: true,
+      bounded: floatingPanelWithinBounds("offline_return"),
+      layer: "context",
+    },
+  } as const
+}
+
+function defaultFloatingPanelPosition(id: FloatingPanelId): FloatingPanelPosition {
+  const viewportWidth = typeof window === "undefined" ? 1024 : window.innerWidth || 1024
+  const viewportHeight = typeof window === "undefined" ? 768 : window.innerHeight || 768
+  const size = floatingPanelSize(id)
+
+  if (id === "offline_return") {
+    const gutter = viewportWidth <= 520 ? 8 : 12
+    const y = viewportWidth <= 900
+      ? viewportHeight - size.height / 2 - gutter
+      : 54 + size.height / 2
+    return clampFloatingPanelPosition(id, viewportWidth - size.width / 2 - gutter, y)
+  }
+
+  return clampFloatingPanelPosition(id, viewportWidth / 2, viewportHeight / 2)
+}
+
+function floatingPanelSize(id: FloatingPanelId): { readonly width: number; readonly height: number } {
+  const element = typeof document === "undefined" ? null : document.getElementById(floatingPanelDomId(id))
+  return {
+    width: element?.offsetWidth ?? (id === "travel_dialog" ? 430 : 430),
+    height: element?.offsetHeight ?? (id === "travel_dialog" ? 260 : 560),
+  }
+}
+
+function floatingPanelDomId(id: FloatingPanelId): string {
+  return id === "travel_dialog" ? "travel-confirmation-dialog" : "offline-return-panel"
+}
+
+function beginFloatingPanelDrag(id: FloatingPanelId, event: PointerEvent): void {
+  if (event.button !== 0) return
+  const target = event.target instanceof Element ? event.target : null
+  if (target?.closest("button, a, summary, input, textarea, select")) return
+
+  event.preventDefault()
+  event.stopPropagation()
+
+  const current = floatingPanelPosition(id)
+  floatingPanelDrag = {
+    id,
+    pointerId: event.pointerId,
+    startX: event.clientX,
+    startY: event.clientY,
+    originX: current.x,
+    originY: current.y,
+    moved: false,
+  }
+  setFloatingPanelDraggingId(id)
+  setFloatingPanelLastAction(id, "dragging")
+  const handle = event.currentTarget as HTMLElement
+  handle.setPointerCapture(event.pointerId)
+  handle.classList.add("dragging")
+}
+
+function dragFloatingPanel(id: FloatingPanelId, event: PointerEvent): void {
+  if (!floatingPanelDrag || floatingPanelDrag.id !== id || floatingPanelDrag.pointerId !== event.pointerId) return
+  event.preventDefault()
+  event.stopPropagation()
+
+  const nextX = floatingPanelDrag.originX + event.clientX - floatingPanelDrag.startX
+  const nextY = floatingPanelDrag.originY + event.clientY - floatingPanelDrag.startY
+  if (Math.abs(nextX - floatingPanelDrag.originX) + Math.abs(nextY - floatingPanelDrag.originY) > 4) {
+    floatingPanelDrag.moved = true
+  }
+  setFloatingPanelPosition(id, clampFloatingPanelPosition(id, nextX, nextY))
+}
+
+function endFloatingPanelDrag(id: FloatingPanelId, event: PointerEvent): void {
+  if (!floatingPanelDrag || floatingPanelDrag.id !== id || floatingPanelDrag.pointerId !== event.pointerId) return
+  event.preventDefault()
+  event.stopPropagation()
+  const handle = event.currentTarget as HTMLElement
+  if (handle.hasPointerCapture(event.pointerId)) {
+    handle.releasePointerCapture(event.pointerId)
+  }
+  handle.classList.remove("dragging")
+  setFloatingPanelDraggingId(null)
+  setFloatingPanelLastAction(id, floatingPanelDrag.moved ? "dragged" : "idle")
+  floatingPanelDrag = null
+}
+
+function handleFloatingPanelKeyboard(id: FloatingPanelId, event: KeyboardEvent): void {
+  const keyOffsets: Record<string, readonly [number, number]> = {
+    ArrowUp: [0, -1],
+    ArrowDown: [0, 1],
+    ArrowLeft: [-1, 0],
+    ArrowRight: [1, 0],
+  }
+  const offset = keyOffsets[event.key]
+  if (!offset) return
+
+  event.preventDefault()
+  event.stopPropagation()
+  const step = event.shiftKey ? 48 : 16
+  const current = floatingPanelPosition(id)
+  setFloatingPanelPosition(
+    id,
+    clampFloatingPanelPosition(id, current.x + offset[0] * step, current.y + offset[1] * step),
+  )
+  setFloatingPanelLastAction(id, "keyboard_moved")
+}
+
+function setFloatingPanelPosition(id: FloatingPanelId, position: FloatingPanelPosition): void {
+  setFloatingPanelPositions((current) => ({ ...current, [id]: position }))
+}
+
+function setFloatingPanelLastAction(id: FloatingPanelId, action: FloatingPanelLastAction): void {
+  setFloatingPanelLastActions((current) => ({ ...current, [id]: action }))
+}
+
+function clampFloatingPanelPosition(
+  id: FloatingPanelId,
+  x: number,
+  y: number,
+): FloatingPanelPosition {
+  const viewportWidth = typeof window === "undefined" ? 1024 : window.innerWidth || 1024
+  const viewportHeight = typeof window === "undefined" ? 768 : window.innerHeight || 768
+  const size = floatingPanelSize(id)
+  const gutter = viewportWidth <= 520 ? 8 : 12
+  const topSafeArea = viewportWidth <= 520 ? 44 : 54
+  const halfWidth = size.width / 2
+  const halfHeight = Math.min(size.height, Math.max(120, viewportHeight - topSafeArea - gutter)) / 2
+  const minX = halfWidth + gutter
+  const maxX = Math.max(minX, viewportWidth - halfWidth - gutter)
+  const minY = halfHeight + topSafeArea
+  const maxY = Math.max(minY, viewportHeight - halfHeight - gutter)
+  return {
+    x: Math.round(Math.min(maxX, Math.max(minX, x))),
+    y: Math.round(Math.min(maxY, Math.max(minY, y))),
+  }
+}
+
+function floatingPanelWithinBounds(id: FloatingPanelId): boolean {
+  const position = floatingPanelPosition(id)
+  const clamped = clampFloatingPanelPosition(id, position.x, position.y)
+  return Math.abs(position.x - clamped.x) <= 1 && Math.abs(position.y - clamped.y) <= 1
+}
+
+function clampFloatingPanelToViewport(id: FloatingPanelId): void {
+  const position = floatingPanelPosition(id)
+  setFloatingPanelPosition(id, clampFloatingPanelPosition(id, position.x, position.y))
+}
+
+function clampFloatingPanelsToViewport(): void {
+  const current = floatingPanelPositions()
+  setFloatingPanelPositions({
+    travel_dialog: current.travel_dialog
+      ? clampFloatingPanelPosition("travel_dialog", current.travel_dialog.x, current.travel_dialog.y)
+      : null,
+    offline_return: current.offline_return
+      ? clampFloatingPanelPosition("offline_return", current.offline_return.x, current.offline_return.y)
+      : null,
+  })
 }
 
 function beginQuestPanelDrag(event: PointerEvent): void {
@@ -1804,8 +2043,8 @@ function baseManagementPanel(): unknown {
           <span class="small-chip">${() => titleCase(baseManagementTab())}</span>
         </div>
       </div>
-      ${() => basePlayerLoopPanel(state)}
       ${() => currentActionSurface()}
+      ${() => basePlayerLoopPanel(state)}
       ${() => baseManagementCommandStrip(state)}
       ${() => baseRateChangePanel()}
       <div class="base-management-tabs" role="tablist" aria-label="Base management sections">
@@ -5065,13 +5304,29 @@ function travelDialogView(): unknown {
       <section
         id="travel-confirmation-dialog"
         class="travel-dialog"
+        style=${() => floatingPanelStyle("travel_dialog")}
         role="dialog"
         aria-modal="true"
         aria-labelledby="travel-dialog-title"
         data-kind=${dialog.kind}
+        data-dragging=${() => floatingPanelDraggingId() === "travel_dialog"}
+        data-last-action=${() => floatingPanelLastActions().travel_dialog}
       >
-        <span class="travel-dialog-eyebrow">${() => travelDialogEyebrow(dialog.kind)}</span>
-        <h2 id="travel-dialog-title">${() => travelDialogTitle(dialog.kind)}</h2>
+        <div
+          class="floating-panel-handle travel-dialog-handle"
+          role="group"
+          tabindex="0"
+          aria-label="Travel dialog handle. Use arrow keys to move this pop-in."
+          aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight"
+          onPointerDown=${(event: PointerEvent) => beginFloatingPanelDrag("travel_dialog", event)}
+          onPointerMove=${(event: PointerEvent) => dragFloatingPanel("travel_dialog", event)}
+          onPointerUp=${(event: PointerEvent) => endFloatingPanelDrag("travel_dialog", event)}
+          onPointerCancel=${(event: PointerEvent) => endFloatingPanelDrag("travel_dialog", event)}
+          onKeyDown=${(event: KeyboardEvent) => handleFloatingPanelKeyboard("travel_dialog", event)}
+        >
+          <span class="travel-dialog-eyebrow">${() => travelDialogEyebrow(dialog.kind)}</span>
+          <h2 id="travel-dialog-title">${() => travelDialogTitle(dialog.kind)}</h2>
+        </div>
         <p>${() => travelDialogCopy(dialog.kind, dialog.event)}</p>
         <div class="travel-dialog-actions">
           ${() => travelDialogActions(dialog.kind)}
@@ -5089,13 +5344,27 @@ function offlineReturnPanel(): unknown {
     <section
       id="offline-return-panel"
       class="offline-return-panel"
+      style=${() => floatingPanelStyle("offline_return")}
       data-source=${summary.source}
+      data-dragging=${() => floatingPanelDraggingId() === "offline_return"}
+      data-last-action=${() => floatingPanelLastActions().offline_return}
       data-visual-surface="context"
       role="region"
       aria-labelledby="offline-return-title"
       aria-live="polite"
     >
-      <div class="offline-return-heading">
+      <div
+        class="floating-panel-handle offline-return-heading"
+        role="group"
+        tabindex="0"
+        aria-label="Offline return panel handle. Use arrow keys to move this pop-in."
+        aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight"
+        onPointerDown=${(event: PointerEvent) => beginFloatingPanelDrag("offline_return", event)}
+        onPointerMove=${(event: PointerEvent) => dragFloatingPanel("offline_return", event)}
+        onPointerUp=${(event: PointerEvent) => endFloatingPanelDrag("offline_return", event)}
+        onPointerCancel=${(event: PointerEvent) => endFloatingPanelDrag("offline_return", event)}
+        onKeyDown=${(event: KeyboardEvent) => handleFloatingPanelKeyboard("offline_return", event)}
+      >
         <div>
           <span>While you were away</span>
           <h2 id="offline-return-title">The base lived for ${summary.elapsedLabel}</h2>
@@ -6628,6 +6897,7 @@ function toTextState(): RuntimeTextState {
     focusedRegion: focusedRegion(),
     discoveryPanelCollapsed: discoveryPanelCollapsed(),
     firstPlayableCollapsed: firstPlayableCollapsed(),
+    floatingPanels: floatingPanelTelemetry(),
     questPanelPosition: questPanelPosition(),
     questPanelInteraction: {
       dragging: questPanelDragging(),

@@ -1793,6 +1793,10 @@ async function assertLayoutHierarchy(
         hierarchy.visiblePrimaryActions,
       )}.`,
     )
+    await assertClickableCenter(
+      page,
+      `#${expectedContextPanelId} #${hierarchy.visiblePrimaryActions[0].id}`,
+    )
   }
   assert.equal(hierarchy.mapStageSurface, "map-stage")
   assert.equal(hierarchy.topbarSurface, "status")
@@ -2345,6 +2349,16 @@ async function exerciseSaveReloadOfflineAndReset(page, advanced, consoleErrors) 
   await assertLayoutHierarchy(page, {
     expectedContextPanelId: "offline-return-panel",
   })
+  await assertFloatingPanelDraggable(page, {
+    panelSelector: "#offline-return-panel",
+    handleSelector: "#offline-return-panel .offline-return-heading",
+    dx: -72,
+    dy: 48,
+  })
+  const draggedReturnPanel = await renderGameToText(page)
+  assert.equal(draggedReturnPanel.shell.popins.offlineReturn.lastAction, "dragged")
+  assert.equal(draggedReturnPanel.shell.popins.offlineReturn.bounded, true)
+  await assertClickableCenter(page, "#dismiss-offline-return-primary")
   await assertVisibleText(page, "#offline-return-panel", [
     "While you were away",
     "Manual catch-up",
@@ -2998,6 +3012,16 @@ async function exerciseMainCharacterMovement(page, consoleErrors) {
     "opening_reach_base_from_survivor_cave",
   )
   assert.equal(firstDialog.shell.currentAction.primaryLabel, "Travel to this region")
+  await assertFloatingPanelDraggable(page, {
+    panelSelector: "#travel-confirmation-dialog",
+    handleSelector: ".travel-dialog-handle",
+    dx: 68,
+    dy: 42,
+  })
+  const draggedDialog = await renderGameToText(page)
+  assert.equal(draggedDialog.shell.popins.travelDialog.lastAction, "dragged")
+  assert.equal(draggedDialog.shell.popins.travelDialog.bounded, true)
+  await assertClickableCenter(page, "#travel-dialog-cancel")
 
   await page.locator("#travel-dialog-cancel").click()
   await waitForTextState(
@@ -3784,6 +3808,85 @@ async function clickVisibleElementByDomId(page, id) {
   }, id)
 }
 
+async function assertFloatingPanelDraggable(
+  page,
+  { panelSelector, handleSelector, dx, dy },
+) {
+  await page.locator(panelSelector).waitFor({ state: "visible" })
+  const panel = page.locator(panelSelector)
+  const handle = page.locator(handleSelector)
+  const before = await panel.boundingBox()
+  const handleBox = await handle.boundingBox()
+  assert.ok(before, `Expected ${panelSelector} to have a visible bounding box before dragging.`)
+  assert.ok(handleBox, `Expected ${handleSelector} to have a visible drag handle.`)
+
+  await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(
+    handleBox.x + handleBox.width / 2 + dx,
+    handleBox.y + handleBox.height / 2 + dy,
+    { steps: 6 },
+  )
+  await page.mouse.up()
+
+  const after = await panel.boundingBox()
+  assert.ok(after, `Expected ${panelSelector} to have a visible bounding box after dragging.`)
+  assert.ok(
+    Math.abs(after.x - before.x) >= 12 || Math.abs(after.y - before.y) >= 12,
+    `${panelSelector} should move after dragging. Before=${JSON.stringify(before)} After=${JSON.stringify(after)}`,
+  )
+  assert.ok(after.x >= -1, `${panelSelector} should not leave the left viewport edge.`)
+  assert.ok(after.y >= -1, `${panelSelector} should not leave the top viewport edge.`)
+  const viewport = page.viewportSize()
+  if (viewport) {
+    assert.ok(
+      after.x + Math.min(after.width, viewport.width) <= viewport.width + 1,
+      `${panelSelector} should stay horizontally reachable. After=${JSON.stringify(
+        after,
+      )} Viewport=${JSON.stringify(viewport)}`,
+    )
+    assert.ok(
+      after.y + Math.min(after.height, viewport.height) <= viewport.height + 1,
+      `${panelSelector} should stay vertically reachable. After=${JSON.stringify(
+        after,
+      )} Viewport=${JSON.stringify(viewport)}`,
+    )
+  }
+}
+
+async function assertClickableCenter(page, selector) {
+  const result = await page.evaluate((targetSelector) => {
+    const element = document.querySelector(targetSelector)
+    if (!(element instanceof HTMLElement)) {
+      return { ok: false, reason: `Missing ${targetSelector}` }
+    }
+    const rect = element.getBoundingClientRect()
+    const x = rect.left + rect.width / 2
+    const y = rect.top + rect.height / 2
+    const hit = document.elementFromPoint(x, y)
+    return {
+      ok: hit === element || element.contains(hit),
+      reason: hit instanceof Element
+        ? `Hit ${hit.id || hit.tagName}.${String(hit.className || "")}`
+        : "No element at center",
+      rect: {
+        top: rect.top,
+        right: rect.right,
+        bottom: rect.bottom,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height,
+      },
+    }
+  }, selector)
+  assert.ok(
+    result.ok,
+    `${selector} should be topmost/clickable at center. ${result.reason}. Rect=${JSON.stringify(
+      result.rect,
+    )}`,
+  )
+}
+
 async function isElementDisabledByDomId(page, id) {
   await page.waitForFunction((targetId) => document.getElementById(targetId) !== null, id)
   return page.evaluate((targetId) => {
@@ -3802,15 +3905,10 @@ async function openDetailsSection(page, selector) {
     return node.open
   })
   if (!isOpen) {
-    const summary = details.locator("summary").first()
-    if ((await summary.count()) > 0) {
-      await summary.click()
-    } else {
-      await details.evaluate((node) => {
-        node.open = true
-        node.dispatchEvent(new Event("toggle"))
-      })
-    }
+    await details.evaluate((node) => {
+      node.open = true
+      node.dispatchEvent(new Event("toggle"))
+    })
   }
   await page.waitForFunction((targetSelector) => {
     const node = document.querySelector(targetSelector)

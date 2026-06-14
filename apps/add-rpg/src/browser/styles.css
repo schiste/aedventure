@@ -196,7 +196,7 @@ button:disabled {
   top: 0;
   right: 0;
   left: 0;
-  z-index: 11;
+  z-index: 16;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -550,7 +550,7 @@ h1 {
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
-  z-index: 12;
+  z-index: 24;
   display: none;
   min-width: 9rem;
   border: 1px solid var(--border-soft);
@@ -3027,9 +3027,8 @@ h1 {
 .travel-dialog-backdrop {
   position: absolute;
   inset: 0;
-  z-index: 10;
-  display: grid;
-  place-items: center;
+  z-index: 28;
+  display: block;
   padding: 18px;
   background:
     radial-gradient(circle at 50% 44%, rgb(240 185 93 / 13%), transparent 32%),
@@ -3038,9 +3037,14 @@ h1 {
 }
 
 .travel-dialog {
+  position: absolute;
+  top: var(--floating-panel-y, 50%);
+  left: var(--floating-panel-x, 50%);
   display: grid;
   width: min(430px, calc(100vw - 32px));
+  max-height: calc(100vh - 36px);
   gap: 11px;
+  overflow: auto;
   border: 1px solid rgb(240 185 93 / 32%);
   border-radius: 8px;
   padding: 18px;
@@ -3050,6 +3054,29 @@ h1 {
   box-shadow:
     0 30px 80px rgb(0 0 0 / 38%),
     inset 0 1px 0 rgb(255 255 255 / 10%);
+  transform: translate(-50%, -50%);
+}
+
+.floating-panel-handle {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.floating-panel-handle.dragging,
+[data-dragging="true"] > .floating-panel-handle {
+  cursor: grabbing;
+}
+
+.floating-panel-handle:focus-visible {
+  outline: 2px solid rgb(95 209 216 / 82%);
+  outline-offset: 4px;
+}
+
+.travel-dialog-handle {
+  display: grid;
+  gap: 0.26rem;
+  border-radius: 6px;
 }
 
 .travel-dialog-eyebrow {
@@ -3088,9 +3115,10 @@ h1 {
 
 .offline-return-panel {
   position: absolute;
-  top: 54px;
-  right: calc(12px + var(--map-side-rail-space));
-  z-index: 9;
+  top: var(--floating-panel-y, 54px);
+  right: auto;
+  left: var(--floating-panel-x, auto);
+  z-index: 14;
   display: grid;
   width: min(430px, calc(100vw - 430px));
   min-width: 320px;
@@ -3111,7 +3139,8 @@ h1 {
     inset 4px 0 0 rgb(255 211 127 / 46%),
     inset 0 1px 0 rgb(255 255 255 / 11%);
   backdrop-filter: blur(18px);
-  animation: surface-arrive 180ms ease both;
+  transform: translate(-50%, -50%);
+  animation: floating-panel-arrive 180ms ease both;
 }
 
 .offline-return-heading {
@@ -3391,7 +3420,7 @@ h1 {
 .admin-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 9;
+  z-index: 32;
   background: rgb(0 0 0 / 0%);
   opacity: 0;
   pointer-events: none;
@@ -3411,7 +3440,7 @@ h1 {
   top: 0;
   right: 0;
   bottom: 0;
-  z-index: 10;
+  z-index: 33;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -3448,6 +3477,18 @@ h1 {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes floating-panel-arrive {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 6px));
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
   }
 }
 
@@ -4264,6 +4305,8 @@ h1 {
       max-height var(--motion-panel),
       transform var(--motion-panel),
       box-shadow var(--motion-panel);
+    transform: none;
+    animation: surface-arrive 180ms ease both;
   }
 
   .discovery-panel[data-mobile-sheet-state="compact"] {
@@ -4490,6 +4533,8 @@ h1 {
     max-height: var(--mobile-context-sheet-action-height);
     padding: 10px;
     border-radius: 13px 13px 8px 8px;
+    transform: none;
+    animation: surface-arrive 180ms ease both;
   }
 
   .discovery-heading {

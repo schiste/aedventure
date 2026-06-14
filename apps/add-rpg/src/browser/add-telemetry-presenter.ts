@@ -65,6 +65,19 @@ export interface AddTelemetryClockAnimationState {
   readonly remainingMinutes: number
 }
 
+export type AddFloatingPanelLastAction = "idle" | "dragging" | "dragged" | "keyboard_moved"
+
+export interface AddFloatingPanelTelemetry {
+  readonly open: boolean
+  readonly x: number
+  readonly y: number
+  readonly dragging: boolean
+  readonly lastAction: AddFloatingPanelLastAction
+  readonly dragEnabled: true
+  readonly bounded: boolean
+  readonly layer: "modal" | "context"
+}
+
 export type AddCurrentActionSource =
   | "offline_return"
   | "dungeon_objective"
@@ -182,6 +195,10 @@ export interface AddRuntimeTelemetryPresenterInput {
     readonly keyboardMoveEnabled: true
     readonly collapseControlLabel: string
   }
+  readonly floatingPanels: {
+    readonly travelDialog: AddFloatingPanelTelemetry
+    readonly offlineReturn: AddFloatingPanelTelemetry
+  }
   readonly runtime: {
     readonly ready: boolean
     readonly autoTick: boolean
@@ -243,6 +260,10 @@ export interface RuntimeTextState {
       readonly dragEnabled: true
       readonly keyboardMoveEnabled: true
       readonly collapseControlLabel: string
+    }
+    readonly popins: {
+      readonly travelDialog: AddFloatingPanelTelemetry
+      readonly offlineReturn: AddFloatingPanelTelemetry
     }
     readonly accessibility: {
       readonly keyboardNavigation: true
@@ -1115,6 +1136,7 @@ export function createAddRuntimeTextState(
         keyboardMoveEnabled: input.questPanelInteraction.keyboardMoveEnabled,
         collapseControlLabel: input.questPanelInteraction.collapseControlLabel,
       },
+      popins: input.floatingPanels,
       accessibility: {
         keyboardNavigation: true,
         focusVisible: true,

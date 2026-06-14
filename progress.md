@@ -3033,3 +3033,9 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   state. The Admin drawer renders that read-only browser outside developer
   internals, and smoke coverage asserts it stays visible on the clean Admin
   surface.
+- Hardened the ADD interface pop-ins and clickability contract. The travel
+  confirmation and offline return surfaces are now draggable with bounded
+  pointer/keyboard movement, z-index layering was tightened around topbar/menu/
+  modal/admin surfaces, and the smoke suite now verifies visible primary actions
+  are not blocked at their click centers. The pass also re-ordered the Base
+  current action so its primary CTA is reachable without scrolling on desktop.
