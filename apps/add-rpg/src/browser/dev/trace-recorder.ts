@@ -30,6 +30,8 @@ const MAX_BATCH = 200
 const buffer: string[] = []
 let flushTimer: ReturnType<typeof setTimeout> | undefined
 let warnedSinkDown = false
+/** Set while the recorder logs its own diagnostics, so console capture skips them (no recursion). */
+let suppressCapture = false
 
 function enqueue(record: unknown): void {
   buffer.push(JSON.stringify(record))
@@ -54,7 +56,9 @@ function flush(): void {
   }).catch(() => {
     if (!warnedSinkDown) {
       warnedSinkDown = true
+      suppressCapture = true
       console.warn("[trace] /__trace sink unreachable — trace lines are being dropped")
+      suppressCapture = false
     }
   })
 }
@@ -320,6 +324,114 @@ export function frameContext(s: SimulationSnapshot): Record<string, unknown> {
   }
 }
 
+// ── Diagnostics capture ─────────────────────────────────────────────────────
+// console.error/warn, uncaught errors, unhandled rejections, and failed resource
+// loads — the things otherwise invisible in the trace — folded into dir:"log".
+
+const MAX_MSG = 2000
+const MAX_STACK = 4000
+
+function clip(s: string, max: number): string {
+  return s.length > max ? `${s.slice(0, max)}…` : s
+}
+
+/** Render one console argument compactly. */
+function describeArg(arg: unknown): string {
+  if (arg instanceof Error) return `${arg.name}: ${arg.message}`
+  if (typeof arg === "string") return arg
+  try {
+    return JSON.stringify(arg)
+  } catch {
+    return String(arg)
+  }
+}
+
+/** Stack from the first Error among console args, if any. */
+function stackOf(args: unknown[]): { stack?: string } {
+  const err = args.find((a) => a instanceof Error) as Error | undefined
+  return err?.stack ? { stack: clip(err.stack, MAX_STACK) } : {}
+}
+
+/**
+ * Patch console.error/warn and listen for uncaught errors + unhandled rejections,
+ * mirroring each into the trace as dir:"log". The original console is always
+ * called through, so nothing disappears from the terminal. Returns a restore fn.
+ */
+function installConsoleCapture(stamp: () => Record<string, unknown>): () => void {
+  const wrapLevel = (level: "error" | "warn"): (() => void) => {
+    const current = console[level] as typeof console.error & { __traceWrapped?: boolean }
+    if (current.__traceWrapped) return () => {} // idempotent across HMR re-runs
+    const original = current.bind(console)
+    const wrapped = ((...args: unknown[]): void => {
+      original(...args)
+      if (suppressCapture) return
+      try {
+        enqueue({
+          t: performance.now(),
+          dir: "log",
+          level,
+          msg: clip(args.map(describeArg).join(" "), MAX_MSG),
+          ...stackOf(args),
+          ctx: stamp(),
+        })
+      } catch {
+        /* logging must never break the app */
+      }
+    }) as typeof console.error & { __traceWrapped?: boolean }
+    wrapped.__traceWrapped = true
+    console[level] = wrapped
+    return () => {
+      console[level] = original
+    }
+  }
+
+  const restoreError = wrapLevel("error")
+  const restoreWarn = wrapLevel("warn")
+
+  const onError = (event: ErrorEvent): void => {
+    try {
+      const target = event.target as (HTMLElement & { src?: string; href?: string }) | null
+      const resource = !event.message && target ? target.src || target.href : undefined
+      enqueue({
+        t: performance.now(),
+        dir: "log",
+        level: resource ? "resource" : "uncaught",
+        msg: clip(resource ? `failed to load ${resource}` : event.message || String(event.error), MAX_MSG),
+        ...(event.error?.stack ? { stack: clip(String(event.error.stack), MAX_STACK) } : {}),
+        ...(event.filename ? { source: `${event.filename}:${event.lineno}:${event.colno}` } : {}),
+        ctx: stamp(),
+      })
+    } catch {
+      /* swallow */
+    }
+  }
+  const onRejection = (event: PromiseRejectionEvent): void => {
+    try {
+      const reason: unknown = event.reason
+      enqueue({
+        t: performance.now(),
+        dir: "log",
+        level: "unhandledrejection",
+        msg: clip(describeArg(reason), MAX_MSG),
+        ...(reason instanceof Error && reason.stack ? { stack: clip(reason.stack, MAX_STACK) } : {}),
+        ctx: stamp(),
+      })
+    } catch {
+      /* swallow */
+    }
+  }
+  // Capture phase so resource-load failures (which don't bubble) are seen too.
+  window.addEventListener("error", onError, true)
+  window.addEventListener("unhandledrejection", onRejection)
+
+  return () => {
+    restoreError()
+    restoreWarn()
+    window.removeEventListener("error", onError, true)
+    window.removeEventListener("unhandledrejection", onRejection)
+  }
+}
+
 export interface TraceRecorder {
   /** Pass to `SimulationClient` as its `onTrace` option. */
   readonly onTrace: (entry: TraceEntry) => void
@@ -338,6 +450,9 @@ export function installTraceRecorder(getSnapshot: () => SimulationSnapshot | nul
     const snap = getSnapshot()
     return snap ? frameContext(snap) : {}
   }
+
+  // Capture diagnostics first, so errors thrown during the rest of setup are seen.
+  const stopConsole = installConsoleCapture(stamp)
 
   // Boundary tap: every command out + every worker event in, with latency + back-pressure.
   const onTrace = (entry: TraceEntry): void => {
@@ -368,6 +483,7 @@ export function installTraceRecorder(getSnapshot: () => SimulationSnapshot | nul
   // Don't lose the tail when the page closes or reloads.
   window.addEventListener("beforeunload", () => {
     stopPerf()
+    stopConsole()
     flush()
   })
   console.info(`[trace] recording to logs/session-${SESSION}.jsonl`)
