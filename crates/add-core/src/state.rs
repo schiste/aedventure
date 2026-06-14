@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::game_data::{
     ROLE_CONSTRUCTION, ROLE_CRYSTAL_BASSLINE, ROLE_CRYSTAL_CHORUS, ROLE_CRYSTAL_HARMONICS,
@@ -55,7 +55,7 @@ pub struct GameState {
     pub recruitment: RecruitmentState,
     pub bubble: BubbleState,
     pub objectives: ObjectiveState,
-    #[serde(default = "initial_discovered_cells")]
+    #[serde(default)]
     pub discovered_cells: BTreeSet<HexCoordState>,
     #[serde(default)]
     pub hero_map: HexCoordState,
@@ -72,7 +72,7 @@ pub struct GameState {
     pub events: Vec<GameEvent>,
     /// State of the deterministic PRNG (splitmix64). Persisted so randomized
     /// outcomes (loot, combat) replay identically across save/reload.
-    #[serde(default = "default_rng_seed")]
+    #[serde(default = "default_rng_seed", with = "u64_string")]
     pub rng_seed: u64,
     /// The in-progress auto-battler skirmish, if any. Ticks down over rounds and
     /// resolves to victory/retreat; persisted so offline catch-up finishes it.
@@ -103,6 +103,36 @@ pub struct GameState {
     /// Internal; not persisted or surfaced.
     #[serde(skip)]
     pub scavenge_scrap_progress: f64,
+}
+
+mod u64_string {
+    use super::*;
+
+    pub fn serialize<S>(value: &u64, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&value.to_string())
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<u64, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum U64StringOrNumber {
+            String(String),
+            Number(u64),
+        }
+
+        match U64StringOrNumber::deserialize(deserializer)? {
+            U64StringOrNumber::String(value) => {
+                value.parse::<u64>().map_err(serde::de::Error::custom)
+            }
+            U64StringOrNumber::Number(value) => Ok(value),
+        }
+    }
 }
 
 /// A structured thing that happened during the last applied command/tick.
@@ -146,6 +176,12 @@ pub enum GameEvent {
     CombatResolved { creature_id: String, outcome: String },
     /// A quest objective's conditions were met (rewards applied this frame).
     ObjectiveCompleted { objective_id: String },
+    /// The runtime revealed the deterministic starting area for a new/reset run.
+    StartingAreaDiscovered {
+        center: HexCoordState,
+        radius: u8,
+        revealed: u16,
+    },
 }
 
 /// One simulated round of an auto-battler skirmish, for the combat log.
@@ -243,7 +279,7 @@ impl GameState {
             recruitment: RecruitmentState::new(),
             bubble: BubbleState::new(),
             objectives: ObjectiveState::new(),
-            discovered_cells: initial_discovered_cells(),
+            discovered_cells: BTreeSet::new(),
             hero_map: HexCoordState::survivor_cave(),
             hexes: initial_hexes(),
             active_construction: None,
@@ -1027,7 +1063,16 @@ fn initial_station_states() -> BTreeMap<String, StationState> {
 }
 
 pub fn initial_discovered_cells() -> BTreeSet<HexCoordState> {
-    BTreeSet::from([HexCoordState::base(), HexCoordState::survivor_cave()])
+    let cave = HexCoordState::survivor_cave();
+    crate::game_data::OVERWORLD_MAP
+        .generated_cells()
+        .into_iter()
+        .filter(|generated| {
+            !generated.cell.is_blocker
+                && cube_distance(cave.q, cave.r, generated.q, generated.r) <= 1
+        })
+        .map(|generated| HexCoordState::new(generated.q, generated.r))
+        .collect()
 }
 
 fn cube_distance(q1: i8, r1: i8, q2: i8, r2: i8) -> u8 {

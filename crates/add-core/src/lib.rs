@@ -949,20 +949,41 @@ mod tests {
     }
 
     #[test]
-    fn discovery_initializes_with_studio_and_survivor_cave() {
-        let simulation = Simulation::new();
-
+    fn discovery_initializes_around_survivor_cave_without_revealing_studio() {
         assert!(
-            simulation
-                .state()
-                .discovered_cells
-                .contains(&HexCoordState::base())
+            GameState::new().discovered_cells.is_empty(),
+            "raw state should not author discovery before the runtime bootstrap event"
+        );
+
+        let simulation = Simulation::new();
+        let cave = HexCoordState::survivor_cave();
+
+        assert!(!simulation
+            .state()
+            .discovered_cells
+            .contains(&HexCoordState::base())
         );
         assert!(
             simulation
                 .state()
                 .discovered_cells
-                .contains(&HexCoordState::survivor_cave())
+                .contains(&cave)
+        );
+        assert!(simulation.state().discovered_cells.len() > 1);
+        assert!(simulation.state().discovered_cells.iter().all(|coord| {
+            hex_distance(cave, *coord) <= 1
+        }));
+        assert!(
+            simulation.state().events.iter().any(|event| matches!(
+                event,
+                crate::GameEvent::StartingAreaDiscovered {
+                    center,
+                    radius: 1,
+                    revealed,
+                } if *center == cave && *revealed > 1
+            )),
+            "runtime bootstrap should emit a typed starting discovery event, got {:?}",
+            simulation.state().events
         );
         assert_eq!(simulation.state().hero_map, HexCoordState::survivor_cave());
     }
@@ -1252,20 +1273,35 @@ mod tests {
         assert!(simulation.state().discovered_cells.len() > 2);
 
         simulation.apply(GameCommand::ResetRun);
+        let cave = HexCoordState::survivor_cave();
 
-        assert!(
-            simulation
-                .state()
-                .discovered_cells
-                .contains(&HexCoordState::base())
+        assert!(!simulation
+            .state()
+            .discovered_cells
+            .contains(&HexCoordState::base())
         );
         assert!(
             simulation
                 .state()
                 .discovered_cells
-                .contains(&HexCoordState::survivor_cave())
+                .contains(&cave)
         );
-        assert_eq!(simulation.state().discovered_cells.len(), 2);
+        assert!(simulation.state().discovered_cells.len() > 1);
+        assert!(simulation.state().discovered_cells.iter().all(|coord| {
+            hex_distance(cave, *coord) <= 1
+        }));
+        assert!(
+            simulation.state().events.iter().any(|event| matches!(
+                event,
+                crate::GameEvent::StartingAreaDiscovered {
+                    center,
+                    radius: 1,
+                    revealed,
+                } if *center == cave && *revealed > 1
+            )),
+            "reset should emit a typed starting discovery event, got {:?}",
+            simulation.state().events
+        );
         assert_eq!(simulation.state().hero_map, HexCoordState::survivor_cave());
     }
 
@@ -2532,5 +2568,11 @@ mod tests {
             sim.state().narrative.active_beat_id.as_deref(),
             Some(STORY_BEAT_HERO_EXPOSED)
         );
+    }
+
+    fn hex_distance(left: HexCoordState, right: HexCoordState) -> u8 {
+        let dq = left.q - right.q;
+        let dr = left.r - right.r;
+        dq.abs().max(dr.abs()).max((-(left.q + left.r) + (right.q + right.r)).abs()) as u8
     }
 }

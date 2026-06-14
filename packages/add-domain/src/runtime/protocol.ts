@@ -311,6 +311,12 @@ export type AddGameEvent =
   | { kind: "hero_leveled_up"; track: string; level: number }
   | { kind: "combat_resolved"; creatureId: string; outcome: "victory" | "retreat" }
   | { kind: "objective_completed"; objectiveId: string }
+  | {
+      kind: "starting_area_discovered"
+      center: { q: number; r: number }
+      radius: number
+      revealed: number
+    }
 
 export interface CombatLogEntrySnapshot {
   round: number

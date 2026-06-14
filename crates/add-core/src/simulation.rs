@@ -68,20 +68,7 @@ impl Default for Simulation {
 
 impl Simulation {
     pub fn new() -> Self {
-        let mut simulation = Self {
-            state: GameState::new(),
-            balance_overrides: std::collections::BTreeMap::new(),
-            effective_balance: balance_snapshot(),
-        };
-        simulation.normalize_assignment();
-        simulation.refresh_hero_survival_state();
-        simulation.refresh_base_pressure_state();
-        simulation.refresh_power_state();
-        simulation.state.resources.water_cap = simulation.water_cap();
-        simulation.refresh_bubble_state();
-        simulation.refresh_objectives();
-        simulation.refresh_narrative_state();
-        simulation
+        Self::from_state(GameState::new())
     }
 
     pub fn from_state(mut state: GameState) -> Self {
@@ -2292,8 +2279,18 @@ impl Simulation {
             .collect();
         self.state.discovered_cells.clear();
         self.state.discovered_cells.extend(retained);
+        let mut starting_reveal_count = 0;
         for coord in initial_discovered_cells() {
-            self.state.discovered_cells.insert(coord);
+            if self.state.discovered_cells.insert(coord) {
+                starting_reveal_count += 1;
+            }
+        }
+        if starting_reveal_count > 0 {
+            self.push_event(crate::state::GameEvent::StartingAreaDiscovered {
+                center: HexCoordState::survivor_cave(),
+                radius: 1,
+                revealed: starting_reveal_count,
+            });
         }
         if !self.hex_is_open_at(self.state.hero_map.q, self.state.hero_map.r) {
             self.state.hero_map = HexCoordState::survivor_cave();
@@ -2302,6 +2299,10 @@ impl Simulation {
     }
 
     fn reveal_bubble_cells(&mut self) {
+        if self.state.bubble.stabilized_ring == 0 && self.state.bubble.frontier_progress <= 0.0 {
+            return;
+        }
+
         let coords: Vec<HexCoordState> = self
             .state
             .hexes
