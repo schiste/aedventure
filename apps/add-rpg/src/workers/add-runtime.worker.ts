@@ -1,10 +1,14 @@
 /// <reference lib="webworker" />
 
 import type { CatalogSnapshot, SimulationSnapshot, WorkerEvent, WorkerRequest } from "@aedventure/add-domain"
+import { diffSnapshot } from "@aedventure/add-domain"
 import init, { WebRuntime } from "../generated/wasm/add-web-bindings/runtime"
 
 let runtime: WebRuntime | null = null
 let runtimeReady: Promise<void> | null = null
+// The last snapshot we sent the main thread, so we can post only the changed
+// top-level sections (a delta) on subsequent updates.
+let lastSnapshot: SimulationSnapshot | null = null
 
 self.addEventListener('message', (event: MessageEvent<WorkerRequest>) => {
   void handleMessage(event.data)
@@ -17,103 +21,103 @@ async function handleMessage(message: WorkerRequest) {
     switch (message.type) {
       case 'init':
         runtime = new WebRuntime()
-        postWorkerEvent({ type: 'ready', snapshot: snapshot(), catalog: catalog() })
+        postReady()
         break
       case 'reset':
         runtime = new WebRuntime()
-        postWorkerEvent({ type: 'snapshot', snapshot: snapshot() })
+        postFullSnapshot()
         break
       case 'tick':
         runtime?.tick(message.seconds)
-        postWorkerEvent({ type: 'snapshot', snapshot: snapshot() })
+        postSnapshotUpdate()
         break
       case 'chooseStoryOption':
         runtime?.chooseStoryOption(message.beatId, message.optionId)
-        postWorkerEvent({ type: 'snapshot', snapshot: snapshot() })
+        postSnapshotUpdate()
         break
       case 'assignHero':
         runtime?.assignHero(message.assigned)
-        postWorkerEvent({ type: 'snapshot', snapshot: snapshot() })
+        postSnapshotUpdate()
         break
       case 'setHeroRole':
         runtime?.setHeroRole(message.roleId)
-        postWorkerEvent({ type: 'snapshot', snapshot: snapshot() })
+        postSnapshotUpdate()
         break
       case 'setRoleCrew':
         runtime?.setRoleCrew(message.roleId, message.crew)
-        postWorkerEvent({ type: 'snapshot', snapshot: snapshot() })
+        postSnapshotUpdate()
         break
       case 'setStationEnabled':
         runtime?.setStationEnabled(message.stationId, message.enabled)
-        postWorkerEvent({ type: 'snapshot', snapshot: snapshot() })
+        postSnapshotUpdate()
         break
       case 'offlineCatchup':
         runtime?.runOfflineCatchup(message.elapsedSeconds)
-        postWorkerEvent({ type: 'snapshot', snapshot: snapshot() })
+        postSnapshotUpdate()
         break
       case 'startWorldAction':
         runtime?.startWorldAction(message.actionId)
-        postWorkerEvent({ type: 'snapshot', snapshot: snapshot() })
+        postSnapshotUpdate()
         break
       case 'startConstruction':
         runtime?.startConstruction(message.optionId)
-        postWorkerEvent({ type: 'snapshot', snapshot: snapshot() })
+        postSnapshotUpdate()
         break
       case 'startProcessing':
         runtime?.startProcessing(message.recipeId)
-        postWorkerEvent({ type: 'snapshot', snapshot: snapshot() })
+        postSnapshotUpdate()
         break
       case 'startResonanceRecipe':
         runtime?.startResonanceRecipe(message.recipeId)
-        postWorkerEvent({ type: 'snapshot', snapshot: snapshot() })
+        postSnapshotUpdate()
         break
       case 'setStationSpecialization':
         runtime?.setStationSpecialization(message.stationId, message.path)
-        postWorkerEvent({ type: 'snapshot', snapshot: snapshot() })
+        postSnapshotUpdate()
         break
       case 'startExpedition':
         runtime?.startExpedition(message.targetId, message.assignedCrew)
-        postWorkerEvent({ type: 'snapshot', snapshot: snapshot() })
+        postSnapshotUpdate()
         break
       case 'clearExpeditionReports':
         runtime?.clearExpeditionReports()
-        postWorkerEvent({ type: 'snapshot', snapshot: snapshot() })
+        postSnapshotUpdate()
         break
       case 'recruitFromSurvivorCave':
         runtime?.recruitFromSurvivorCave()
-        postWorkerEvent({ type: 'snapshot', snapshot: snapshot() })
+        postSnapshotUpdate()
         break
       case 'moveHeroTo':
         runtime?.moveHeroTo(message.q, message.r)
-        postWorkerEvent({ type: 'snapshot', snapshot: snapshot() })
+        postSnapshotUpdate()
         break
       case 'openDoor':
         runtime?.openDoor(message.key)
-        postWorkerEvent({ type: 'snapshot', snapshot: snapshot() })
+        postSnapshotUpdate()
         break
       case 'acquirePerk':
         runtime?.acquirePerk(message.perkId)
-        postWorkerEvent({ type: 'snapshot', snapshot: snapshot() })
+        postSnapshotUpdate()
         break
       case 'clearLocation':
         runtime?.clearLocation(message.key, message.lootItem, message.lootQty)
-        postWorkerEvent({ type: 'snapshot', snapshot: snapshot() })
+        postSnapshotUpdate()
         break
       case 'dropItem':
         runtime?.dropItem(message.key, message.itemId, message.qty)
-        postWorkerEvent({ type: 'snapshot', snapshot: snapshot() })
+        postSnapshotUpdate()
         break
       case 'pickUpLocation':
         runtime?.pickUpLocation(message.key)
-        postWorkerEvent({ type: 'snapshot', snapshot: snapshot() })
+        postSnapshotUpdate()
         break
       case 'useItem':
         runtime?.useItem(message.itemId)
-        postWorkerEvent({ type: 'snapshot', snapshot: snapshot() })
+        postSnapshotUpdate()
         break
       case 'spendBassline':
         runtime?.spendBassline(message.amount)
-        postWorkerEvent({ type: 'snapshot', snapshot: snapshot() })
+        postSnapshotUpdate()
         break
       case 'exportSave':
         postWorkerEvent({
@@ -123,7 +127,7 @@ async function handleMessage(message: WorkerRequest) {
         break
       case 'importSave':
         runtime?.importSave(message.payload)
-        postWorkerEvent({ type: 'snapshot', snapshot: snapshot() })
+        postFullSnapshot()
         break
     }
   } catch (error) {
@@ -141,6 +145,34 @@ async function ensureRuntime() {
     })
   }
   await runtimeReady
+}
+
+// Send the full snapshot and reset the delta baseline. Used for ready/reset/
+// import where the whole state is replaced.
+function postReady() {
+  const next = snapshot()
+  lastSnapshot = next
+  postWorkerEvent({ type: 'ready', snapshot: next, catalog: catalog() })
+}
+
+function postFullSnapshot() {
+  const next = snapshot()
+  lastSnapshot = next
+  postWorkerEvent({ type: 'snapshot', snapshot: next })
+}
+
+// Send only the top-level sections that changed since the last send. Falls back
+// to a full snapshot if we have no baseline yet.
+function postSnapshotUpdate() {
+  const next = snapshot()
+  if (lastSnapshot === null) {
+    lastSnapshot = next
+    postWorkerEvent({ type: 'snapshot', snapshot: next })
+    return
+  }
+  const changed = diffSnapshot(lastSnapshot, next)
+  lastSnapshot = next
+  postWorkerEvent({ type: 'snapshotDelta', changed })
 }
 
 function snapshot(): SimulationSnapshot {

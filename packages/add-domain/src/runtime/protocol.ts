@@ -965,8 +965,17 @@ export type WorkerRequest =
   | { type: 'importSave'; payload: string }
   | { type: 'exportSave' }
 
+/**
+ * A partial snapshot: only the top-level sections that changed since the last
+ * full/merged snapshot. The client merges it shallowly over its held snapshot
+ * (each changed section is replaced wholesale), reconstructing a full snapshot
+ * for consumers. Keys are never removed (the schema is fixed).
+ */
+export type SnapshotDelta = Partial<SimulationSnapshot>
+
 export type WorkerEvent =
   | { type: 'ready'; snapshot: SimulationSnapshot; catalog: CatalogSnapshot }
   | { type: 'snapshot'; snapshot: SimulationSnapshot }
+  | { type: 'snapshotDelta'; changed: SnapshotDelta }
   | { type: 'save'; payload: string }
   | { type: 'error'; message: string }

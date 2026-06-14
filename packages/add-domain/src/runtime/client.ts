@@ -5,6 +5,7 @@ import type {
   WorkerEvent,
   WorkerRequest,
 } from './protocol'
+import { mergeSnapshotDelta } from './snapshot-delta'
 
 export interface SimulationClientOptions {
   onSnapshot(snapshot: SimulationSnapshot): void
@@ -18,6 +19,13 @@ export interface SimulationClientOptions {
 export class SimulationClient {
   private readonly options: SimulationClientOptions
   private readonly worker: Worker
+  // Canonical snapshot, reconstructed from full snapshots + merged deltas so the
+  // delta channel is invisible to consumers (they still get full snapshots).
+  private currentSnapshot: SimulationSnapshot | null = null
+  // Back-pressure: at most one request is in flight; the rest queue and drain
+  // one round-trip at a time, so a slow worker can never be flooded.
+  private readonly queue: WorkerRequest[] = []
+  private inFlight = false
 
   constructor(options: SimulationClientOptions) {
     this.options = options
@@ -143,22 +151,59 @@ export class SimulationClient {
 
     switch (message.type) {
       case 'ready':
+        this.currentSnapshot = message.snapshot
         this.options.onReady(message.snapshot, message.catalog)
-        return
+        break
       case 'snapshot':
+        this.currentSnapshot = message.snapshot
         this.options.onSnapshot(message.snapshot)
-        return
+        break
+      case 'snapshotDelta': {
+        // Reconstruct the full snapshot from the held baseline + changed
+        // sections, then surface it like any full snapshot.
+        const base = this.currentSnapshot
+        if (!base) {
+          this.options.onError('Received a snapshot delta before any full snapshot.')
+          break
+        }
+        const merged = mergeSnapshotDelta(base, message.changed)
+        this.currentSnapshot = merged
+        this.options.onSnapshot(merged)
+        break
+      }
       case 'save':
         this.options.onSave(message.payload)
-        return
+        break
       case 'error':
         this.options.onError(message.message)
-        return
+        break
     }
+
+    // Every worker event completes the in-flight request; drain the next.
+    this.inFlight = false
+    this.pump()
   }
 
+  // Enqueue a request, coalescing a tick onto a tick already waiting at the tail
+  // (so a backlog collapses into one larger catch-up tick rather than a flood).
   private post(message: WorkerRequest) {
-    this.worker.postMessage(message)
+    if (message.type === 'tick') {
+      const tail = this.queue[this.queue.length - 1]
+      if (tail && tail.type === 'tick') {
+        tail.seconds += message.seconds
+        return
+      }
+    }
+    this.queue.push(message)
+    this.pump()
+  }
+
+  private pump() {
+    if (this.inFlight) return
+    const next = this.queue.shift()
+    if (!next) return
+    this.inFlight = true
+    this.worker.postMessage(next)
   }
 }
 
