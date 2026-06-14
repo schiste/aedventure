@@ -55,6 +55,25 @@ export interface TransitionSample {
  */
 export class TransitionRegistry {
   private readonly active = new Map<string, ActiveTransition>()
+  private reducedMotion: boolean
+
+  constructor(options: { readonly reducedMotion?: boolean } = {}) {
+    this.reducedMotion = options.reducedMotion ?? false
+  }
+
+  /**
+   * Accessibility gate. When enabled, transitions complete instantly — new ones
+   * begin with zero duration and in-flight ones sample as done — so the view
+   * snaps to target values with no motion. Wire this to the player's
+   * reduced-motion preference (settings + `prefers-reduced-motion`).
+   */
+  setReducedMotion(reduced: boolean): void {
+    this.reducedMotion = reduced
+  }
+
+  get reducedMotionEnabled(): boolean {
+    return this.reducedMotion
+  }
 
   /** Start (or restart) the transition stored at `key`. */
   begin(key: string, options: TransitionOptions): void {
@@ -62,7 +81,7 @@ export class TransitionRegistry {
       from: options.from,
       to: options.to,
       startedAt: options.startedAt,
-      durationMs: Math.max(0, options.durationMs),
+      durationMs: this.reducedMotion ? 0 : Math.max(0, options.durationMs),
       easing: options.easing ?? smoothStep,
     })
   }
@@ -76,7 +95,7 @@ export class TransitionRegistry {
     const transition = this.active.get(key)
     if (!transition) return undefined
     const progress =
-      transition.durationMs <= 0
+      this.reducedMotion || transition.durationMs <= 0
         ? 1
         : clamp01((now - transition.startedAt) / transition.durationMs)
     return {

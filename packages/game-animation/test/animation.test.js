@@ -65,6 +65,20 @@ reg.begin("c", { from: mid, to: 0, durationMs: 100, startedAt: 50, easing: linea
 assert.equal(reg.value("c", 50, 0), 5)
 assert.equal(reg.value("c", 100, 0), 2.5)
 
+// Reduced motion (accessibility gate): transitions complete instantly.
+const rm = new TransitionRegistry({ reducedMotion: true })
+assert.equal(rm.reducedMotionEnabled, true)
+rm.begin("m", { from: 0, to: 100, durationMs: 1000, startedAt: 0, easing: linear })
+assert.equal(rm.sample("m", 0).value, 100, "reduced motion snaps to target at once")
+assert.equal(rm.sample("m", 0).done, true)
+
+// Toggling reduced motion on completes an in-flight transition immediately.
+const rm2 = new TransitionRegistry()
+rm2.begin("n", { from: 0, to: 100, durationMs: 1000, startedAt: 0, easing: linear })
+assert.equal(rm2.sample("n", 0).value, 0, "normal mid-flight value")
+rm2.setReducedMotion(true)
+assert.equal(rm2.sample("n", 0).value, 100, "reduced motion completes it in place")
+
 const tracker = new ChangeTracker()
 assert.equal(tracker.changed("k", true), true, "a new key counts as changed")
 assert.equal(tracker.set("k", true), undefined, "no previous value yet")
