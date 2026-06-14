@@ -12,9 +12,9 @@ import type {
   AddTravelExposureRisk,
 } from "./map-presentation"
 import {
-  selectAddFirstPlayableSummary,
+  selectAddStoryProgressionState,
   type AddFirstPlayableAction,
-} from "./first-playable-script"
+} from "./story-progression-selectors"
 import {
   selectAddWorldTime,
   type AddDaylightPhase,
@@ -860,7 +860,7 @@ function usefulnessReasonsFor(
     return ["High-uncertainty scout: useful when expanding the map is worth a full hour of exposure."]
   }
 
-  const firstPlayable = selectAddFirstPlayableSummary(input.snapshot, input.catalog)
+  const firstPlayable = selectAddStoryProgressionState(input.snapshot, input.catalog).firstPlayable
   const currentStep = firstPlayable.currentStepId
   const reasons: string[] = []
   if (tile.dungeonLinks.length > 0) {
@@ -913,7 +913,7 @@ function resourceLinksFor(
   snapshot: SimulationSnapshot,
   catalog: CatalogSnapshot,
 ): readonly AddDiscoveryResourceLink[] {
-  const firstPlayable = selectAddFirstPlayableSummary(snapshot, catalog)
+  const firstPlayable = selectAddStoryProgressionState(snapshot, catalog).firstPlayable
   const currentStep = firstPlayable.currentStepId
   return [
     resourceLink(catalog, snapshot.resources, RESOURCE_STONE, {
@@ -958,7 +958,7 @@ function actionLinksFor(
   input: AddDiscoverySelectorInput,
   dungeonEntry: AddDiscoveryDungeonEntry | null,
 ): readonly AddDiscoveryActionLink[] {
-  const firstPlayable = selectAddFirstPlayableSummary(input.snapshot, input.catalog)
+  const firstPlayable = selectAddStoryProgressionState(input.snapshot, input.catalog).firstPlayable
   const activeStep = firstPlayable.steps.find((step) => step.active)
   const links: AddDiscoveryActionLink[] = []
 

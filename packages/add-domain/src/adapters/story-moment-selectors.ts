@@ -1,4 +1,5 @@
 import type { CatalogSnapshot, SimulationSnapshot } from "../runtime/protocol"
+import { selectAddStoryProgressionState } from "./story-progression-selectors"
 
 // Projects the authoritative active story beat (selected by the Rust salience
 // engine) into a presentable "moment": its body + ALL of its choices, so the UI
@@ -26,19 +27,18 @@ export function selectAddStoryMoment(
   snapshot: SimulationSnapshot,
   catalog: CatalogSnapshot,
 ): AddStoryMoment | null {
-  const beatId = snapshot.narrative.activeBeatId
-  if (!beatId) return null
-  const beat = catalog.storyBeats.find((candidate) => candidate.id === beatId)
+  const progression = selectAddStoryProgressionState(snapshot, catalog)
+  const beat = progression.activeBeat
   if (!beat) return null
 
-  const alreadyChosen = Boolean(snapshot.narrative.choiceByBeat[beatId])
-  const awaitingChoice = beat.choices.length > 0 && !alreadyChosen
   return {
-    beatId,
+    beatId: beat.id,
     label: beat.label,
     body: beat.body,
     arc: beat.arc,
-    choices: awaitingChoice ? beat.choices.map((choice) => ({ id: choice.id, label: choice.label })) : [],
-    awaitingChoice,
+    choices: progression.currentChoiceState.awaitingChoice
+      ? progression.currentChoiceState.choices.map((choice) => ({ id: choice.id, label: choice.label }))
+      : [],
+    awaitingChoice: progression.currentChoiceState.awaitingChoice,
   }
 }

@@ -16,6 +16,7 @@ const {
   selectAddDiscoverySummary,
   selectAddTile,
   selectAddFirstPlayableSummary,
+  selectAddStoryProgressionState,
   selectAddUiState,
   selectAddWorldTimeForClockSeconds,
   tileInteractionDetailForCoord,
@@ -303,8 +304,21 @@ assert.deepEqual(
 const firstPlayable = selectAddFirstPlayableSummary(snapshot, catalog)
 assert.equal(firstPlayable.totalCount, ADD_FIRST_PLAYABLE_SCRIPT.length)
 assert.equal(firstPlayable.currentStepId, "reach-base")
-assert.equal(firstPlayable.steps[0].action.type, "choose_story_option")
+assert.equal(firstPlayable.steps[0].action.type, "preview_route_to_base")
 assert.deepEqual(ui.firstPlayable, firstPlayable)
+const storyProgression = selectAddStoryProgressionState(snapshot, catalog)
+assert.equal(storyProgression.activeBeat.id, "story.beat.road_to_base")
+assert.equal(storyProgression.activeArc, "intro")
+assert.deepEqual(
+  storyProgression.currentBeats.map((beat) => beat.id),
+  ["story.beat.road_to_base"],
+)
+assert.equal(storyProgression.currentChoiceState.awaitingChoice, true)
+assert.equal(storyProgression.primaryAction.source, "story_choice")
+assert.equal(storyProgression.primaryAction.action.type, "choose_story_option")
+assert.deepEqual(storyProgression.firstPlayable, firstPlayable)
+assert.equal(storyProgression.telemetrySummary.activeBeatId, "story.beat.road_to_base")
+assert.equal(ui.storyProgression.telemetrySummary.primaryActionSource, "story_choice")
 
 function createCatalogFixture() {
   return {

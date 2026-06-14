@@ -371,6 +371,21 @@ export interface RuntimeTextState {
     readonly noteCount: number
     readonly activeStoryBeatId: string | null
     readonly storyChoiceIds: readonly string[]
+    readonly storyProgression: {
+      readonly activeBeatId: string | null
+      readonly activeArc: string | null
+      readonly completedBeatIds: readonly string[]
+      readonly currentBeatIds: readonly string[]
+      readonly upcomingBeatIds: readonly string[]
+      readonly nextLikelyBeatId: string | null
+      readonly primaryActionSource: string
+      readonly primaryActionEnabled: boolean
+      readonly blockerKind: string
+      readonly firstPlayableStepId: string | null
+      readonly firstPlayableComplete: boolean
+      readonly awaitingChoice: boolean
+      readonly unlockPreviewIds: readonly string[]
+    }
     readonly enabledWorldActionIds: readonly string[]
     readonly roleAssignments: readonly {
       readonly id: string
@@ -1418,6 +1433,10 @@ function uiTelemetry(
     noteCount: ui.notes.length,
     activeStoryBeatId: ui.activeStoryBeat?.id ?? null,
     storyChoiceIds: ui.activeStoryBeat?.choices.map((choice) => choice.id) ?? [],
+    storyProgression: {
+      ...ui.storyProgression.telemetrySummary,
+      unlockPreviewIds: ui.storyProgression.unlockPreview.map((entry) => entry.id),
+    },
     enabledWorldActionIds: ui.availableWorldActions
       .filter((action) => action.enabled)
       .map((action) => action.id),

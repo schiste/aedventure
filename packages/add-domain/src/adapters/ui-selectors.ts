@@ -26,10 +26,11 @@ import {
   ROLE_SCAVENGE,
   ROLE_WATER,
 } from "./add-ids"
+import type { AddFirstPlayableSummary } from "./first-playable-script"
 import {
-  selectAddFirstPlayableSummary,
-  type AddFirstPlayableSummary,
-} from "./first-playable-script"
+  selectAddStoryProgressionState,
+  type AddStoryProgressionState,
+} from "./story-progression-selectors"
 import { selectAddWorldTime, type AddWorldTimeSummary } from "./world-time"
 
 export {
@@ -38,6 +39,10 @@ export {
   type AddFirstPlayableStep,
   type AddFirstPlayableSummary,
 } from "./first-playable-script"
+export {
+  selectAddStoryProgressionState,
+  type AddStoryProgressionState,
+} from "./story-progression-selectors"
 
 export interface AddResourceSummary {
   readonly id: string
@@ -92,6 +97,7 @@ export interface AddUiState {
   readonly worldTime: AddWorldTimeSummary
   readonly resources: readonly AddResourceSummary[]
   readonly objective: AddObjectiveSummary
+  readonly storyProgression: AddStoryProgressionState
   readonly activeStoryBeat: StoryBeatDef | null
   readonly availableWorldActions: readonly AddWorldActionSummary[]
   readonly roleAssignments: readonly AddRoleAssignmentSummary[]
@@ -104,15 +110,17 @@ export function selectAddUiState(
   snapshot: SimulationSnapshot,
   catalog: CatalogSnapshot,
 ): AddUiState {
+  const storyProgression = selectAddStoryProgressionState(snapshot, catalog)
   return {
     worldTime: selectAddWorldTime(snapshot),
     resources: selectAddResourceSummaries(snapshot, catalog),
     objective: selectAddObjectiveSummary(snapshot),
-    activeStoryBeat: selectActiveStoryBeat(snapshot, catalog),
+    storyProgression,
+    activeStoryBeat: storyProgression.activeBeat,
     availableWorldActions: selectAddWorldActionSummaries(snapshot, catalog),
     roleAssignments: selectAddRoleAssignmentSummaries(snapshot, catalog),
     constructionOptions: selectAddConstructionSummaries(snapshot, catalog),
-    firstPlayable: selectAddFirstPlayableSummary(snapshot, catalog),
+    firstPlayable: storyProgression.firstPlayable,
     notes: snapshot.notes,
   }
 }
