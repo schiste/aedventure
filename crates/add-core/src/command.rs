@@ -54,6 +54,14 @@ pub enum GameCommand {
         loot_item: Option<String>,
         loot_qty: u32,
     },
+    /// Begin an auto-battler skirmish against a creature occupying `key`. The
+    /// client supplies the (already-resolved) loot to drop on victory.
+    Engage {
+        creature_id: String,
+        key: String,
+        loot_item: Option<String>,
+        loot_qty: u32,
+    },
     DropItem {
         key: String,
         item_id: String,

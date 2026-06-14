@@ -164,6 +164,22 @@ impl WebRuntime {
         });
     }
 
+    #[wasm_bindgen(js_name = engage)]
+    pub fn engage(
+        &mut self,
+        creature_id: &str,
+        key: &str,
+        loot_item: Option<String>,
+        loot_qty: u32,
+    ) {
+        self.simulation.apply(GameCommand::Engage {
+            creature_id: creature_id.to_string(),
+            key: key.to_string(),
+            loot_item,
+            loot_qty,
+        });
+    }
+
     #[wasm_bindgen(js_name = dropItem)]
     pub fn drop_item(&mut self, key: &str, item_id: &str, qty: u32) {
         self.simulation.apply(GameCommand::DropItem {

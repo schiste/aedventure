@@ -303,6 +303,32 @@ export type AddGameEvent =
   | { kind: "recruitment_gate_opened" }
   | { kind: "effect_rejected"; reason: string }
   | { kind: "hero_leveled_up"; track: string; level: number }
+  | { kind: "combat_resolved"; creatureId: string; outcome: "victory" | "retreat" }
+
+export interface CombatLogEntrySnapshot {
+  round: number
+  heroDamage: number
+  creatureDamage: number
+  heroHp: number
+  creatureHp: number
+}
+
+export interface CombatJobSnapshot {
+  creatureId: string
+  creatureLabel: string
+  locationKey: string
+  lootItem: string | null
+  lootQty: number
+  creatureHp: number
+  creatureHpMax: number
+  heroHp: number
+  heroHpMax: number
+  round: number
+  roundTimer: number
+  xpReward: number
+  threat: number
+  log: CombatLogEntrySnapshot[]
+}
 
 export interface SimulationSnapshot {
   schemaVersion: number
@@ -310,6 +336,8 @@ export interface SimulationSnapshot {
   catalogVersion: number
   /** Structured events from the last applied command/tick (ephemeral, not saved). */
   events: AddGameEvent[]
+  /** The in-progress auto-battler skirmish, or null when not fighting. */
+  activeCombat: CombatJobSnapshot | null
   clockSeconds: number
   resources: ResourceSnapshot
   roster: RosterSnapshot
@@ -809,6 +837,7 @@ export interface BalanceSnapshot {
   crystal: CrystalBalance
   power: PowerBalance
   progression: ProgressionBalance
+  combat: CombatBalance
   survival: SurvivalBalance
   build: BuildBalance
   scavenge: ScavengeBalance
@@ -880,6 +909,17 @@ export interface ProgressionBalance {
   xpPerLocationClear: number
   xpPerExpedition: number
   xpPerStoryBeat: number
+}
+
+export interface CombatBalance {
+  baseAttack: number
+  attackPerLevel: number
+  baseHp: number
+  hpPerLevel: number
+  roundSeconds: number
+  damageVariance: number
+  woundUnitsPerHpLost: number
+  defeatExtraWoundUnits: number
 }
 
 export interface SurvivalBalance {
@@ -967,6 +1007,7 @@ export type WorkerRequest =
   | { type: 'moveHeroTo'; q: number; r: number }
   | { type: 'openDoor'; key: string }
   | { type: 'clearLocation'; key: string; lootItem?: string; lootQty: number }
+  | { type: 'engage'; creatureId: string; key: string; lootItem?: string; lootQty: number }
   | { type: 'dropItem'; key: string; itemId: string; qty: number }
   | { type: 'pickUpLocation'; key: string }
   | { type: 'useItem'; itemId: string }

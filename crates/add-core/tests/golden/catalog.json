@@ -11218,6 +11218,16 @@
       "xpPerExpedition": 25.0,
       "xpPerStoryBeat": 12.0
     },
+    "combat": {
+      "baseAttack": 3.0,
+      "attackPerLevel": 0.6,
+      "baseHp": 24.0,
+      "hpPerLevel": 4.0,
+      "roundSeconds": 1.5,
+      "damageVariance": 0.15,
+      "woundUnitsPerHpLost": 0.12,
+      "defeatExtraWoundUnits": 3.0
+    },
     "survival": {
       "heroTimeSeconds0To1": 24.0,
       "normalHumanTimeSeconds0To1": 4.0,

@@ -36,7 +36,8 @@ pub use topology::{
 };
 pub use simulation::Simulation;
 pub use state::{
-    BaseState, BubbleState, ConstructionJob, CrystalCircleState, CrystalTuningState,
+    BaseState, BubbleState, CombatJob, CombatLogEntry, ConstructionJob, CrystalCircleState,
+    CrystalTuningState,
     CrystalTuningTrackState, DEFAULT_BASE_SLOTS, DEFAULT_TOTAL_CREW, ExpeditionJob,
     ExpeditionReport, ExpeditionRiskState, ExpeditionState, ForcedReturnPhase, ForcedReturnState,
     GRID_RADIUS, GameEvent, GameState, HeroLocationState, HeroProgressState, HeroSurvivalState,
@@ -259,6 +260,96 @@ mod tests {
         assert!(
             simulation.state().hero_progress.drummer_xp > before,
             "clearing a location should award Drummer XP"
+        );
+    }
+
+    #[test]
+    fn engaging_and_winning_clears_location_grants_loot_and_xp() {
+        let mut simulation = Simulation::new();
+        let xp_before = simulation.state().hero_progress.drummer_xp;
+        simulation.apply(GameCommand::Engage {
+            creature_id: "rat".to_string(),
+            key: "studio:2:2".to_string(),
+            loot_item: Some("item.scrap_metal".to_string()),
+            loot_qty: 1,
+        });
+        assert!(simulation.state().active_combat.is_some());
+
+        // Offline catch-up runs whole rounds and finishes the in-flight fight.
+        simulation.apply(GameCommand::RunOfflineCatchup {
+            elapsed_seconds: 100.0,
+        });
+
+        assert!(simulation.state().active_combat.is_none(), "combat resolves");
+        assert!(simulation.state().cleared_locations.contains("studio:2:2"));
+        assert_eq!(
+            simulation.state().inventory.get("item.scrap_metal").copied(),
+            Some(1),
+            "victory drops the supplied loot"
+        );
+        assert!(
+            simulation.state().hero_progress.drummer_xp > xp_before,
+            "victory awards combat XP"
+        );
+        assert!(
+            simulation
+                .state()
+                .events
+                .iter()
+                .any(|event| matches!(event, crate::GameEvent::CombatResolved { .. }))
+        );
+    }
+
+    #[test]
+    fn combat_rounds_are_deterministic_for_a_given_seed() {
+        let run = || {
+            let mut simulation = Simulation::new();
+            simulation.apply(GameCommand::Engage {
+                creature_id: "giant_rat".to_string(),
+                key: "studio:3:3".to_string(),
+                loot_item: None,
+                loot_qty: 0,
+            });
+            // Two rounds (1.5s each) — not enough to finish the long fight.
+            simulation.apply(GameCommand::Tick { seconds: 3.0 });
+            simulation.state().active_combat.clone()
+        };
+        let first = run();
+        let second = run();
+        assert!(
+            first.as_ref().map(|c| !c.log.is_empty()).unwrap_or(false),
+            "the fight should still be in progress with a log"
+        );
+        assert_eq!(first, second, "same seed must replay identical rounds");
+    }
+
+    #[test]
+    fn combat_retreat_inflicts_wounds_and_forces_return() {
+        let mut simulation = Simulation::new();
+        let downed = crate::CombatJob {
+            creature_id: "giant_rat".to_string(),
+            creature_label: "Giant Rat".to_string(),
+            location_key: "studio:4:4".to_string(),
+            loot_item: None,
+            loot_qty: 0,
+            creature_hp: 5.0,
+            creature_hp_max: 20.0,
+            hero_hp: 0.0,
+            hero_hp_max: 24.0,
+            round: 9,
+            round_timer: 1.5,
+            xp_reward: 16.0,
+            threat: 0.4,
+            log: Vec::new(),
+        };
+        simulation.resolve_combat_retreat(&downed);
+        assert!(
+            simulation.state().hero_survival.wounds.wound_units_taken > 0,
+            "retreat is a wound source"
+        );
+        assert!(
+            simulation.state().hero_survival.forced_return.is_some(),
+            "a downed Hero is forced to return"
         );
     }
 

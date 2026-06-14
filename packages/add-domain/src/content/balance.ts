@@ -62,6 +62,16 @@ export const BALANCE: BalanceSnapshot = {
     "xpPerExpedition": 25,
     "xpPerStoryBeat": 12
   },
+  "combat": {
+    "baseAttack": 3,
+    "attackPerLevel": 0.6,
+    "baseHp": 24,
+    "hpPerLevel": 4,
+    "roundSeconds": 1.5,
+    "damageVariance": 0.15,
+    "woundUnitsPerHpLost": 0.12,
+    "defeatExtraWoundUnits": 3
+  },
   "survival": {
     "heroTimeSeconds0To1": 24,
     "normalHumanTimeSeconds0To1": 4,

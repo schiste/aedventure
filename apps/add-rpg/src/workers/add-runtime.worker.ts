@@ -103,6 +103,10 @@ async function handleMessage(message: WorkerRequest) {
         runtime?.clearLocation(message.key, message.lootItem, message.lootQty)
         postSnapshotUpdate()
         break
+      case 'engage':
+        runtime?.engage(message.creatureId, message.key, message.lootItem, message.lootQty)
+        postSnapshotUpdate()
+        break
       case 'dropItem':
         runtime?.dropItem(message.key, message.itemId, message.qty)
         postSnapshotUpdate()

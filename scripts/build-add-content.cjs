@@ -55,6 +55,7 @@ const entitySchemas = content("entity-schemas")
 const balance = content("balance")
 const perks = content("perks")
 const items = content("items")
+const creatures = content("creatures")
 const dungeons = require(path.join(ROOT, "packages/add-domain/dist/dungeons/registry.js"))
 const areas = require(path.join(ROOT, "packages/add-domain/dist/areas/registry.js"))
 
@@ -678,6 +679,7 @@ const FILES = [
               ],
             },
             { name: "progression", kind: "struct", structType: "ProgressionBalance", fields: f64s("level_multiplier_a", "xp0", "xp_growth", "xp_per_location_clear", "xp_per_expedition", "xp_per_story_beat") },
+            { name: "combat", kind: "struct", structType: "CombatBalance", fields: f64s("base_attack", "attack_per_level", "base_hp", "hp_per_level", "round_seconds", "damage_variance", "wound_units_per_hp_lost", "defeat_extra_wound_units") },
             {
               name: "survival", kind: "struct", structType: "SurvivalBalance",
               fields: f64s("hero_time_seconds_0_to_1", "normal_human_time_seconds_0_to_1", "recovery_time_seconds_1_to_0", "sustain_bonus_per_level", "tier_one_threshold_ratio", "tier_two_threshold_ratio", "tier_three_threshold_ratio", "tier_one_work_efficiency_multiplier", "tier_two_work_efficiency_multiplier", "tier_three_work_efficiency_multiplier", "tier_one_movement_speed_multiplier", "tier_two_movement_speed_multiplier", "tier_three_movement_speed_multiplier", "tier_one_encounter_rate_multiplier", "tier_two_encounter_rate_multiplier", "tier_three_encounter_rate_multiplier", "recovery_brownout_penalty_weight", "recovery_brownout_stop_threshold"),
@@ -751,6 +753,28 @@ const FILES = [
                 { name: "amount", kind: "f64" },
               ],
             },
+          ],
+        },
+      },
+    ],
+  },
+  {
+    sourceModule: "packages/add-domain/src/content/creatures.ts",
+    rustPath: "crates/add-core/src/game_data/catalog/creatures.rs",
+    consts: [
+      {
+        entries: creatures.CREATURES,
+        spec: {
+          constName: "CREATURES",
+          rustType: "CreatureDef",
+          visibility: VIS,
+          fields: [
+            { name: "id", kind: "string" },
+            { name: "label", kind: "string" },
+            { name: "hp", kind: "f64" },
+            { name: "attack", kind: "f64" },
+            { name: "threat", kind: "f64" },
+            { name: "xp_reward", kind: "f64" },
           ],
         },
       },

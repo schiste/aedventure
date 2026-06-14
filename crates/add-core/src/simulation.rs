@@ -14,12 +14,14 @@ use crate::game_data::{
     ROLE_CRYSTAL_CHORUS, ROLE_CRYSTAL_HARMONICS, ROLE_FIRE_PIT, ROLE_SCAVENGE, ROLE_WATER,
     RequirementDef, ResonanceEffectDef, ResonanceRecipeDef, ResonanceTuningTrackDef, RoleSlotPool,
     STATION_MIX_CONSOLE, STATION_RESEARCH_BOOTH, STATION_RESONANCE_CHAMBER, STATION_WORKSHOP,
-    TileFeature, balance_snapshot, construction_option_def, expedition_target_def, item_def,
+    TileFeature, balance_snapshot, construction_option_def, creature_def, expedition_target_def,
+    item_def,
     perk_def, processing_recipe_def, recruit_cost_for_index, resonance_recipe_def, role_def,
     station_def, stations, story_beat_def, story_beats, tile_def, world_action_def,
 };
 use crate::state::{
-    ConstructionJob, CrystalTuningTrackState, ExpeditionJob, ExpeditionReport, ExpeditionRiskState,
+    CombatJob, CombatLogEntry, ConstructionJob, CrystalTuningTrackState, ExpeditionJob,
+    ExpeditionReport, ExpeditionRiskState,
     ForcedReturnPhase, ForcedReturnState, GRID_RADIUS, GameState, HeroLocationState, HexCoordState,
     HexState, HexVisualState, ResonanceJob, ResonanceReport, StationSpecializationPathState,
     WorldAction, initial_discovered_cells,
@@ -163,6 +165,12 @@ impl Simulation {
                 loot_item,
                 loot_qty,
             } => self.clear_location(key, loot_item, loot_qty),
+            GameCommand::Engage {
+                creature_id,
+                key,
+                loot_item,
+                loot_qty,
+            } => self.engage(&creature_id, key, loot_item, loot_qty),
             GameCommand::DropItem { key, item_id, qty } => self.drop_item(key, item_id, qty),
             GameCommand::PickUpLocation { key } => self.pick_up_location(&key),
             GameCommand::UseItem { item_id } => self.use_item(&item_id),
@@ -1230,6 +1238,7 @@ impl Simulation {
         self.refresh_power_state();
         self.progress_bubble(safe_seconds);
         self.progress_hero_survival(safe_seconds);
+        self.progress_combat(safe_seconds);
         if !offline {
             self.progress_world_action(safe_seconds);
         }
@@ -3809,12 +3818,188 @@ impl Simulation {
     }
 
     /// Next PRNG draw as an index in `0..bound` (returns 0 when `bound == 0`).
+    /// Reserved for index draws (loot/encounter selection); exercised in tests.
+    #[allow(dead_code)]
     pub(crate) fn next_rng_below(&mut self, bound: u64) -> u64 {
         if bound == 0 {
             return 0;
         }
         self.next_rng_u64() % bound
     }
+
+    /// The Hero's aggregated combat stats. Today this is base + per-level scaling;
+    /// the single seam where skills and gear bonuses will fold in (T2.1 step 2/3).
+    pub(crate) fn hero_stats(&self) -> HeroStats {
+        let combat = self.balance().combat;
+        let level = f64::from(self.hero_total_level());
+        HeroStats {
+            attack: combat.base_attack + level * combat.attack_per_level,
+            max_hp: combat.base_hp + level * combat.hp_per_level,
+        }
+    }
+
+    /// Begin an auto-battler skirmish, unless the Hero is unavailable, already
+    /// fighting, or the location is already cleared.
+    fn engage(&mut self, creature_id: &str, key: String, loot_item: Option<String>, loot_qty: u32) {
+        if self.state.active_combat.is_some() {
+            self.push_note("The Hero is already in a fight.");
+            return;
+        }
+        if self.hero_locked_by_survival() {
+            self.push_note("The Hero cannot fight during forced return or recovery.");
+            return;
+        }
+        if self.state.cleared_locations.contains(&key) {
+            return;
+        }
+        let Some(creature) = creature_def(creature_id) else {
+            self.push_note(format!("Unknown creature: {creature_id}."));
+            return;
+        };
+        let stats = self.hero_stats();
+        let round_seconds = self.balance().combat.round_seconds;
+        self.state.active_combat = Some(CombatJob {
+            creature_id: creature_id.to_string(),
+            creature_label: creature.label.to_string(),
+            location_key: key,
+            loot_item,
+            loot_qty,
+            creature_hp: creature.hp,
+            creature_hp_max: creature.hp,
+            hero_hp: stats.max_hp,
+            hero_hp_max: stats.max_hp,
+            round: 0,
+            round_timer: round_seconds,
+            xp_reward: creature.xp_reward,
+            threat: creature.threat,
+            log: Vec::new(),
+        });
+        self.push_note(format!("Engaged {}.", creature.label));
+    }
+
+    /// Advance any in-progress skirmish by `seconds`, resolving whole rounds as
+    /// the timer elapses. Runs live and during offline catch-up.
+    fn progress_combat(&mut self, mut seconds: f64) {
+        while seconds > 0.0 {
+            let Some(mut combat) = self.state.active_combat.clone() else {
+                break;
+            };
+            if combat.round_timer > seconds {
+                combat.round_timer -= seconds;
+                self.state.active_combat = Some(combat);
+                break;
+            }
+            seconds -= combat.round_timer;
+
+            // Both sides strike once, each with ±variance damage.
+            let stats = self.hero_stats();
+            let creature_attack = creature_def(&combat.creature_id)
+                .map(|creature| creature.attack)
+                .unwrap_or(0.0);
+            let hero_damage = stats.attack * self.combat_variance();
+            let creature_damage = creature_attack * self.combat_variance();
+
+            combat.round = combat.round.saturating_add(1);
+            combat.creature_hp = (combat.creature_hp - hero_damage).max(0.0);
+            combat.hero_hp = (combat.hero_hp - creature_damage).max(0.0);
+            combat.round_timer = self.balance().combat.round_seconds;
+            combat.log.push(CombatLogEntry {
+                round: combat.round,
+                hero_damage,
+                creature_damage,
+                hero_hp: combat.hero_hp,
+                creature_hp: combat.creature_hp,
+            });
+            // Keep the log bounded for long fights.
+            if combat.log.len() > 30 {
+                let overflow = combat.log.len() - 30;
+                combat.log.drain(0..overflow);
+            }
+
+            if combat.creature_hp <= 0.0 {
+                self.resolve_combat_victory(&combat);
+                self.state.active_combat = None;
+            } else if combat.hero_hp <= 0.0 {
+                self.resolve_combat_retreat(&combat);
+                self.state.active_combat = None;
+            } else {
+                self.state.active_combat = Some(combat);
+            }
+
+            if self.state.active_combat.is_none() {
+                break;
+            }
+        }
+    }
+
+    /// One damage roll's multiplier in `[1 - variance, 1 + variance)`.
+    fn combat_variance(&mut self) -> f64 {
+        let variance = self.balance().combat.damage_variance;
+        1.0 - variance + 2.0 * variance * self.next_rng_f64()
+    }
+
+    /// Wound units to inflict for `hp_lost`, scaled by creature `threat`.
+    fn combat_wounds(&self, hp_lost: f64, threat: f64) -> u16 {
+        let per_hp = self.balance().combat.wound_units_per_hp_lost;
+        (hp_lost.max(0.0) * per_hp * (1.0 + threat)).round() as u16
+    }
+
+    pub(crate) fn resolve_combat_victory(&mut self, combat: &CombatJob) {
+        let hp_lost = combat.hero_hp_max - combat.hero_hp;
+        let wounds = self.combat_wounds(hp_lost, combat.threat);
+        self.state.hero_survival.wounds.wound_units_taken = self
+            .state
+            .hero_survival
+            .wounds
+            .wound_units_taken
+            .saturating_add(wounds);
+
+        self.state.cleared_locations.insert(combat.location_key.clone());
+        if let Some(item_id) = &combat.loot_item {
+            self.grant_item(item_id, combat.loot_qty);
+        }
+        self.grant_track_xp(HeroTrack::Drummer, combat.xp_reward);
+
+        self.push_note(format!(
+            "Defeated {} after {} round(s).",
+            combat.creature_label, combat.round
+        ));
+        self.push_event(crate::state::GameEvent::CombatResolved {
+            creature_id: combat.creature_id.clone(),
+            outcome: "victory".to_string(),
+        });
+        self.refresh_hero_survival_state();
+    }
+
+    pub(crate) fn resolve_combat_retreat(&mut self, combat: &CombatJob) {
+        let wounds = self
+            .combat_wounds(combat.hero_hp_max, combat.threat)
+            .saturating_add(self.balance().combat.defeat_extra_wound_units.round() as u16);
+        self.state.hero_survival.wounds.wound_units_taken = self
+            .state
+            .hero_survival
+            .wounds
+            .wound_units_taken
+            .saturating_add(wounds);
+
+        self.push_note(format!(
+            "Retreated from {} — the Hero is hurt and pulling back to safety.",
+            combat.creature_label
+        ));
+        self.push_event(crate::state::GameEvent::CombatResolved {
+            creature_id: combat.creature_id.clone(),
+            outcome: "retreat".to_string(),
+        });
+        // A downed Hero is forced to return and recover.
+        self.trigger_forced_return();
+        self.refresh_hero_survival_state();
+    }
+}
+
+/// The Hero's aggregated combat stats for one skirmish.
+pub(crate) struct HeroStats {
+    pub attack: f64,
+    pub max_hp: f64,
 }
 
 /// Whether `spend_resource` recognizes (and can actually deduct) this resource.

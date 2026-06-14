@@ -63,6 +63,16 @@ pub(in crate::game_data) const BALANCE: BalanceSnapshot = BalanceSnapshot {
         xp_per_expedition: 25.0,
         xp_per_story_beat: 12.0,
     },
+    combat: CombatBalance {
+        base_attack: 3.0,
+        attack_per_level: 0.6,
+        base_hp: 24.0,
+        hp_per_level: 4.0,
+        round_seconds: 1.5,
+        damage_variance: 0.15,
+        wound_units_per_hp_lost: 0.12,
+        defeat_extra_wound_units: 3.0,
+    },
     survival: SurvivalBalance {
         hero_time_seconds_0_to_1: 24.0,
         normal_human_time_seconds_0_to_1: 4.0,

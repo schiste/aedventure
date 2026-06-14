@@ -4,9 +4,9 @@ use crate::topology::{AxialBounds, Landmark, MapCell, MapDefinition, TerrainRegi
 
 mod catalog;
 use catalog::{
-    BALANCE, CONSTRUCTION_OPTIONS, ENTITY_SCHEMAS, EXPEDITION_TARGETS, FLAGS, FLORA, ITEMS, PERKS,
-    PROCESSING_RECIPES, RESONANCE_RECIPES, RESOURCES, ROLES, STATIONS, STORY_BEATS, STRUCTURES,
-    TILES, UI_ELEMENTS, WORLD_ACTIONS,
+    BALANCE, CONSTRUCTION_OPTIONS, CREATURES, ENTITY_SCHEMAS, EXPEDITION_TARGETS, FLAGS, FLORA,
+    ITEMS, PERKS, PROCESSING_RECIPES, RESONANCE_RECIPES, RESOURCES, ROLES, STATIONS, STORY_BEATS,
+    STRUCTURES, TILES, UI_ELEMENTS, WORLD_ACTIONS,
 };
 
 pub const RESOURCE_BASSLINE: &str = "resource.bassline";
@@ -411,6 +411,17 @@ pub struct ItemDef {
     pub stackable: bool,
     pub max_stack: u32,
     pub use_effect: Option<ItemEffectDef>,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct CreatureDef {
+    pub id: &'static str,
+    pub label: &'static str,
+    pub hp: f64,
+    pub attack: f64,
+    pub threat: f64,
+    pub xp_reward: f64,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
@@ -975,6 +986,7 @@ pub struct BalanceSnapshot {
     pub crystal: CrystalBalance,
     pub power: PowerBalance,
     pub progression: ProgressionBalance,
+    pub combat: CombatBalance,
     pub survival: SurvivalBalance,
     pub build: BuildBalance,
     pub scavenge: ScavengeBalance,
@@ -1078,6 +1090,27 @@ impl HeroTrack {
             HeroTrack::Synth => "synth",
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct CombatBalance {
+    /// Hero attack at total level 0.
+    pub base_attack: f64,
+    /// Added attack per total Hero level.
+    pub attack_per_level: f64,
+    /// Hero combat HP at total level 0.
+    pub base_hp: f64,
+    /// Added combat HP per total Hero level.
+    pub hp_per_level: f64,
+    /// Real seconds each simulated combat round takes.
+    pub round_seconds: f64,
+    /// Per-hit damage variance fraction (e.g. 0.15 = ±15%).
+    pub damage_variance: f64,
+    /// Wound units accrued per point of Hero HP lost in a fight.
+    pub wound_units_per_hp_lost: f64,
+    /// Extra wound units when a fight ends in retreat (Hero downed).
+    pub defeat_extra_wound_units: f64,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq)]
@@ -2461,6 +2494,14 @@ pub fn items() -> &'static [ItemDef] {
 
 pub fn item_def(id: &str) -> Option<&'static ItemDef> {
     ITEMS.iter().find(|item| item.id == id)
+}
+
+pub fn creatures() -> &'static [CreatureDef] {
+    CREATURES
+}
+
+pub fn creature_def(id: &str) -> Option<&'static CreatureDef> {
+    CREATURES.iter().find(|creature| creature.id == id)
 }
 
 pub fn balance_snapshot() -> BalanceSnapshot {

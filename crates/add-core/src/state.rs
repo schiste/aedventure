@@ -74,6 +74,10 @@ pub struct GameState {
     /// outcomes (loot, combat) replay identically across save/reload.
     #[serde(default = "default_rng_seed")]
     pub rng_seed: u64,
+    /// The in-progress auto-battler skirmish, if any. Ticks down over rounds and
+    /// resolves to victory/retreat; persisted so offline catch-up finishes it.
+    #[serde(default)]
+    pub active_combat: Option<CombatJob>,
     /// Authoritative open/closed state for dungeon doors, keyed by
     /// `${dungeonId}:${x}:${y}`. A key present here means that door is open.
     #[serde(default)]
@@ -138,6 +142,43 @@ pub enum GameEvent {
     EffectRejected { reason: String },
     /// A Hero progression track leveled up this frame.
     HeroLeveledUp { track: String, level: u16 },
+    /// An auto-battler skirmish finished. `outcome` is "victory" or "retreat".
+    CombatResolved { creature_id: String, outcome: String },
+}
+
+/// One simulated round of an auto-battler skirmish, for the combat log.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct CombatLogEntry {
+    pub round: u16,
+    pub hero_damage: f64,
+    pub creature_damage: f64,
+    pub hero_hp: f64,
+    pub creature_hp: f64,
+}
+
+/// An in-progress skirmish. The Hero and creature trade blows once per round
+/// (`round_seconds` apart); resolves when one side is downed. Persisted so an
+/// offline gap finishes the fight on the next tick.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct CombatJob {
+    pub creature_id: String,
+    pub creature_label: String,
+    /// Location being cleared, so a win can mark it cleared + drop its loot.
+    pub location_key: String,
+    pub loot_item: Option<String>,
+    pub loot_qty: u32,
+    pub creature_hp: f64,
+    pub creature_hp_max: f64,
+    pub hero_hp: f64,
+    pub hero_hp_max: f64,
+    pub round: u16,
+    /// Seconds remaining until the next round resolves.
+    pub round_timer: f64,
+    pub xp_reward: f64,
+    pub threat: f64,
+    pub log: Vec<CombatLogEntry>,
 }
 
 impl GameState {
@@ -211,6 +252,7 @@ impl GameState {
             ],
             events: Vec::new(),
             rng_seed: DEFAULT_RNG_SEED,
+            active_combat: None,
             open_doors: BTreeSet::new(),
             acquired_perks: BTreeSet::new(),
             inventory: BTreeMap::new(),

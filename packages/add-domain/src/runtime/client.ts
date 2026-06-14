@@ -117,6 +117,10 @@ export class SimulationClient {
     this.post({ type: 'clearLocation', key, lootItem, lootQty })
   }
 
+  engage(creatureId: string, key: string, lootItem: string | undefined, lootQty: number) {
+    this.post({ type: 'engage', creatureId, key, lootItem, lootQty })
+  }
+
   dropItem(key: string, itemId: string, qty: number) {
     this.post({ type: 'dropItem', key, itemId, qty })
   }
