@@ -84,6 +84,7 @@ import {
   AddRpgPhaserMapHost,
   type AddCharacterMoveDirection,
   type AddCharacterTravelEvent,
+  type AddTileActivationEvent,
   type AddPhaserMapInfo,
 } from "./phaser-add-map"
 import {
@@ -749,6 +750,7 @@ function AddRpgApp() {
         onCharacterTravel: (event) => {
           void handleCharacterTravel(event)
         },
+        onTileAction: handleTileActivation,
         onDoorToggle: (coord) => {
           void handleDoorToggle(coord)
         },
@@ -6745,6 +6747,35 @@ function enterDungeonLink(link: AddPhaserMapInfo["character"]["dungeonLinksAtCel
   })
 }
 
+function handleTileActivation(event: AddTileActivationEvent): void {
+  if (Date.now() - lastTileActionAtMs < 120) return
+  const selected = mapHost?.selectCell(event.cell) ?? false
+  if (selected) refreshMapInfo()
+  const detail = discoveryState()?.tileDetail
+  if (!detail || detail.cell !== event.cell || !detail.travel.standingHere) return
+  const action = preferredCurrentTileAction(detail)
+  if (!action) return
+  lastTileActionAtMs = Date.now()
+  setLastTileActionTarget(action.linkId ?? event.cell)
+  runTileDetailAction(detail, action)
+}
+
+function preferredCurrentTileAction(detail: AddTileDetailSummary): AddTileAction | null {
+  const enabledActions = detail.actions.filter((action) => action.enabled)
+  const linkedAction = (action: AddTileAction) =>
+    action.linkId ? detail.links.find((link) => link.id === action.linkId) : null
+  return (
+    enabledActions.find(
+      (action) => action.kind === "enter_submap" && linkedAction(action)?.kind === "area",
+    ) ??
+    enabledActions.find(
+      (action) => action.kind === "enter_submap" && linkedAction(action)?.kind === "dungeon",
+    ) ??
+    enabledActions.find((action) => action.kind === "manage_base") ??
+    null
+  )
+}
+
 function enterDungeonInteraction(interaction: GameInteraction): void {
   const targetMapId = dungeonTargetMapIdForInteraction(interaction)
   if (!targetMapId) return
@@ -8212,6 +8243,7 @@ function emptyMapInfo(): AddPhaserMapInfo {
       activeLabel: null,
       markerVisible: false,
       primaryMarkerVisible: false,
+      lastTileActivation: null,
       selectedLabel: null,
       hoveredDetail: null,
       selectedDetail: null,

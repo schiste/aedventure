@@ -197,8 +197,10 @@ function tileLinks(
       targetMapMode: "area_hex",
       targetMapId: area.mapId,
       visible: true,
-      enabled: true,
-      blockedReason: null,
+      enabled: context.standingHere,
+      blockedReason: context.standingHere
+        ? null
+        : "Move the Hero onto this region before entering the local area.",
     })
   })
 

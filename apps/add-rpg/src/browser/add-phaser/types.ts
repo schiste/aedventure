@@ -43,9 +43,30 @@ export interface AddCharacterTravelEvent {
   readonly dungeonLinksAtDestination: readonly AddDungeonLinkInfo[]
 }
 
+export interface AddTileActivationEvent {
+  readonly coord: CellCoord
+  readonly cell: string
+  readonly trigger: "current_tile_click"
+}
+
+export type AddTileActivationReason =
+  | "activated"
+  | "not_current_tile"
+  | "hidden_or_missing_cell"
+  | "no_handler"
+
+export interface AddTileActivationTelemetry {
+  readonly cell: string | null
+  readonly accepted: boolean
+  readonly reason: AddTileActivationReason
+  readonly trigger: AddTileActivationEvent["trigger"]
+}
+
 export interface AddRpgPhaserMapHostOptions {
   readonly onBeforeCharacterTravel?: (event: AddCharacterTravelEvent) => boolean | Promise<boolean>
   readonly onCharacterTravel?: (event: AddCharacterTravelEvent) => void
+  /** Clicking the Hero's current cell requests the app to run the best local tile action. */
+  readonly onTileAction?: (event: AddTileActivationEvent) => void
   /** Bumping a closed door requests it be opened (authoritative toggle). */
   readonly onDoorToggle?: (coord: CellCoord) => void
   /** Bumping an un-cleared creature/container resolves it (clear/loot, once).
@@ -170,6 +191,7 @@ export interface PhaserMapRendererState {
     readonly activeSource: "hover" | "selection" | "none"
     readonly lastInput: "keyboard" | "pointer" | "programmatic" | "none"
     readonly dragging: boolean
+    readonly lastTileActivation: AddTileActivationTelemetry | null
   }
   readonly presentation: PhaserMapPresentationState
 }
@@ -284,6 +306,7 @@ export interface AddPhaserMapInfo {
     readonly activeLabel: string | null
     readonly markerVisible: boolean
     readonly primaryMarkerVisible: boolean
+    readonly lastTileActivation: AddTileActivationTelemetry | null
     readonly selectedLabel: string | null
     readonly hoveredDetail: AddTileInteractionDetail | null
     readonly selectedDetail: AddTileInteractionDetail | null

@@ -132,7 +132,9 @@ export function mapMarkersForCell(cell: GameCellPlacement): readonly AddMapMarke
   const tags = raw ? raw.split(",") : []
   if (tags.includes("harvestable")) markers.push({ kind: "harvestable", label: "Harvestable" })
   if (tags.includes("water_source")) markers.push({ kind: "water", label: "Water source" })
-  if ((numberMetadata(cell, "dungeonCount") ?? 0) > 0) {
+  const rawAreaIds = stringMetadata(cell, "areaIds")
+  const hasAreaSubmap = Boolean(rawAreaIds && rawAreaIds.split(",").some(Boolean))
+  if ((numberMetadata(cell, "dungeonCount") ?? 0) > 0 || hasAreaSubmap) {
     markers.push({ kind: "entrance", label: "Entrance" })
   }
   return markers
