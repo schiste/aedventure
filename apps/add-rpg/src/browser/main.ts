@@ -1813,19 +1813,36 @@ function handleShellKeyDown(event: KeyboardEvent): void {
 
 function handleKeyboardConfirm(event: KeyboardEvent): boolean {
   if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return false
-  if (shouldLetNativeKeyboardActivationHandle(event.target)) return false
 
   if (travelDialog()) {
+    if (
+      shouldLetNativeKeyboardActivationHandleInsideRoot(
+        event.target,
+        "travel-confirmation-dialog",
+      )
+    ) {
+      return false
+    }
     consumeKeyboardShortcut(event)
     answerTravelDialog(true)
     return true
   }
 
   if (offlineReturnSummary()) {
+    if (
+      shouldLetNativeKeyboardActivationHandleInsideRoot(
+        event.target,
+        "offline-return-panel",
+      )
+    ) {
+      return false
+    }
     consumeKeyboardShortcut(event)
     dismissOfflineReturnSummary()
     return true
   }
+
+  if (shouldLetNativeKeyboardActivationHandle(event.target)) return false
 
   return false
 }
@@ -1860,6 +1877,15 @@ function shouldLetNativeKeyboardActivationHandle(target: EventTarget | null): bo
       'button, a[href], summary, input, textarea, select, [role="button"], [contenteditable="true"]',
     ),
   )
+}
+
+function shouldLetNativeKeyboardActivationHandleInsideRoot(
+  target: EventTarget | null,
+  rootId: string,
+): boolean {
+  const element = target instanceof Element ? target : null
+  const root = document.getElementById(rootId)
+  return Boolean(element && root?.contains(element) && shouldLetNativeKeyboardActivationHandle(target))
 }
 
 function focusElementById(id: string): void {
@@ -5960,7 +5986,18 @@ function showTravelDialog(
 ): Promise<boolean> {
   return new Promise<boolean>((resolve) => {
     setTravelDialog({ kind, event, resolve })
+    focusTravelDialogDefaultAction(kind)
   })
+}
+
+function focusTravelDialogDefaultAction(kind: TravelDialogKind): void {
+  focusElementById(defaultTravelDialogActionId(kind))
+}
+
+function defaultTravelDialogActionId(kind: TravelDialogKind): string {
+  if (kind === "first_declined") return "travel-dialog-dismiss"
+  if (kind === "dramatic_reprise") return "travel-dialog-venture"
+  return "travel-dialog-confirm"
 }
 
 function answerTravelDialog(accepted: boolean): void {

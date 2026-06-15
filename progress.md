@@ -3135,3 +3135,9 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   option so Escape and the UI agree. Focused verification passed, and a targeted
   Playwright probe confirmed route preview, travel cancel, dismiss, and confirm
   flows through keyboard only.
+- Hardened travel-dialog keyboard ownership. The travel prompt now focuses its
+  default action when it opens, and the shell lets the active modal own Enter
+  even if focus is still on the objective CTA behind the backdrop. Native Enter
+  behavior is preserved for buttons inside the modal, so cancel/confirm buttons
+  still behave normally. The ADD smoke now reproduces the original failure path
+  by focusing the behind-modal objective action before pressing Enter.
