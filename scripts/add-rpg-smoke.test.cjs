@@ -3300,6 +3300,7 @@ async function exerciseSurvivorCaveDungeonEntry(page, consoleErrors) {
       state.map?.validationValid === true &&
       state.map?.character?.cell === "square:2,4" &&
       state.map?.interaction?.lastTileActivation?.accepted === true &&
+      state.map?.interaction?.lastTileActivation?.trigger === "tile_click" &&
       state.map?.interaction?.lastTileActivation?.cell === selectedCave.map.character.cell &&
       state.dungeonObjective?.active === true &&
       state.dungeonObjective?.label === "Survivor Cave" &&
@@ -3846,7 +3847,7 @@ async function clickReachableTravelCandidate(page, heroPoint, consoleErrors) {
 
   let lastState = await renderGameToText(page)
   for (const offset of offsets) {
-    await page.mouse.click(heroPoint.x + offset.x, heroPoint.y + offset.y)
+    await page.mouse.move(heroPoint.x + offset.x, heroPoint.y + offset.y)
     try {
       return await waitForTextState(
         page,

@@ -15,7 +15,6 @@ import {
 } from "@aedventure/game-renderer-phaser"
 import {
   addMapCoordKey,
-  addAreaById,
   createAddCellPresentationPolicy,
   createAddTopologyNavigationPolicy,
   createAddWorldInteractionPolicy,
@@ -24,6 +23,7 @@ import {
   dungeonLinkInfo,
   mapMarkersForCell,
   presentationVisibilityStateForCell,
+  selectAddTileDetail,
   tileInteractionDetailForCoord,
   type AddMapMarker,
 } from "@aedventure/add-domain"
@@ -111,9 +111,12 @@ type MobileEdgeCullObject = Phaser.GameObjects.GameObject & {
 }
 
 type AddLandmarkRole = "cave" | "base" | "crystal" | "door" | "interior" | "generic"
+type TileActionAffordanceKind = "area" | "dungeon" | "base" | "travel"
 
-interface TileSubmapAffordanceLink {
+interface TileActionAffordance {
+  readonly kind: TileActionAffordanceKind
   readonly label: string
+  readonly actionLabel: string
   readonly enabled: boolean
 }
 
@@ -1631,15 +1634,16 @@ export class AddRpgHexScene extends Phaser.Scene {
   ): readonly WorldCellInteractionAffordance[] {
     const affordances: WorldCellInteractionAffordance[] = []
     for (const cell of context.terrainCells) {
-      const links = this.submapAffordanceLinksForCell(cell, context)
-      if (links.length === 0) continue
+      const actions = this.tileActionAffordancesForCell(cell, context)
+      const primaryAction = actions.find((action) => action.enabled)
+      if (!primaryAction) continue
       affordances.push({
-        id: `portal:${addMapCoordKey(cell.coord)}`,
+        id: `tile-action:${addMapCoordKey(cell.coord)}`,
         coord: cell.coord,
-        kind: "portal",
-        label: links.map((link) => link.label).join(", ") || "Linked area",
-        actionLabel: "Enter",
-        enabled: links.some((link) => link.enabled),
+        kind: primaryAction.kind === "travel" ? "action" : "portal",
+        label: actions.map((action) => action.label).join(", ") || "Tile action",
+        actionLabel: primaryAction.actionLabel,
+        enabled: true,
         emphasis: "subtle",
       })
     }
@@ -1647,48 +1651,81 @@ export class AddRpgHexScene extends Phaser.Scene {
     const primaryCoord = this.hoveredCoord
     if (!primaryCoord) return affordances
     const primaryCell = context.terrainByCoord.get(addMapCoordKey(primaryCoord))
-    if (!primaryCell || !this.characterCoord || !sameCoord(primaryCoord, this.characterCoord)) {
-      return affordances
-    }
-    const primaryLinks = this.submapAffordanceLinksForCell(primaryCell, context)
-    if (primaryLinks.length === 0) return affordances
+    if (!primaryCell) return affordances
+    const primaryAction = this.tileActionAffordancesForCell(primaryCell, context).find(
+      (action) => action.enabled,
+    )
+    if (!primaryAction) return affordances
 
     affordances.push({
-      id: `primary:current-tile:${addMapCoordKey(primaryCoord)}`,
+      id: `primary:tile-action:${addMapCoordKey(primaryCoord)}`,
       coord: primaryCoord,
-      kind: "portal",
-      label: primaryLinks.map((link) => link.label).join(", "),
-      actionLabel: "Enter",
-      enabled: primaryLinks.some((link) => link.enabled),
+      kind: primaryAction.kind === "travel" ? "action" : "portal",
+      label: primaryAction.label,
+      actionLabel: primaryAction.actionLabel,
+      enabled: true,
       emphasis: "primary",
       color: 0xe3a64a,
     })
     return affordances
   }
 
-  private submapAffordanceLinksForCell(
+  private tileActionAffordancesForCell(
     cell: GameCellPlacement,
     context: RenderContext,
-  ): readonly TileSubmapAffordanceLink[] {
-    const detail = tileInteractionDetailForCoord(cell.coord, context.terrainByCoord)
-    if (!detail || detail.visibility === "hidden") return []
-    const dungeonLinks = dungeonLinksForCoord(cell.coord, context).map(dungeonLinkInfo)
-    const areaLinks: TileSubmapAffordanceLink[] = []
-    for (const areaId of detail.areaIds) {
-      const area = addAreaById(areaId)
-      if (!area) continue
-      areaLinks.push({
-        label: area.label,
-        enabled: true,
+  ): readonly TileActionAffordance[] {
+    const tile = tileInteractionDetailForCoord(cell.coord, context.terrainByCoord)
+    if (!tile || tile.visibility === "hidden") return []
+    const standingHere = Boolean(this.characterCoord && sameCoord(cell.coord, this.characterCoord))
+    const adjacent = this.coordAdjacentToCharacter(cell.coord)
+    const detail = selectAddTileDetail({
+      tile,
+      heroCell: this.characterCoord ? displayAddCell(this.characterCoord) : null,
+      heroDungeonLinks: standingHere
+        ? dungeonLinksForCoord(cell.coord, context).map(dungeonLinkInfo)
+        : [],
+      travel: {
+        gameMinutes: ADD_TILE_TRAVEL_PRESENTATION.visibleGameMinutes,
+        previewAdjacent: adjacent,
+        previewCell: displayAddCell(cell.coord),
+      },
+    })
+    if (!detail) return []
+
+    return detail.actions
+      .filter((action) => action.kind !== "inspect")
+      .map((action): TileActionAffordance | null => {
+        if (action.kind === "travel") {
+          return {
+            kind: "travel",
+            label: detail.label,
+            actionLabel: "Travel",
+            enabled: action.enabled,
+          }
+        }
+        const link = action.linkId
+          ? detail.links.find((candidate) => candidate.id === action.linkId)
+          : null
+        if (action.kind === "manage_base") {
+          return {
+            kind: "base",
+            label: link?.label ?? detail.label,
+            actionLabel: "Open",
+            enabled: action.enabled,
+          }
+        }
+        if (action.kind === "enter_submap") {
+          return {
+            kind: link?.kind === "dungeon" ? "dungeon" : "area",
+            label: link?.label ?? detail.label,
+            actionLabel: "Enter",
+            enabled: action.enabled,
+          }
+        }
+        return null
       })
-    }
-    return [
-      ...dungeonLinks.map((link) => ({
-        label: link.label,
-        enabled: link.enabled,
-      })),
-      ...areaLinks,
-    ]
+      .filter((action): action is TileActionAffordance => Boolean(action))
+      .sort(compareTileActionAffordances)
   }
 
   private fitCameraToContext(context: RenderContext): void {
@@ -1821,14 +1858,14 @@ export class AddRpgHexScene extends Phaser.Scene {
       this.selectedCoord = clickedCoord
       this.lastInteractionInput = "pointer"
       this.drawOverlay()
-      if (clickedCoord && this.characterCoord && sameCoord(clickedCoord, this.characterCoord)) {
-        this.activateCurrentTile(clickedCoord)
+      if (clickedCoord) {
+        this.activateTile(clickedCoord)
       } else {
         this.lastTileActivation = {
-          cell: clickedCoord ? displayAddCell(clickedCoord) : null,
+          cell: null,
           accepted: false,
-          reason: "not_current_tile",
-          trigger: "current_tile_click",
+          reason: "no_tile",
+          trigger: "tile_click",
         }
       }
     }
@@ -1836,7 +1873,7 @@ export class AddRpgHexScene extends Phaser.Scene {
     this.refreshInfo()
   }
 
-  private activateCurrentTile(coord: CellCoord): void {
+  private activateTile(coord: CellCoord): void {
     const context = this.context
     if (!context) return
     const cell = context.terrainByCoord.get(addMapCoordKey(coord))
@@ -1845,7 +1882,19 @@ export class AddRpgHexScene extends Phaser.Scene {
         cell: displayAddCell(coord),
         accepted: false,
         reason: "hidden_or_missing_cell",
-        trigger: "current_tile_click",
+        trigger: "tile_click",
+      }
+      return
+    }
+    const authorizedActions = this.tileActionAffordancesForCell(cell, context).filter(
+      (action) => action.enabled,
+    )
+    if (authorizedActions.length === 0) {
+      this.lastTileActivation = {
+        cell: displayAddCell(coord),
+        accepted: false,
+        reason: "no_authorized_action",
+        trigger: "tile_click",
       }
       return
     }
@@ -1854,7 +1903,7 @@ export class AddRpgHexScene extends Phaser.Scene {
         cell: displayAddCell(coord),
         accepted: false,
         reason: "no_handler",
-        trigger: "current_tile_click",
+        trigger: "tile_click",
       }
       return
     }
@@ -1862,12 +1911,12 @@ export class AddRpgHexScene extends Phaser.Scene {
       cell: displayAddCell(coord),
       accepted: true,
       reason: "activated",
-      trigger: "current_tile_click",
+      trigger: "tile_click",
     }
     this.hostOptions.onTileAction?.({
       coord,
       cell: displayAddCell(coord),
-      trigger: "current_tile_click",
+      trigger: "tile_click",
     })
   }
 
@@ -1966,6 +2015,25 @@ export class AddRpgHexScene extends Phaser.Scene {
     return distanceBetween(worldPoint, this.characterPosition) <= threshold
       ? this.characterCoord
       : null
+  }
+
+  private coordAdjacentToCharacter(coord: CellCoord): boolean {
+    const from = this.characterCoord
+    if (!from || from.kind !== coord.kind || sameCoord(from, coord)) return false
+    if (from.kind === "square" && coord.kind === "square") {
+      return Math.abs(coord.x - from.x) + Math.abs(coord.y - from.y) === 1
+    }
+    if (from.kind === "hex" && coord.kind === "hex") {
+      return (
+        (coord.q === from.q && coord.r === from.r - 1) ||
+        (coord.q === from.q + 1 && coord.r === from.r - 1) ||
+        (coord.q === from.q + 1 && coord.r === from.r) ||
+        (coord.q === from.q && coord.r === from.r + 1) ||
+        (coord.q === from.q - 1 && coord.r === from.r + 1) ||
+        (coord.q === from.q - 1 && coord.r === from.r)
+      )
+    }
+    return false
   }
 
   private worldPointForPointer(pointer: Phaser.Input.Pointer): Vector2 {
@@ -2198,4 +2266,19 @@ function emptyMapPrimaryAffordanceInfo(): MapPrimaryAffordanceInfo {
     landmarkBeaconCount: 0,
     studioArrivalEmphasisVisible: false,
   }
+}
+
+function compareTileActionAffordances(
+  left: TileActionAffordance,
+  right: TileActionAffordance,
+): number {
+  return tileActionAffordancePriority(left) - tileActionAffordancePriority(right)
+}
+
+function tileActionAffordancePriority(action: TileActionAffordance): number {
+  if (action.kind === "area") return 0
+  if (action.kind === "dungeon") return 1
+  if (action.kind === "base") return 2
+  if (action.kind === "travel") return 3
+  return 4
 }

@@ -46,13 +46,14 @@ export interface AddCharacterTravelEvent {
 export interface AddTileActivationEvent {
   readonly coord: CellCoord
   readonly cell: string
-  readonly trigger: "current_tile_click"
+  readonly trigger: "tile_click"
 }
 
 export type AddTileActivationReason =
   | "activated"
-  | "not_current_tile"
+  | "no_tile"
   | "hidden_or_missing_cell"
+  | "no_authorized_action"
   | "no_handler"
 
 export interface AddTileActivationTelemetry {
@@ -65,7 +66,7 @@ export interface AddTileActivationTelemetry {
 export interface AddRpgPhaserMapHostOptions {
   readonly onBeforeCharacterTravel?: (event: AddCharacterTravelEvent) => boolean | Promise<boolean>
   readonly onCharacterTravel?: (event: AddCharacterTravelEvent) => void
-  /** Clicking the Hero's current cell requests the app to run the best local tile action. */
+  /** Clicking a visible cell requests the app to run the best authorized tile action. */
   readonly onTileAction?: (event: AddTileActivationEvent) => void
   /** Bumping a closed door requests it be opened (authoritative toggle). */
   readonly onDoorToggle?: (coord: CellCoord) => void
