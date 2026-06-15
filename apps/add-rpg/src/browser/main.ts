@@ -171,6 +171,13 @@ interface QuestPanelPosition {
 
 type FloatingPanelId = "travel_dialog" | "offline_return" | "settings"
 type FloatingPanelLastAction = "idle" | "dragging" | "dragged" | "keyboard_moved"
+type KeyboardPopinRootId =
+  | "shell-menu-panel"
+  | "settings-view"
+  | "admin-view"
+  | "dev-view"
+  | "travel-confirmation-dialog"
+  | "offline-return-panel"
 
 interface FloatingPanelPosition {
   readonly x: number
@@ -942,6 +949,8 @@ function AddRpgApp() {
                   role="menu"
                   aria-label="Secondary menu"
                   aria-hidden=${() => !shellMenuOpen()}
+                  onKeyDown=${(event: KeyboardEvent) =>
+                    handlePopinKeyboardNavigation("shell-menu-panel", event)}
                 >
                   <div class="shell-menu-header" aria-hidden="true">
                     <strong>Menu</strong>
@@ -1123,6 +1132,8 @@ function AddRpgApp() {
         aria-modal="true"
         aria-label="Player settings"
         aria-hidden=${() => !settingsOpen()}
+        onKeyDown=${(event: KeyboardEvent) =>
+          handlePopinKeyboardNavigation("settings-view", event)}
       >
         <div class="settings-hex-inner">
           <div
@@ -1155,7 +1166,11 @@ function AddRpgApp() {
           </div>
 
           <div class="settings-hex-body">
-            <section class="panel settings-panel settings-sound-panel">
+            <section
+              class="panel settings-panel settings-sound-panel keyboard-section"
+              tabindex="0"
+              aria-label="Sound settings section"
+            >
               <div class="panel-heading">
                 <span>Sound</span>
                 <span class="small-chip">${() => soundStatusLabel()}</span>
@@ -1191,7 +1206,11 @@ function AddRpgApp() {
               </div>
             </section>
 
-            <section class="panel settings-panel">
+            <section
+              class="panel settings-panel keyboard-section"
+              tabindex="0"
+              aria-label="Play pace settings section"
+            >
               <div class="panel-heading">
                 <span>Play pace</span>
                 <span class="small-chip">${() => (autoTick() ? `${timeSpeed()}x` : "Paused")}</span>
@@ -1228,7 +1247,11 @@ function AddRpgApp() {
               </div>
             </section>
 
-            <section class="panel settings-panel">
+            <section
+              class="panel settings-panel keyboard-section"
+              tabindex="0"
+              aria-label="Interface settings section"
+            >
               <div class="panel-heading">
                 <span>Interface</span>
                 <span class="small-chip">Player</span>
@@ -1268,7 +1291,11 @@ function AddRpgApp() {
               </div>
             </section>
 
-            <section class="panel settings-panel">
+            <section
+              class="panel settings-panel keyboard-section"
+              tabindex="0"
+              aria-label="Save data settings section"
+            >
               <div class="panel-heading">
                 <span>Save data</span>
                 <span class="small-chip">${() => (autosaveEnabled() ? "Autosave on" : "Manual")}</span>
@@ -1318,6 +1345,8 @@ function AddRpgApp() {
         class=${() => (adminOpen() ? "admin-view open" : "admin-view")}
         aria-label="ADD admin controls"
         aria-hidden=${() => !adminOpen()}
+        onKeyDown=${(event: KeyboardEvent) =>
+          handlePopinKeyboardNavigation("admin-view", event)}
       >
         <div class="admin-header">
           <div>
@@ -1345,7 +1374,12 @@ function AddRpgApp() {
           <a href="#admin-world-actions">Actions</a>
         </nav>
 
-        <section id="admin-run-status" class="panel runtime-panel">
+        <section
+          id="admin-run-status"
+          class="panel runtime-panel keyboard-section"
+          tabindex="0"
+          aria-label="Admin run status section"
+        >
           <div class="panel-heading">
             <span>Run status</span>
             <button
@@ -1373,7 +1407,12 @@ function AddRpgApp() {
           </dl>
         </section>
 
-        <section id="admin-resources" class="panel">
+        <section
+          id="admin-resources"
+          class="panel keyboard-section"
+          tabindex="0"
+          aria-label="Admin resources section"
+        >
           <div class="panel-heading">
             <span>Resources</span>
             <span class="small-chip">${() => `${uiState()?.resources.length ?? 0} tracked`}</span>
@@ -1383,7 +1422,12 @@ function AddRpgApp() {
           </div>
         </section>
 
-        <section id="admin-objective" class="panel">
+        <section
+          id="admin-objective"
+          class="panel keyboard-section"
+          tabindex="0"
+          aria-label="Admin objective section"
+        >
           <div class="panel-heading">
             <span>Objective</span>
             <span class="small-chip">${() => objectiveState()}</span>
@@ -1398,7 +1442,12 @@ function AddRpgApp() {
 
         ${() => adminStoryBrowserPanel()}
 
-        <section id="admin-recovery" class="panel admin-recovery-panel">
+        <section
+          id="admin-recovery"
+          class="panel admin-recovery-panel keyboard-section"
+          tabindex="0"
+          aria-label="Admin run recovery section"
+        >
           <div class="panel-heading">
             <span>Run recovery</span>
             <span class="small-chip">${() => (autosaveEnabled() ? "Autosave on" : "Manual save")}</span>
@@ -1434,7 +1483,12 @@ function AddRpgApp() {
           </div>
         </section>
 
-        <section id="admin-world-actions" class="panel compact-panel">
+        <section
+          id="admin-world-actions"
+          class="panel compact-panel keyboard-section"
+          tabindex="0"
+          aria-label="Admin world actions section"
+        >
           <div class="panel-heading">
             <span>World actions</span>
             <span class="small-chip">${() => `${worldActions().filter((action) => action.enabled).length} ready`}</span>
@@ -1451,6 +1505,8 @@ function AddRpgApp() {
         class=${() => (devToolsOpen() ? "admin-view dev-view open" : "admin-view dev-view")}
         aria-label="Developer menu"
         aria-hidden=${() => !devToolsOpen()}
+        onKeyDown=${(event: KeyboardEvent) =>
+          handlePopinKeyboardNavigation("dev-view", event)}
       >
         <div class="admin-header dev-header">
           <div>
@@ -1478,7 +1534,12 @@ function AddRpgApp() {
             <a href="#dev-save-tools">Save</a>
           </nav>
 
-          <section id="dev-runtime-internals" class="panel runtime-internals-panel">
+          <section
+            id="dev-runtime-internals"
+            class="panel runtime-internals-panel keyboard-section"
+            tabindex="0"
+            aria-label="Developer runtime internals section"
+          >
             <div class="panel-heading">
               <span>Runtime internals</span>
               <span class="small-chip">${() => (ready() ? "Ready" : "Starting")}</span>
@@ -1502,7 +1563,12 @@ function AddRpgApp() {
             </dl>
           </section>
 
-          <section id="dev-live-tuning" class="panel runtime-internals-panel">
+          <section
+            id="dev-live-tuning"
+            class="panel runtime-internals-panel keyboard-section"
+            tabindex="0"
+            aria-label="Developer live tuning section"
+          >
             <div class="panel-heading">
               <span>Live tuning</span>
               <span class="small-chip">${() => (liveTuningDashboardVisible() ? "Visible" : "Hidden")}</span>
@@ -1520,7 +1586,12 @@ function AddRpgApp() {
             </button>
           </section>
 
-          <section id="dev-commands" class="panel command-panel">
+          <section
+            id="dev-commands"
+            class="panel command-panel keyboard-section"
+            tabindex="0"
+            aria-label="Developer commands section"
+          >
             <div class="panel-heading">
               <span>Commands</span>
               <span class="small-chip">${() => lastCommand() ?? "Idle"}</span>
@@ -1574,7 +1645,12 @@ function AddRpgApp() {
             ${() => (lastError() ? html`<p class="error-line">${lastError()}</p>` : null)}
           </section>
 
-          <section id="dev-save-tools" class="panel run-panel">
+          <section
+            id="dev-save-tools"
+            class="panel run-panel keyboard-section"
+            tabindex="0"
+            aria-label="Developer raw save section"
+          >
             <div class="panel-heading">
               <span>Raw save</span>
               <button
@@ -1865,9 +1941,56 @@ function handleKeyboardCancel(event: KeyboardEvent): boolean {
   return false
 }
 
+function handlePopinKeyboardNavigation(rootId: KeyboardPopinRootId, event: KeyboardEvent): void {
+  if (event.key !== "Tab") return
+  const root = document.getElementById(rootId)
+  if (!(root instanceof HTMLElement)) return
+
+  const focusableElements = popinFocusableElements(root)
+  if (focusableElements.length === 0) return
+
+  const activeElement = document.activeElement instanceof HTMLElement ? document.activeElement : null
+  const activeIndex = activeElement ? focusableElements.indexOf(activeElement) : -1
+  if (activeIndex === -1) {
+    consumeKeyboardShortcut(event)
+    focusableElements[event.shiftKey ? focusableElements.length - 1 : 0]?.focus()
+    return
+  }
+
+  const nextIndex = activeIndex + (event.shiftKey ? -1 : 1)
+  if (nextIndex >= 0 && nextIndex < focusableElements.length) return
+
+  consumeKeyboardShortcut(event)
+  focusableElements[event.shiftKey ? focusableElements.length - 1 : 0]?.focus()
+}
+
 function consumeKeyboardShortcut(event: KeyboardEvent): void {
   event.preventDefault()
   event.stopPropagation()
+}
+
+function popinFocusableElements(root: HTMLElement): readonly HTMLElement[] {
+  return Array.from(
+    root.querySelectorAll<HTMLElement>(
+      [
+        "a[href]",
+        "button:not([disabled])",
+        "input:not([disabled])",
+        "select:not([disabled])",
+        "textarea:not([disabled])",
+        "summary",
+        '[tabindex]:not([tabindex="-1"])',
+      ].join(", "),
+    ),
+  ).filter(isVisibleKeyboardStop)
+}
+
+function isVisibleKeyboardStop(element: HTMLElement): boolean {
+  if (element.closest("[hidden], [aria-hidden='true']")) return false
+  const style = window.getComputedStyle(element)
+  if (style.display === "none" || style.visibility === "hidden") return false
+  const rect = element.getBoundingClientRect()
+  return rect.width > 0 || rect.height > 0
 }
 
 function shouldLetNativeKeyboardActivationHandle(target: EventTarget | null): boolean {
@@ -2245,7 +2368,12 @@ function adminStoryBrowserPanel(): unknown {
   const state = storyContentBrowserState()
   if (!state) {
     return html`
-      <section id="admin-story-browser" class="panel admin-story-panel">
+      <section
+        id="admin-story-browser"
+        class="panel admin-story-panel keyboard-section"
+        tabindex="0"
+        aria-label="Admin story content section"
+      >
         <div class="panel-heading">
           <span>Story content</span>
           <span class="small-chip">Waiting</span>
@@ -2255,7 +2383,12 @@ function adminStoryBrowserPanel(): unknown {
     `
   }
   return html`
-    <section id="admin-story-browser" class="panel admin-story-panel">
+    <section
+      id="admin-story-browser"
+      class="panel admin-story-panel keyboard-section"
+      tabindex="0"
+      aria-label="Admin story content section"
+    >
       <div class="panel-heading">
         <span>Story content</span>
         <span class="small-chip">${state.contentValidationVersion}</span>
@@ -2595,7 +2728,12 @@ function baseManagementPanel(): unknown {
         ${() => focusedSystemTab()
           ? null
           : html`
-              <article class="base-section-summary" data-severity=${section?.blockedReason ? "warning" : "neutral"}>
+              <article
+                class="base-section-summary keyboard-section"
+                data-severity=${section?.blockedReason ? "warning" : "neutral"}
+                tabindex="0"
+                aria-label="Base section summary"
+              >
                 <span>${section?.headline ?? state.subtitle}</span>
                 <small>${section?.detail ?? state.nextBottleneck.detail}</small>
               </article>
@@ -2618,8 +2756,9 @@ function baseManagementCommandStrip(state: AddBaseManagementState): unknown {
   return html`
     <article
       id="base-bottleneck-strip"
-      class="base-bottleneck-strip"
+      class="base-bottleneck-strip keyboard-section"
       data-severity=${state.nextBottleneck.severity}
+      tabindex="0"
       aria-label="Base bottleneck and rate watch"
     >
       <div class="base-bottleneck-primary">
@@ -2679,7 +2818,11 @@ function dungeonContextPanel(): unknown {
           ${() => dungeonReturnLabel()}
         </button>
       </div>
-      <article class="dungeon-mode-summary">
+      <article
+        class="dungeon-mode-summary keyboard-section"
+        tabindex="0"
+        aria-label="Dungeon status summary"
+      >
         <span>Dungeon status</span>
         <strong>${dungeon?.headline ?? "Explore the interior"}</strong>
         <small title=${dungeon?.detail ?? "Explore the interior and return when ready."}>
@@ -2687,7 +2830,11 @@ function dungeonContextPanel(): unknown {
         </small>
       </article>
       <div class="dungeon-context-grid">
-        <article class="dungeon-context-card emphasis">
+        <article
+          class="dungeon-context-card emphasis keyboard-section"
+          tabindex="0"
+          aria-label="Dungeon current objective"
+        >
           <span>Current objective</span>
           <strong>${currentStep()?.label ?? dungeon?.headline ?? "Get your bearings"}</strong>
           <small title=${currentStep()?.detail ?? dungeon?.detail ?? "Inspect the room, then return when ready."}>
@@ -2697,19 +2844,31 @@ function dungeonContextPanel(): unknown {
             )}
           </small>
         </article>
-        <article class="dungeon-context-card">
+        <article
+          class="dungeon-context-card keyboard-section"
+          tabindex="0"
+          aria-label="Dungeon discovered exits"
+        >
           <span>Discovered exits</span>
           <div class="dungeon-context-list">
             ${() => dungeonExitRows(dungeon)}
           </div>
         </article>
-        <article class="dungeon-context-card">
+        <article
+          class="dungeon-context-card keyboard-section"
+          tabindex="0"
+          aria-label="Dungeon blockers"
+        >
           <span>Blockers</span>
           <div class="dungeon-context-list">
             ${() => dungeonBlockerRows()}
           </div>
         </article>
-        <article class="dungeon-context-card local-map">
+        <article
+          class="dungeon-context-card local-map keyboard-section"
+          tabindex="0"
+          aria-label="Dungeon local map state"
+        >
           <span>Local map</span>
           <div class="dungeon-map-metrics">
             ${() => dungeonLocalMapMetricRows()}
@@ -3008,11 +3167,12 @@ function currentActionSurface(): unknown {
   return html`
     <article
       id="current-action-surface"
-      class="current-action-surface"
+      class="current-action-surface keyboard-section"
       data-source=${() => currentActionState().source}
       data-kind=${() => currentActionState().kind}
       data-enabled=${() => (currentActionState().enabled ? "true" : "false")}
-      tabindex="-1"
+      tabindex="0"
+      data-keyboard-section="true"
       aria-live="polite"
       aria-label="Current action"
     >
@@ -3521,8 +3681,9 @@ function basePlayerLoopPanel(state: AddBaseManagementState): unknown {
   return html`
     <section
       id="base-player-loop"
-      class="base-player-loop"
+      class="base-player-loop keyboard-section"
       data-health=${loop.health.status}
+      tabindex="0"
       aria-label="Base player loop"
     >
       <header>
@@ -3533,29 +3694,54 @@ function basePlayerLoopPanel(state: AddBaseManagementState): unknown {
         </small>
       </header>
       <div class="base-loop-focus-grid">
-        <article data-severity=${loop.health.severity}>
+        <article
+          class="keyboard-section"
+          data-severity=${loop.health.severity}
+          tabindex="0"
+          aria-label="Base health summary"
+        >
           <span>Health</span>
           <strong>${loop.health.label}</strong>
           <small title=${loop.health.detail}>${leadUiCopy(loop.health.detail, 50)}</small>
         </article>
-        <article data-severity=${loop.bottleneck.severity}>
+        <article
+          class="keyboard-section"
+          data-severity=${loop.bottleneck.severity}
+          tabindex="0"
+          aria-label="Base bottleneck summary"
+        >
           <span>Bottleneck</span>
           <strong>${loop.bottleneck.label}</strong>
           <small title=${loop.bottleneck.detail}>${leadUiCopy(loop.bottleneck.detail, 50)}</small>
         </article>
-        <article data-severity=${state.recommendedAction.enabled ? "good" : "neutral"}>
+        <article
+          class="keyboard-section"
+          data-severity=${state.recommendedAction.enabled ? "good" : "neutral"}
+          tabindex="0"
+          aria-label="Base recommended action summary"
+        >
           <span>Action</span>
           <strong>${state.recommendedAction.label}</strong>
           <small title=${state.recommendedAction.detail}>${leadUiCopy(state.recommendedAction.detail, 50)}</small>
         </article>
-        <article data-severity="neutral">
+        <article
+          class="keyboard-section"
+          data-severity="neutral"
+          tabindex="0"
+          aria-label="Base wait forecast summary"
+        >
           <span>If I wait</span>
           <strong>${waitForecast?.label ?? "Forecast"}</strong>
           <small title=${waitForecast?.summary ?? state.economy.offlinePreview.summary}>
             ${leadUiCopy(waitForecast?.summary ?? state.economy.offlinePreview.summary, 50)}
           </small>
         </article>
-        <article data-severity="neutral">
+        <article
+          class="keyboard-section"
+          data-severity="neutral"
+          tabindex="0"
+          aria-label="Base return plan summary"
+        >
           <span>Return</span>
           <strong>${loop.returnPlan.horizonSeconds === null ? "Review now" : formatEconomyDuration(loop.returnPlan.horizonSeconds)}</strong>
           <small title=${loop.returnPlan.summary}>${leadUiCopy(loop.returnPlan.summary, 50)}</small>
@@ -6034,6 +6220,8 @@ function travelDialogView(): unknown {
         data-kind=${dialog.kind}
         data-dragging=${() => floatingPanelDraggingId() === "travel_dialog"}
         data-last-action=${() => floatingPanelLastActions().travel_dialog}
+        onKeyDown=${(event: KeyboardEvent) =>
+          handlePopinKeyboardNavigation("travel-confirmation-dialog", event)}
       >
         <div
           class="floating-panel-handle travel-dialog-handle"
@@ -6050,7 +6238,13 @@ function travelDialogView(): unknown {
           <span class="travel-dialog-eyebrow">${() => travelDialogEyebrow(dialog.kind)}</span>
           <h2 id="travel-dialog-title">${() => travelDialogTitle(dialog.kind)}</h2>
         </div>
-        <p>${() => travelDialogCopy(dialog.kind, dialog.event)}</p>
+        <p
+          class="travel-dialog-copy keyboard-section"
+          tabindex="0"
+          aria-label="Travel warning"
+        >
+          ${() => travelDialogCopy(dialog.kind, dialog.event)}
+        </p>
         <div class="travel-dialog-actions">
           ${() => travelDialogActions(dialog.kind)}
         </div>
@@ -6076,6 +6270,8 @@ function offlineReturnPanel(): unknown {
       aria-labelledby="offline-return-title"
       aria-live="polite"
       aria-keyshortcuts="Enter Escape"
+      onKeyDown=${(event: KeyboardEvent) =>
+        handlePopinKeyboardNavigation("offline-return-panel", event)}
     >
       <div
         class="floating-panel-handle offline-return-heading"
@@ -6105,15 +6301,27 @@ function offlineReturnPanel(): unknown {
           Close
         </button>
       </div>
-      <article class="offline-return-hero">
+      <article
+        class="offline-return-hero keyboard-section"
+        tabindex="0"
+        aria-label="Offline return summary"
+      >
         <span>${summary.source === "manual" ? "Manual catch-up" : "Autosave return"}</span>
         <strong>${summary.headline}</strong>
         <small title=${summary.summary}>${leadUiCopy(summary.summary, 76)}</small>
       </article>
-      <div class="offline-return-highlights" aria-label="Return highlights">
+      <div
+        class="offline-return-highlights keyboard-section"
+        tabindex="0"
+        aria-label="Return highlights"
+      >
         ${() => offlineReturnHighlightRows(summary)}
       </div>
-      <article class="offline-return-card offline-return-next">
+      <article
+        class="offline-return-card offline-return-next keyboard-section"
+        tabindex="0"
+        aria-label="Offline return next action"
+      >
         <span>After dismissing</span>
         <strong>${() => returnReviewNextAction().label}</strong>
         <small title=${() => returnReviewNextAction().detail}>
@@ -6131,15 +6339,15 @@ function offlineReturnPanel(): unknown {
         </button>
       </article>
       <div class="offline-return-grid">
-        <article class="offline-return-card">
+        <article class="offline-return-card keyboard-section" tabindex="0" aria-label="Offline return gains">
           <span>Gained</span>
           <ul>${offlineReturnResourceRows(summary)}</ul>
         </article>
-        <article class="offline-return-card">
+        <article class="offline-return-card keyboard-section" tabindex="0" aria-label="Offline return completed jobs">
           <span>Completed</span>
           <ul>${offlineReturnJobRows(summary)}</ul>
         </article>
-        <article class="offline-return-card">
+        <article class="offline-return-card keyboard-section" tabindex="0" aria-label="Offline return recruits">
           <span>Recruits</span>
           <strong>${summary.recruitsArrived}</strong>
           <small>
@@ -6148,25 +6356,25 @@ function offlineReturnPanel(): unknown {
               : "No arrivals."}
           </small>
         </article>
-        <article class="offline-return-card">
+        <article class="offline-return-card keyboard-section" tabindex="0" aria-label="Offline return bubble changes">
           <span>Bubble</span>
           <strong>${formatSignedNumber(summary.bubble.reachDelta)} reach</strong>
           <small>${summary.bubble.summary}</small>
         </article>
-        <article class="offline-return-card">
+        <article class="offline-return-card keyboard-section" tabindex="0" aria-label="Offline return brownouts">
           <span>Brownouts</span>
           <strong>${summary.brownout.occurred ? "Pressure" : "Stable"}</strong>
           <small>${summary.brownout.summary}</small>
         </article>
-        <article class="offline-return-card offline-return-blockers">
+        <article class="offline-return-card offline-return-blockers keyboard-section" tabindex="0" aria-label="Offline return blockers">
           <span>Blockers</span>
           <ul>${offlineReturnBlockerRows(summary)}</ul>
         </article>
-        <article class="offline-return-card offline-return-paused">
+        <article class="offline-return-card offline-return-paused keyboard-section" tabindex="0" aria-label="Offline return unchanged systems">
           <span>Unchanged systems</span>
           <ul>${offlineReturnPausedRows(summary)}</ul>
         </article>
-        <article class="offline-return-card offline-return-rules">
+        <article class="offline-return-card offline-return-rules keyboard-section" tabindex="0" aria-label="Offline return rules">
           <span>Offline rules</span>
           <strong>Automated loops only</strong>
           <small>Manual Hero actions stay paused.</small>

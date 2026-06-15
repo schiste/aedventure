@@ -3141,3 +3141,10 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   behavior is preserved for buttons inside the modal, so cancel/confirm buttons
   still behave normally. The ADD smoke now reproduces the original failure path
   by focusing the behind-modal objective action before pressing Enter.
+- Improved ADD keyboard navigation through pop-ins and player panels. Settings,
+  Admin, Dev, travel dialogs, the shell menu, and offline return now keep Tab
+  traversal inside the active pop-in, while text-heavy sections/cards are
+  reachable as keyboard stops with a readable section focus ring. Focused ADD
+  verification passed, the web-game screenshot loop rendered cleanly, and
+  targeted Playwright probes confirmed Settings and travel-dialog text sections
+  are tabbable and loop inside their pop-ins.
