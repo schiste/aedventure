@@ -22,6 +22,7 @@ import {
   STUDIO_DUNGEON_MAP_ID,
 } from "../dungeons/studio"
 import { addAreaByMapId, addAreaById, DEFAULT_AREA_MAP_ID } from "../areas/registry"
+import type { AddAreaEntrySide } from "../areas/build-area-map"
 import { selectAddMapScaleForMode } from "./map-scale"
 
 export type AddMapMode = "overworld_hex" | "dungeon_square" | "base_square" | "area_hex"
@@ -47,6 +48,8 @@ export interface CreateAddWorldOptions {
   readonly dungeonMapId?: string
   /** Which area map to load in area_hex mode. Defaults to the Studio Grounds. */
   readonly areaMapId?: string
+  /** World-side entry used to place the Hero on a side midpoint inside an area map. */
+  readonly areaEntrySide?: AddAreaEntrySide | null
 }
 
 export function createAddWorldForMapMode(
@@ -71,7 +74,7 @@ export function createAddWorldForMapMode(
     mode === "dungeon_square"
       ? dungeonMapForId(options.dungeonMapId ?? STUDIO_DUNGEON_MAP_ID, snapshot)
       : mode === "area_hex"
-        ? areaMapForId(options.areaMapId)
+        ? areaMapForId(options.areaMapId, options.areaEntrySide ?? null)
         : baseSquareMap()
   return stampMapScale(
     {
@@ -109,11 +112,14 @@ export function addMapModeLabel(mode: AddMapMode): string {
   return ADD_MAP_MODE_OPTIONS.find((option) => option.id === mode)?.label ?? mode
 }
 
-function areaMapForId(areaMapId: string | undefined): GameMap {
+function areaMapForId(
+  areaMapId: string | undefined,
+  entrySide: AddAreaEntrySide | null,
+): GameMap {
   const area =
     (areaMapId ? addAreaByMapId(areaMapId) ?? addAreaById(areaMapId) : undefined) ??
     addAreaByMapId(DEFAULT_AREA_MAP_ID)
-  return (area ?? addAreaByMapId(DEFAULT_AREA_MAP_ID))!.build()
+  return (area ?? addAreaByMapId(DEFAULT_AREA_MAP_ID))!.build({ entrySide })
 }
 
 function dungeonMapForId(mapId: string, snapshot: SimulationSnapshot): GameMap {

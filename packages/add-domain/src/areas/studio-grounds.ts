@@ -5,13 +5,14 @@ import {
   STUDIO_DUNGEON_ID,
   STUDIO_DUNGEON_MAP_ID,
 } from "../dungeons/studio"
-import { buildAreaMap, type AreaDefinition } from "./build-area-map"
+import { buildAreaMap, type AreaDefinition, type BuildAreaMapOptions } from "./build-area-map"
 
 export const STUDIO_GROUNDS_AREA_ID = "area.studio_grounds"
 export const STUDIO_GROUNDS_AREA_MAP_ID = "add.rpg.area.studio-grounds"
 
-// The Studio Grounds: the honeycomb around the dairy-farm Studio. The Hero spawns
-// at the centre; one cell to the north is the Studio dungeon entrance.
+// The Studio Grounds: the honeycomb around the dairy-farm Studio. By default the
+// Hero can spawn at the centre, while world-map transitions can override entry
+// to the matching side midpoint.
 const STUDIO_GROUNDS_DEFINITION: AreaDefinition = {
   id: STUDIO_GROUNDS_AREA_ID,
   mapId: STUDIO_GROUNDS_AREA_MAP_ID,
@@ -38,6 +39,6 @@ const STUDIO_GROUNDS_DEFINITION: AreaDefinition = {
   ],
 }
 
-export function studioGroundsAreaMap(): GameMap {
-  return buildAreaMap(STUDIO_GROUNDS_DEFINITION)
+export function studioGroundsAreaMap(options: BuildAreaMapOptions = {}): GameMap {
+  return buildAreaMap(STUDIO_GROUNDS_DEFINITION, options)
 }

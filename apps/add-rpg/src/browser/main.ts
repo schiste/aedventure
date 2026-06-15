@@ -70,6 +70,7 @@ import {
   type AddStoryContentBrowserState,
   type AddBaseManagementState,
   type AddBaseManagementTabId,
+  type AddAreaEntrySide,
   type CatalogSnapshot,
   type SimulationSnapshot,
   type StationSpecializationPath,
@@ -274,6 +275,7 @@ const [world, setWorld] = createSignal<GameWorld | null>(null)
 const [mapMode, setMapMode] = createSignal<AddMapMode>("overworld_hex")
 const [dungeonTarget, setDungeonTarget] = createSignal<string>(STUDIO_DUNGEON_MAP_ID)
 const [areaTarget, setAreaTarget] = createSignal<string>(STUDIO_GROUNDS_AREA_MAP_ID)
+const [areaEntrySide, setAreaEntrySide] = createSignal<AddAreaEntrySide | null>(null)
 const [dungeonReturnMode, setDungeonReturnMode] =
   createSignal<DungeonReturnMapMode>("overworld_hex")
 const [mapInfo, setMapInfo] = createSignal<AddPhaserMapInfo>(emptyMapInfo())
@@ -624,6 +626,7 @@ createModuleEffect(() => {
   let nextWorld = createAddWorldForMapMode(mode, currentSnapshot, currentCatalog, {
     dungeonMapId: target,
     areaMapId: areaTarget(),
+    areaEntrySide: areaEntrySide(),
   })
 
   if (mode === "dungeon_square") {
@@ -5069,6 +5072,75 @@ function directionBetweenAddCells(
   return null
 }
 
+function areaEntrySideForWorldAreaEntry(
+  currentMapInfo: AddPhaserMapInfo = mapInfo(),
+): AddAreaEntrySide | null {
+  if (mapMode() !== "overworld_hex") return areaEntrySide()
+
+  const studioCell =
+    typeof currentMapInfo.landmarks.baseCenter === "string"
+      ? `hex:${currentMapInfo.landmarks.baseCenter}`
+      : null
+  if (!studioCell) return null
+
+  const lastMovement = lastDiscoveryMovement()
+  if (lastMovement?.toCell === studioCell) {
+    const side = areaEntrySideFromWorldCells(studioCell, lastMovement.fromCell)
+    if (side) return side
+  }
+
+  const heroCell = currentMapInfo.character.cell
+  if (heroCell && heroCell !== studioCell) {
+    const side = areaEntrySideFromWorldCells(studioCell, heroCell)
+    if (side) return side
+  }
+
+  return currentMapInfo.landmarks.survivorCave
+    ? areaEntrySideFromWorldCells(studioCell, `hex:${currentMapInfo.landmarks.survivorCave}`)
+    : null
+}
+
+function areaEntrySideFromWorldCells(
+  targetCell: string | null,
+  sourceCell: string | null,
+): AddAreaEntrySide | null {
+  const target = parseAddDisplayCell(targetCell)
+  const source = parseAddDisplayCell(sourceCell)
+  if (!target || !source || target.kind !== "hex" || source.kind !== "hex") return null
+
+  const dq = source.a - target.a
+  const dr = source.b - target.b
+  if (dq === 0 && dr === 0) return null
+
+  // Project the source vector through the same flat-top axial layout used by the
+  // renderer, then classify it against the six side normals.
+  const worldX = 1.5 * dq
+  const worldY = Math.sqrt(3) * (dr + dq / 2)
+  const magnitude = Math.sqrt(worldX * worldX + worldY * worldY)
+  if (magnitude === 0) return null
+
+  const sides: ReadonlyArray<{
+    readonly side: AddAreaEntrySide
+    readonly x: number
+    readonly y: number
+  }> = [
+    { side: "east", x: 1, y: 0 },
+    { side: "north_east", x: 0.5, y: -Math.sqrt(3) / 2 },
+    { side: "north_west", x: -0.5, y: -Math.sqrt(3) / 2 },
+    { side: "west", x: -1, y: 0 },
+    { side: "south_west", x: -0.5, y: Math.sqrt(3) / 2 },
+    { side: "south_east", x: 0.5, y: Math.sqrt(3) / 2 },
+  ]
+
+  return sides.reduce(
+    (best, candidate) => {
+      const score = (worldX / magnitude) * candidate.x + (worldY / magnitude) * candidate.y
+      return score > best.score ? { side: candidate.side, score } : best
+    },
+    { side: null as AddAreaEntrySide | null, score: Number.NEGATIVE_INFINITY },
+  ).side
+}
+
 function parseAddDisplayCell(
   cell: string | null,
 ): { readonly kind: "hex" | "square"; readonly a: number; readonly b: number } | null {
@@ -6229,6 +6301,9 @@ function switchMapMode(nextMode: AddMapMode, options: { readonly dungeonTargetId
   if (nextMode === "dungeon_square") {
     setDungeonReturnMode(mapMode() === "base_square" ? "base_square" : "overworld_hex")
   }
+  if (nextMode === "area_hex") {
+    setAreaEntrySide(areaEntrySideForWorldAreaEntry())
+  }
   if (mapMode() === nextMode) return
   if (nextMode !== "base_square") {
     clearBaseViewTransitionTimer()
@@ -6254,8 +6329,14 @@ function enterDungeonTarget(
   setLastCommand(command)
 }
 
-function enterAreaTarget(areaMapId: string, command: string): void {
+function enterAreaTarget(
+  areaMapId: string,
+  command: string,
+  options: { readonly entrySide?: AddAreaEntrySide | null } = {},
+): void {
+  const entrySide = options.entrySide ?? areaEntrySideForWorldAreaEntry()
   setAreaTarget(areaMapId)
+  setAreaEntrySide(entrySide)
   setTravelExperience(null)
   setMapMode("area_hex")
   setLastCommand(command)
