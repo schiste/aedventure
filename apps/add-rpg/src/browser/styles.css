@@ -3473,53 +3473,38 @@ h1 {
 .map-camera-controls {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  border: 1px solid rgb(255 244 201 / 13%);
-  border-radius: 999px;
-  padding: 4px;
-  background:
-    radial-gradient(circle at 28% 30%, rgb(95 209 216 / 12%), transparent 44%),
-    linear-gradient(180deg, rgb(255 244 201 / 9%), rgb(255 244 201 / 3%)),
-    rgb(7 16 14 / 88%);
-  box-shadow:
-    var(--shadow-hud),
-    inset 0 1px 0 rgb(255 255 255 / 7%);
-  backdrop-filter: blur(16px);
+  gap: 5px;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: none;
+  box-shadow: none;
+  backdrop-filter: none;
   pointer-events: auto;
 }
 
-.map-zoom-cluster,
-.map-anchor-cluster {
+.map-zoom-cluster {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
-  border-radius: 999px;
-}
-
-.map-zoom-cluster {
-  padding: 2px;
-  background: rgb(0 0 0 / 18%);
-}
-
-.map-anchor-cluster {
-  padding: 2px;
-  background: rgb(255 244 201 / 6%);
+  gap: 5px;
+  border-radius: 0;
 }
 
 .map-button {
   display: inline-grid;
-  min-width: 1.72rem;
-  min-height: 1.72rem;
+  min-width: 1.86rem;
+  min-height: 1.86rem;
   place-items: center;
-  border-color: rgb(255 244 201 / 11%);
+  border-color: rgb(255 244 201 / 18%);
   border-radius: 999px;
   padding: 0;
-  background: rgb(255 244 201 / 7%);
-  color: rgb(247 238 210 / 84%);
-  font-size: 0.76rem;
+  background: rgb(7 16 14 / 58%);
+  color: rgb(247 238 210 / 88%);
+  font-size: 0.82rem;
   font-weight: 950;
   line-height: 1;
-  box-shadow: none;
+  box-shadow: var(--shadow-hud);
+  backdrop-filter: blur(8px);
 }
 
 .map-button:hover:not(:disabled) {
@@ -3529,30 +3514,7 @@ h1 {
 }
 
 .map-button-icon {
-  min-width: 1.5rem;
-  min-height: 1.5rem;
   color: rgb(247 238 210 / 70%);
-}
-
-.map-button-anchor {
-  min-width: 1.82rem;
-  min-height: 1.82rem;
-  border-color: rgb(95 209 216 / 18%);
-  background: rgb(95 209 216 / 9%);
-}
-
-.map-button-center {
-  border-color: rgb(240 185 93 / 22%);
-  background: rgb(240 185 93 / 11%);
-  color: #fff2bd;
-}
-
-.zoom-readout {
-  min-width: 2.35rem;
-  color: rgb(247 238 210 / 78%);
-  font-size: 0.66rem;
-  font-weight: 850;
-  text-align: center;
 }
 
 .admin-backdrop {
@@ -4304,7 +4266,7 @@ h1 {
   top: var(--quest-panel-y, 54px);
   left: var(--quest-panel-x, 12px);
   z-index: 5;
-  width: min(320px, calc(100vw - 28px));
+  width: min(284px, calc(100vw - 28px));
   max-height: calc(100vh - 108px);
   overflow: auto;
   overscroll-behavior-y: contain;
@@ -4312,31 +4274,34 @@ h1 {
   scrollbar-gutter: stable;
   border-color: var(--border-objective);
   background:
-    linear-gradient(180deg, rgb(240 185 93 / 12%), rgb(255 244 201 / 6%)),
-    var(--surface-objective);
+    linear-gradient(180deg, rgb(240 185 93 / 9%), rgb(255 244 201 / 4%)),
+    rgb(14 24 21 / 72%);
   box-shadow:
-    0 18px 46px rgb(0 0 0 / 24%),
+    0 12px 32px rgb(0 0 0 / 20%),
     inset 0 1px 0 rgb(255 255 255 / 7%),
-    inset 4px 0 0 rgb(240 185 93 / 28%);
+    inset 2px 0 0 rgb(240 185 93 / 22%);
 }
 
 .first-playable-overlay.collapsed {
-  width: min(254px, calc(100vw - 28px));
+  width: min(198px, calc(100vw - 28px));
   overflow: visible;
+  border-color: rgb(240 185 93 / 20%);
+  border-radius: 10px;
+  padding: 7px;
+  background: rgb(8 16 14 / 58%);
   box-shadow:
-    var(--shadow-hud),
-    inset 4px 0 0 rgb(240 185 93 / 28%);
+    0 8px 24px rgb(0 0 0 / 18%),
+    inset 0 1px 0 rgb(255 255 255 / 6%);
+  backdrop-filter: blur(8px);
 }
 
 .first-playable-overlay.complete.collapsed {
-  width: min(216px, calc(100vw - 28px));
+  width: min(178px, calc(100vw - 28px));
   border-color: rgb(95 209 216 / 28%);
-  background:
-    linear-gradient(180deg, rgb(95 209 216 / 12%), rgb(240 185 93 / 7%)),
-    rgb(26 33 26 / 86%);
+  background: rgb(13 24 22 / 60%);
   box-shadow:
-    var(--shadow-hud),
-    inset 4px 0 0 rgb(95 209 216 / 32%);
+    0 8px 24px rgb(0 0 0 / 18%),
+    inset 0 1px 0 rgb(255 255 255 / 6%);
 }
 
 .first-playable-overlay.complete.collapsed .first-playable-drag-handle {
@@ -4382,10 +4347,10 @@ h1 {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: end;
-  gap: 0.42rem 0.62rem;
-  border-radius: 8px;
-  padding: 0.34rem 0.44rem 0.4rem;
-  background: rgb(0 0 0 / 16%);
+  gap: 0.28rem 0.44rem;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
 }
 
 .objective-compact-summary > span {
@@ -4396,7 +4361,7 @@ h1 {
 
 .objective-compact-summary small {
   color: rgb(247 238 210 / 62%);
-  font-size: 0.58rem;
+  font-size: 0.54rem;
   font-weight: 900;
   line-height: 1;
   text-transform: uppercase;
@@ -4405,7 +4370,7 @@ h1 {
 .objective-compact-summary strong {
   overflow: hidden;
   color: #fff4c9;
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 950;
   line-height: 1.1;
   text-overflow: ellipsis;
@@ -4414,13 +4379,32 @@ h1 {
 
 .compact-progress {
   grid-column: 1 / -1;
-  height: 0.24rem;
+  height: 0.18rem;
 }
 
 .objective-compact-progress {
   justify-self: end;
   align-self: start;
   padding-top: 0.08rem;
+}
+
+.objective-primary-action {
+  grid-column: 1 / -1;
+  justify-self: start;
+  min-height: 1.55rem;
+  border-color: rgb(240 185 93 / 28%);
+  border-radius: 999px;
+  padding: 0 0.56rem;
+  background: rgb(240 185 93 / 16%);
+  color: #fff2bd;
+  box-shadow: none;
+  font-size: 0.58rem;
+  font-weight: 940;
+}
+
+.objective-primary-action:hover:not(:disabled) {
+  background: rgb(240 185 93 / 24%);
+  transform: none;
 }
 
 .panel-heading-actions {
@@ -4434,6 +4418,54 @@ h1 {
   cursor: grab;
   touch-action: none;
   user-select: none;
+}
+
+.first-playable-overlay.collapsed .first-playable-drag-handle {
+  min-height: 0;
+  margin-bottom: 4px;
+  padding: 0;
+}
+
+.first-playable-overlay.collapsed #first-playable-title {
+  display: none;
+  color: rgb(247 238 210 / 56%);
+  font-size: 0.58rem;
+  font-weight: 920;
+  letter-spacing: 0;
+}
+
+.first-playable-overlay.collapsed .first-playable-drag-handle::before {
+  content: "Goal";
+  color: rgb(247 238 210 / 64%);
+  font-size: 0.54rem;
+  font-weight: 950;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.first-playable-overlay.collapsed .panel-heading-actions {
+  gap: 4px;
+}
+
+.first-playable-overlay.collapsed .small-chip {
+  border-color: rgb(240 185 93 / 18%);
+  padding: 0.14rem 0.34rem;
+  background: rgb(240 185 93 / 10%);
+  color: rgb(247 238 210 / 72%);
+  font-size: 0.54rem;
+}
+
+.first-playable-overlay.collapsed .panel-icon-button {
+  min-height: 1.2rem;
+  padding: 0 0.34rem;
+  background: rgb(255 244 201 / 7%);
+  font-size: 0.54rem;
+}
+
+.first-playable-overlay.collapsed .objective-compact-summary > span small,
+.first-playable-overlay.collapsed .compact-progress,
+.first-playable-overlay.collapsed .objective-compact-progress {
+  display: none;
 }
 
 .first-playable-drag-handle:focus-visible {
@@ -4686,14 +4718,14 @@ h1 {
   }
 
   .map-hud {
-    bottom: calc(var(--mobile-context-sheet-action-height) + 22px);
+    bottom: 12px;
     align-items: flex-start;
     flex-direction: row;
   }
 
   .first-playable-overlay.collapsed {
-    width: min(178px, calc(100vw - 24px));
-    max-height: 2.85rem;
+    width: min(180px, calc(100vw - 24px));
+    max-height: none;
     overflow: hidden;
   }
 
@@ -4703,14 +4735,14 @@ h1 {
 
   .first-playable-overlay.collapsed .first-playable-drag-handle {
     gap: 0.35rem;
-    min-height: 2.15rem;
-    padding: 0.34rem 0.46rem;
+    min-height: 0;
+    padding: 0;
   }
 
   .first-playable-overlay.collapsed #first-playable-title {
     overflow: hidden;
     max-width: 5.2rem;
-    font-size: 0.72rem;
+    font-size: 0.58rem;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -5132,7 +5164,7 @@ h1 {
   }
 
   .map-hud {
-    bottom: calc(var(--mobile-context-sheet-action-height) + 16px);
+    bottom: 10px;
     left: 8px;
     max-width: calc(100vw - 16px);
   }
@@ -5141,7 +5173,7 @@ h1 {
     width: auto;
     max-width: 100%;
     gap: 4px;
-    padding: 3px;
+    padding: 0;
   }
 
   .map-camera-controls {
@@ -5149,24 +5181,14 @@ h1 {
   }
 
   .map-button {
-    min-width: 1.55rem;
-    min-height: 1.55rem;
-    font-size: 0.68rem;
+    min-width: 1.72rem;
+    min-height: 1.72rem;
+    font-size: 0.72rem;
   }
 
   .map-button-icon {
-    min-width: 1.35rem;
-    min-height: 1.35rem;
-  }
-
-  .map-button-anchor {
-    min-width: 1.62rem;
-    min-height: 1.62rem;
-  }
-
-  .zoom-readout {
-    min-width: 2.05rem;
-    font-size: 0.6rem;
+    min-width: 1.72rem;
+    min-height: 1.72rem;
   }
 
   .command-grid {

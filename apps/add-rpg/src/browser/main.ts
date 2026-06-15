@@ -835,7 +835,7 @@ function AddRpgApp() {
       onFocusIn=${handleShellFocusIn}
       onKeyDown=${handleShellKeyDown}
     >
-      <a class="skip-link" href="#current-action-surface">Skip to current decision</a>
+      <a class="skip-link" href="#first-playable-panel">Skip to objective</a>
       <section class="world-pane" data-interface-tier="primary" aria-label="Primary game world">
         <div
           id="add-world"
@@ -1086,9 +1086,6 @@ function AddRpgApp() {
                 >
                   -
                 </button>
-                <span class="zoom-readout" aria-label=${() => `Zoom ${mapZoomReadout()}`}>
-                  ${() => mapZoomReadout()}
-                </span>
                 <button
                   id="map-zoom-in"
                   type="button"
@@ -1100,58 +1097,6 @@ function AddRpgApp() {
                 >
                   +
                 </button>
-              </div>
-              <div class="map-anchor-cluster" aria-label="Map anchors">
-                <button
-                  id="map-reset-camera"
-                  type="button"
-                  class="map-button map-button-anchor map-button-center"
-                  onClick=${resetMapCamera}
-                  disabled=${() => !mapInfo().ready}
-                  aria-label="Frame known map"
-                  title="Frame known map"
-                >
-                  O
-                </button>
-                <button
-                  id="map-focus-hero"
-                  type="button"
-                  class="map-button map-button-anchor"
-                  onClick=${() => focusMap("hero")}
-                  disabled=${() => !mapInfo().ready}
-                  aria-label="Focus Hero"
-                  title="Focus Hero"
-                >
-                  H
-                </button>
-                ${() =>
-                  mapMode() === "overworld_hex"
-                    ? html`<button
-                          id="map-focus-base"
-                          type="button"
-                          class="map-button map-button-anchor"
-                          onClick=${() => focusMap("base")}
-                          disabled=${() => !mapInfo().ready}
-                          aria-label="Focus Studio"
-                          title="Focus Studio"
-                        >
-                          B
-                        </button>`
-                    : null}
-                ${() =>
-                  shouldShowCaveCameraAnchor()
-                    ? html`<button
-                          id="map-focus-cave"
-                          type="button"
-                          class="map-button map-button-anchor"
-                          onClick=${() => focusMap("cave")}
-                          disabled=${() => !mapInfo().ready}
-                          aria-label="Focus Survivor Cave"
-                          title="Focus Survivor Cave"
-                        >
-                          C
-                        </button>`
-                    : null}
               </div>
             </div>
           </div>
@@ -1299,21 +1244,6 @@ function AddRpgApp() {
                   aria-pressed=${() => !firstPlayableCollapsed()}
                 >
                   ${() => (firstPlayableCollapsed() ? "Compact" : "Expanded")}
-                </button>
-              </div>
-              <div class="settings-row">
-                <span>
-                  <strong>Discovery panel</strong>
-                  <small>Collapse the decision panel when the map needs room.</small>
-                </span>
-                <button
-                  id="settings-toggle-discovery"
-                  type="button"
-                  class="ghost-button"
-                  onClick=${() => setDiscoveryPanelCollapsed(!discoveryPanelCollapsed())}
-                  aria-pressed=${() => !discoveryPanelCollapsed()}
-                >
-                  ${() => (discoveryPanelCollapsed() ? "Compact" : "Open")}
                 </button>
               </div>
               <div class="settings-row">
@@ -2412,7 +2342,7 @@ function contextualPanel(): unknown {
   if (offlineReturnSummary()) return offlineReturnPanel()
   if (mapMode() === "base_square") return baseManagementPanel()
   if (mapMode() === "dungeon_square") return dungeonContextPanel()
-  return discoveryPanel()
+  return null
 }
 
 function worldErrorState(): unknown {
@@ -5328,6 +5258,7 @@ function objectivePanelCompactSummary(): unknown {
   if (firstPlayableArcComplete()) return null
 
   const dungeon = dungeonObjectiveState()
+  const action = objectivePanelPrimaryAction()
   if (dungeon) {
     const active = dungeon.steps.find((step) => step.status === "active") ?? dungeon.steps[0]
     return html`
@@ -5339,6 +5270,7 @@ function objectivePanelCompactSummary(): unknown {
         <div class="progress-track compact-progress" aria-hidden="true">
           <span style=${() => ({ width: dungeonObjectiveProgressWidth() })} />
         </div>
+        ${() => objectivePanelPrimaryButton(action)}
       </div>
     `
   }
@@ -5357,7 +5289,31 @@ function objectivePanelCompactSummary(): unknown {
       <small class="objective-compact-progress">
         ${firstPlayable?.completedCount ?? 0}/${firstPlayable?.totalCount ?? 0}
       </small>
+      ${() => objectivePanelPrimaryButton(action)}
     </div>
+  `
+}
+
+function objectivePanelPrimaryAction(): AddCurrentActionState | null {
+  const action = currentActionState()
+  if (mapMode() !== "overworld_hex") return null
+  if (!action.primaryLabel) return null
+  return action
+}
+
+function objectivePanelPrimaryButton(action: AddCurrentActionState | null): unknown {
+  if (!action?.primaryLabel) return null
+  return html`
+    <button
+      id="objective-primary-action"
+      type="button"
+      class="objective-primary-action"
+      onClick=${() => void runCurrentAction()}
+      disabled=${() => !currentActionState().primaryEnabled}
+      aria-label=${() => currentActionPrimaryAriaLabel()}
+    >
+      ${leadUiCopy(action.primaryLabel, 28)}
+    </button>
   `
 }
 

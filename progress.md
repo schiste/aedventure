@@ -3120,3 +3120,10 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   ADD verification passed, and a targeted browser probe confirmed Studio Grounds
   opens as `area_hex` with the Hero at `hex:4,-2` after traveling from Survivor
   Cave to The Studio.
+- Simplified the ADD overworld interface around the map-first direction. The
+  Discovery panel no longer mounts in overworld mode; its data remains available
+  through selectors/telemetry, while the top-left objective chip owns the one
+  visible CTA. The map HUD now exposes only zoom in/out buttons with no pill
+  cartouche, and the objective tracker collapsed state is visually smaller.
+  Smoke expectations were updated so overworld is checked as map + objective +
+  status, with contextual panels reserved for Base, Dungeon, and Return modes.
