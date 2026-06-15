@@ -173,6 +173,7 @@ export class AddRpgHexScene extends Phaser.Scene {
     accepted: null,
     blockedReason: null,
   }
+  private showTravelActionMarkers = false
   private readonly heldCharacterKeys = new Set<AddCharacterMoveKey>()
   private readonly pendingCharacterKeys = new Set<AddCharacterMoveKey>()
   private pendingCharacterMoveTimer: number | null = null
@@ -182,6 +183,7 @@ export class AddRpgHexScene extends Phaser.Scene {
   constructor(options: AddRpgPhaserMapHostOptions) {
     super("add-rpg-hex-map")
     this.hostOptions = options
+    this.showTravelActionMarkers = options.showTravelActionMarkers === true
   }
 
   create(): void {
@@ -468,6 +470,13 @@ export class AddRpgHexScene extends Phaser.Scene {
 
   setTravelLocked(locked: boolean): void {
     this.travelRuntimeLocked = locked
+    this.refreshInfo()
+  }
+
+  setShowTravelActionMarkers(show: boolean): void {
+    if (this.showTravelActionMarkers === show) return
+    this.showTravelActionMarkers = show
+    this.drawOverlay()
     this.refreshInfo()
   }
 
@@ -1317,6 +1326,7 @@ export class AddRpgHexScene extends Phaser.Scene {
       frontierHintCount: frontierCells.length,
       pathTimePreviewVisible,
       actionMarkerCount: this.actionMarkerCount,
+      travelActionMarkersVisible: this.showTravelActionMarkers,
       landmarkBeaconCount: this.landmarkBeaconCount,
       studioArrivalEmphasisVisible: this.studioArrivalEmphasisVisible,
     }
@@ -1331,6 +1341,7 @@ export class AddRpgHexScene extends Phaser.Scene {
       reachableCellCount: 0,
       frontierHintCount: 0,
       pathTimePreviewVisible: false,
+      travelActionMarkersVisible: this.showTravelActionMarkers,
     }
   }
 
@@ -1628,7 +1639,7 @@ export class AddRpgHexScene extends Phaser.Scene {
   ): readonly WorldCellInteractionAffordance[] {
     const affordances: WorldCellInteractionAffordance[] = []
     for (const cell of context.terrainCells) {
-      const actions = this.tileActionAffordancesForCell(cell, context)
+      const actions = this.displayedTileActionAffordancesForCell(cell, context)
       const primaryAction = actions.find((action) => action.enabled)
       if (!primaryAction) continue
       affordances.push({
@@ -1646,7 +1657,7 @@ export class AddRpgHexScene extends Phaser.Scene {
     if (!primaryCoord) return affordances
     const primaryCell = context.terrainByCoord.get(addMapCoordKey(primaryCoord))
     if (!primaryCell) return affordances
-    const primaryAction = this.tileActionAffordancesForCell(primaryCell, context).find(
+    const primaryAction = this.displayedTileActionAffordancesForCell(primaryCell, context).find(
       (action) => action.enabled,
     )
     if (!primaryAction) return affordances
@@ -1662,6 +1673,16 @@ export class AddRpgHexScene extends Phaser.Scene {
       color: 0xe3a64a,
     })
     return affordances
+  }
+
+  private displayedTileActionAffordancesForCell(
+    cell: GameCellPlacement,
+    context: RenderContext,
+  ): readonly AddTileActionAffordance[] {
+    const actions = this.tileActionAffordancesForCell(cell, context)
+    return this.showTravelActionMarkers
+      ? actions
+      : actions.filter((action) => action.kind !== "travel")
   }
 
   private tileActionAffordancesForCell(
@@ -2224,6 +2245,7 @@ function emptyMapPrimaryAffordanceInfo(): MapPrimaryAffordanceInfo {
     frontierHintCount: 0,
     pathTimePreviewVisible: false,
     actionMarkerCount: 0,
+    travelActionMarkersVisible: false,
     landmarkBeaconCount: 0,
     studioArrivalEmphasisVisible: false,
   }

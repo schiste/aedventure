@@ -220,6 +220,10 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   `add-domain` through `selectPreferredTileAction` and
   `selectTileActionAffordances`, so the app shell and Phaser renderer consume
   the same ordered action model instead of maintaining parallel priority rules.
+- ADD default Travel action markers are now hidden by default to reduce map
+  clutter. Player Settings exposes a Travel markers toggle that redraws the
+  Phaser overlay live while leaving tile travel authorization and click
+  activation unchanged.
 - Verification for the travel halo trail: `npm --workspace @aedventure/add-rpg
   run build:browser` and `npm run smoke:add-rpg` pass. The broader
   `npm run check` is currently blocked by unrelated dirty ADD dungeon work

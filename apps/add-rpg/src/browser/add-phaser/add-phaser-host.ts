@@ -81,6 +81,10 @@ export class AddRpgPhaserMapHost {
     this.scene.setTravelLocked(locked)
   }
 
+  setShowTravelActionMarkers(show: boolean): void {
+    this.scene.setShowTravelActionMarkers(show)
+  }
+
   getInfo(): AddPhaserMapInfo {
     return this.scene.getInfo()
   }
