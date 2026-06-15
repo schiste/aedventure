@@ -1,6 +1,6 @@
 //! Neutral, genre-agnostic hex-map topology.
 //!
-//! A [`MapDefinition`] is *data*: a disk radius, a base cell, named landmarks,
+//! A [`MapDefinition`] is *data*: a disk radius, a placed base cell, named landmarks,
 //! and ordered terrain regions. [`MapDefinition::cell_at`] resolves a single
 //! [`MapCell`] (tile id + terrain profile) for any coordinate, so tile identity
 //! and terrain stay one source of truth instead of two parallel match ladders.
@@ -64,13 +64,16 @@ pub struct TerrainRegion {
     pub cell: MapCell,
 }
 
-/// A complete hex map as data: a disk of `radius`, a base at the origin,
+/// A complete hex map as data: a disk of `radius`, a placed base cell,
 /// landmarks, and ordered terrain regions over a default fill.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct MapDefinition {
-    /// Disk radius (rings out from the origin).
+    /// Disk radius around the map coordinate origin.
     pub radius: i8,
-    /// The origin cell (distance 0).
+    /// Base coordinate. Generated cell distance is measured from here.
+    pub base_q: i8,
+    pub base_r: i8,
+    /// The base cell.
     pub base: MapCell,
     /// Fixed points of interest, looked up by exact coordinate.
     pub landmarks: &'static [Landmark],
@@ -81,11 +84,14 @@ pub struct MapDefinition {
 }
 
 impl MapDefinition {
-    /// Resolve the cell at `(q, r)`. `distance` is the cube distance from the
-    /// origin (passed in to avoid recomputing where the caller already has it).
-    /// Resolution order: base (origin) → landmark → region → default.
+    /// Resolve the cell at `(q, r)`.
+    ///
+    /// `distance` is the cube distance from the placed base coordinate (passed
+    /// in to avoid recomputing where the caller already has it). Resolution
+    /// order: base coordinate → landmark → region → default.
     pub fn cell_at(&self, q: i8, r: i8, distance: u8) -> MapCell {
-        if distance == 0 {
+        let _ = distance;
+        if q == self.base_q && r == self.base_r {
             return self.base;
         }
         if let Some(landmark) = self.landmark_at(q, r) {
@@ -111,7 +117,7 @@ impl MapDefinition {
         self.landmarks.iter().find(|landmark| landmark.key == key)
     }
 
-    /// Every cell of the disk, resolved, sorted by `(distance, q, r)`.
+    /// Every cell of the disk, resolved, sorted by `(distance from base, q, r)`.
     ///
     /// This is the generic generation step: callers (e.g. `initial_hexes`) map
     /// each entry into their own cell representation. Reused unchanged by any
@@ -123,7 +129,7 @@ impl MapDefinition {
             let r_lo = (-radius).max(-q - radius);
             let r_hi = radius.min(-q + radius);
             for r in r_lo..=r_hi {
-                let distance = axial_distance(0, 0, q, r);
+                let distance = axial_distance(self.base_q, self.base_r, q, r);
                 cells.push(GeneratedCell {
                     q,
                     r,
@@ -199,6 +205,8 @@ mod tests {
     }];
     const TEST_MAP: MapDefinition = MapDefinition {
         radius: 3,
+        base_q: -1,
+        base_r: 1,
         base: TEST_BASE,
         landmarks: TEST_LANDMARKS,
         regions: TEST_REGIONS,
@@ -212,6 +220,7 @@ mod tests {
         assert_eq!(cells.len(), 3 * 3 * (3 + 1) + 1);
         // Sorted base-first.
         assert_eq!(cells[0].distance, 0);
+        assert_eq!((cells[0].q, cells[0].r), (-1, 1));
         assert_eq!(cells[0].cell.tile_id, "test.base");
     }
 

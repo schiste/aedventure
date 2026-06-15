@@ -11,6 +11,8 @@ use crate::migrations::{CURRENT_CATALOG_VERSION, CURRENT_SCHEMA_VERSION, default
 pub const DEFAULT_BASE_SLOTS: u8 = 3;
 pub const DEFAULT_TOTAL_CREW: u8 = 2;
 pub const GRID_RADIUS: i8 = 6;
+pub const BASE_Q: i8 = 0;
+pub const BASE_R: i8 = 3;
 pub const SURVIVOR_CAVE_Q: i8 = 6;
 pub const SURVIVOR_CAVE_R: i8 = 0;
 pub const REACH_OBJECTIVE_TARGET: u8 = 3;
@@ -314,7 +316,7 @@ impl HexCoordState {
     }
 
     pub fn base() -> Self {
-        Self::new(0, 0)
+        Self::new(BASE_Q, BASE_R)
     }
 
     pub fn survivor_cave() -> Self {
@@ -961,7 +963,7 @@ impl ObjectiveState {
         Self {
             reach_objective_target: REACH_OBJECTIVE_TARGET,
             reach_objective_met: false,
-            survivor_cave_distance: cube_distance(0, 0, SURVIVOR_CAVE_Q, SURVIVOR_CAVE_R),
+            survivor_cave_distance: cube_distance(BASE_Q, BASE_R, SURVIVOR_CAVE_Q, SURVIVOR_CAVE_R),
             recruitment_range_tiles: RECRUITMENT_RANGE_TILES,
             recruitment_enabled: false,
             survivor_cave_in_bubble: false,
