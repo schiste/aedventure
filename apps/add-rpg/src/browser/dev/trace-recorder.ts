@@ -182,6 +182,9 @@ interface PerfMemory {
 let lastQueueDepth = 0
 /** Seq of the command currently being processed, so game events can be linked to it. */
 let lastSeq = 0
+/** Whether the tab is backgrounded — stamped on perf samples so background
+ *  artifacts (throttled timers, multi-second frames) can be filtered out. */
+let documentHidden = false
 
 /**
  * One-shot session header: the environment needed to interpret everything else.
@@ -322,6 +325,8 @@ function startPerfSampling(): () => void {
       longTasks,
       blockingMs: Math.round(blockingMs),
       queueDepth: lastQueueDepth,
+      // Background tabs throttle timers/rAF — flag so these samples can be excluded.
+      hidden: documentHidden,
       // DOM node count is the cheapest, most universal leak signal.
       domNodes: document.getElementsByTagName("*").length,
       ...(mem
@@ -675,6 +680,29 @@ function installInteractionCapture(stamp: () => Record<string, unknown>): () => 
   }
 }
 
+// ── Visibility ──────────────────────────────────────────────────────────────
+// Backgrounding explains most perf anomalies (multi-second frames, throttled
+// sampling, latency spikes). Track it explicitly so it's a filter, not a guess.
+
+/** Record visibility transitions and keep `documentHidden` current. Returns a stop fn. */
+function installVisibilityCapture(stamp: () => Record<string, unknown>): () => void {
+  documentHidden = document.visibilityState === "hidden"
+  const onChange = (): void => {
+    documentHidden = document.visibilityState === "hidden"
+    enqueue({
+      t: performance.now(),
+      dir: "visibility",
+      hidden: documentHidden,
+      state: document.visibilityState,
+      ctx: stamp(),
+    })
+    // Hiding throttles timers, so the next interval flush may be far off — persist now.
+    if (documentHidden) flush()
+  }
+  document.addEventListener("visibilitychange", onChange)
+  return () => document.removeEventListener("visibilitychange", onChange)
+}
+
 export interface TraceRecorder {
   /** Pass to `SimulationClient` as its `onTrace` option. */
   readonly onTrace: (entry: TraceEntry) => void
@@ -698,6 +726,8 @@ export function installTraceRecorder(getSnapshot: () => SimulationSnapshot | nul
   const stopConsole = installConsoleCapture(stamp)
   // Player intent: clicks, keys, presence.
   const stopInteractions = installInteractionCapture(stamp)
+  // Tab visibility — the explanation for most perf anomalies.
+  const stopVisibility = installVisibilityCapture(stamp)
 
   // Session header: env + the timeOrigin anchor that maps every `t` to wall-clock.
   recordSessionHeader()
@@ -742,6 +772,7 @@ export function installTraceRecorder(getSnapshot: () => SimulationSnapshot | nul
     stopPerf()
     stopConsole()
     stopInteractions()
+    stopVisibility()
     flush()
   })
   console.info(`[trace] recording to logs/session-${SESSION}.jsonl`)
