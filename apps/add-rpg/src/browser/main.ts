@@ -2935,43 +2935,51 @@ function storyMomentBlock(): unknown {
   // the surface blank for the 7 no-choice spine beats.)
   if (!moment) return null
   return html`
-    <div
-      class="story-moment"
-      data-arc=${moment.arc}
-      data-awaiting=${moment.awaitingChoice}
-      aria-label=${`Story moment: ${moment.label}`}
-    >
-      <div class="story-moment-kicker">${moment.label}</div>
-      <p class="story-moment-body" title=${moment.body}>${leadUiCopy(moment.body, 96)}</p>
-      ${copyDisclosure(
-        `story-moment-detail-${safeElementId(moment.beatId)}`,
-        "Read more",
-        moment.body,
-        leadUiCopy(moment.body, 96),
-        "story-moment-detail",
-      )}
-      ${moment.choices.length > 0
-        ? html`
-            <details class="story-moment-options">
-              <summary>Story choices</summary>
-              <div class="story-moment-choices">
-                ${moment.choices.map(
-                  (choice) => html`
-                    <button
-                      type="button"
-                      class="story-moment-choice"
-                      data-choice-id=${choice.id}
-                      onClick=${() => void chooseStoryOption(moment.beatId, choice.id)}
-                    >
-                      ${choice.label}
-                    </button>
-                  `,
-                )}
-              </div>
-            </details>
-          `
-        : null}
-    </div>
+    <details id="story-context-section" class="context-detail-section story-context-section">
+      <summary>
+        <span>Story context</span>
+        <small>${moment.label}</small>
+      </summary>
+      <div class="context-detail-body">
+        <div
+          class="story-moment"
+          data-arc=${moment.arc}
+          data-awaiting=${moment.awaitingChoice}
+          aria-label=${`Story moment: ${moment.label}`}
+        >
+          <div class="story-moment-kicker">${moment.label}</div>
+          <p class="story-moment-body" title=${moment.body}>${leadUiCopy(moment.body, 88)}</p>
+          ${copyDisclosure(
+            `story-moment-detail-${safeElementId(moment.beatId)}`,
+            "Read more",
+            moment.body,
+            leadUiCopy(moment.body, 88),
+            "story-moment-detail",
+          )}
+          ${moment.choices.length > 0
+            ? html`
+                <details class="story-moment-options">
+                  <summary>Story choices</summary>
+                  <div class="story-moment-choices">
+                    ${moment.choices.map(
+                      (choice) => html`
+                        <button
+                          type="button"
+                          class="story-moment-choice"
+                          data-choice-id=${choice.id}
+                          onClick=${() => void chooseStoryOption(moment.beatId, choice.id)}
+                        >
+                          ${choice.label}
+                        </button>
+                      `,
+                    )}
+                  </div>
+                </details>
+              `
+            : null}
+        </div>
+      </div>
+    </details>
   `
 }
 
@@ -4592,13 +4600,16 @@ function discoveryPanelBody(): unknown {
   if (discoveryPanelCollapsed()) return null
   return html`
     <div id="discovery-panel-body" class="discovery-panel-body">
-      ${() => storyMomentBlock()}
       <div class="discovery-movement">
-        <span>${() => discoveryState()?.movement.title ?? "Scout one step at a time"}</span>
-        <small>${() => discoveryMovementMetricCopy()}</small>
+        <span>Route status</span>
+        <small>
+          ${() => discoveryState()?.movement.title ?? "Scout one step at a time"} ·
+          ${() => discoveryMovementMetricCopy()}
+        </small>
       </div>
-      ${() => discoveryConsequenceSection()}
       ${() => discoverySelectedTileSection()}
+      ${() => discoveryConsequenceSection()}
+      ${() => storyMomentBlock()}
       ${() => discoveryTileChoicesSection()}
       ${() => discoveryResourceSection()}
       ${() => discoveryActionsSection()}
@@ -4611,15 +4622,27 @@ function discoveryConsequenceSection(): unknown {
   if (!consequences || (!consequences.active && consequences.safety.severity === "safe")) {
     return null
   }
+  const forceOpen =
+    consequences.safety.severity === "danger" || consequences.safety.severity === "critical"
+  const detailsBody = html`
+    <summary>
+      <span>Consequences</span>
+      <small>${consequences.safety.headline}</small>
+    </summary>
+    <div class="context-detail-body">
+      ${() => discoveryConsequenceCard()}
+    </div>
+  `
+  if (forceOpen) {
+    return html`
+      <details id="movement-consequences-section" class="context-detail-section" open>
+        ${detailsBody}
+      </details>
+    `
+  }
   return html`
-    <details id="movement-consequences-section" class="context-detail-section" open>
-      <summary>
-        <span>Consequences</span>
-        <small>${consequences.safety.headline}</small>
-      </summary>
-      <div class="context-detail-body">
-        ${() => discoveryConsequenceCard()}
-      </div>
+    <details id="movement-consequences-section" class="context-detail-section">
+      ${detailsBody}
     </details>
   `
 }
@@ -4683,7 +4706,7 @@ function discoveryTileRows(): readonly unknown[] {
   const choices = discoveryState()?.tileChoices ?? []
   if (choices.length === 0) {
     return [
-      html`<article class="discovery-empty">Select a visible tile or move the Hero to reveal new choices.</article>`,
+      html`<article class="discovery-empty">Select a visible region or move the Hero to reveal new choices.</article>`,
     ]
   }
   return choices.map(
@@ -4719,7 +4742,7 @@ function discoverySelectedTileSection(): unknown {
   return html`
     <details id="selected-tile-section" class="context-detail-section" open>
       <summary>
-        <span>Selected tile</span>
+        <span>Selected region</span>
         <small>${detail.label}</small>
       </summary>
       <div class="context-detail-body">
@@ -4822,7 +4845,7 @@ function discoverySelectedTileCard(): unknown {
 function selectedTileStatusLabel(detail: AddTileDetailSummary): string {
   if (detail.visibility === "hidden") return "Unknown region"
   if (detail.hasSubmap) return "Submap link"
-  if (detail.travel.standingHere) return "Current tile"
+  if (detail.travel.standingHere) return "Current region"
   if (detail.travel.canTravelNow) return "Adjacent route"
   return "Known region"
 }
@@ -4834,18 +4857,18 @@ function selectedTileCommandLabel(detail: AddTileDetailSummary): string {
 }
 
 function selectedTileCommandHint(detail: AddTileDetailSummary): string {
-  if (detail.travel.canTravelNow) return "Use the primary action to spend the crossing hour."
-  if (detail.travel.standingHere) return "Choose a neighboring region to preview movement."
-  if (detail.travel.adjacent) return "Known enough to inspect, but not currently commandable."
-  return "Move closer before this can become a travel target."
+  if (detail.travel.canTravelNow) return "Crossing takes 1 hour."
+  if (detail.travel.standingHere) return "Pick a neighboring region."
+  if (detail.travel.adjacent) return "Inspect now; travel from a neighboring region."
+  return "Move closer to act."
 }
 
 function selectedTileUsefulnessSummary(reasons: readonly string[]): string {
-  return reasons[0] ?? "Useful for map knowledge and future routing."
+  return reasons[0] ?? "Useful for routing."
 }
 
 function selectedTileUsefulnessRows(reasons: readonly string[]): readonly unknown[] {
-  const rows = reasons.length > 0 ? reasons : ["Useful for map knowledge and future routing."]
+  const rows = reasons.length > 0 ? reasons : ["Useful for routing."]
   return rows.map((reason) => html`<span>${reason}</span>`)
 }
 
@@ -4867,11 +4890,11 @@ function selectedTileLinkRows(detail: AddTileDetailSummary): readonly unknown[] 
 }
 
 function selectedTileActionRows(detail: AddTileDetailSummary): readonly unknown[] {
-  const actions = [...detail.actions].filter(tileActionShouldRender).sort(compareTileActionPriority)
+  const actions = [...detail.actions]
+    .filter((action) => tileActionShouldRender(action) && !tileActionDuplicatesCurrentPrimary(action))
+    .sort(compareTileActionPriority)
   if (actions.length === 0) {
-    return [
-      html`<span class="selected-tile-action-note">No useful action is available from this tile yet.</span>`,
-    ]
+    return [html`<span class="selected-tile-action-note">Use the decision button above.</span>`]
   }
   return actions.map((action) => {
     const opensSubmap = action.kind === "enter_submap" || action.kind === "manage_base"
@@ -4957,6 +4980,14 @@ function tileActionShouldRender(action: AddTileAction): boolean {
   if (action.enabled) return true
   if (action.kind === "travel") return true
   if (action.kind === "enter_submap" || action.kind === "manage_base") return action.linkId !== null
+  return false
+}
+
+function tileActionDuplicatesCurrentPrimary(action: AddTileAction): boolean {
+  const current = currentActionState()
+  if (action.kind === "travel" && current.actionId === "travel:selected-tile") return true
+  if (action.kind === "manage_base" && current.kind === "open_base") return true
+  if (action.kind === "enter_submap" && current.kind === "enter_dungeon") return true
   return false
 }
 
@@ -5170,8 +5201,12 @@ function discoveryTileChoicesSection(): unknown {
   return html`
     <details id="tile-choices-section" class="context-detail-section">
       <summary>
-        <span>Nearby choices</span>
-        <small>${choices.length} option${choices.length === 1 ? "" : "s"}</small>
+        <span>Route focus</span>
+        <small>
+          ${choices.length === 0
+            ? "No pinned route"
+            : `${choices.length} pinned region${choices.length === 1 ? "" : "s"}`}
+        </small>
       </summary>
       <div class="context-detail-body discovery-tiles">
         ${() => discoveryTileRows()}
@@ -5206,8 +5241,8 @@ function discoveryResourceSection(): unknown {
   return html`
     <details id="resource-context-section" class="context-detail-section">
       <summary>
-        <span>Resources</span>
-        <small>${relevantCount > 0 ? `${relevantCount} relevant` : "No blocker"}</small>
+        <span>Why it matters</span>
+        <small>${relevantCount > 0 ? `${relevantCount} blocker${relevantCount === 1 ? "" : "s"}` : "No blocker"}</small>
       </summary>
       <div class="context-detail-body discovery-resources">
         ${() => discoveryResourceRows()}
@@ -5248,8 +5283,8 @@ function discoveryActionsSection(): unknown {
   return html`
     <details id="secondary-actions-section" class="context-detail-section">
       <summary>
-        <span>Other actions</span>
-        <small>${links.length} available</small>
+        <span>More actions</span>
+        <small>${links.length} option${links.length === 1 ? "" : "s"}</small>
       </summary>
       <div class="context-detail-body discovery-actions">
         ${() => discoveryActionButtons()}
