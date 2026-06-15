@@ -291,6 +291,26 @@ function startPerfSampling(): () => void {
     // longtask observation unsupported (e.g. Firefox); frame timing still works.
   }
 
+  // Event-loop lag: a self-rescheduling probe whose firing delay measures how long
+  // the main thread was unavailable — saturation, distinct from messaging cost. This
+  // is what attributes a tick's "transport" time to main-thread blocking vs the wire.
+  const LAG_PROBE_MS = 100
+  let lagMax = 0
+  let lagSum = 0
+  let lagCount = 0
+  let lagLast = performance.now()
+  let lagTimer = setTimeout(function lagProbe() {
+    const now = performance.now()
+    const lag = now - lagLast - LAG_PROBE_MS // how much later than scheduled it fired
+    lagLast = now
+    if (lag > 0) {
+      if (lag > lagMax) lagMax = lag
+      lagSum += lag
+      lagCount += 1
+    }
+    lagTimer = setTimeout(lagProbe, LAG_PROBE_MS)
+  }, LAG_PROBE_MS)
+
   const sample = (): void => {
     const samples = frameMs.splice(0)
     const n = samples.length
@@ -324,6 +344,9 @@ function startPerfSampling(): () => void {
       jankFrames: samples.filter((d) => d >= JANK_FRAME_MS).length,
       longTasks,
       blockingMs: Math.round(blockingMs),
+      // Worst / average event-loop stall this window — main-thread saturation.
+      loopLagMaxMs: Math.round(lagMax * 10) / 10,
+      ...(lagCount ? { loopLagAvgMs: Math.round((lagSum / lagCount) * 10) / 10 } : {}),
       queueDepth: lastQueueDepth,
       // Background tabs throttle timers/rAF — flag so these samples can be excluded.
       hidden: documentHidden,
@@ -340,12 +363,16 @@ function startPerfSampling(): () => void {
     })
     longTasks = 0
     blockingMs = 0
+    lagMax = 0
+    lagSum = 0
+    lagCount = 0
   }
 
   const timer = setInterval(sample, PERF_SAMPLE_MS)
   return () => {
     cancelAnimationFrame(raf)
     clearInterval(timer)
+    clearTimeout(lagTimer)
     observer?.disconnect()
   }
 }
