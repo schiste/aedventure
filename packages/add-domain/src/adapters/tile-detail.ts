@@ -52,6 +52,17 @@ export interface AddTileAction {
   readonly linkId: string | null
 }
 
+export type AddTileActionAffordanceKind = "area" | "dungeon" | "base" | "travel"
+
+export interface AddTileActionAffordance {
+  readonly kind: AddTileActionAffordanceKind
+  readonly actionId: string
+  readonly linkId: string | null
+  readonly label: string
+  readonly actionLabel: string
+  readonly enabled: boolean
+}
+
 export interface AddTileDetailSummary {
   readonly cell: string
   readonly label: string
@@ -74,6 +85,59 @@ export interface SelectAddTileDetailInput {
     readonly previewAdjacent: boolean
     readonly previewCell: string | null
   }
+}
+
+export function selectPreferredTileAction(
+  detail: AddTileDetailSummary,
+): AddTileAction | null {
+  return (
+    [...detail.actions]
+      .filter((action) => action.enabled)
+      .sort((left, right) => compareTileActions(left, right, detail))[0] ?? null
+  )
+}
+
+export function selectTileActionAffordances(
+  detail: AddTileDetailSummary,
+): readonly AddTileActionAffordance[] {
+  return [...detail.actions]
+    .filter((action) => action.kind !== "inspect")
+    .sort((left, right) => compareTileActions(left, right, detail))
+    .map((action): AddTileActionAffordance | null => {
+      const link = linkForAction(detail, action)
+      if (action.kind === "travel") {
+        return {
+          kind: "travel",
+          actionId: action.id,
+          linkId: action.linkId,
+          label: detail.label,
+          actionLabel: "Travel",
+          enabled: action.enabled,
+        }
+      }
+      if (action.kind === "manage_base") {
+        return {
+          kind: "base",
+          actionId: action.id,
+          linkId: action.linkId,
+          label: link?.label ?? detail.label,
+          actionLabel: "Open",
+          enabled: action.enabled,
+        }
+      }
+      if (action.kind === "enter_submap") {
+        return {
+          kind: link?.kind === "dungeon" ? "dungeon" : "area",
+          actionId: action.id,
+          linkId: action.linkId,
+          label: link?.label ?? detail.label,
+          actionLabel: "Enter",
+          enabled: action.enabled,
+        }
+      }
+      return null
+    })
+    .filter((action): action is AddTileActionAffordance => Boolean(action))
 }
 
 export function selectAddTileDetail(
@@ -274,6 +338,34 @@ function tileActions(input: {
   }
 
   return actions
+}
+
+function compareTileActions(
+  left: AddTileAction,
+  right: AddTileAction,
+  detail: AddTileDetailSummary,
+): number {
+  return tileActionPriority(left, detail) - tileActionPriority(right, detail)
+}
+
+function tileActionPriority(action: AddTileAction, detail: AddTileDetailSummary): number {
+  const link = linkForAction(detail, action)
+  if (action.kind === "enter_submap" && link?.kind === "area") return 0
+  if (action.kind === "enter_submap" && link?.kind === "dungeon") return 1
+  if (action.kind === "enter_submap") return 2
+  if (action.kind === "manage_base") return 3
+  if (action.kind === "travel") return 4
+  if (action.kind === "inspect") return 5
+  return 6
+}
+
+function linkForAction(
+  detail: AddTileDetailSummary,
+  action: AddTileAction,
+): AddTileLink | null {
+  return action.linkId
+    ? detail.links.find((candidate) => candidate.id === action.linkId) ?? null
+    : null
 }
 
 function travelCopy(

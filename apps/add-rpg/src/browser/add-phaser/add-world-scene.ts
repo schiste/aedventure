@@ -24,7 +24,9 @@ import {
   mapMarkersForCell,
   presentationVisibilityStateForCell,
   selectAddTileDetail,
+  selectTileActionAffordances,
   tileInteractionDetailForCoord,
+  type AddTileActionAffordance,
   type AddMapMarker,
 } from "@aedventure/add-domain"
 
@@ -111,14 +113,6 @@ type MobileEdgeCullObject = Phaser.GameObjects.GameObject & {
 }
 
 type AddLandmarkRole = "cave" | "base" | "crystal" | "door" | "interior" | "generic"
-type TileActionAffordanceKind = "area" | "dungeon" | "base" | "travel"
-
-interface TileActionAffordance {
-  readonly kind: TileActionAffordanceKind
-  readonly label: string
-  readonly actionLabel: string
-  readonly enabled: boolean
-}
 
 export class AddRpgHexScene extends Phaser.Scene {
   private readonly hostOptions: AddRpgPhaserMapHostOptions
@@ -1673,7 +1667,7 @@ export class AddRpgHexScene extends Phaser.Scene {
   private tileActionAffordancesForCell(
     cell: GameCellPlacement,
     context: RenderContext,
-  ): readonly TileActionAffordance[] {
+  ): readonly AddTileActionAffordance[] {
     const tile = tileInteractionDetailForCoord(cell.coord, context.terrainByCoord)
     if (!tile || tile.visibility === "hidden") return []
     const standingHere = Boolean(this.characterCoord && sameCoord(cell.coord, this.characterCoord))
@@ -1692,40 +1686,7 @@ export class AddRpgHexScene extends Phaser.Scene {
     })
     if (!detail) return []
 
-    return detail.actions
-      .filter((action) => action.kind !== "inspect")
-      .map((action): TileActionAffordance | null => {
-        if (action.kind === "travel") {
-          return {
-            kind: "travel",
-            label: detail.label,
-            actionLabel: "Travel",
-            enabled: action.enabled,
-          }
-        }
-        const link = action.linkId
-          ? detail.links.find((candidate) => candidate.id === action.linkId)
-          : null
-        if (action.kind === "manage_base") {
-          return {
-            kind: "base",
-            label: link?.label ?? detail.label,
-            actionLabel: "Open",
-            enabled: action.enabled,
-          }
-        }
-        if (action.kind === "enter_submap") {
-          return {
-            kind: link?.kind === "dungeon" ? "dungeon" : "area",
-            label: link?.label ?? detail.label,
-            actionLabel: "Enter",
-            enabled: action.enabled,
-          }
-        }
-        return null
-      })
-      .filter((action): action is TileActionAffordance => Boolean(action))
-      .sort(compareTileActionAffordances)
+    return selectTileActionAffordances(detail)
   }
 
   private fitCameraToContext(context: RenderContext): void {
@@ -2266,19 +2227,4 @@ function emptyMapPrimaryAffordanceInfo(): MapPrimaryAffordanceInfo {
     landmarkBeaconCount: 0,
     studioArrivalEmphasisVisible: false,
   }
-}
-
-function compareTileActionAffordances(
-  left: TileActionAffordance,
-  right: TileActionAffordance,
-): number {
-  return tileActionAffordancePriority(left) - tileActionAffordancePriority(right)
-}
-
-function tileActionAffordancePriority(action: TileActionAffordance): number {
-  if (action.kind === "area") return 0
-  if (action.kind === "dungeon") return 1
-  if (action.kind === "base") return 2
-  if (action.kind === "travel") return 3
-  return 4
 }

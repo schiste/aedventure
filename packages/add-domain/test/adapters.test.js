@@ -15,6 +15,8 @@ const {
   selectAddVisibilitySummary,
   selectAddDiscoverySummary,
   selectAddTile,
+  selectPreferredTileAction,
+  selectTileActionAffordances,
   selectAddFirstPlayableSummary,
   selectAddStoryProgressionState,
   selectAddUiState,
@@ -160,6 +162,25 @@ const arrivedBaseDiscovery = selectAddDiscoverySummary({
 })
 assert.equal(arrivedBaseDiscovery.nextAction.kind, "open_base")
 assert.equal(arrivedBaseDiscovery.nextAction.actionId, "base:open")
+assert.equal(selectPreferredTileAction(remoteBaseDiscovery.tileDetail), null)
+assert.deepEqual(
+  selectTileActionAffordances(remoteBaseDiscovery.tileDetail).map((action) => ({
+    kind: action.kind,
+    enabled: action.enabled,
+  })),
+  [
+    { kind: "base", enabled: false },
+    { kind: "travel", enabled: false },
+  ],
+)
+assert.equal(selectPreferredTileAction(arrivedBaseDiscovery.tileDetail)?.kind, "manage_base")
+assert.deepEqual(
+  selectTileActionAffordances(arrivedBaseDiscovery.tileDetail).map((action) => ({
+    kind: action.kind,
+    enabled: action.enabled,
+  })),
+  [{ kind: "base", enabled: true }],
+)
 const worldInteractionPolicy = createAddWorldInteractionPolicy()
 const hiddenInteraction = worldInteractionPolicy.interactionForCell(
   hiddenDungeonCell.coord,
@@ -173,6 +194,35 @@ const caveInteraction = worldInteractionPolicy.interactionForCell(
 )
 assert.equal(caveInteraction.metadata.dungeonActionsVisible, true)
 assert.equal(caveInteraction.metadata.dungeonLinkCount, 1)
+const caveTileDetail = tileInteractionDetailForCoord(survivorCaveCell.coord, terrainByCoord)
+const caveDiscovery = selectAddDiscoverySummary({
+  snapshot,
+  catalog,
+  heroCell: "hex:2,-1",
+  selectedTile: caveTileDetail,
+  previewTile: caveTileDetail,
+  heroDungeonLinks: caveTileDetail.dungeonLinks,
+  selectedDungeonLinks: caveTileDetail.dungeonLinks,
+  travel: {
+    active: false,
+    phase: "idle",
+    previewCell: null,
+    destinationLabel: null,
+    exposureRisk: null,
+    previewAdjacent: false,
+    gameMinutes: 60,
+  },
+  lastMovement: null,
+})
+assert.equal(selectPreferredTileAction(caveDiscovery.tileDetail)?.kind, "enter_submap")
+assert.deepEqual(
+  selectTileActionAffordances(caveDiscovery.tileDetail).map((action) => ({
+    kind: action.kind,
+    actionLabel: action.actionLabel,
+    enabled: action.enabled,
+  })),
+  [{ kind: "dungeon", actionLabel: "Enter", enabled: true }],
+)
 const navigationPolicy = createAddTopologyNavigationPolicy()
 assert.deepEqual(
   navigationPolicy.nextCoord(survivorCaveCell.coord, { direction: "left" }, map.topology),
