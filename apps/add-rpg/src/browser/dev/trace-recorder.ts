@@ -579,6 +579,102 @@ function installConsoleCapture(stamp: () => Record<string, unknown>): () => void
   }
 }
 
+// ── User-interaction capture ────────────────────────────────────────────────
+// Clicks, keys, and a throttled presence ping — the player intent the sim command
+// stream can't show. This is what distinguishes "stuck staring" from "walked away".
+
+const PRESENCE_MS = 5000
+
+/** True when typing into a free-text field, so the characters can be masked. */
+function isTextEntry(el: Element | null): boolean {
+  const field = el?.closest?.("input,textarea,[contenteditable=true],[contenteditable='']")
+  if (!field) return false
+  if (field.tagName === "INPUT") {
+    const type = (field as HTMLInputElement).type
+    return !["checkbox", "radio", "button", "submit", "reset", "range", "color"].includes(type)
+  }
+  return true
+}
+
+/** Best-effort human-meaningful descriptor for the affordance an event hit. */
+function describeTarget(start: EventTarget | null): { target: string; text?: string } | undefined {
+  const el = start instanceof Element ? start : null
+  if (!el) return undefined
+  const interactive = el.closest(
+    "button,a,input,select,textarea,label,[role=button],[role=tab],[role=menuitem],[role=link],[role=checkbox],[role=switch],[data-trace-id],[data-testid]",
+  )
+  const node = (interactive ?? el) as HTMLElement
+  const ds = node.dataset ?? {}
+  const id = ds.traceId ?? ds.testid ?? (node.id || undefined)
+  const aria = node.getAttribute("aria-label") ?? node.getAttribute("title") ?? undefined
+  const role = node.getAttribute("role") ?? undefined
+  const tag = node.tagName.toLowerCase()
+  const label = id ? `#${id}` : (aria ?? (role ? `${tag}[role=${role}]` : tag))
+  const text = clip((node.textContent ?? "").replace(/\s+/g, " ").trim(), 60)
+  // Only carry text when there's no better identifier (and it isn't already the aria label).
+  return { target: clip(label, 80), ...(text && !aria && !id ? { text } : {}) }
+}
+
+/** Capture clicks, keystrokes, and a throttled presence ping. Returns a stop fn. */
+function installInteractionCapture(stamp: () => Record<string, unknown>): () => void {
+  const onClick = (event: MouseEvent): void => {
+    enqueue({
+      t: performance.now(),
+      dir: "ui",
+      kind: "click",
+      ...describeTarget(event.target),
+      x: Math.round(event.clientX),
+      y: Math.round(event.clientY),
+      ...(event.button ? { button: event.button } : {}),
+      seq: lastSeq,
+      ctx: stamp(),
+    })
+  }
+  const onKey = (event: KeyboardEvent): void => {
+    if (event.repeat) return // ignore auto-repeat from a held key
+    const printable = event.key.length === 1
+    const masked = printable && isTextEntry(event.target instanceof Element ? event.target : null)
+    const mods = [
+      event.ctrlKey && "ctrl",
+      event.metaKey && "meta",
+      event.altKey && "alt",
+      event.shiftKey && "shift",
+    ].filter(Boolean)
+    enqueue({
+      t: performance.now(),
+      dir: "ui",
+      kind: "key",
+      key: masked ? "·" : event.key, // never log the actual character typed into a text field
+      ...(mods.length ? { mods } : {}),
+      ...describeTarget(event.target),
+      seq: lastSeq,
+      ctx: stamp(),
+    })
+  }
+  let lastPresence = 0
+  const onMove = (event: PointerEvent): void => {
+    const now = performance.now()
+    if (now - lastPresence < PRESENCE_MS) return
+    lastPresence = now
+    const described = describeTarget(event.target)
+    enqueue({
+      t: now,
+      dir: "ui",
+      kind: "active",
+      ...(described ? { target: described.target } : {}),
+      ctx: stamp(),
+    })
+  }
+  window.addEventListener("click", onClick, { capture: true, passive: true })
+  window.addEventListener("keydown", onKey, { capture: true })
+  window.addEventListener("pointermove", onMove, { capture: true, passive: true })
+  return () => {
+    window.removeEventListener("click", onClick, true)
+    window.removeEventListener("keydown", onKey, true)
+    window.removeEventListener("pointermove", onMove, true)
+  }
+}
+
 export interface TraceRecorder {
   /** Pass to `SimulationClient` as its `onTrace` option. */
   readonly onTrace: (entry: TraceEntry) => void
@@ -600,6 +696,8 @@ export function installTraceRecorder(getSnapshot: () => SimulationSnapshot | nul
 
   // Capture diagnostics first, so errors thrown during the rest of setup are seen.
   const stopConsole = installConsoleCapture(stamp)
+  // Player intent: clicks, keys, presence.
+  const stopInteractions = installInteractionCapture(stamp)
 
   // Session header: env + the timeOrigin anchor that maps every `t` to wall-clock.
   recordSessionHeader()
@@ -640,6 +738,7 @@ export function installTraceRecorder(getSnapshot: () => SimulationSnapshot | nul
   window.addEventListener("beforeunload", () => {
     stopPerf()
     stopConsole()
+    stopInteractions()
     flush()
   })
   console.info(`[trace] recording to logs/session-${SESSION}.jsonl`)
