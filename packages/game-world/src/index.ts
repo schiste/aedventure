@@ -25,6 +25,19 @@ export type GameCellVisibility = VisibilityEntry
 export type GameEntityFootprintUnit = "cell" | "world"
 export type GameEntityCollisionShape = "rect" | "ellipse"
 
+export type {
+  CellPresentationPolicy,
+  CellVisualActivity,
+  CellVisualMotif,
+  CellVisualStyle,
+  FogVisualStyle,
+  FogVisualTreatment,
+  TopologyNavigationInput,
+  TopologyNavigationPolicy,
+  WorldInteractionDetail,
+  WorldInteractionPolicy,
+} from "./presentation-policies"
+
 export interface GameEntityFootprint {
   readonly unit: GameEntityFootprintUnit
   readonly width: number

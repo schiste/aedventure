@@ -17,6 +17,7 @@ const { execFileSync } = require("node:child_process")
 const ROOT = path.resolve(__dirname, "..")
 const CHECK = process.argv.includes("--check")
 const PREAMBLE = "use crate::game_data::*;"
+const RUST_EDITION = "2024"
 
 function resolveRustfmt() {
   for (const candidate of ["rustfmt", path.join(os.homedir(), ".cargo", "bin", "rustfmt")]) {
@@ -898,7 +899,9 @@ function generate(file) {
   const tmp = path.join(os.tmpdir(), `add-content-${path.basename(file.rustPath)}`)
   fs.writeFileSync(tmp, raw)
   try {
-    execFileSync(rustfmt, [tmp], { stdio: ["ignore", "ignore", "pipe"] })
+    execFileSync(rustfmt, ["--edition", RUST_EDITION, tmp], {
+      stdio: ["ignore", "ignore", "pipe"],
+    })
   } catch (err) {
     console.error(`[content:build] rustfmt failed for ${file.rustPath}:\n${err.stderr || err}`)
     console.error(`[content:build] raw left at ${tmp}`)

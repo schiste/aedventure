@@ -561,7 +561,7 @@ async function assertAdminDeveloperSeparation(page, consoleErrors) {
   await assertPopinKeyboardNavigation(page, {
     rootSelector: "#admin-view",
     textSectionSelector: "#admin-run-status.keyboard-section",
-    firstStopClass: "drawer-section-map",
+    firstStopId: "close-admin",
     label: "Admin",
   })
 
@@ -610,7 +610,7 @@ async function assertAdminDeveloperSeparation(page, consoleErrors) {
   await assertPopinKeyboardNavigation(page, {
     rootSelector: "#dev-view",
     textSectionSelector: "#dev-runtime-internals.keyboard-section",
-    firstStopClass: "drawer-section-map",
+    firstStopId: "close-dev",
     label: "Developer menu",
   })
   const devText = await page.locator("#developer-tools-body").innerText()
@@ -644,7 +644,7 @@ async function assertAdminDeveloperSeparation(page, consoleErrors) {
 }
 
 async function assertPopinKeyboardNavigation(page, options) {
-  const { rootSelector, textSectionSelector, firstStopClass, label } = options
+  const { rootSelector, textSectionSelector, firstStopClass, firstStopId, label } = options
   await page.locator(textSectionSelector).first().waitFor({ state: "visible" })
   await page.locator(textSectionSelector).first().focus()
   let snapshot = await popinKeyboardSnapshot(page, rootSelector)
@@ -667,10 +667,18 @@ async function assertPopinKeyboardNavigation(page, options) {
     0,
     `${label} Tab from the last stop should loop back to the first pop-in stop.`,
   )
-  assert.ok(
-    snapshot.activeClassName.includes(firstStopClass),
-    `${label} first focus stop should be the expected panel/navigation start.`,
-  )
+  if (firstStopId) {
+    assert.equal(
+      snapshot.activeId,
+      firstStopId,
+      `${label} first focus stop should be ${firstStopId}.`,
+    )
+  } else {
+    assert.ok(
+      snapshot.activeClassName.includes(firstStopClass),
+      `${label} first focus stop should be the expected panel/navigation start.`,
+    )
+  }
 }
 
 async function focusPopinStop(page, rootSelector, index) {
@@ -3442,6 +3450,11 @@ async function exerciseMainCharacterMovement(page, consoleErrors) {
       state.map?.character?.cell === before.map.character.cell,
     consoleErrors,
   )
+  await page.waitForFunction(
+    () => document.activeElement?.closest("#travel-confirmation-dialog") !== null,
+    undefined,
+    { timeout: 1000 },
+  )
   await page.keyboard.press("Escape")
   await waitForTextState(
     page,
@@ -3772,30 +3785,18 @@ async function interactWithMap(page, consoleErrors) {
     0,
     "Nearby tile choices should stay out of the minimal overworld UI.",
   )
+  const objectivePrimaryActionCount = await page.locator(
+    ".objective-primary-action:visible",
+  ).count()
   assert.equal(
-    await page.locator("#objective-primary-action").count(),
+    objectivePrimaryActionCount,
     1,
-    "The compact objective chip should own the single overworld CTA.",
+    `The objective panel should own the single visible overworld CTA (found ${objectivePrimaryActionCount}).`,
   )
   assert.match(
     travelTarget.discovery.tileChoices.map((choice) => choice.actionLabel).join(" | "),
     /Travel here|Review selected|Compare route|Review entrance|Review arrival|Assess scout|Use selected route/i,
     "Nearby tile choices should expose a structured player-facing action label.",
-  )
-  await page.evaluate(() => {
-    const element = document.querySelector(".discovery-tile-choice")
-    if (!(element instanceof HTMLElement)) {
-      throw new Error("Expected a discovery tile choice to be available.")
-    }
-    element.click()
-  })
-  await waitForTextState(
-    page,
-    (state) =>
-      state.map?.interaction?.lastInput === "programmatic" &&
-      state.map.interaction.activeSource === "selection" &&
-      state.discovery?.tileDetail !== null,
-    consoleErrors,
   )
   assert.equal(
     await page.locator("#selected-tile-decision").count(),
@@ -3836,18 +3837,13 @@ async function interactWithMap(page, consoleErrors) {
 }
 
 async function clickReachableTravelCandidate(page, heroPoint, consoleErrors) {
-  const offsets = [
-    { x: -86, y: 0 },
-    { x: -72, y: -48 },
-    { x: 72, y: -48 },
-    { x: 86, y: 0 },
-    { x: 72, y: 48 },
-    { x: -72, y: 48 },
-  ]
-
-  let lastState = await renderGameToText(page)
+  const initialState = await renderGameToText(page)
+  const offsets = hexNeighborScreenOffsets(initialState)
+  let lastState = initialState
+  const probes = []
   for (const offset of offsets) {
-    await page.mouse.move(heroPoint.x + offset.x, heroPoint.y + offset.y)
+    const point = { x: heroPoint.x + offset.x, y: heroPoint.y + offset.y }
+    await page.mouse.move(point.x, point.y)
     try {
       return await waitForTextState(
         page,
@@ -3860,17 +3856,54 @@ async function clickReachableTravelCandidate(page, heroPoint, consoleErrors) {
       )
     } catch {
       lastState = await renderGameToText(page)
+      probes.push({
+        offset,
+        point,
+        hoveredCell: lastState.map?.interaction?.hoveredCell ?? null,
+        hoveredDetailCell: lastState.map?.interaction?.hoveredDetail?.cell ?? null,
+        selectedCell: lastState.map?.interaction?.selectedCell ?? null,
+        canTravelNow: lastState.discovery?.selectedTile?.canTravelNow ?? false,
+        discoverySelectedCell: lastState.discovery?.selectedTile?.cell ?? null,
+        discoveryTileDetailCell: lastState.discovery?.tileDetail?.cell ?? null,
+        previewCell: lastState.map?.travel?.previewCell ?? null,
+        pathTimePreviewVisible:
+          lastState.map?.presentation?.mapPrimaryAffordances?.pathTimePreviewVisible ?? false,
+      })
     }
   }
 
   throw new Error(
     `Expected a reachable travel target near the Hero. Last state: ${JSON.stringify({
       character: lastState.map?.character,
+      camera: lastState.map?.camera,
+      topology: lastState.map?.topology,
+      heroPoint,
+      probes,
       interaction: lastState.map?.interaction,
       currentAction: lastState.shell?.currentAction,
       selectedTile: lastState.discovery?.selectedTile,
     })}`,
   )
+}
+
+function hexNeighborScreenOffsets(state) {
+  assert.equal(state.map?.topology?.kind, "hex", "Travel candidate probing requires the overworld hex topology.")
+  const radius = state.map?.topology?.radius
+  const zoom = state.map?.camera?.zoom
+  assert.ok(Number.isFinite(radius) && radius > 0, "ADD RPG telemetry should expose the hex radius.")
+  assert.ok(Number.isFinite(zoom) && zoom > 0, "ADD RPG telemetry should expose the map zoom.")
+
+  const horizontal = 1.5 * radius * zoom
+  const diagonal = (Math.sqrt(3) / 2) * radius * zoom
+  const vertical = Math.sqrt(3) * radius * zoom
+  return [
+    { x: horizontal, y: diagonal },
+    { x: horizontal, y: -diagonal },
+    { x: 0, y: -vertical },
+    { x: -horizontal, y: -diagonal },
+    { x: -horizontal, y: diagonal },
+    { x: 0, y: vertical },
+  ]
 }
 
 function keyboardKeysForCellStep(fromCell, toCell) {

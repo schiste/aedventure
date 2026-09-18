@@ -145,7 +145,11 @@ mod u64_string {
 /// (the field is `skip_deserializing` and stripped from exported saves), so the
 /// enum carries owned runtime data and needs only `Serialize`.
 #[derive(Debug, Clone, Serialize, PartialEq)]
-#[serde(tag = "kind", rename_all = "snake_case", rename_all_fields = "camelCase")]
+#[serde(
+    tag = "kind",
+    rename_all = "snake_case",
+    rename_all_fields = "camelCase"
+)]
 pub enum GameEvent {
     /// A base construction project finished.
     ConstructionCompleted { option_id: String, label: String },
@@ -175,7 +179,10 @@ pub enum GameEvent {
     /// A Hero progression track leveled up this frame.
     HeroLeveledUp { track: String, level: u16 },
     /// An auto-battler skirmish finished. `outcome` is "victory" or "retreat".
-    CombatResolved { creature_id: String, outcome: String },
+    CombatResolved {
+        creature_id: String,
+        outcome: String,
+    },
     /// A quest objective's conditions were met (rewards applied this frame).
     ObjectiveCompleted { objective_id: String },
     /// The runtime revealed the deterministic starting area for a new/reset run.

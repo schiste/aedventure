@@ -104,10 +104,7 @@ fn run_migrations(
     // them best-effort risks silent state corruption, so we fail loudly and let
     // the player update instead. (Change here if a softer policy is wanted.)
     if found > current {
-        return Err(MigrationError::FromFuture {
-            found,
-            current,
-        });
+        return Err(MigrationError::FromFuture { found, current });
     }
 
     let mut version = found;
@@ -163,8 +160,14 @@ mod tests {
                 .insert("chained".to_string(), json!(format!("{prior}-two")));
         }
         let registry = [
-            Migration { from: 1, apply: step_1_to_2 },
-            Migration { from: 2, apply: step_2_to_3 },
+            Migration {
+                from: 1,
+                apply: step_1_to_2,
+            },
+            Migration {
+                from: 2,
+                apply: step_2_to_3,
+            },
         ];
 
         let mut value = json!({ "schemaVersion": 1 });
@@ -180,7 +183,10 @@ mod tests {
         fn should_not_run(_: &mut Value) {
             panic!("migration below the recorded version must not run");
         }
-        let registry = [Migration { from: 1, apply: should_not_run }];
+        let registry = [Migration {
+            from: 1,
+            apply: should_not_run,
+        }];
 
         let mut value = json!({ "schemaVersion": 2 });
         run_migrations(&mut value, &registry, 3).unwrap();
@@ -198,7 +204,10 @@ mod tests {
                 .unwrap()
                 .insert("ran_from_zero".to_string(), json!(true));
         }
-        let registry = [Migration { from: 0, apply: mark }];
+        let registry = [Migration {
+            from: 0,
+            apply: mark,
+        }];
 
         let mut value = json!({});
         run_migrations(&mut value, &registry, 1).unwrap();

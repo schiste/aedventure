@@ -3,7 +3,7 @@
 Date: 2026-06-04
 
 This audit records whether ADD's data model and calculation rules are properly
-represented in the new aeoffice monorepo stack.
+represented in the new aedventure monorepo stack.
 
 The current priority is not new storytelling events. The priority is making the
 existing ADD systems authoritative, inspectable, and safe to keep building on.
@@ -152,7 +152,7 @@ progress while online-only world actions stay frozen.
 ## Conclusion
 
 The current ADD first-playable data and calculations are properly represented in
-the new aeoffice stack.
+the new aedventure stack.
 
 What remains in legacy ADD is mostly design reference for future scope. The
 important next systems work should be about improving playability and reducing

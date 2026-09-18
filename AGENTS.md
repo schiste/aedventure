@@ -16,9 +16,10 @@ For ADD app/UI-only work, use the explicit ADD profile:
 npm run agent:verify:add-ui
 ```
 
-The ADD profile runs cheap checks:
+The ADD profile runs focused checks:
 
 - `git diff --check`
+- ADD content and Rust/WASM generation
 - `npm --workspace @aedventure/add-rpg run build:types`
 - `node --check scripts/add-rpg-smoke.test.cjs`
 

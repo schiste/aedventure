@@ -27,8 +27,7 @@ pub(in crate::game_data) const OBJECTIVES: &[ObjectiveDef] = &[
     ObjectiveDef {
         id: "objective.reach_ring_3",
         label: "Expand the Bubble to Ring 3",
-        description:
-            "Stabilize the field out to the third ring, within reach of the Survivor Cave.",
+        description: "Stabilize the field out to the third ring, within reach of the Survivor Cave.",
         sequence: 3,
         conditions: &[Condition::BubbleReachAtLeast(3)],
         rewards: &[

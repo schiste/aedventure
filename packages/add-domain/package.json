@@ -6,12 +6,11 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc -b",
-    "test": "node test/adapters.test.js"
+    "test": "node test/architecture.test.js && node test/adapters.test.js"
   },
   "dependencies": {
     "@aedventure/game-dungeon": "0.1.0",
     "@aedventure/game-content": "0.1.0",
-    "@aedventure/game-renderer-phaser": "0.1.0",
     "@aedventure/game-topology": "0.1.0",
     "@aedventure/game-visibility": "0.1.0",
     "@aedventure/game-world": "0.1.0"

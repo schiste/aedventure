@@ -32,7 +32,9 @@ pub fn apply_balance_override(balance: &mut BalanceSnapshot, path: &str, value: 
 
         // Crystal economy
         "crystal.outputPerWorkerBase" => balance.crystal.output_per_worker_base = value,
-        "crystal.outputPerWorkerLevelBonus" => balance.crystal.output_per_worker_level_bonus = value,
+        "crystal.outputPerWorkerLevelBonus" => {
+            balance.crystal.output_per_worker_level_bonus = value
+        }
         "crystal.baseBasslineCap" => balance.crystal.base_bassline_cap = value,
 
         // Bubble

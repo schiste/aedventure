@@ -1,18 +1,18 @@
 # ADD Migration Plan
 
 This document defines the target structure and migration rules for moving ADD
-into `aeoffice` as a first-class RPG/idle app while upgrading the shared Phaser
+into `aedventure` as a first-class RPG/idle app while upgrading the shared Phaser
 engine to support both square and hex maps.
 
 ## Phase 0 Baseline
 
 Phase 0 was established before code movement.
 
-`aeoffice` baseline:
+`aedventure` baseline:
 
 - Repository: `/Users/christophehenner/Downloads/Repositories/aedventure`
 - Branch: `main`
-- Remote tracking branch: `aeoffice/main`
+- Remote tracking branch: `aedventure/main`
 - Baseline commit: `c25f7d2afb9035d086af488cc62426f9ac54daac`
 - Local status: committed work is clean and pushed; `.chau7/` is untracked
   local tool state and must stay out of git.
@@ -27,7 +27,7 @@ Phase 0 was established before code movement.
 Baseline verification commands:
 
 ```sh
-# aeoffice
+# aedventure
 npm run check
 npm run smoke:apps
 npm run qa:renderer
@@ -49,7 +49,7 @@ separate domain apps.
 
 ```text
 apps/
-  virtual-office/
+  web/
     Customer virtual office app.
     Uses square-grid rooms and office collaboration domain logic.
 
@@ -188,6 +188,10 @@ or command validity.
 10. Treat `legacy/add/` as source material, not a live app.
 11. Migrate one boundary at a time: runtime, domain adapters, renderer, UI, QA.
 12. Every migration phase must end with a clear verification command list.
+13. Every platform investment must support the current ADD idle slice or be
+    demonstrated by a small, exercised future-facing example. Defer speculative
+    infrastructure with neither a current consumer nor a proven near-future
+    seam.
 
 ## Generated WASM Runtime
 
@@ -243,9 +247,11 @@ load app
 
 ## First Migration Target
 
-The first functional ADD target inside `aeoffice` is intentionally narrow:
+The first functional ADD target inside `aedventure` was intentionally narrow.
+It is now historical context; the active ADD app has progressed beyond this
+bootstrap target while preserving its boundaries:
 
-- ADD Rust core builds in the `aeoffice` workspace.
+- ADD Rust core builds in the `aedventure` workspace.
 - ADD WASM bindings build.
 - `apps/add-rpg` initializes the worker runtime.
 - The app receives a live ADD snapshot.

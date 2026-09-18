@@ -14,9 +14,9 @@ pub use game_data::{
     CrystalBalance, CrystalTrack, EffectDef, EntityKind, EntityPresentationDef, EntitySchemaDef,
     EntitySchemaSnapshot, EntityVisibilityDef, ExpeditionRewardDef, ExpeditionRiskDef,
     ExpeditionSupportDef, ExpeditionTargetDef, FirePitBalance, FloraDef, FloraKind, FlowCadence,
-    FlowDef, FlowDirection, HeroExposureDef, HeroTrack, ModelKind, ModelRefDef, PersistenceDef,
-    PersistenceScope, PowerBalance, PowerFallbackMode, PowerProfileDef, PresentationDef,
-    PresentationReveal, ProcessingRecipeDef, ProcessingTrack, ProgressionBalance,
+    FlowDef, FlowDirection, HeroExposureDef, HeroTrack, ModelKind, ModelRefDef, OVERWORLD_MAP,
+    PersistenceDef, PersistenceScope, PowerBalance, PowerFallbackMode, PowerProfileDef,
+    PresentationDef, PresentationReveal, ProcessingRecipeDef, ProcessingTrack, ProgressionBalance,
     RecruitmentBalance, RequirementDef, ResonanceEffectDef, ResonanceMaterialCostDef,
     ResonanceRecipeDef, ResonanceTuningTrackDef, ResourceCategory, ResourceDef, RoleDef,
     RoleSlotPool, ScavengeBalance, StationCategory, StationDef, StoryBeatDef, StoryChoiceDef,
@@ -28,25 +28,23 @@ pub use game_data::{
     processing_recipe_def, processing_recipes, recruit_cost_for_index, resonance_recipe_def,
     resonance_recipes, resource_def, resources, role_def, roles, station_def, stations,
     story_beat_def, story_beats, structure_def, structures, terrain_profile_for, tile_def,
-    tile_id_for, world_action_def, world_actions, OVERWORLD_MAP,
+    tile_id_for, world_action_def, world_actions,
 };
 pub use migrations::{CURRENT_CATALOG_VERSION, CURRENT_SCHEMA_VERSION, MigrationError};
 pub use save::{SaveError, export_save, import_save};
-pub use topology::{
-    AxialBounds, GeneratedCell, Landmark, MapCell, MapDefinition, TerrainRegion, axial_distance,
-};
 pub use simulation::Simulation;
 pub use state::{
     BaseState, BubbleState, CombatJob, CombatLogEntry, ConstructionJob, CrystalCircleState,
-    CrystalTuningState,
-    CrystalTuningTrackState, DEFAULT_BASE_SLOTS, DEFAULT_TOTAL_CREW, ExpeditionJob,
-    ExpeditionReport, ExpeditionRiskState, ExpeditionState, ForcedReturnPhase, ForcedReturnState,
-    GRID_RADIUS, GameEvent, GameState, HeroLocationState, HeroProgressState, HeroSurvivalState,
-    HexCoordState,
-    HexState, HexVisualState, NarrativeState, ObjectiveState, PowerState, ProcessingJob,
-    ProcessingState, RecruitTravel, RecruitmentState, ResonanceJob, ResonanceMaterialState,
-    ResonanceReport, ResonanceState, ResourcePools, RosterState, StationSpecializationPathState,
-    StationState, WorldAction, WoundTrackState,
+    CrystalTuningState, CrystalTuningTrackState, DEFAULT_BASE_SLOTS, DEFAULT_TOTAL_CREW,
+    ExpeditionJob, ExpeditionReport, ExpeditionRiskState, ExpeditionState, ForcedReturnPhase,
+    ForcedReturnState, GRID_RADIUS, GameEvent, GameState, HeroLocationState, HeroProgressState,
+    HeroSurvivalState, HexCoordState, HexState, HexVisualState, NarrativeState, ObjectiveState,
+    PowerState, ProcessingJob, ProcessingState, RecruitTravel, RecruitmentState, ResonanceJob,
+    ResonanceMaterialState, ResonanceReport, ResonanceState, ResourcePools, RosterState,
+    StationSpecializationPathState, StationState, WorldAction, WoundTrackState,
+};
+pub use topology::{
+    AxialBounds, GeneratedCell, Landmark, MapCell, MapDefinition, TerrainRegion, axial_distance,
 };
 
 #[cfg(test)]
@@ -58,9 +56,9 @@ mod tests {
         HeroLocationState, HexCoordState, RecruitTravel, Simulation,
         StationSpecializationPathState, StationState, export_save,
         game_data::{
-            Condition, EffectDef, FLAG_BASE_FIRE_PIT_BUILT, FLAG_BASE_STUDIO_RESTORED,
-            CONSTRUCTION_OUTPUT, CONSTRUCTION_REMOVING_MOSS, CONSTRUCTION_STORAGE,
-            EXPEDITION_LOCAL_SCAVENGE_SWEEP, PROJECT_BUILD_FIRE_PIT, PROJECT_BUILD_MIX_CONSOLE,
+            CONSTRUCTION_OUTPUT, CONSTRUCTION_REMOVING_MOSS, CONSTRUCTION_STORAGE, Condition,
+            EXPEDITION_LOCAL_SCAVENGE_SWEEP, EffectDef, FLAG_BASE_FIRE_PIT_BUILT,
+            FLAG_BASE_STUDIO_RESTORED, PROJECT_BUILD_FIRE_PIT, PROJECT_BUILD_MIX_CONSOLE,
             PROJECT_BUILD_RESEARCH_BOOTH, PROJECT_BUILD_RESONANCE_CHAMBER, PROJECT_BUILD_WORKSHOP,
             PROJECT_EXPAND_BUNKS, PROJECT_EXPEDITION_STAGING, PROJECT_PREPARE_LOUDSPEAKERS,
             PROJECT_RESTORE_STUDIO, PROJECT_SAFE_WATER_SYSTEMS, RECIPE_MIX_SIGNAL_BALANCING,
@@ -74,11 +72,10 @@ mod tests {
             STATION_RESONANCE_CHAMBER, STATION_WORKSHOP, STORY_BEAT_AWAIT_SURVIVOR_ARRIVAL,
             STORY_BEAT_BUILD_FIRE_PIT, STORY_BEAT_ENTER_THE_BUBBLE, STORY_BEAT_EXPLORE_BASE,
             STORY_BEAT_FIRST_GLIMPSE, STORY_BEAT_FIRST_RECRUIT, STORY_BEAT_HERO_EXPOSED,
-            STORY_BEAT_INVESTIGATE_BASE,
-            STORY_BEAT_REACH_SURVIVOR_CAVE, STORY_BEAT_RESTORE_STUDIO, STORY_BEAT_ROAD_TO_BASE,
-            STORY_BEAT_STABILIZE_BASE, STRUCTURE_BASE, STRUCTURE_CAVE, STRUCTURE_CRYSTAL_CIRCLE,
-            TILE_BASE_CORE, TILE_MOUNTAIN_WALL, TILE_SURVIVOR_CAVE, WORLD_ACTION_EXPLORE_BASE,
-            WORLD_ACTION_INVESTIGATE_BASE,
+            STORY_BEAT_INVESTIGATE_BASE, STORY_BEAT_REACH_SURVIVOR_CAVE, STORY_BEAT_RESTORE_STUDIO,
+            STORY_BEAT_ROAD_TO_BASE, STORY_BEAT_STABILIZE_BASE, STRUCTURE_BASE, STRUCTURE_CAVE,
+            STRUCTURE_CRYSTAL_CIRCLE, TILE_BASE_CORE, TILE_MOUNTAIN_WALL, TILE_SURVIVOR_CAVE,
+            WORLD_ACTION_EXPLORE_BASE, WORLD_ACTION_INVESTIGATE_BASE,
         },
         import_save,
     };
@@ -198,7 +195,11 @@ mod tests {
             },
         ]);
 
-        assert_eq!(simulation.state().base.skins, skins_before, "no partial apply");
+        assert_eq!(
+            simulation.state().base.skins,
+            skins_before,
+            "no partial apply"
+        );
         assert_eq!(simulation.state().resources.bassline, bassline_before);
         assert!(
             simulation
@@ -281,10 +282,17 @@ mod tests {
             elapsed_seconds: 100.0,
         });
 
-        assert!(simulation.state().active_combat.is_none(), "combat resolves");
+        assert!(
+            simulation.state().active_combat.is_none(),
+            "combat resolves"
+        );
         assert!(simulation.state().cleared_locations.contains("studio:2:2"));
         assert_eq!(
-            simulation.state().inventory.get("item.scrap_metal").copied(),
+            simulation
+                .state()
+                .inventory
+                .get("item.scrap_metal")
+                .copied(),
             Some(1),
             "victory drops the supplied loot"
         );
@@ -365,7 +373,10 @@ mod tests {
         let scarred = simulation.hero_stats().attack;
         // 5 scars * 2% = 10% reduction.
         assert!(scarred < base_attack, "echo scars should weaken the Hero");
-        assert!((scarred - base_attack * 0.9).abs() < 1e-6, "expected ~10% reduction");
+        assert!(
+            (scarred - base_attack * 0.9).abs() < 1e-6,
+            "expected ~10% reduction"
+        );
     }
 
     #[test]
@@ -421,7 +432,13 @@ mod tests {
             Some("objective.restore_studio"),
             "the first objective is active at start"
         );
-        assert!(simulation.state().objectives.completed_objective_ids.is_empty());
+        assert!(
+            simulation
+                .state()
+                .objectives
+                .completed_objective_ids
+                .is_empty()
+        );
 
         let vibes_before = simulation.state().resources.vibes;
         {
@@ -433,14 +450,21 @@ mod tests {
         }
         simulation.refresh_quest_objectives();
 
-        let completed = simulation.state().objectives.completed_objective_ids.clone();
+        let completed = simulation
+            .state()
+            .objectives
+            .completed_objective_ids
+            .clone();
         for id in [
             "objective.restore_studio",
             "objective.build_fire_pit",
             "objective.reach_ring_3",
             "objective.first_recruit",
         ] {
-            assert!(completed.contains(&id.to_string()), "{id} should be complete");
+            assert!(
+                completed.contains(&id.to_string()),
+                "{id} should be complete"
+            );
         }
         assert_eq!(
             simulation.state().objectives.active_objective_id,
@@ -521,7 +545,10 @@ mod tests {
 
         // Half the requested upkeep is met → raw severity 0.5 at tier 0.
         let raw = simulation.brownout_severity(10.0, 5.0, 0);
-        assert!((raw - 0.5).abs() < 1e-6, "raw severity should be 0.5, got {raw}");
+        assert!(
+            (raw - 0.5).abs() < 1e-6,
+            "raw severity should be 0.5, got {raw}"
+        );
 
         // Higher harmonics tiers carry brownout tolerance, reducing severity.
         let tier2 = simulation.brownout_severity(10.0, 5.0, 2);
@@ -543,7 +570,10 @@ mod tests {
             );
         }
         let with_mix = simulation.brownout_severity(10.0, 5.0, 0);
-        assert!(with_mix < raw, "mix console tolerance should reduce severity");
+        assert!(
+            with_mix < raw,
+            "mix console tolerance should reduce severity"
+        );
     }
 
     #[test]
@@ -566,7 +596,10 @@ mod tests {
                 (survival.recovery_brownout_stop_threshold - 0.05).max(0.01);
         }
         let mild = simulation.hero_recovery_rate_multiplier();
-        assert!(mild > 0.0 && mild < 1.0, "mild brownout should slow recovery, got {mild}");
+        assert!(
+            mild > 0.0 && mild < 1.0,
+            "mild brownout should slow recovery, got {mild}"
+        );
 
         // No brownout → full-speed recovery.
         {
@@ -958,21 +991,21 @@ mod tests {
         let simulation = Simulation::new();
         let cave = HexCoordState::survivor_cave();
 
-        assert!(!simulation
-            .state()
-            .discovered_cells
-            .contains(&HexCoordState::base())
+        assert!(
+            !simulation
+                .state()
+                .discovered_cells
+                .contains(&HexCoordState::base())
         );
+        assert!(simulation.state().discovered_cells.contains(&cave));
+        assert!(simulation.state().discovered_cells.len() > 1);
         assert!(
             simulation
                 .state()
                 .discovered_cells
-                .contains(&cave)
+                .iter()
+                .all(|coord| { hex_distance(cave, *coord) <= 1 })
         );
-        assert!(simulation.state().discovered_cells.len() > 1);
-        assert!(simulation.state().discovered_cells.iter().all(|coord| {
-            hex_distance(cave, *coord) <= 1
-        }));
         assert!(
             simulation.state().events.iter().any(|event| matches!(
                 event,
@@ -1283,21 +1316,21 @@ mod tests {
         simulation.apply(GameCommand::ResetRun);
         let cave = HexCoordState::survivor_cave();
 
-        assert!(!simulation
-            .state()
-            .discovered_cells
-            .contains(&HexCoordState::base())
+        assert!(
+            !simulation
+                .state()
+                .discovered_cells
+                .contains(&HexCoordState::base())
         );
+        assert!(simulation.state().discovered_cells.contains(&cave));
+        assert!(simulation.state().discovered_cells.len() > 1);
         assert!(
             simulation
                 .state()
                 .discovered_cells
-                .contains(&cave)
+                .iter()
+                .all(|coord| { hex_distance(cave, *coord) <= 1 })
         );
-        assert!(simulation.state().discovered_cells.len() > 1);
-        assert!(simulation.state().discovered_cells.iter().all(|coord| {
-            hex_distance(cave, *coord) <= 1
-        }));
         assert!(
             simulation.state().events.iter().any(|event| matches!(
                 event,
@@ -2426,9 +2459,11 @@ mod tests {
         }]);
         assert!(sim.evaluate_condition(&Condition::FlagSet(FLAG_BASE_STUDIO_RESTORED)));
 
-        assert!(sim.evaluate_condition(&Condition::Not(&Condition::FlagUnset(
-            FLAG_BASE_STUDIO_RESTORED
-        ))));
+        assert!(
+            sim.evaluate_condition(&Condition::Not(&Condition::FlagUnset(
+                FLAG_BASE_STUDIO_RESTORED
+            )))
+        );
         assert!(sim.evaluate_condition(&Condition::All(&[
             Condition::Always,
             Condition::FlagSet(FLAG_BASE_STUDIO_RESTORED),
@@ -2463,12 +2498,27 @@ mod tests {
 
         // Qualities — the quality-based-narrative lever.
         assert_eq!(sim.quality("trust"), 0);
-        assert!(!sim.evaluate_condition(&Condition::QualityAtLeast { key: "trust", value: 1 }));
-        sim.apply_effects(&[EffectDef::AddQuality { key: "trust", amount: 2 }]);
+        assert!(!sim.evaluate_condition(&Condition::QualityAtLeast {
+            key: "trust",
+            value: 1
+        }));
+        sim.apply_effects(&[EffectDef::AddQuality {
+            key: "trust",
+            amount: 2,
+        }]);
         assert_eq!(sim.quality("trust"), 2);
-        assert!(sim.evaluate_condition(&Condition::QualityAtLeast { key: "trust", value: 2 }));
-        sim.apply_effects(&[EffectDef::SetQuality { key: "trust", value: 0 }]);
-        assert!(!sim.evaluate_condition(&Condition::QualityAtLeast { key: "trust", value: 1 }));
+        assert!(sim.evaluate_condition(&Condition::QualityAtLeast {
+            key: "trust",
+            value: 2
+        }));
+        sim.apply_effects(&[EffectDef::SetQuality {
+            key: "trust",
+            value: 0,
+        }]);
+        assert!(!sim.evaluate_condition(&Condition::QualityAtLeast {
+            key: "trust",
+            value: 1
+        }));
 
         // Beat completion + numeric reach comparison.
         assert!(!sim.evaluate_condition(&Condition::BeatCompleted(STORY_BEAT_ROAD_TO_BASE)));
@@ -2485,12 +2535,25 @@ mod tests {
         let mut sim = Simulation::new();
         // Fast-forward the intro, then drive the late spine purely from game state.
         sim.apply_effects(&[
-            EffectDef::CompleteBeat { beat_id: STORY_BEAT_ROAD_TO_BASE },
-            EffectDef::CompleteBeat { beat_id: STORY_BEAT_FIRST_GLIMPSE },
-            EffectDef::CompleteBeat { beat_id: STORY_BEAT_ENTER_THE_BUBBLE },
-            EffectDef::CompleteBeat { beat_id: STORY_BEAT_INVESTIGATE_BASE },
-            EffectDef::CompleteBeat { beat_id: STORY_BEAT_EXPLORE_BASE },
-            EffectDef::SetFlag { flag_id: FLAG_BASE_STUDIO_RESTORED, value: true },
+            EffectDef::CompleteBeat {
+                beat_id: STORY_BEAT_ROAD_TO_BASE,
+            },
+            EffectDef::CompleteBeat {
+                beat_id: STORY_BEAT_FIRST_GLIMPSE,
+            },
+            EffectDef::CompleteBeat {
+                beat_id: STORY_BEAT_ENTER_THE_BUBBLE,
+            },
+            EffectDef::CompleteBeat {
+                beat_id: STORY_BEAT_INVESTIGATE_BASE,
+            },
+            EffectDef::CompleteBeat {
+                beat_id: STORY_BEAT_EXPLORE_BASE,
+            },
+            EffectDef::SetFlag {
+                flag_id: FLAG_BASE_STUDIO_RESTORED,
+                value: true,
+            },
         ]);
         sim.refresh_narrative_state();
         // studio_restored auto-resolves Restore Studio + activates Build Fire Pit —
@@ -2528,10 +2591,18 @@ mod tests {
         // Restore Studio's onComplete grants hope when the beat resolves.
         assert_eq!(sim.quality("hope"), 0);
         sim.apply_effects(&[
-            EffectDef::CompleteBeat { beat_id: STORY_BEAT_FIRST_GLIMPSE },
-            EffectDef::CompleteBeat { beat_id: STORY_BEAT_ENTER_THE_BUBBLE },
-            EffectDef::CompleteBeat { beat_id: STORY_BEAT_INVESTIGATE_BASE },
-            EffectDef::CompleteBeat { beat_id: STORY_BEAT_EXPLORE_BASE },
+            EffectDef::CompleteBeat {
+                beat_id: STORY_BEAT_FIRST_GLIMPSE,
+            },
+            EffectDef::CompleteBeat {
+                beat_id: STORY_BEAT_ENTER_THE_BUBBLE,
+            },
+            EffectDef::CompleteBeat {
+                beat_id: STORY_BEAT_INVESTIGATE_BASE,
+            },
+            EffectDef::CompleteBeat {
+                beat_id: STORY_BEAT_EXPLORE_BASE,
+            },
             EffectDef::SetFlag {
                 flag_id: FLAG_BASE_STUDIO_RESTORED,
                 value: true,
@@ -2564,7 +2635,11 @@ mod tests {
         // on_activate fired exactly once on activation...
         assert_eq!(sim.quality("exposure_seen"), 1);
         sim.refresh_narrative_state();
-        assert_eq!(sim.quality("exposure_seen"), 1, "on_activate must not re-fire");
+        assert_eq!(
+            sim.quality("exposure_seen"),
+            1,
+            "on_activate must not re-fire"
+        );
 
         // Resolving it applies the choice effect and hands the spine back.
         sim.apply(GameCommand::ChooseStoryOption {
@@ -2581,6 +2656,8 @@ mod tests {
     fn hex_distance(left: HexCoordState, right: HexCoordState) -> u8 {
         let dq = left.q - right.q;
         let dr = left.r - right.r;
-        dq.abs().max(dr.abs()).max((-(left.q + left.r) + (right.q + right.r)).abs()) as u8
+        dq.abs()
+            .max(dr.abs())
+            .max((-(left.q + left.r) + (right.q + right.r)).abs()) as u8
     }
 }

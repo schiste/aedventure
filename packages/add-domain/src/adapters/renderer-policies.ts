@@ -10,7 +10,7 @@ import type {
   TopologyNavigationPolicy,
   WorldInteractionDetail,
   WorldInteractionPolicy,
-} from "@aedventure/game-renderer-phaser"
+} from "@aedventure/game-world"
 
 import {
   addMapCoordKey,

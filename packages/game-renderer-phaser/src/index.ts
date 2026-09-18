@@ -104,4 +104,4 @@ export type {
   TopologyNavigationPolicy,
   WorldInteractionDetail,
   WorldInteractionPolicy,
-} from "./renderer/policies"
+} from "@aedventure/game-world"

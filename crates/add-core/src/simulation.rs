@@ -16,16 +16,15 @@ use crate::game_data::{
     STATION_MIX_CONSOLE, STATION_RESEARCH_BOOTH, STATION_RESONANCE_CHAMBER, STATION_WORKSHOP,
     STORY_BEAT_ENTER_THE_BUBBLE, STORY_BEAT_FIRST_GLIMPSE, STORY_BEAT_ROAD_TO_BASE, TileFeature,
     balance_snapshot, construction_option_def, creature_def, expedition_target_def, item_def,
-    objective_def, objectives,
-    perk_def, processing_recipe_def, recruit_cost_for_index, resonance_recipe_def, role_def,
-    station_def, stations, story_beat_def, story_beats, tile_def, world_action_def,
+    objective_def, objectives, perk_def, processing_recipe_def, recruit_cost_for_index,
+    resonance_recipe_def, role_def, station_def, stations, story_beat_def, story_beats, tile_def,
+    world_action_def,
 };
 use crate::state::{
     CombatJob, CombatLogEntry, ConstructionJob, CrystalTuningTrackState, ExpeditionJob,
-    ExpeditionReport, ExpeditionRiskState,
-    ForcedReturnPhase, ForcedReturnState, GRID_RADIUS, GameState, HeroLocationState, HexCoordState,
-    HexState, HexVisualState, ResonanceJob, ResonanceReport, StationSpecializationPathState,
-    WorldAction, initial_discovered_cells,
+    ExpeditionReport, ExpeditionRiskState, ForcedReturnPhase, ForcedReturnState, GRID_RADIUS,
+    GameState, HeroLocationState, HexCoordState, HexState, HexVisualState, ResonanceJob,
+    ResonanceReport, StationSpecializationPathState, WorldAction, initial_discovered_cells,
 };
 
 /// Scrap-metal items yielded per second of scavenging effort (a unit of effort
@@ -2395,7 +2394,9 @@ impl Simulation {
             let active = self.next_incomplete_objective();
             self.state.objectives.active_objective_id = active.clone();
             let Some(active_id) = active else { break };
-            let Some(def) = objective_def(&active_id) else { break };
+            let Some(def) = objective_def(&active_id) else {
+                break;
+            };
             if !self.evaluate_conditions(def.conditions) {
                 break;
             }
@@ -2440,8 +2441,13 @@ impl Simulation {
     fn refresh_narrative_state_from(&mut self, beats: &[crate::game_data::StoryBeatDef]) {
         // Let repeatable beats re-fire on_activate after they lapse: drop any
         // activation marker whose beat is repeatable and no longer eligible.
-        let activated: Vec<String> =
-            self.state.narrative.activated_beat_ids.iter().cloned().collect();
+        let activated: Vec<String> = self
+            .state
+            .narrative
+            .activated_beat_ids
+            .iter()
+            .cloned()
+            .collect();
         for id in activated {
             if beats.iter().find(|beat| beat.id == id).is_some_and(|beat| {
                 beat.repeatable && !self.evaluate_conditions(beat.preconditions)
@@ -2471,7 +2477,10 @@ impl Simulation {
             // Fire on_activate once per activation (the lapse cleanup above lets
             // repeatable beats fire again on re-trigger).
             if !self.state.narrative.activated_beat_ids.contains(&beat_id) {
-                self.state.narrative.activated_beat_ids.insert(beat_id.clone());
+                self.state
+                    .narrative
+                    .activated_beat_ids
+                    .insert(beat_id.clone());
                 self.apply_effects(beat.on_activate);
                 self.push_event(crate::state::GameEvent::BeatActivated {
                     beat_id: beat_id.clone(),
@@ -3561,10 +3570,7 @@ impl Simulation {
             Condition::ClockSecondsAtLeast(seconds) => self.state.clock_seconds >= seconds,
             Condition::QualityAtLeast { key, value } => self.quality(key) >= value,
             Condition::BeatCompleted(beat_id) => self.story_beat_completed(beat_id),
-            Condition::ChoiceMade {
-                beat_id,
-                option_id,
-            } => self
+            Condition::ChoiceMade { beat_id, option_id } => self
                 .state
                 .narrative
                 .choice_by_beat
@@ -3577,9 +3583,7 @@ impl Simulation {
             Condition::HeroForcedReturn => self.flag_value(FLAG_HERO_FORCED_RETURN_ACTIVE),
             Condition::HeroRecovering => self.flag_value(FLAG_HERO_RECOVERING_AT_STUDIO),
             Condition::All(conditions) => self.evaluate_conditions(conditions),
-            Condition::Any(conditions) => {
-                conditions.iter().any(|c| self.evaluate_condition(c))
-            }
+            Condition::Any(conditions) => conditions.iter().any(|c| self.evaluate_condition(c)),
             Condition::Not(inner) => !self.evaluate_condition(inner),
         }
     }
@@ -4140,7 +4144,9 @@ impl Simulation {
             .wound_units_taken
             .saturating_add(wounds);
 
-        self.state.cleared_locations.insert(combat.location_key.clone());
+        self.state
+            .cleared_locations
+            .insert(combat.location_key.clone());
         if let Some(item_id) = &combat.loot_item {
             self.grant_item(item_id, combat.loot_qty);
         }
@@ -4258,8 +4264,8 @@ fn station_specialization_label(path: StationSpecializationPathState) -> &'stati
 mod storylet_runtime_tests {
     use super::*;
     use crate::game_data::{
-        Condition, EffectDef, StoryBeatDef, STORY_BEAT_ENTER_THE_BUBBLE,
-        STORY_BEAT_FIRST_GLIMPSE, STORY_BEAT_INVESTIGATE_BASE, STORY_BEAT_ROAD_TO_BASE,
+        Condition, EffectDef, STORY_BEAT_ENTER_THE_BUBBLE, STORY_BEAT_FIRST_GLIMPSE,
+        STORY_BEAT_INVESTIGATE_BASE, STORY_BEAT_ROAD_TO_BASE, StoryBeatDef,
         WORLD_ACTION_EXPLORE_BASE,
     };
     use crate::state::{GameEvent, NarrativeState};
@@ -4337,11 +4343,13 @@ mod storylet_runtime_tests {
         simulation.state.narrative.active_beat_id = Some(STORY_BEAT_ROAD_TO_BASE.to_string());
 
         assert!(!simulation.story_action_allowed(WORLD_ACTION_EXPLORE_BASE));
-        assert!(simulation
-            .state
-            .notes
-            .iter()
-            .any(|note| note.contains("Finish Road to Base")));
+        assert!(
+            simulation
+                .state
+                .notes
+                .iter()
+                .any(|note| note.contains("Finish Road to Base"))
+        );
     }
 
     fn isolated_storylet_simulation() -> Simulation {
@@ -4539,13 +4547,22 @@ mod storylet_runtime_tests {
 
         let raw = export_save(simulation.state()).unwrap();
         let loaded = import_save(&raw).unwrap();
-        assert_eq!(loaded.narrative.active_beat_id, simulation.state.narrative.active_beat_id);
+        assert_eq!(
+            loaded.narrative.active_beat_id,
+            simulation.state.narrative.active_beat_id
+        );
         assert_eq!(
             loaded.narrative.completed_beat_ids,
             simulation.state.narrative.completed_beat_ids
         );
-        assert_eq!(loaded.narrative.choice_by_beat, simulation.state.narrative.choice_by_beat);
-        assert_eq!(loaded.narrative.qualities, simulation.state.narrative.qualities);
+        assert_eq!(
+            loaded.narrative.choice_by_beat,
+            simulation.state.narrative.choice_by_beat
+        );
+        assert_eq!(
+            loaded.narrative.qualities,
+            simulation.state.narrative.qualities
+        );
 
         let reloaded = Simulation::from_state(loaded);
         assert_eq!(

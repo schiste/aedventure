@@ -57,6 +57,7 @@ diff_check() {
 
 add_ui_checks() {
   diff_check
+  run npm run wasm:build:add
   run npm --workspace @aedventure/add-rpg run build:types
   run node --check "$ROOT_DIR/scripts/add-rpg-smoke.test.cjs"
 
@@ -69,6 +70,7 @@ add_ui_checks() {
 
 types_check() {
   diff_check
+  run npm run wasm:build:add
   run "$(tsc_bin)" -b "$ROOT_DIR/tsconfig.json"
 }
 

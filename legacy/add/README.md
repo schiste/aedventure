@@ -1,11 +1,11 @@
-# aeoffice Import Note
+# Aedventure Import Note
 
 This directory is historical source material imported from the ADD repository
 for the planned `apps/add-rpg` migration. Do not develop the live ADD app in
 `legacy/add/`; extract runtime, domain, renderer, and UI pieces into the target
-`aeoffice` workspace packages described in `docs/add-migration-plan.md`.
+`aedventure` workspace packages described in `docs/add-migration-plan.md`.
 
-Migration note: the ADD Rust runtime crates were moved into the aeoffice root
+Migration note: the ADD Rust runtime crates were moved into the aedventure root
 workspace under `crates/add-core`, `crates/add-web-bindings`, and
 `crates/add-web-worker`.
 

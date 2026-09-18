@@ -514,7 +514,7 @@ const discoveryState = createModuleMemo(() => {
   if (!currentSnapshot || !currentCatalog) return null
 
   const info = mapInfo()
-  const activeTile = info.interaction.hoveredDetail ?? info.interaction.selectedDetail
+  const activeTile = activeTileForMapInfo(info)
   const experience = travelExperience()
   const travelPhase =
     experience?.phase ?? (info.travel.previewCell ? "preview" : "idle")
@@ -785,6 +785,7 @@ function AddRpgApp() {
     window.addEventListener("resize", clampFloatingPanelsToViewport)
     window.addEventListener("add-tuning-override", handleLiveTuningOverride)
     window.addEventListener("add-tuning-reset", handleLiveTuningReset)
+    document.addEventListener("keydown", handleGlobalKeyboardShortcuts)
   })
 
   onCleanup(() => {
@@ -799,6 +800,7 @@ function AddRpgApp() {
     window.removeEventListener("resize", clampFloatingPanelsToViewport)
     window.removeEventListener("add-tuning-override", handleLiveTuningOverride)
     window.removeEventListener("add-tuning-reset", handleLiveTuningReset)
+    document.removeEventListener("keydown", handleGlobalKeyboardShortcuts)
     if (liveTuningDashboardVisible()) {
       void setDevLiveTuningDashboardVisible(false)
     }
@@ -1907,6 +1909,20 @@ function handleShellKeyDown(event: KeyboardEvent): void {
     event.stopPropagation()
     closeAdvancedViews()
     focusElementById("open-shell-menu")
+  }
+}
+
+function handleGlobalKeyboardShortcuts(event: KeyboardEvent): void {
+  if (event.defaultPrevented) return
+  if (!travelDialog() && !offlineReturnSummary()) return
+
+  if (event.key === "Enter") {
+    handleKeyboardConfirm(event)
+    return
+  }
+
+  if (event.key === "Escape") {
+    handleKeyboardCancel(event)
   }
 }
 
@@ -6203,7 +6219,12 @@ function showTravelDialog(
 }
 
 function focusTravelDialogDefaultAction(kind: TravelDialogKind): void {
-  focusElementById(defaultTravelDialogActionId(kind))
+  const actionId = defaultTravelDialogActionId(kind)
+  window.requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => {
+      document.getElementById(actionId)?.focus()
+    })
+  })
 }
 
 function defaultTravelDialogActionId(kind: TravelDialogKind): string {
@@ -7843,16 +7864,15 @@ function toTextState(): RuntimeTextState {
   const currentCatalog = catalog()
   const currentUi = uiState()
   const currentMapInfo = mapHost?.getInfo() ?? mapInfo()
+  const activeTile = activeTileForMapInfo(currentMapInfo)
   const currentDiscovery =
     currentSnapshot && currentCatalog
       ? selectAddDiscoverySummary({
           snapshot: currentSnapshot,
           catalog: currentCatalog,
           heroCell: currentMapInfo.character.cell,
-          selectedTile: currentMapInfo.interaction.selectedDetail,
-          previewTile:
-            currentMapInfo.interaction.hoveredDetail ??
-            currentMapInfo.interaction.selectedDetail,
+          selectedTile: activeTile,
+          previewTile: activeTile,
           heroDungeonLinks: currentMapInfo.character.dungeonLinksAtCell,
           selectedDungeonLinks: currentMapInfo.dungeonLinks.selected,
           travel: {
@@ -7951,6 +7971,12 @@ function toTextState(): RuntimeTextState {
       firstPlayablePersistenceReady: persistenceReadyForFirstPlayable(),
     },
   })
+}
+
+function activeTileForMapInfo(
+  currentMapInfo: AddPhaserMapInfo,
+): AddPhaserMapInfo["interaction"]["hoveredDetail"] {
+  return currentMapInfo.interaction.hoveredDetail ?? currentMapInfo.interaction.selectedDetail
 }
 
 function statusState(): string {

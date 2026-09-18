@@ -1,7 +1,7 @@
 import Phaser from "phaser"
 import type { CellCoord } from "@aedventure/game-topology"
 import type { GameCellPlacement } from "@aedventure/game-world"
-import type { WorldInteractionPolicy } from "@aedventure/game-renderer-phaser"
+import type { WorldInteractionPolicy } from "@aedventure/game-world"
 import {
   addMapCoordKey,
   displayAddCell,
@@ -401,7 +401,7 @@ function projectAddTravelInfo(
   const { context, rendererState } = input
   if (!context) return emptyMapInfo().travel
 
-  const previewCoord = rendererState.interaction.selectedCoord ?? rendererState.interaction.hoveredCoord
+  const previewCoord = rendererState.interaction.hoveredCoord ?? rendererState.interaction.selectedCoord
   const previewCell = previewCoord ? context.terrainByCoord.get(addMapCoordKey(previewCoord)) : null
   const previewDetail = previewCoord
     ? tileInteractionDetailForCoord(previewCoord, context.terrainByCoord)

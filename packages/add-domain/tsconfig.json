@@ -21,9 +21,6 @@
     {
       "path": "../game-content"
     },
-    {
-      "path": "../game-renderer-phaser"
-    }
   ],
   "include": [
     "src/**/*.ts"

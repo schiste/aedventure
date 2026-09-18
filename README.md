@@ -1,4 +1,17 @@
-# Aedventure Virtual Office
+# Aedventure
+
+Aedventure is the canonical repository for the ADD idle/RPG game and the
+shared game platform that supports it. The current playable slice is an
+idle-game loop with Rust-authoritative simulation, a Web Worker/WASM boundary,
+Solid UI, and Phaser presentation. The long-term direction can grow into a
+strategy/RPG game without moving gameplay authority into the browser shell.
+
+The former standalone `ADD` repository is legacy/reference material. Its
+imported history remains under `legacy/add/`; new ADD work belongs in this
+repository.
+
+The remainder of this README documents the office/platform lane that also
+exists in the monorepo. It is not the authority for ADD mechanics.
 
 This repository contains the hard-fork plan and implementation workspace for
 the Aedventure Customer Virtual Office App.
@@ -9,6 +22,10 @@ architecture before product feature work resumes.
 
 ## Canonical Documentation
 
+- [ADD Canonical Architecture and Code Audit](docs/add-canonical-architecture.md)
+- [ADD Migration and Runtime Boundary](docs/add-migration-plan.md)
+- [ADD Systems Parity Audit](docs/add-systems-parity-audit.md)
+- [Domain-Neutral Engine Boundary](docs/engine-boundary.md)
 - [Global Product and Technical Specification](docs/customer-virtual-office-platform-spec.md)
 - [Development Rollout Plan](docs/development-rollout-plan.md)
 - [Phase 0 Refactor Plan](docs/phase-0-refactor-plan.md)
@@ -18,6 +35,14 @@ architecture before product feature work resumes.
 
 ## Source Layout
 
+- `apps/add-rpg/` - canonical ADD browser app and presentation shell.
+- `crates/add-core/` - authoritative ADD simulation, saves, migrations, and
+  gameplay rules.
+- `crates/add-web-bindings/` - browser-facing Rust/WASM bindings.
+- `packages/add-domain/` - authored ADD content and snapshot/map/UI adapters.
+- `packages/game-*` - reusable topology, world, renderer, content, input, and
+  protocol primitives.
+- `legacy/add/` - imported ADD source/history; not a live application.
 - `legacy/skyoffice-original/` - SkyOffice fork imported with upstream Git
   history preserved as a subtree. This is reference code, not the target app.
 - `apps/web/` - browser-first customer app-layer orchestrator with a Phaser 4
@@ -35,6 +60,14 @@ architecture before product feature work resumes.
 - `infra/` - future Docker Compose and deployment scaffolding.
 - `assets/ASSET_MANIFEST.md` - required manifest for any target-app assets.
 - `docs/` - product, architecture, and phase planning documents.
+
+## Platform Investment Rule
+
+The platform exists to make the current ADD idle slice easier to ship while
+keeping future strategy/RPG layers possible. Every platform investment must
+either support the current idle slice or be demonstrated by a small,
+exercised future-facing example. Infrastructure with neither a current
+consumer nor a proven near-future seam is deferred.
 
 ## Starting Position
 
