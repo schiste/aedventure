@@ -6752,15 +6752,15 @@ function handleTileActivation(event: AddTileActivationEvent): void {
   const selected = mapHost?.selectCell(event.cell) ?? false
   if (selected) refreshMapInfo()
   const detail = discoveryState()?.tileDetail
-  if (!detail || detail.cell !== event.cell || !detail.travel.standingHere) return
-  const action = preferredCurrentTileAction(detail)
+  if (!detail || detail.cell !== event.cell) return
+  const action = preferredTileAction(detail)
   if (!action) return
   lastTileActionAtMs = Date.now()
   setLastTileActionTarget(action.linkId ?? event.cell)
   runTileDetailAction(detail, action)
 }
 
-function preferredCurrentTileAction(detail: AddTileDetailSummary): AddTileAction | null {
+function preferredTileAction(detail: AddTileDetailSummary): AddTileAction | null {
   const enabledActions = detail.actions.filter((action) => action.enabled)
   const linkedAction = (action: AddTileAction) =>
     action.linkId ? detail.links.find((link) => link.id === action.linkId) : null
@@ -6771,7 +6771,9 @@ function preferredCurrentTileAction(detail: AddTileDetailSummary): AddTileAction
     enabledActions.find(
       (action) => action.kind === "enter_submap" && linkedAction(action)?.kind === "dungeon",
     ) ??
+    enabledActions.find((action) => action.kind === "enter_submap") ??
     enabledActions.find((action) => action.kind === "manage_base") ??
+    enabledActions.find((action) => action.kind === "travel") ??
     null
   )
 }

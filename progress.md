@@ -211,6 +211,11 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   the attempted move leaving that cave. The render text state exposes the dialog
   eligibility reason so future smoke checks can prove the dramatic warning does
   not leak into later travel.
+- ADD tile activation is now modeled as a generic authorized action path:
+  Phaser asks the ADD domain tile-detail selector for enabled travel/submap/base
+  actions, renders hover/click affordances from that list, and emits a neutral
+  `tile_click` event for every scene. Current-tile dungeon entry and adjacent
+  travel both use the same activation path.
 - Verification for the travel halo trail: `npm --workspace @aedventure/add-rpg
   run build:browser` and `npm run smoke:add-rpg` pass. The broader
   `npm run check` is currently blocked by unrelated dirty ADD dungeon work
