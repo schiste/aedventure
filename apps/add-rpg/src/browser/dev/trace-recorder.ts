@@ -16,6 +16,9 @@ import type { AddGameEvent, SimulationSnapshot, TraceEntry } from "@aedventure/a
  *   jq -c 'select(.dir=="event" and .latencyMs>16)' logs/session-*.jsonl
  */
 
+/** Injected at build time by vite.config.mjs `define`. */
+declare const __ADD_GIT_SHA__: string
+
 const DEV = Boolean((import.meta as { env?: { DEV?: boolean } }).env?.DEV)
 
 /** Full snapshot bodies are huge and largely redundant tick-to-tick. By default
@@ -45,7 +48,10 @@ function flush(): void {
     flushTimer = undefined
   }
   if (buffer.length === 0) return
-  const body = `${buffer.join("\n")}\n`
+  // Lead each batch with a wall-clock checkpoint so monotonic `t` stays alignable
+  // to real time even if the system clock is adjusted mid-session.
+  const clock = JSON.stringify({ t: performance.now(), dir: "clock", epoch: Date.now() })
+  const body = `${clock}\n${buffer.join("\n")}\n`
   buffer.length = 0
   // keepalive lets the final batch survive a page nav / refresh.
   void fetch("/__trace", {
@@ -174,6 +180,50 @@ interface PerfMemory {
 
 /** Latest worker back-pressure seen at the boundary, folded into each perf sample. */
 let lastQueueDepth = 0
+
+/**
+ * One-shot session header: the environment needed to interpret everything else.
+ * `timeOrigin` is the anchor — any line's wall-clock time is `timeOrigin + t`.
+ * Emitted after a short rAF probe so the display refresh rate is included.
+ */
+function recordSessionHeader(): void {
+  const env = {
+    dir: "session",
+    kind: "header",
+    session: SESSION,
+    timeOrigin: Math.round(performance.timeOrigin),
+    startedAt: new Date(performance.timeOrigin).toISOString(),
+    mode: (import.meta as { env?: { MODE?: string } }).env?.MODE ?? "unknown",
+    sha: typeof __ADD_GIT_SHA__ === "string" ? __ADD_GIT_SHA__ : "unknown",
+    url: location.href,
+    ua: navigator.userAgent,
+    lang: navigator.language,
+    tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    dpr: window.devicePixelRatio,
+    cores: navigator.hardwareConcurrency ?? null,
+    memGB: (navigator as { deviceMemory?: number }).deviceMemory ?? null,
+    viewport: { w: window.innerWidth, h: window.innerHeight },
+    screen: { w: window.screen.width, h: window.screen.height },
+    reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+  }
+  // Estimate the display refresh rate from a short frame-interval probe.
+  const gaps: number[] = []
+  let last = 0
+  let frames = 0
+  const probe = (ts: number): void => {
+    if (last) gaps.push(ts - last)
+    last = ts
+    frames += 1
+    if (frames <= 15) {
+      requestAnimationFrame(probe)
+      return
+    }
+    gaps.sort((a, b) => a - b)
+    const median = gaps[Math.floor(gaps.length / 2)] || 0
+    enqueue({ t: performance.now(), ...env, refreshHz: median ? Math.round(1000 / median) : null })
+  }
+  requestAnimationFrame(probe)
+}
 
 /** One-shot boot timing: navigation + paint milestones. Deferred until the `load`
  *  event so domContentLoaded/load/paint are actually populated (they read 0 if
@@ -531,6 +581,9 @@ export function installTraceRecorder(getSnapshot: () => SimulationSnapshot | nul
 
   // Capture diagnostics first, so errors thrown during the rest of setup are seen.
   const stopConsole = installConsoleCapture(stamp)
+
+  // Session header: env + the timeOrigin anchor that maps every `t` to wall-clock.
+  recordSessionHeader()
 
   // Boundary tap: every command out + every worker event in, with latency + back-pressure.
   const onTrace = (entry: TraceEntry): void => {
