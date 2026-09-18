@@ -107,8 +107,10 @@ crates/
   add-web-bindings/
     WASM bindings exposing ADD runtime operations to the browser worker.
 
-  add-web-worker/
-    Rust-side worker boundary helpers where useful.
+The current browser worker boundary is implemented in TypeScript under
+`apps/add-rpg/src/workers` and calls `add-web-bindings`. A separate Rust worker
+crate is intentionally deferred until a concrete worker-side consumer exists;
+the platform rule does not permit an unconsumed placeholder crate.
 
 legacy/
   add/

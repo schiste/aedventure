@@ -2,7 +2,6 @@
 members = [
     "crates/add-core",
     "crates/add-web-bindings",
-    "crates/add-web-worker",
 ]
 resolver = "2"
 

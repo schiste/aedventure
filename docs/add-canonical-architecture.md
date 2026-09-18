@@ -56,6 +56,9 @@ just to make a control look convenient.
    direction.
 4. The content generator now invokes `rustfmt` with Rust 2024, matching the
    workspace and keeping generated catalogs compatible with `cargo fmt`.
+5. The unused `add-web-worker` Rust placeholder was removed. The current
+   worker boundary is the TypeScript worker calling the Rust/WASM bindings;
+   another crate will be added only with a concrete consumer.
 
 ### Intentional retained seams
 
@@ -72,6 +75,8 @@ just to make a control look convenient.
 - `scripts/build-add-content.cjs` is intentionally declarative and repetitive:
   it is the schema/code-generation boundary between authored TS and Rust. Its
   size is generator metadata, not duplicated runtime rules.
+- The repository no longer carries an unconsumed Rust worker scaffold. Future
+  platform seams need a current consumer or an exercised near-term example.
 
 ## SOLID/DRY assessment
 
