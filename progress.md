@@ -3112,3 +3112,11 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   `http://127.0.0.1:5180/app/` verified Settings dragging, tuning show/remove,
   screenshots, and zero console errors. Focused verification passed with
   `npm run agent:verify:add-ui`.
+- Updated Studio Grounds area entry to preserve the overworld approach side.
+  The area map builder now accepts a side-aware entry option and places the Hero
+  on the middle hex of that side, while the ADD app derives the side from the
+  last overworld step into The Studio. The existing Studio tile-detail smoke now
+  asserts the side-entry spawn and captures an area-entry screenshot. Focused
+  ADD verification passed, and a targeted browser probe confirmed Studio Grounds
+  opens as `area_hex` with the Hero at `hex:4,-2` after traveling from Survivor
+  Cave to The Studio.

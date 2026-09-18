@@ -3102,17 +3102,23 @@ async function exerciseStudioTileDetailLinks(page, consoleErrors) {
       "ADD RPG Studio tile detail screenshot",
     )
 
-    await clickVisibleElementByDomId(
+    await clickUntilTextState(
       page,
-      "tile-detail-action-tile-action-area-tile-link-area-area-studio_grounds",
-    )
-    await waitForTextState(
-      page,
+      "#tile-detail-action-tile-action-area-tile-link-area-area-studio_grounds",
       (state) =>
         state.mapMode?.active === "area_hex" &&
         state.map?.mapId === "add.rpg.area.studio-grounds" &&
+        state.map?.character?.cell === "hex:4,-2" &&
+        state.map?.character?.coord === "4,-2" &&
         state.map?.landmarks?.renderedCount >= 1,
       consoleErrors,
+      3,
+      1800,
+    )
+    await assertNonBlankNamedAppScreenshot(
+      page,
+      "add-rpg-studio-area-entry-smoke.png",
+      "ADD RPG Studio area side-entry screenshot",
     )
 
     return await returnToOverworld(page, consoleErrors)

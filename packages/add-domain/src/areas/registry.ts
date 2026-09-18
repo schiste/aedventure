@@ -1,4 +1,5 @@
 import type { GameMap } from "@aedventure/game-world"
+import type { BuildAreaMapOptions } from "./build-area-map"
 
 import {
   STUDIO_GROUNDS_AREA_ID,
@@ -15,7 +16,7 @@ export interface AddAreaDefinition {
   readonly label: string
   readonly mapId: string
   readonly visibilityPolicy: AddAreaVisibilityPolicy
-  readonly build: () => GameMap
+  readonly build: (options?: BuildAreaMapOptions) => GameMap
 }
 
 export const ADD_AREA_REGISTRY: readonly AddAreaDefinition[] = [

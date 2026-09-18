@@ -19,6 +19,18 @@ export interface AreaCellSpec {
   readonly blocked?: boolean
 }
 
+export type AddAreaEntrySide =
+  | "east"
+  | "north_east"
+  | "north_west"
+  | "west"
+  | "south_west"
+  | "south_east"
+
+export interface BuildAreaMapOptions {
+  readonly entrySide?: AddAreaEntrySide | null
+}
+
 export interface AreaDefinition {
   readonly id: string
   readonly mapId: string
@@ -50,11 +62,35 @@ function hexDisk(radius: number): { q: number; r: number }[] {
 
 const coordKey = (q: number, r: number) => `${q},${r}`
 
+export function areaEntryCoordForSide(
+  radius: number,
+  side: AddAreaEntrySide,
+): { readonly q: number; readonly r: number } {
+  const half = Math.floor(radius / 2)
+  switch (side) {
+    case "east":
+      return { q: radius, r: -half }
+    case "north_east":
+      return { q: half, r: -radius }
+    case "north_west":
+      return { q: -half, r: -radius + half }
+    case "west":
+      return { q: -radius, r: half }
+    case "south_west":
+      return { q: -half, r: radius }
+    case "south_east":
+      return { q: half, r: radius - half }
+  }
+}
+
 /** Build an area as a hex GameMap: a radius-N disk of walkable cells with the
  * authored special cells (entrances, dungeon links) overlaid + a Hero entity. */
-export function buildAreaMap(def: AreaDefinition): GameMap {
+export function buildAreaMap(def: AreaDefinition, options: BuildAreaMapOptions = {}): GameMap {
   const overrides = new Map((def.cells ?? []).map((cell) => [coordKey(cell.q, cell.r), cell]))
   const disk = hexDisk(def.radius)
+  const entryCoord = options.entrySide
+    ? areaEntryCoordForSide(def.radius, options.entrySide)
+    : def.entryCoord
 
   const cells: GameCellPlacement[] = disk.map(({ q, r }) => {
     const override = overrides.get(coordKey(q, r))
@@ -90,7 +126,7 @@ export function buildAreaMap(def: AreaDefinition): GameMap {
       id: "add.entity.hero",
       kind: "hero",
       label: "Hero",
-      coord: { kind: "hex", q: def.entryCoord.q, r: def.entryCoord.r },
+      coord: { kind: "hex", q: entryCoord.q, r: entryCoord.r },
       tags: ["add", "hero"],
     },
     ...(def.cells ?? []).flatMap((cell) =>
@@ -120,6 +156,8 @@ export function buildAreaMap(def: AreaDefinition): GameMap {
       mapMode: "area_hex",
       fixture: false,
       areaId: def.id,
+      entrySide: options.entrySide ?? "center",
+      entryCoord: `${entryCoord.q},${entryCoord.r}`,
       entryFacing: "down",
     },
   }
