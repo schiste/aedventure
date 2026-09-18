@@ -1,6 +1,7 @@
 # ADD Game Development Tooling Plan
 
-Status: proposed execution plan for accelerating the live ADD game.
+Status: active execution plan for accelerating the live ADD game. Phase 0 is
+implemented and checked by `npm run docs:check`.
 
 ## Purpose
 
@@ -29,6 +30,8 @@ The repository already has meaningful pieces of the desired environment:
 | Domain projections | `packages/add-domain/src/adapters/` | Snapshot selectors, command mapping, map/world adapters, and explanations |
 | Player-facing app | `apps/add-rpg/src/browser/` | Solid UI, Phaser map, saves, settings, telemetry, and development tools |
 | Content inspection | `npm run content:validate`, `content:graph`, `content:timeline`, `content:explain` | Deterministic text output for humans and agents |
+| Repository capability map | `docs/add-capability-map.md` | Owning layers, content families, runtime state, smoke flows, and known gaps |
+| Standard task brief | `docs/templates/add-task-brief.md` | Player outcome, authority, content IDs, scenarios, verification, and follow-up |
 | Focused verification | `npm run agent:verify:add-ui` | Cheap ADD-focused build/type/content checks |
 | Product smoke | `npm run smoke:add-rpg` | Browser build and ADD flow verification |
 | Shared-engine fixtures | `apps/engine-sandbox/`, `packages/game-*` | Neutral topology/rendering proof where it is useful |
@@ -77,7 +80,7 @@ available actions, expected invariants, and verification commands explicit.
 
 ## Workstreams and staged deliverables
 
-### Phase 0 — Make the map of the system executable
+### Phase 0 — Make the map of the system executable (implemented)
 
 Goal: eliminate orientation time for every contributor and agent.
 
@@ -86,8 +89,9 @@ Deliverables:
 - Keep the root README as the product compass: live ADD game first, office
   lane separate, legacy reference only.
 - Add a short “where does this change belong?” section to the ADD architecture
-  docs whenever a new boundary appears.
-- Maintain a generated or checked-in repository capability map covering commands,
+  docs whenever a new boundary appears; the current sections live in the ADD
+  architecture, migration, engine-boundary, and story-content contracts.
+- Maintain the checked-in repository capability map covering commands,
   content families, runtime state, smoke flows, and known gaps.
 - Standardize task briefs with: player outcome, authoritative layer, affected
   content IDs, acceptance scenarios, focused verification, and likely follow-up.
@@ -98,7 +102,8 @@ Exit criteria:
 
 - An agent can identify the owning layer and first verification command from
   the README and architecture docs.
-- No document calls `apps/add-rpg` a future or placeholder application.
+- Documentation consistently describes `apps/add-rpg` as the existing playable
+  ADD application, not a future or placeholder product.
 - Office/platform documents carry an explicit scope note.
 
 ### Phase 1 — Deterministic scenario and replay harness

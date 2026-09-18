@@ -1,5 +1,9 @@
 # Domain-Neutral Game Engine Boundary Audit
 
+> Scope note: this is a shared-engine boundary audit for the live ADD game and
+> the separate customer virtual-office/platform lane. Office planning here is
+> not the ADD roadmap; ADD remains the first live game consumer.
+
 ## Purpose
 
 This document defines the current boundary between the reusable 2D game
@@ -14,6 +18,23 @@ lane. No second placeholder RPG app should be created to prove that the engine
 works.
 
 This is a boundary audit only. No code movement is part of this phase.
+
+## Where does this change belong?
+
+- Put ADD rules, saves, progression, combat, and simulation state in
+  `crates/add-core/`.
+- Put ADD authored IDs and content graph changes in
+  `packages/add-domain/src/content/`.
+- Put reusable topology, world, input, or renderer contracts in
+  `packages/game-*` only when a current ADD or office consumer exercises them.
+- Put office room, tenant, media, auth, and collaboration behavior in the
+  office app/domain/server lane.
+- Keep product presentation in its owning app: `apps/add-rpg/` for ADD and
+  `apps/web/` for the office lane.
+
+For the exact first command, consult the [ADD Repository Capability
+Map](add-capability-map.md). Do not infer ownership from a file's current
+location when the boundary table below marks it as mixed.
 
 ## Boundary Rule
 

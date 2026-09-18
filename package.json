@@ -18,6 +18,7 @@
     "content:timeline": "npm --workspace @aedventure/add-domain run build && node scripts/add-content-tools.cjs timeline",
     "content:explain": "npm --workspace @aedventure/add-domain run build && node scripts/add-content-tools.cjs explain",
     "wasm:build:add": "npm --workspace @aedventure/add-rpg run wasm:build",
+    "docs:check": "node scripts/check-add-capability-map.cjs",
     "lore:check": "python3 tools/lore_check.py",
     "lore:render": "python3 tools/lore_render.py --write",
     "test:packages": "npm run test --workspaces --if-present",

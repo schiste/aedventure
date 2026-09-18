@@ -1,5 +1,9 @@
 # Avatar Atlas Import Path
 
+> Scope note: this document covers the customer virtual-office avatar renderer
+> and its shared asset contract. ADD player presentation has its own app and
+> content boundary.
+
 The avatar renderer now treats sprite art as a manifest-backed contract. Real
 PNG/JSON atlases can be added later without changing `AvatarRenderer` or the
 animation state machine.

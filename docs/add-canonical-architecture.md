@@ -38,6 +38,25 @@ just to make a control look convenient.
 The next tooling and documentation sequence for accelerating this live app is
 tracked in [ADD Game Development Tooling Plan](add-game-development-tooling-plan.md).
 
+## Where does this change belong?
+
+Use this routing section before opening a new package or adding a second
+authority. The fuller command/content/state inventory lives in the [ADD
+Repository Capability Map](add-capability-map.md), and implementation tasks
+should use the [ADD Task Brief Template](templates/add-task-brief.md).
+
+| Change | Owning layer | Keep out of | First verification |
+| --- | --- | --- | --- |
+| Gameplay rules, state transitions, progression, combat, or save fields | `crates/add-core/` | Solid, Phaser, and domain selectors | `cargo test -p add-core` |
+| New authored IDs, story, objectives, recipes, creatures, items, perks, or balance | `packages/add-domain/src/content/` | UI conditionals and ad hoc Rust constants | `npm run content:check` |
+| Snapshot projections, command mapping, labels, and available actions | `packages/add-domain/src/adapters/` | A second gameplay calculation | `npm run agent:verify:add-ui` |
+| Player-facing panels, input, map modes, browser persistence, or telemetry | `apps/add-rpg/` | Neutral packages and legacy code | `npm run agent:verify:add-ui` |
+| Neutral topology/world/renderer behavior with a real consumer | `packages/game-*` or `apps/engine-sandbox/` | ADD- or office-specific rules | `npm run agent:verify:types` plus the relevant smoke |
+
+When a change crosses rows, name every affected layer in the task brief and
+verify the authoritative row first. `legacy/add/` is reference material, not a
+runtime dependency.
+
 ## Repository ownership
 
 | Area | Authority | Role |
