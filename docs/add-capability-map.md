@@ -19,6 +19,7 @@ Run `npm run docs:check` after changing this map or the routing documents.
 | A new story beat, objective, role, recipe, station, item, creature, perk, or balance value | Authored ADD content | `packages/add-domain/src/content/` | `npm run content:check` |
 | A content graph, timeline, or content-ID investigation | Content inspection tools | `scripts/add-content-tools.cjs` | `npm run content:validate` |
 | Snapshot explanation, available-action projection, command mapping, or UI copy | ADD domain adapters | `packages/add-domain/src/adapters/` | `npm run agent:verify:add-ui` |
+| Agent-readable state, available commands, blocker reasons, or stable report IDs | ADD runtime inspection contract | `packages/add-domain/src/runtime/inspection.ts` and `crates/add-scenario/src/inspection.rs` | `npm --workspace @aedventure/add-domain test` and `cargo test -p add-scenario` |
 | Player-facing panels, input dispatch, map presentation, save plumbing, or browser lifecycle | Live ADD app | `apps/add-rpg/src/` | `npm run agent:verify:add-ui` |
 | Neutral square/hex topology, world, input, protocol, or renderer behavior | Shared engine | `packages/game-*` and `apps/engine-sandbox/` | `npm run agent:verify:types` then the relevant engine smoke |
 | Office auth, rooms, media, tenant maps, or server policy | Office/platform lane | `apps/web/`, `apps/api/`, `apps/world-server/`, `apps/media-gateway/` | `npm run smoke:office` |
@@ -39,6 +40,7 @@ the Rust runtime owns mutation and deterministic outcomes.
 | One content ID | `npm run content:explain -- <id>` | A content ID can be traced to its authored definition and dependencies |
 | Rust rules/state | `cargo test -p add-core` | Simulation rules, save behavior, and deterministic calculations pass core tests |
 | Headless ADD scenario/replay | `npm run scenario:add -- scenarios/add/<id>.json` | A committed seed/save/command log runs without the browser and checks canonical state checkpoints |
+| Agent-readable runtime report | `npm --workspace @aedventure/add-domain test` and `cargo test -p add-scenario` | The versioned authoritative/derived/diagnostic report, stable IDs, blocker reasons, and headless/browser parity checks |
 | ADD type/content/WASM boundary | `npm run agent:verify:add-ui` | Diff checks, content generation, WASM build, ADD types, and smoke syntax pass |
 | Built ADD browser flow | `npm run smoke:add-rpg:built` | The already-built ADD app passes browser/player-flow assertions |
 | Build-and-smoke ADD flow | `npm run smoke:add-rpg` | ADD browser build and Playwright flow both run |
@@ -83,6 +85,7 @@ The authoritative serialized model is `GameState` in
 | Dungeon/combat progress | `activeCombat`, `openDoors`, `clearedLocations`, `droppedItems` | Rust simulation; domain resolves map-facing context |
 | Hero inventory and perks | `inventory`, `acquiredPerks`, persisted RNG stream | Rust simulation |
 | Save compatibility | `schemaVersion`, `catalogVersion`, save import/export and migrations | Rust save layer |
+| Agent-readable runtime inspection | `agent_runtime_v1`: authoritative state, derived actions/blockers, runtime readiness, diagnostics | Rust headless report plus ADD domain/browser adapter |
 
 The worker boundary is `apps/add-rpg/src/workers/` plus
 `crates/add-web-bindings/`. Domain adapters may derive labels, projections,
@@ -105,6 +108,10 @@ player path, including:
 The headless gameplay path lives in `crates/add-scenario/` and
 `crates/add-scenario-runner/`. Run the committed idle and offline-return
 scenarios with the commands in the [scenario/replay harness guide](add-scenario-harness.md).
+The live browser exposes the same inspection contract through
+`window.render_add_runtime_json()` and
+`window.render_add_runtime_text()`; the full browser telemetry object also
+contains `state.agentRuntime`.
 The browser smoke reuses the offline scenario's `RunOfflineCatchup` command;
 `SaveRoundTrip` remains a harness operation because the browser already
 exercises its equivalent through export/import.
@@ -127,7 +134,7 @@ These are gaps, not reasons to create a second ADD app:
 - the current dungeon layer proves entry, objectives, doors, locations, combat,
   inventory, and return flow, but not the full future dungeon/exploration game;
 - broader scenario coverage, generated fixture tooling, and a richer browser
-  command bridge remain follow-up work after the committed Phase 1 harness;
+  command bridge remain follow-up work after the committed Phase 1/2 harness;
 - larger strategy/RPG systems and neutral engine extraction remain demand-led
   future work, with `apps/add-rpg` staying the first consumer.
 

@@ -1,7 +1,8 @@
 # ADD Game Development Tooling Plan
 
-Status: active execution plan for accelerating the live ADD game. Phase 0 is
-implemented and checked by `npm run docs:check`.
+Status: active execution plan for accelerating the live ADD game. Phases 0, 1,
+and 2 are implemented and checked by their focused contracts plus
+`npm run docs:check`.
 
 ## Purpose
 
@@ -28,6 +29,7 @@ The repository already has meaningful pieces of the desired environment:
 | Browser runtime boundary | `crates/add-web-bindings/`, `apps/add-rpg/src/workers/` | WASM runtime behind a typed worker protocol |
 | Authored content and code generation | `packages/add-domain/src/content/`, `scripts/build-add-content.cjs` | TypeScript authoring with generated Rust catalogs |
 | Deterministic scenarios and replay | `crates/add-scenario/`, `crates/add-scenario-runner/`, `scenarios/add/` | Headless command logs, canonical snapshots, checkpoints, save round-trips, and committed idle/offline fixtures |
+| Agent-readable runtime inspection | `packages/add-domain/src/runtime/inspection.ts`, `crates/add-scenario/src/inspection.rs`, `apps/add-rpg/src/browser/` | Versioned authoritative/derived/diagnostic reports, stable IDs, blocker explanations, and text/JSON accessors |
 | Domain projections | `packages/add-domain/src/adapters/` | Snapshot selectors, command mapping, map/world adapters, and explanations |
 | Player-facing app | `apps/add-rpg/src/browser/` | Solid UI, Phaser map, saves, settings, telemetry, and development tools |
 | Content inspection | `npm run content:validate`, `content:graph`, `content:timeline`, `content:explain` | Deterministic text output for humans and agents |
@@ -158,11 +160,11 @@ Exit criteria:
 See [ADD Deterministic Scenario and Replay Harness](add-scenario-harness.md)
 for the file contract, commands, failure format, and extension rules.
 
-### Phase 2 — Agent-readable runtime inspection
+### Phase 2 — Agent-readable runtime inspection (implemented)
 
 Goal: let an agent understand what the game is doing and what it can do next.
 
-Deliverables:
+Implemented deliverables:
 
 - A versioned structured state report containing runtime readiness, current
   time, resources, jobs, crew/hero state, active story, map mode, available
@@ -173,6 +175,14 @@ Deliverables:
 - A compact text renderer for logs and a JSON renderer for automation.
 - A distinction between authoritative state, derived presentation, and
   diagnostics.
+- `agent_runtime_v1` is emitted by both the headless scenario runner and the
+  live ADD browser. The headless report reads `GameState`; the browser report
+  reads the WASM snapshot and domain command projection.
+- `window.render_add_runtime_json()` and
+  `window.render_add_runtime_text()` expose the browser report without DOM
+  scraping, while `render_game_to_text()` includes it at `agentRuntime`.
+- Scenario output includes stable checkpoint IDs, `agentRuntime`, and
+  `agentRuntimeText`; the committed idle/offline tests assert the contract.
 
 Exit criteria:
 
@@ -180,6 +190,10 @@ Exit criteria:
 - The report is stable enough to snapshot-test.
 - `apps/add-rpg` exposes the same report used by headless checks wherever
   possible.
+
+See [ADD Agent-Readable Runtime Inspection](add-runtime-inspection.md) for the
+field contract, ownership rules, stable IDs, browser accessors, and focused
+verification.
 
 ### Phase 3 — One-command agent verification loop
 

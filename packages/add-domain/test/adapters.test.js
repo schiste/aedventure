@@ -12,6 +12,10 @@ const {
   createAddTopologyNavigationPolicy,
   createAddWorldInteractionPolicy,
   selectAddAvailableCommands,
+  createAddAgentRuntimeReport,
+  renderAddAgentRuntimeText,
+  serializeAddAgentRuntimeReport,
+  addCheckpointId,
   selectAddVisibilitySummary,
   selectAddDiscoverySummary,
   selectAddTile,
@@ -369,6 +373,39 @@ assert.ok(
       command.related.beatId === "story.beat.road_to_base",
   ),
 )
+
+const agentRuntime = createAddAgentRuntimeReport({
+  snapshot,
+  catalog,
+  availableCommands,
+  ui,
+  map: {
+    mode: "overworld_hex",
+    availableModes: ["overworld_hex", "base_square"],
+    topology: "hex",
+  },
+  runtime: {
+    ready: true,
+    source: "rust-wasm",
+    lastCommand: null,
+    lastEvent: "ready",
+    error: null,
+  },
+})
+assert.equal(agentRuntime.contract, "agent_runtime_v1")
+assert.equal(agentRuntime.schemaVersion, 1)
+assert.equal(agentRuntime.runtime.ready, true)
+assert.equal(agentRuntime.authoritative.entities.heroId, "entity:hero")
+assert.ok(agentRuntime.authoritative.entities.crewRoleIds.includes("crew-role:role.crystal_bassline"))
+assert.equal(agentRuntime.authoritative.currentTime.seconds, snapshot.clockSeconds)
+assert.equal(agentRuntime.authoritative.map.heroCell, "2:-1")
+assert.equal(agentRuntime.derived.map.mode, "overworld_hex")
+assert.equal(agentRuntime.derived.availableCommands.length, availableCommands.commands.length)
+assert.ok(agentRuntime.derived.blockers.some((blocker) => blocker.kind === "command_unavailable"))
+assert.ok(agentRuntime.derived.availableCommands.every((command) => "whyUnavailable" in command))
+assert.match(renderAddAgentRuntimeText(agentRuntime), /runtime ready source=rust-wasm/)
+assert.equal(JSON.parse(serializeAddAgentRuntimeReport(agentRuntime)).contract, "agent_runtime_v1")
+assert.equal(addCheckpointId("idle-base-first-cycle", 0, 0), "checkpoint:idle-base-first-cycle:1@0")
 assert.ok(
   availableCommands.commands.some(
     (command) =>

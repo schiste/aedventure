@@ -2,7 +2,9 @@ import {
   ADD_CONTENT_VALIDATION_VERSION,
   ADD_DOMAIN_BOUNDARY,
   addMapModeLabel,
+  createAddAgentRuntimeReport,
   selectAddMapScaleForMode,
+  type AddAgentRuntimeReport,
   type AddDungeonObjectiveSummary,
   type AddDiscoverySummary,
   type AddAvailableCommand,
@@ -258,6 +260,8 @@ export interface AddRuntimeTelemetryPresenterInput {
 export interface RuntimeTextState {
   readonly app: "add-rpg"
   readonly coordinateSystem: "active ADD map mode projected through Phaser"
+  /** Versioned agent-facing state; UI telemetry below remains presentation-only. */
+  readonly agentRuntime: AddAgentRuntimeReport
   readonly shell: {
     readonly framework: "solid"
     readonly surface: "fullscreen_map_shell"
@@ -339,6 +343,8 @@ export interface RuntimeTextState {
     readonly error: string | null
   }
   readonly snapshot: {
+    readonly schemaVersion: number
+    readonly catalogVersion: number
     readonly clockSeconds: number
     readonly hexCount: number
     readonly stabilizedHexes: number
@@ -1140,9 +1146,28 @@ export function createAddRuntimeTextState(
   input: AddRuntimeTelemetryPresenterInput,
 ): RuntimeTextState {
   const worldTime = input.displayedWorldTime ?? input.ui?.worldTime ?? null
+  const agentRuntime = createAddAgentRuntimeReport({
+    snapshot: input.snapshot,
+    catalog: input.catalog,
+    availableCommands: input.availableCommands,
+    ui: input.ui,
+    map: {
+      mode: input.mapMode,
+      availableModes: input.mapModeAvailable,
+      topology: input.mapInfo.topology.kind,
+    },
+    runtime: {
+      ready: input.runtime.ready,
+      source: "rust-wasm",
+      lastCommand: input.runtime.lastCommand,
+      lastEvent: input.runtime.lastEvent,
+      error: input.runtime.error,
+    },
+  })
   return {
     app: "add-rpg",
     coordinateSystem: "active ADD map mode projected through Phaser",
+    agentRuntime,
     shell: {
       framework: "solid",
       surface: "fullscreen_map_shell",
@@ -1455,6 +1480,8 @@ function offlineReturnTelemetry(
 
 function snapshotTelemetry(snapshot: SimulationSnapshot): NonNullable<RuntimeTextState["snapshot"]> {
   return {
+    schemaVersion: snapshot.schemaVersion,
+    catalogVersion: snapshot.catalogVersion,
     clockSeconds: round2(snapshot.clockSeconds),
     hexCount: snapshot.hexes.length,
     stabilizedHexes: snapshot.bubble.stabilizedHexes,

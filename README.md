@@ -70,6 +70,7 @@ crosses a boundary. The short routing rule is:
 | Gameplay rules, state, progression, combat, or saves | `crates/add-core/` | `cargo test -p add-core` |
 | Authored IDs, story, objectives, recipes, creatures, items, perks, or balance | `packages/add-domain/src/content/` | `npm run content:check` |
 | Snapshot projections, available actions, or command mapping | `packages/add-domain/src/adapters/` | `npm run agent:verify:add-ui` |
+| Agent-readable runtime state, action availability, blockers, or stable report IDs | `packages/add-domain/src/runtime/` plus `crates/add-scenario/src/inspection.rs` | `npm --workspace @aedventure/add-domain test` and `cargo test -p add-scenario` |
 | Player-facing ADD UI, input, map presentation, or browser lifecycle | `apps/add-rpg/` | `npm run agent:verify:add-ui` |
 | Neutral topology/renderer behavior with a real consumer | `packages/game-*` or `apps/engine-sandbox/` | `npm run agent:verify:types` plus the relevant smoke |
 
@@ -82,6 +83,7 @@ Useful focused checks:
 ```sh
 npm run scenario:add -- scenarios/add/idle-base-first-cycle.json
 npm run scenario:add -- scenarios/add/offline-return.json
+npm --workspace @aedventure/add-domain test
 npm run agent:verify:add-ui
 npm run smoke:add-rpg
 npm --workspace @aedventure/add-rpg run dev:browser
@@ -99,6 +101,7 @@ pre-push verification; see [AGENTS.md](AGENTS.md).
 - [ADD Systems Parity Audit](docs/add-systems-parity-audit.md)
 - [ADD Game Development Tooling Plan](docs/add-game-development-tooling-plan.md)
 - [ADD Deterministic Scenario and Replay Harness](docs/add-scenario-harness.md)
+- [ADD Agent-Readable Runtime Inspection](docs/add-runtime-inspection.md)
 - [Story and Content Engine Contract](docs/story-content-engine.md)
 - [Domain-Neutral Engine Boundary](docs/engine-boundary.md)
 - [Global Product and Technical Specification](docs/customer-virtual-office-platform-spec.md)

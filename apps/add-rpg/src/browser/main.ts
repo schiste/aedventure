@@ -53,6 +53,8 @@ import {
   STUDIO_GROUNDS_AREA_MAP_ID,
   addMapModeLabel,
   createAddWorldForMapMode,
+  renderAddAgentRuntimeText,
+  serializeAddAgentRuntimeReport,
   selectAddStoryMoment,
   selectAddStoryContentBrowserState,
   selectPreferredTileAction,
@@ -259,6 +261,8 @@ declare global {
   interface Window {
     addSettings?: () => AddSettings
     render_game_to_text?: () => string
+    render_add_runtime_text?: () => string
+    render_add_runtime_json?: () => string
     advanceTime?: (milliseconds?: number) => Promise<string>
   }
 }
@@ -692,6 +696,8 @@ createModuleEffect(() => {
 })
 
 window.render_game_to_text = () => JSON.stringify(toTextState())
+window.render_add_runtime_text = () => renderAddAgentRuntimeText(toTextState().agentRuntime)
+window.render_add_runtime_json = () => serializeAddAgentRuntimeReport(toTextState().agentRuntime)
 window.advanceTime = async (milliseconds = 1000) => {
   const seconds = milliseconds / 1000
   await tickRuntime(seconds, { queue: true, commandLabel: `advance:${seconds.toFixed(1)}s` })

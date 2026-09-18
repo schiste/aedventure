@@ -18,6 +18,7 @@ export const ADD_DOMAIN_BOUNDARY: AddDomainBoundary = {
 }
 
 export * from "./runtime/client"
+export * from "./runtime/inspection"
 export * from "./runtime/protocol"
 export * from "./runtime/snapshot-delta"
 export * from "./i18n"

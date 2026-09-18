@@ -32,9 +32,11 @@ npm run scenario:add -- scenarios/add/offline-return.json
 ```
 
 The command prints stable, pretty JSON with `status`, scenario and seed
-identity, command/checkpoint counts, the replay command list, and the final
-canonical snapshot. Scenario-relative save paths are resolved relative to the
-scenario file, so a scenario can be run from any current working directory.
+identity, command/checkpoint counts, stable checkpoint IDs, the replay command
+list, the final canonical snapshot, and the `agentRuntime` /
+`agentRuntimeText` report. Scenario-relative save paths are resolved relative
+to the scenario file, so a scenario can be run from any current working
+directory.
 
 To create or refresh a save fixture from a successful run:
 
@@ -148,6 +150,11 @@ export/import path and separately verifies the player-facing return review.
 When adding a browser-compatible command, extend the small command bridge in
 `scripts/add-rpg-smoke.test.cjs` and keep the command name/parameters sourced
 from the scenario file. Do not make the scenario depend on DOM selectors.
+
+The headless result and the browser expose the shared `agent_runtime_v1`
+inspection contract. See [ADD Agent-Readable Runtime Inspection](add-runtime-inspection.md)
+for the report sections, stable IDs, compact text form, JSON form, and
+authoritative-versus-derived boundary.
 
 ## Focused verification
 

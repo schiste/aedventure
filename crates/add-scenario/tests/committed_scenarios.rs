@@ -14,6 +14,24 @@ fn committed_idle_loop_scenario_matches_the_core_contract() {
     assert_eq!(run.scenario_id, "idle-base-first-cycle");
     assert_eq!(run.command_count, 14);
     assert_eq!(run.checkpoints_passed, 6);
+    assert_eq!(run.final_agent_runtime["contract"], "agent_runtime_v1");
+    assert_eq!(
+        run.final_agent_runtime["runtime"]["source"],
+        "headless-add-core"
+    );
+    assert_eq!(
+        run.final_agent_runtime["authoritative"]["entities"]["heroId"],
+        "entity:hero"
+    );
+    assert_eq!(
+        run.checkpoint_ids[0],
+        "checkpoint:idle-base-first-cycle:new-run-map-and-story"
+    );
+    assert!(
+        run.final_agent_runtime["derived"]["availableCommands"]
+            .as_array()
+            .is_some_and(|commands| !commands.is_empty())
+    );
 }
 
 #[test]
@@ -23,4 +41,9 @@ fn committed_offline_return_scenario_matches_the_core_contract() {
     assert_eq!(run.scenario_id, "offline-return");
     assert_eq!(run.command_count, 2);
     assert_eq!(run.checkpoints_passed, 3);
+    assert_eq!(
+        run.final_agent_runtime["authoritative"]["currentTime"]["seconds"],
+        3642.0
+    );
+    assert!(run.final_agent_runtime["derived"]["blockers"].is_array());
 }

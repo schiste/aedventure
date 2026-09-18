@@ -12,6 +12,13 @@ use std::fmt::{self, Display, Formatter};
 use std::fs;
 use std::path::{Path, PathBuf};
 
+mod inspection;
+
+pub use inspection::{
+    AGENT_RUNTIME_CONTRACT, AGENT_RUNTIME_REPORT_VERSION, compact_text as agent_runtime_text,
+    report as agent_runtime_report,
+};
+
 const FNV_OFFSET_BASIS: u64 = 14_695_981_039_346_656_037;
 const FNV_PRIME: u64 = 1_099_511_628_211;
 const FLOAT_PRECISION: f64 = 1_000_000.0;
@@ -240,6 +247,36 @@ pub struct Checkpoint {
     pub state: Value,
 }
 
+impl Checkpoint {
+    /// Stable identity used in diagnostics and machine-readable reports.
+    pub fn stable_id(&self, scenario_id: &str, ordinal: usize) -> String {
+        let safe_scenario_id = scenario_id
+            .trim()
+            .chars()
+            .map(|character| {
+                if character.is_ascii_alphanumeric() || matches!(character, '.' | '_' | '-') {
+                    character
+                } else {
+                    '-'
+                }
+            })
+            .collect::<String>();
+        let safe_scenario_id = if safe_scenario_id.is_empty() {
+            "scenario"
+        } else {
+            safe_scenario_id.as_str()
+        };
+        match self.id.as_deref().filter(|id| !id.trim().is_empty()) {
+            Some(id) => format!("checkpoint:{safe_scenario_id}:{id}"),
+            None => format!(
+                "checkpoint:{safe_scenario_id}:{}@{}",
+                ordinal + 1,
+                self.after
+            ),
+        }
+    }
+}
+
 /// Successful execution result. `final_save` is kept for fixture generation
 /// and is deliberately not printed by the CLI unless requested.
 #[derive(Debug, Clone)]
@@ -249,8 +286,10 @@ pub struct ScenarioRun {
     pub seed_value: u64,
     pub command_count: usize,
     pub checkpoints_passed: usize,
+    pub checkpoint_ids: Vec<String>,
     pub replay_commands: Vec<ScenarioCommand>,
     pub final_snapshot: Value,
+    pub final_agent_runtime: Value,
     pub final_save: String,
 }
 
@@ -277,8 +316,21 @@ impl ScenarioRun {
             Value::Number(Number::from(self.checkpoints_passed as u64)),
         );
         report.insert(
+            "checkpoints".to_string(),
+            self.checkpoint_ids
+                .iter()
+                .map(|id| serde_json::json!({ "id": id, "status": "passed" }))
+                .collect::<Vec<_>>()
+                .into(),
+        );
+        report.insert(
             "replayCommands".to_string(),
             serde_json::to_value(&self.replay_commands).expect("scenario commands serialize"),
+        );
+        report.insert("agentRuntime".to_string(), self.final_agent_runtime.clone());
+        report.insert(
+            "agentRuntimeText".to_string(),
+            Value::String(agent_runtime_text(&self.final_agent_runtime)),
         );
         report.insert("finalSnapshot".to_string(), self.final_snapshot.clone());
         Value::Object(report)
@@ -403,6 +455,7 @@ pub fn run_scenario(
     state.rng_seed = seed_value;
     let mut simulation = Simulation::from_state(state);
     let mut replay_commands = Vec::with_capacity(scenario.commands.len());
+    let mut checkpoint_ids = Vec::with_capacity(scenario.checkpoints.len());
     let mut next_checkpoint = 0;
 
     for command_count in 0..=scenario.commands.len() {
@@ -410,13 +463,17 @@ pub fn run_scenario(
             && scenario.checkpoints[next_checkpoint].after == command_count
         {
             let checkpoint = &scenario.checkpoints[next_checkpoint];
+            let checkpoint_id = checkpoint.stable_id(&scenario.id, next_checkpoint);
             let snapshot = canonical_snapshot(simulation.state())
                 .map_err(|error| ScenarioError::Invalid(format!("snapshot: {error}")))?;
             if let Some(mismatch) = first_mismatch(&snapshot, &checkpoint.state, "$".to_string()) {
                 return Err(ScenarioError::CheckpointMismatch(Box::new(
                     CheckpointFailure {
                         checkpoint_index: next_checkpoint,
-                        checkpoint_id: checkpoint.id.clone(),
+                        checkpoint_id: checkpoint
+                            .id
+                            .clone()
+                            .or_else(|| Some(checkpoint_id.clone())),
                         after: command_count,
                         path: mismatch.path,
                         expected: mismatch.expected,
@@ -425,6 +482,7 @@ pub fn run_scenario(
                     },
                 )));
             }
+            checkpoint_ids.push(checkpoint_id);
             next_checkpoint += 1;
         }
 
@@ -473,6 +531,7 @@ pub fn run_scenario(
 
     let final_snapshot = canonical_snapshot(simulation.state())
         .map_err(|error| ScenarioError::Invalid(format!("snapshot: {error}")))?;
+    let final_agent_runtime = agent_runtime_report(simulation.state());
     let final_save = add_core::export_save(simulation.state())
         .map_err(|error| ScenarioError::Invalid(format!("save export: {error}")))?;
     Ok(ScenarioRun {
@@ -481,8 +540,10 @@ pub fn run_scenario(
         seed_value,
         command_count: scenario.commands.len(),
         checkpoints_passed: scenario.checkpoints.len(),
+        checkpoint_ids,
         replay_commands,
         final_snapshot,
+        final_agent_runtime,
         final_save,
     })
 }

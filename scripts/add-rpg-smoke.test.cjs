@@ -309,7 +309,7 @@ async function assertBootAndRenderTextContract(page, consoleErrors) {
       state.storyAgent?.activeArc === "pre_arrival" &&
       state.storyAgent?.currentBlocker?.kind === "first_playable" &&
       state.storyAgent?.availableCommands?.length > 0 &&
-      state.storyAgent?.commandAuthority?.availability === "typescript_projection_pending_rust_explain" &&
+      state.storyAgent?.commandAuthority?.availability === "domain_state_projection" &&
       state.storyAgent?.commandAuthority?.runtimeExecution === "rust_runtime" &&
       state.storyAgent?.commandIds?.length === state.storyAgent.availableCommands.length &&
       state.storyAgent?.nextBeatCandidates?.length > 0 &&
@@ -318,6 +318,18 @@ async function assertBootAndRenderTextContract(page, consoleErrors) {
       state.storyAgent.answer.whatShouldIDoNext.length > 0 &&
       typeof state.storyAgent?.answer?.why === "string" &&
       state.storyAgent.answer.why.length > 0 &&
+      state.agentRuntime?.contract === "agent_runtime_v1" &&
+      state.agentRuntime?.schemaVersion === 1 &&
+      state.agentRuntime?.runtime?.ready === true &&
+      state.agentRuntime?.runtime?.source === "rust-wasm" &&
+      state.agentRuntime?.authoritative?.currentTime?.seconds === state.snapshot.clockSeconds &&
+      state.agentRuntime?.authoritative?.catalog?.catalogVersion === state.snapshot.catalogVersion &&
+      state.agentRuntime?.derived?.availableCommands?.length === state.storyAgent.availableCommands.length &&
+      state.agentRuntime?.derived?.availableCommands?.every((command) =>
+        Object.prototype.hasOwnProperty.call(command, "whyUnavailable"),
+      ) &&
+      Array.isArray(state.agentRuntime?.derived?.blockers) &&
+      state.agentRuntime?.diagnostics?.layerAuthority?.authoritative === "rust-wasm-snapshot" &&
       state.catalog?.resourceCount > 0 &&
       state.catalog?.tileCount > 0,
     consoleErrors,
@@ -342,6 +354,31 @@ async function assertBootAndRenderTextContract(page, consoleErrors) {
   assert.equal(initial.storyAgent.primaryAction.source, "first_playable")
   assert.equal(initial.storyAgent.primaryAction.stepId, "reach-base")
   assert.equal(initial.storyAgent.primaryAction.commandId, null)
+  assert.equal(initial.agentRuntime.contract, "agent_runtime_v1")
+  assert.equal(initial.agentRuntime.authoritative.story.activeBeatId, "story.beat.road_to_base")
+  assert.equal(initial.agentRuntime.derived.map.mode, "overworld_hex")
+  assert.ok(
+    initial.agentRuntime.derived.blockers.some(
+      (blocker) => blocker.kind === "command_unavailable" && blocker.reason.length > 0,
+    ),
+    "Agent runtime report should explain unavailable commands from domain state.",
+  )
+  const compactAgentReport = await page.evaluate(() => {
+    if (typeof window.render_add_runtime_text !== "function") {
+      throw new Error("render_add_runtime_text is not installed")
+    }
+    return window.render_add_runtime_text()
+  })
+  assert.match(compactAgentReport, /runtime ready source=rust-wasm/)
+  const jsonAgentReport = await page.evaluate(() => {
+    if (typeof window.render_add_runtime_json !== "function") {
+      throw new Error("render_add_runtime_json is not installed")
+    }
+    return JSON.parse(window.render_add_runtime_json())
+  })
+  assert.equal(jsonAgentReport.contract, "agent_runtime_v1")
+  assert.equal(jsonAgentReport.authoritative.currentTime.seconds, initial.snapshot.clockSeconds)
+  assert.deepEqual(jsonAgentReport.derived.enabledCommandIds, initial.agentRuntime.derived.enabledCommandIds)
   assert.ok(
     initial.storyAgent.commandIds.includes(
       "story-choice:story.beat.road_to_base:story.choice.road.follow_signal",

@@ -63,7 +63,9 @@ export interface AddAvailableCommand {
 
 export interface AddAvailableCommandsState {
   readonly authority: {
-    readonly availability: "typescript_projection_pending_rust_explain"
+    /** Availability and blocker reasons are computed from the domain snapshot. */
+    readonly availability: "domain_state_projection"
+    readonly blockerReason: "domain_state_snapshot"
     readonly workerRequest: "typescript_projection_to_rust_worker"
     readonly runtimeExecution: "rust_runtime"
   }
@@ -104,7 +106,8 @@ export function selectAddAvailableCommands(
 
   return {
     authority: {
-      availability: "typescript_projection_pending_rust_explain",
+      availability: "domain_state_projection",
+      blockerReason: "domain_state_snapshot",
       workerRequest: "typescript_projection_to_rust_worker",
       runtimeExecution: "rust_runtime",
     },

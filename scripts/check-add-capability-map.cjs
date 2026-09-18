@@ -28,6 +28,7 @@ const engineBoundary = read("docs/engine-boundary.md")
 const storyContract = read("docs/story-content-engine.md")
 const capabilityMap = read("docs/add-capability-map.md")
 const scenarioHarness = read("docs/add-scenario-harness.md")
+const runtimeInspection = read("docs/add-runtime-inspection.md")
 const taskBrief = read("docs/templates/add-task-brief.md")
 const parityAudit = read("docs/add-systems-parity-audit.md")
 const packageJson = JSON.parse(read("package.json"))
@@ -39,6 +40,7 @@ for (const fragment of [
   "legacy/add/",
   "docs/add-capability-map.md",
   "docs/add-scenario-harness.md",
+  "docs/add-runtime-inspection.md",
   "docs/templates/add-task-brief.md",
   "npm run agent:verify:add-ui",
 ]) {
@@ -51,6 +53,10 @@ requireHeading(engineBoundary, "## Where does this change belong?", "engine boun
 requireHeading(storyContract, "## Where does this change belong?", "story contract")
 requireHeading(scenarioHarness, "## Purpose and ownership", "ADD scenario harness")
 requireHeading(scenarioHarness, "## Focused verification", "ADD scenario harness")
+requireHeading(runtimeInspection, "## Contract", "ADD runtime inspection")
+requireHeading(runtimeInspection, "## Stable identity rules", "ADD runtime inspection")
+requireHeading(runtimeInspection, "## Focused verification", "ADD runtime inspection")
+requireText(runtimeInspection, "agent_runtime_v1", "ADD runtime inspection")
 
 for (const heading of [
   "## First route: where does this change belong?",
