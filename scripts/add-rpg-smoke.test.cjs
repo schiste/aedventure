@@ -9,6 +9,7 @@ const ROOT_DIR = path.resolve(__dirname, "..")
 const DIST_DIR = path.join(ROOT_DIR, "apps/add-rpg/dist-app")
 const SCREENSHOT_PATH = path.join(ROOT_DIR, "tmp/add-rpg-smoke.png")
 const ADD_AUTOSAVE_STORAGE_KEY = "aedventure.add-rpg.autosave.v1"
+const ADD_SETTINGS_STORAGE_KEY = "add-rpg:settings:v1"
 const RESET_CLOCK_TOLERANCE_SECONDS = 60
 const MOBILE_PRESENTATION_VIEWPORTS = [
   { name: "mobile", width: 390, height: 760 },
@@ -45,11 +46,12 @@ async function main() {
     page.on("pageerror", (error) => {
       consoleErrors.push(error.stack || error.message)
     })
-    await page.addInitScript((storageKey) => {
+    await page.addInitScript(({ autosaveStorageKey, settingsStorageKey }) => {
       if (window.sessionStorage.getItem("add-rpg-smoke-storage-ready") === "1") return
-      window.localStorage.removeItem(storageKey)
+      window.localStorage.removeItem(autosaveStorageKey)
+      window.localStorage.removeItem(settingsStorageKey)
       window.sessionStorage.setItem("add-rpg-smoke-storage-ready", "1")
-    }, ADD_AUTOSAVE_STORAGE_KEY)
+    }, { autosaveStorageKey: ADD_AUTOSAVE_STORAGE_KEY, settingsStorageKey: ADD_SETTINGS_STORAGE_KEY })
 
     await page.goto(`${url}/app`, { waitUntil: "domcontentloaded" })
     const initial = await runScenario("boot and render text contract", () =>
@@ -160,9 +162,13 @@ async function assertBootAndRenderTextContract(page, consoleErrors) {
       state.shell?.interfaceHierarchy?.primary?.label === "Map" &&
       state.shell?.interfaceHierarchy?.secondary?.label === "Decision" &&
       state.shell?.interfaceHierarchy?.tertiary?.label === "Status" &&
-      state.shell?.interfaceHierarchy?.advanced?.label === "Admin" &&
+      state.shell?.interfaceHierarchy?.settings?.label === "Settings" &&
+      state.shell?.interfaceHierarchy?.settings?.hiddenByDefault === true &&
+      state.shell?.interfaceHierarchy?.settings?.open === false &&
+      state.shell?.interfaceHierarchy?.advanced?.label === "Tools" &&
       state.shell?.interfaceHierarchy?.advanced?.hiddenByDefault === true &&
-      state.shell?.interfaceHierarchy?.advanced?.developerToolsOpen === false &&
+      state.shell?.interfaceHierarchy?.advanced?.adminOpen === false &&
+      state.shell?.interfaceHierarchy?.advanced?.developerOpen === false &&
       state.shell?.interfaceHierarchy?.advanced?.runtimeInternalsHiddenByDefault === true &&
       state.shell?.interfaceHierarchy?.questions?.whereAmI?.length > 0 &&
       state.shell?.interfaceHierarchy?.questions?.whatChanged?.length > 0 &&
@@ -174,6 +180,7 @@ async function assertBootAndRenderTextContract(page, consoleErrors) {
       state.shell.currentAction.detail.length > 0 &&
       typeof state.shell.currentAction.source === "string" &&
       state.shell?.shellMenuOpen === false &&
+      state.shell?.settingsOpen === false &&
       state.shell?.adminOpen === false &&
       state.shell?.devToolsOpen === false &&
       state.shell?.discoveryPanel?.collapsed === false &&
@@ -436,14 +443,115 @@ async function expectResourceStripText(page, expectedLabels) {
 
 async function assertAdminDeveloperSeparation(page, consoleErrors) {
   assert.equal(
+    await page.locator("#settings-view").evaluate((element) => getComputedStyle(element).visibility),
+    "hidden",
+    "Closed settings window should not stay keyboard reachable off screen.",
+  )
+  assert.equal(
     await page.locator("#admin-view").evaluate((element) => getComputedStyle(element).visibility),
     "hidden",
     "Closed admin drawer should not stay keyboard reachable off screen.",
   )
+  assert.equal(
+    await page.locator("#dev-view").evaluate((element) => getComputedStyle(element).visibility),
+    "hidden",
+    "Closed dev drawer should not stay keyboard reachable off screen.",
+  )
+
+  const settings = await openSettings(page, consoleErrors)
+  assert.equal(settings.shell.settingsOpen, true)
+  assert.equal(settings.shell.adminOpen, false)
+  assert.equal(settings.shell.devToolsOpen, false)
+  assert.equal(settings.shell.interfaceHierarchy.settings.open, true)
+  assert.equal(settings.shell.interfaceHierarchy.settings.presentation, "hex_window")
+  assert.equal(settings.shell.interfaceHierarchy.settings.audio.muted, false)
+  assert.equal(settings.shell.interfaceHierarchy.settings.audio.masterVolume, 0.8)
+  assert.equal(settings.shell.interfaceHierarchy.settings.audio.musicVolume, 0.6)
+  assert.equal(settings.shell.interfaceHierarchy.settings.audio.sfxVolume, 0.8)
+  const settingsStyle = await page.locator("#settings-view").evaluate((element) => {
+    const style = getComputedStyle(element)
+    return {
+      clipPath: style.clipPath,
+      position: style.position,
+      visibility: style.visibility,
+    }
+  })
+  assert.equal(settingsStyle.position, "fixed")
+  assert.equal(settingsStyle.visibility, "visible")
+  assert.match(settingsStyle.clipPath, /polygon/i, "Settings should render as a hex-shaped window.")
+  await page.locator("#close-settings").focus()
+  await waitForTextState(
+    page,
+    (state) => state.shell?.accessibility?.focusedRegion === "settings",
+    consoleErrors,
+  )
+  const settingsText = await page.locator("#settings-view").innerText()
+  ;[
+    "Sound",
+    "Mute all",
+    "Master volume",
+    "Music",
+    "Effects",
+    "Play pace",
+    "World clock",
+    "Interface",
+    "Objective tracker",
+    "Motion",
+    "Save data",
+    "Autosave",
+  ].forEach((expectedText) => {
+    assert.match(
+      settingsText,
+      new RegExp(expectedText, "i"),
+      `Player Settings should include ${expectedText}.`,
+    )
+  })
+  await page.locator("#settings-toggle-mute").click()
+  const mutedSettings = await waitForTextState(
+    page,
+    (state) =>
+      state.shell?.interfaceHierarchy?.settings?.audio?.muted === true &&
+      state.shell?.interfaceHierarchy?.settings?.audio?.effectiveMusicVolume === 0 &&
+      state.shell?.interfaceHierarchy?.settings?.audio?.effectiveSfxVolume === 0,
+    consoleErrors,
+  )
+  assert.equal(mutedSettings.shell.interfaceHierarchy.settings.audio.muted, true)
+  await page.locator("#settings-master-volume").evaluate((element) => {
+    const input = element
+    input.value = "0.35"
+    input.dispatchEvent(new Event("input", { bubbles: true }))
+  })
+  await waitForTextState(
+    page,
+    (state) => state.shell?.interfaceHierarchy?.settings?.audio?.masterVolume === 0.35,
+    consoleErrors,
+  )
+  await page.locator("#settings-reset-audio").click()
+  await waitForTextState(
+    page,
+    (state) =>
+      state.shell?.interfaceHierarchy?.settings?.audio?.muted === false &&
+      state.shell?.interfaceHierarchy?.settings?.audio?.masterVolume === 0.8,
+    consoleErrors,
+  )
+  assert.doesNotMatch(
+    settingsText,
+    /Runtime internals|Save payload|Import text|Advance 5s|Snapshot|Debug/i,
+    "Player Settings should not expose developer/runtime internals.",
+  )
+  await assertNonBlankNamedAppScreenshot(
+    page,
+    "add-rpg-settings-smoke.png",
+    "ADD RPG player settings screenshot",
+  )
+  await closeSettings(page, consoleErrors)
+
   const opened = await openAdmin(page, consoleErrors)
   assert.equal(opened.shell.adminOpen, true)
+  assert.equal(opened.shell.settingsOpen, false)
   assert.equal(opened.shell.devToolsOpen, false)
-  assert.equal(opened.shell.interfaceHierarchy.advanced.developerToolsOpen, false)
+  assert.equal(opened.shell.interfaceHierarchy.advanced.adminOpen, true)
+  assert.equal(opened.shell.interfaceHierarchy.advanced.developerOpen, false)
   assert.equal(opened.shell.interfaceHierarchy.advanced.runtimeInternalsHiddenByDefault, true)
   await page.locator("#close-admin").focus()
   await waitForTextState(
@@ -461,7 +569,6 @@ async function assertAdminDeveloperSeparation(page, consoleErrors) {
     "Available commands",
     "Qualities",
     "Run recovery",
-    "Developer tools",
     "World actions",
   ].forEach((expectedText) => {
     assert.match(
@@ -481,6 +588,7 @@ async function assertAdminDeveloperSeparation(page, consoleErrors) {
     "Clean Admin view should expose the story/content browser.",
   )
   assert.equal(await page.locator("#save-payload").isVisible(), false)
+  assert.equal(await page.locator("#dev-view").isVisible(), false)
   await assertNonBlankNamedAppScreenshot(
     page,
     "add-rpg-admin-clean-smoke.png",
@@ -488,8 +596,11 @@ async function assertAdminDeveloperSeparation(page, consoleErrors) {
   )
 
   const revealed = await openDeveloperTools(page, consoleErrors)
+  assert.equal(revealed.shell.settingsOpen, false)
+  assert.equal(revealed.shell.adminOpen, false)
   assert.equal(revealed.shell.devToolsOpen, true)
-  assert.equal(revealed.shell.interfaceHierarchy.advanced.developerToolsOpen, true)
+  assert.equal(revealed.shell.interfaceHierarchy.advanced.adminOpen, false)
+  assert.equal(revealed.shell.interfaceHierarchy.advanced.developerOpen, true)
   await page.locator("#save-payload").waitFor({ state: "visible" })
   const devText = await page.locator("#developer-tools-body").innerText()
   assert.match(devText, /Runtime internals/i)
@@ -500,15 +611,18 @@ async function assertAdminDeveloperSeparation(page, consoleErrors) {
   await waitForTextState(
     page,
     (state) =>
+      state.shell?.settingsOpen === false &&
       state.shell?.adminOpen === false &&
       state.shell?.devToolsOpen === false &&
       state.shell?.accessibility?.focusedRegion === "menu",
     consoleErrors,
   )
+  await page.waitForFunction(() => document.activeElement?.id === "open-shell-menu")
   assert.equal(await page.locator("#open-shell-menu").evaluate((element) => document.activeElement === element), true)
   await openAdmin(page, consoleErrors)
   await closeAdmin(page, consoleErrors)
   const closed = await renderGameToText(page)
+  assert.equal(closed.shell.settingsOpen, false)
   assert.equal(closed.shell.adminOpen, false)
   assert.equal(closed.shell.devToolsOpen, false)
   assert.equal(
@@ -2349,7 +2463,7 @@ async function exerciseSaveReloadOfflineAndReset(page, advanced, consoleErrors) 
   assert.ok(offlineTicked.snapshot.clockSeconds > imported.snapshot.clockSeconds)
   assert.equal(offlineTicked.ui.firstPlayable.persistenceReady, true)
   assert.equal(offlineTicked.offlineReturn.source, "manual")
-  await closeAdmin(page, consoleErrors)
+  await closeDeveloperTools(page, consoleErrors)
   await page.locator("#offline-return-panel").waitFor({ state: "visible" })
   const offlineReview = await renderGameToText(page)
   assertV1InterfaceContext(offlineReview, "return", { source: "offline_return" })
@@ -2489,6 +2603,7 @@ async function exerciseSaveReloadOfflineAndReset(page, advanced, consoleErrors) 
       state.snapshot?.clockSeconds < RESET_CLOCK_TOLERANCE_SECONDS,
     consoleErrors,
   )
+  await closeDeveloperTools(page, consoleErrors)
 
   return { payload }
 }
@@ -2515,21 +2630,77 @@ async function openAdmin(page, consoleErrors) {
   )
 }
 
-async function openDeveloperTools(page, consoleErrors) {
-  const state = await openAdmin(page, consoleErrors)
-  if (state.shell?.devToolsOpen === true) return state
+async function openSettings(page, consoleErrors) {
+  const state = await renderGameToText(page)
+  if (state.shell?.settingsOpen === true) return state
 
-  await page.locator("#toggle-developer-tools").click()
+  await page.locator("#open-shell-menu").click()
+  await waitForTextState(
+    page,
+    (nextState) => nextState.shell?.shellMenuOpen === true,
+    consoleErrors,
+  )
+  const menuText = await page.locator("#shell-menu-panel").innerText()
+  ;["Player", "Tools", "Settings", "Admin", "Dev"].forEach((expectedText) => {
+    assert.match(menuText, new RegExp(expectedText, "i"), `Shell menu should include ${expectedText}.`)
+  })
+  await page.locator("#open-settings").click()
+  await page.locator("#settings-view.open").waitFor({ state: "visible" })
+  return waitForTextState(
+    page,
+    (nextState) =>
+      nextState.shell?.settingsOpen === true &&
+      nextState.shell?.adminOpen === false &&
+      nextState.shell?.devToolsOpen === false &&
+      nextState.shell?.shellMenuOpen === false,
+    consoleErrors,
+  )
+}
+
+async function openDeveloperTools(page, consoleErrors) {
+  const state = await renderGameToText(page)
+  if (state.shell?.devToolsOpen === true) return state
+  if (state.shell?.settingsOpen === true) {
+    await closeSettings(page, consoleErrors)
+  }
+  if (state.shell?.adminOpen === true) {
+    await closeAdmin(page, consoleErrors)
+  }
+
+  await page.locator("#open-shell-menu").click()
+  await waitForTextState(
+    page,
+    (nextState) => nextState.shell?.shellMenuOpen === true,
+    consoleErrors,
+  )
+  await page.locator("#open-dev-menu").click()
+  await page.locator("#dev-view.open").waitFor({ state: "visible" })
   await page.locator("#developer-tools-body").waitFor({ state: "visible" })
   await page.locator("#save-payload").waitFor({ state: "visible" })
   return waitForTextState(
     page,
     (nextState) =>
-      nextState.shell?.adminOpen === true &&
+      nextState.shell?.settingsOpen === false &&
+      nextState.shell?.adminOpen === false &&
       nextState.shell?.devToolsOpen === true &&
-      nextState.shell?.interfaceHierarchy?.advanced?.developerToolsOpen === true,
+      nextState.shell?.shellMenuOpen === false &&
+      nextState.shell?.interfaceHierarchy?.advanced?.developerOpen === true,
     consoleErrors,
   )
+}
+
+async function closeSettings(page, consoleErrors) {
+  const state = await renderGameToText(page)
+  if (state.shell?.settingsOpen !== true) return state
+
+  await page.locator("#close-settings").click()
+  const closed = await waitForTextState(
+    page,
+    (nextState) => nextState.shell?.settingsOpen === false,
+    consoleErrors,
+  )
+  await page.waitForTimeout(240)
+  return closed
 }
 
 async function closeAdmin(page, consoleErrors) {
@@ -2540,6 +2711,20 @@ async function closeAdmin(page, consoleErrors) {
   const closed = await waitForTextState(
     page,
     (nextState) => nextState.shell?.adminOpen === false && nextState.shell?.devToolsOpen === false,
+    consoleErrors,
+  )
+  await page.waitForTimeout(240)
+  return closed
+}
+
+async function closeDeveloperTools(page, consoleErrors) {
+  const state = await renderGameToText(page)
+  if (state.shell?.devToolsOpen !== true) return state
+
+  await page.locator("#close-dev").click()
+  const closed = await waitForTextState(
+    page,
+    (nextState) => nextState.shell?.devToolsOpen === false,
     consoleErrors,
   )
   await page.waitForTimeout(240)

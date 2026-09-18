@@ -113,6 +113,15 @@ import {
   ADD_TILE_TRAVEL_PRESENTATION,
   createAddClockAdvancePresentationTiming,
 } from "./travel-presentation-timing"
+import {
+  type AddSettings,
+  DEFAULT_SETTINGS,
+  applyDomSettings,
+  effectiveMusicVolume,
+  effectiveSfxVolume,
+  loadSettings,
+  saveSettings,
+} from "./settings/settings-state"
 import { installTraceRecorder } from "./dev/trace-recorder"
 import "./styles.css"
 
@@ -159,7 +168,7 @@ interface QuestPanelPosition {
   readonly y: number
 }
 
-type FloatingPanelId = "travel_dialog" | "offline_return"
+type FloatingPanelId = "travel_dialog" | "offline_return" | "settings"
 type FloatingPanelLastAction = "idle" | "dragging" | "dragged" | "keyboard_moved"
 
 interface FloatingPanelPosition {
@@ -228,13 +237,16 @@ type AddFocusedRegion =
   | "objective_tracker"
   | "map_controls"
   | "menu"
+  | "settings"
   | "admin"
+  | "dev"
   | "unknown"
 
 type BaseViewTransitionState = "idle" | "opening" | "settling"
 
 declare global {
   interface Window {
+    addSettings?: () => AddSettings
     render_game_to_text?: () => string
     advanceTime?: (milliseconds?: number) => Promise<string>
   }
@@ -251,6 +263,10 @@ let lastSavePayload: string | null = null
 let autosaveRestoreAttempted = false
 let queuedOfflineCatchupSeconds = 0
 let lastAutosaveRequestMs = 0
+const initialPlayerSettings = loadSettings()
+if (typeof document !== "undefined") {
+  applyDomSettings(initialPlayerSettings)
+}
 
 const [snapshot, setSnapshot] = createSignal<SimulationSnapshot | null>(null)
 const [catalog, setCatalog] = createSignal<CatalogSnapshot | null>(null)
@@ -280,8 +296,14 @@ const [ready, setReady] = createSignal(false)
 // travelExperience phase) so the per-hex +1h stays exact, then resumes on arrival.
 const [autoTick, setAutoTick] = createSignal(true)
 const [timeSpeed, setTimeSpeed] = createSignal(1)
+const [playerSettings, setPlayerSettings] = createSignal<AddSettings>(initialPlayerSettings)
+const [settingsOpen, setSettingsOpen] = createSignal(false)
 const [adminOpen, setAdminOpen] = createSignal(false)
 const [devToolsOpen, setDevToolsOpen] = createSignal(false)
+const [liveTuningDashboardVisible, setLiveTuningDashboardVisible] = createSignal(false)
+const [reducedMotionMode, setReducedMotionMode] = createSignal<"system" | "reduced">(
+  initialPlayerSettings.reducedMotion ? "reduced" : "system",
+)
 const [shellMenuOpen, setShellMenuOpen] = createSignal(false)
 const [discoveryPanelCollapsed, setDiscoveryPanelCollapsed] = createSignal(false)
 const [mobileDiscoveryDetailOpen, setMobileDiscoveryDetailOpen] = createSignal(false)
@@ -302,12 +324,14 @@ const [floatingPanelPositions, setFloatingPanelPositions] = createSignal<
 >({
   travel_dialog: null,
   offline_return: null,
+  settings: null,
 })
 const [floatingPanelLastActions, setFloatingPanelLastActions] = createSignal<
   Record<FloatingPanelId, FloatingPanelLastAction>
 >({
   travel_dialog: "idle",
   offline_return: "idle",
+  settings: "idle",
 })
 const [floatingPanelDraggingId, setFloatingPanelDraggingId] =
   createSignal<FloatingPanelId | null>(null)
@@ -326,13 +350,19 @@ const [lastDungeonEntryCommand, setLastDungeonEntryCommand] = createSignal<strin
 const [lastTileActionTarget, setLastTileActionTarget] = createSignal<string | null>(null)
 const [lastError, setLastError] = createSignal<string | null>(null)
 
+if (typeof window !== "undefined") {
+  window.addSettings = () => playerSettings()
+}
+
 createModuleEffect(() => {
   const travelOpen = travelDialog() !== null
   const offlineOpen = offlineReturnSummary() !== null
-  if (!travelOpen && !offlineOpen) return
+  const settingsVisible = settingsOpen()
+  if (!travelOpen && !offlineOpen && !settingsVisible) return
   window.requestAnimationFrame(() => {
     if (travelOpen) clampFloatingPanelToViewport("travel_dialog")
     if (offlineOpen) clampFloatingPanelToViewport("offline_return")
+    if (settingsVisible) clampFloatingPanelToViewport("settings")
   })
 })
 
@@ -657,6 +687,41 @@ window.advanceTime = async (milliseconds = 1000) => {
   return JSON.stringify(toTextState())
 }
 
+type TuningDashboardModule = typeof import("./dev/tuning-dashboard")
+
+let tuningDashboardModulePromise: Promise<TuningDashboardModule> | null = null
+
+function loadTuningDashboardModule(): Promise<TuningDashboardModule> {
+  tuningDashboardModulePromise ??= import("./dev/tuning-dashboard")
+  return tuningDashboardModulePromise
+}
+
+async function setDevLiveTuningDashboardVisible(visible: boolean): Promise<void> {
+  try {
+    const dashboard = await loadTuningDashboardModule()
+    if (!dashboard.liveTuningDashboardAvailable) {
+      setLastError("Live tuning is only available in development mode.")
+      return
+    }
+    dashboard.setTuningDashboardMounted(visible)
+    setLiveTuningDashboardVisible(visible)
+    setLastEvent(visible ? "live_tuning_shown" : "live_tuning_removed")
+  } catch (error) {
+    setLastEvent("error")
+    setLastError(error instanceof Error ? error.message : "Unable to update live tuning dashboard.")
+  }
+}
+
+function handleLiveTuningOverride(event: Event): void {
+  const detail = (event as CustomEvent<{ readonly path?: unknown; readonly value?: unknown }>).detail
+  if (typeof detail?.path !== "string" || typeof detail.value !== "number") return
+  client.setBalanceOverride(detail.path, detail.value)
+}
+
+function handleLiveTuningReset(): void {
+  client.resetBalanceOverrides()
+}
+
 render(() => html`<${AddRpgApp} />`, requiredElement("app"))
 client.init()
 
@@ -704,6 +769,8 @@ function AddRpgApp() {
     window.addEventListener("online", handleOnline)
     window.addEventListener("offline", handleOffline)
     window.addEventListener("resize", clampFloatingPanelsToViewport)
+    window.addEventListener("add-tuning-override", handleLiveTuningOverride)
+    window.addEventListener("add-tuning-reset", handleLiveTuningReset)
   })
 
   onCleanup(() => {
@@ -716,6 +783,11 @@ function AddRpgApp() {
     window.removeEventListener("online", handleOnline)
     window.removeEventListener("offline", handleOffline)
     window.removeEventListener("resize", clampFloatingPanelsToViewport)
+    window.removeEventListener("add-tuning-override", handleLiveTuningOverride)
+    window.removeEventListener("add-tuning-reset", handleLiveTuningReset)
+    if (liveTuningDashboardVisible()) {
+      void setDevLiveTuningDashboardVisible(false)
+    }
     mapHost?.destroy()
     client.dispose()
   })
@@ -746,11 +818,16 @@ function AddRpgApp() {
   return html`
     <main
       class=${() =>
-        adminOpen()
-          ? "add-app-shell admin-open"
-          : shellMenuOpen()
-            ? "add-app-shell menu-open"
-            : "add-app-shell"}
+        [
+          "add-app-shell",
+          settingsOpen() ? "settings-open" : "",
+          adminOpen() ? "admin-open" : "",
+          devToolsOpen() ? "dev-open" : "",
+          shellMenuOpen() ? "menu-open" : "",
+          reducedMotionMode() === "reduced" ? "reduce-motion" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
       data-interface-hierarchy="map-decision-status-admin"
       onFocusIn=${handleShellFocusIn}
       onKeyDown=${handleShellKeyDown}
@@ -863,21 +940,61 @@ function AddRpgApp() {
                   aria-label="Secondary menu"
                   aria-hidden=${() => !shellMenuOpen()}
                 >
-                  <button
-                    id="open-admin"
-                    type="button"
-                    class="ghost-button admin-menu-action"
-                    role="menuitem"
-                    onClick=${() => {
-                      setShellMenuOpen(false)
-                      setDevToolsOpen(false)
-                      setAdminOpen(true)
-                    }}
-                    aria-controls="admin-view"
-                    aria-expanded=${() => adminOpen()}
-                  >
-                    Admin
-                  </button>
+                  <div class="shell-menu-header" aria-hidden="true">
+                    <strong>Menu</strong>
+                    <small>Player options and tools</small>
+                  </div>
+                  <div class="shell-menu-group" role="group" aria-label="Player">
+                    <span class="shell-menu-group-label">Player</span>
+                    <button
+                      id="open-settings"
+                      type="button"
+                      class="ghost-button shell-menu-action settings-menu-action"
+                      role="menuitem"
+                      onClick=${openSettingsView}
+                      aria-controls="settings-view"
+                      aria-expanded=${() => settingsOpen()}
+                    >
+                      <span>
+                        <strong>Settings</strong>
+                        <small>Sound, pacing, saves, comfort</small>
+                      </span>
+                      <i aria-hidden="true">Open</i>
+                    </button>
+                  </div>
+                  <div class="shell-menu-group shell-menu-tools" role="group" aria-label="Tools">
+                    <span class="shell-menu-group-label">Tools</span>
+                    <button
+                      id="open-admin"
+                      type="button"
+                      class="ghost-button shell-menu-action admin-menu-action"
+                      role="menuitem"
+                      onClick=${openAdminView}
+                      aria-controls="admin-view"
+                      aria-expanded=${() => adminOpen()}
+                    >
+                      <span>
+                        <strong>Admin</strong>
+                        <small>Run health, story, recovery</small>
+                      </span>
+                      <i aria-hidden="true">Manage</i>
+                    </button>
+                    <button
+                      id="open-dev-menu"
+                      type="button"
+                      class="ghost-button shell-menu-action dev-menu-action"
+                      role="menuitem"
+                      onClick=${openDevView}
+                      aria-controls="dev-view"
+                      aria-expanded=${() => devToolsOpen()}
+                    >
+                      <span>
+                        <strong>Dev</strong>
+                        <small>Runtime commands and raw data</small>
+                      </span>
+                      <i aria-hidden="true">Debug</i>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1039,10 +1156,226 @@ function AddRpgApp() {
       </section>
 
       <div
-        class=${() => (adminOpen() ? "admin-backdrop visible" : "admin-backdrop")}
-        onClick=${closeAdminView}
+        class=${() =>
+          settingsOpen() || adminOpen() || devToolsOpen()
+            ? "admin-backdrop visible"
+            : "admin-backdrop"}
+        onClick=${closeAdvancedViews}
         aria-hidden="true"
       />
+
+      <section
+        id="settings-view"
+        data-interface-tier="settings"
+        data-dragging=${() => floatingPanelDraggingId() === "settings"}
+        class=${() =>
+          settingsOpen() ? "settings-hex-window settings-view open" : "settings-hex-window settings-view"}
+        style=${() => floatingPanelStyle("settings")}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Player settings"
+        aria-hidden=${() => !settingsOpen()}
+      >
+        <div class="settings-hex-inner">
+          <div
+            class="admin-header settings-header settings-drag-handle"
+            tabindex="0"
+            role="group"
+            aria-label="Drag settings window. Use arrow keys to nudge it."
+            onPointerDown=${(event: PointerEvent) => beginFloatingPanelDrag("settings", event)}
+            onPointerMove=${(event: PointerEvent) => dragFloatingPanel("settings", event)}
+            onPointerUp=${(event: PointerEvent) => endFloatingPanelDrag("settings", event)}
+            onPointerCancel=${(event: PointerEvent) => endFloatingPanelDrag("settings", event)}
+            onKeyDown=${(event: KeyboardEvent) => handleFloatingPanelKeyboard("settings", event)}
+          >
+            <div>
+              <span class="settings-hex-kicker">Player preferences</span>
+              <span class="admin-title">Settings</span>
+              <small>Sound, pacing, saves, and interface comfort</small>
+            </div>
+            <button
+              id="close-settings"
+              type="button"
+              class="ghost-button"
+              onClick=${closeSettingsView}
+              aria-label="Close settings"
+            >
+              Close
+            </button>
+          </div>
+
+          <div class="settings-hex-body">
+            <section class="panel settings-panel settings-sound-panel">
+              <div class="panel-heading">
+                <span>Sound</span>
+                <span class="small-chip">${() => soundStatusLabel()}</span>
+              </div>
+              <p class="settings-panel-note">${() => soundMixSummary()}</p>
+              <div class="settings-row">
+                <span>
+                  <strong>Mute all</strong>
+                  <small>Silence music and interface sounds without changing the mix.</small>
+                </span>
+                <button
+                  id="settings-toggle-mute"
+                  type="button"
+                  class="ghost-button"
+                  onClick=${() => updatePlayerSettings({ muted: !playerSettings().muted })}
+                  aria-pressed=${() => playerSettings().muted}
+                >
+                  ${() => (playerSettings().muted ? "Muted" : "On")}
+                </button>
+              </div>
+              ${settingsVolumeRow("Master volume", "Overall game audio level.", "masterVolume")}
+              ${settingsVolumeRow("Music", "Adaptive world bed and story stingers.", "musicVolume")}
+              ${settingsVolumeRow("Effects", "Interface cues and future world sounds.", "sfxVolume")}
+              <div class="settings-action-row">
+                <button
+                  id="settings-reset-audio"
+                  type="button"
+                  class="ghost-button"
+                  onClick=${resetAudioSettings}
+                >
+                  Reset sound
+                </button>
+              </div>
+            </section>
+
+            <section class="panel settings-panel">
+              <div class="panel-heading">
+                <span>Play pace</span>
+                <span class="small-chip">${() => (autoTick() ? `${timeSpeed()}x` : "Paused")}</span>
+              </div>
+              <div class="settings-row">
+                <span>
+                  <strong>World clock</strong>
+                  <small>Let time move while you read the map.</small>
+                </span>
+                <button
+                  id="settings-toggle-time"
+                  type="button"
+                  class="ghost-button"
+                  onClick=${() => setAutoTick(!autoTick())}
+                  aria-pressed=${() => autoTick()}
+                >
+                  ${() => (autoTick() ? "Live" : "Paused")}
+                </button>
+              </div>
+              <div class="settings-row">
+                <span>
+                  <strong>Clock speed</strong>
+                  <small>Travel still consumes exact game time.</small>
+                </span>
+                <button
+                  id="settings-cycle-speed"
+                  type="button"
+                  class="ghost-button"
+                  onClick=${() => cycleTimeSpeed()}
+                  disabled=${() => !ready()}
+                >
+                  ${() => timeSpeedLabel()}
+                </button>
+              </div>
+            </section>
+
+            <section class="panel settings-panel">
+              <div class="panel-heading">
+                <span>Interface</span>
+                <span class="small-chip">Player</span>
+              </div>
+              <div class="settings-row">
+                <span>
+                  <strong>Objective tracker</strong>
+                  <small>Keep the map clear or show the full checklist.</small>
+                </span>
+                <button
+                  id="settings-toggle-objective"
+                  type="button"
+                  class="ghost-button"
+                  onClick=${toggleFirstPlayablePanel}
+                  aria-pressed=${() => !firstPlayableCollapsed()}
+                >
+                  ${() => (firstPlayableCollapsed() ? "Compact" : "Expanded")}
+                </button>
+              </div>
+              <div class="settings-row">
+                <span>
+                  <strong>Discovery panel</strong>
+                  <small>Collapse the decision panel when the map needs room.</small>
+                </span>
+                <button
+                  id="settings-toggle-discovery"
+                  type="button"
+                  class="ghost-button"
+                  onClick=${() => setDiscoveryPanelCollapsed(!discoveryPanelCollapsed())}
+                  aria-pressed=${() => !discoveryPanelCollapsed()}
+                >
+                  ${() => (discoveryPanelCollapsed() ? "Compact" : "Open")}
+                </button>
+              </div>
+              <div class="settings-row">
+                <span>
+                  <strong>Motion</strong>
+                  <small>Reduce panel and map UI motion locally.</small>
+                </span>
+                <button
+                  id="settings-toggle-motion"
+                  type="button"
+                  class="ghost-button"
+                  onClick=${() =>
+                    updatePlayerSettings({
+                      reducedMotion: reducedMotionMode() !== "reduced",
+                    })}
+                  aria-pressed=${() => reducedMotionMode() === "reduced"}
+                >
+                  ${() => (reducedMotionMode() === "reduced" ? "Reduced" : "System")}
+                </button>
+              </div>
+            </section>
+
+            <section class="panel settings-panel">
+              <div class="panel-heading">
+                <span>Save data</span>
+                <span class="small-chip">${() => (autosaveEnabled() ? "Autosave on" : "Manual")}</span>
+              </div>
+              <div class="settings-row">
+                <span>
+                  <strong>Autosave</strong>
+                  <small>${() => formatSaveTimestamp(autosaveRecord())}</small>
+                </span>
+                <button
+                  id="settings-toggle-autosave"
+                  type="button"
+                  class="ghost-button"
+                  onClick=${() => setAutosaveEnabled(!autosaveEnabled())}
+                  aria-pressed=${() => autosaveEnabled()}
+                >
+                  ${() => (autosaveEnabled() ? "On" : "Off")}
+                </button>
+              </div>
+              <div class="admin-action-grid settings-save-actions">
+                <button
+                  id="settings-save-now"
+                  type="button"
+                  onClick=${() => void exportSaveNow()}
+                  disabled=${() => !ready()}
+                >
+                  Save now
+                </button>
+                <button
+                  id="settings-load-autosave"
+                  type="button"
+                  class="ghost-button"
+                  onClick=${() => void loadAutosave()}
+                  disabled=${() => !ready() || !autosaveRecord()}
+                >
+                  Load autosave
+                </button>
+              </div>
+            </section>
+          </div>
+        </div>
+      </section>
 
       <aside
         id="admin-view"
@@ -1054,7 +1387,7 @@ function AddRpgApp() {
         <div class="admin-header">
           <div>
             <span class="admin-title">Admin</span>
-            <small>Run recovery, resources, and optional developer tools</small>
+            <small>Operational view for run health, story, resources, and recovery</small>
           </div>
           <button
             id="close-admin"
@@ -1067,7 +1400,15 @@ function AddRpgApp() {
           </button>
         </div>
 
-        <section class="panel runtime-panel">
+        <nav class="drawer-section-map admin-section-map" aria-label="Admin sections">
+          <a href="#admin-run-status">Run</a>
+          <a href="#admin-resources">Resources</a>
+          <a href="#admin-story-browser">Story</a>
+          <a href="#admin-recovery">Recovery</a>
+          <a href="#admin-world-actions">Actions</a>
+        </nav>
+
+        <section id="admin-run-status" class="panel runtime-panel">
           <div class="panel-heading">
             <span>Run status</span>
             <button
@@ -1095,7 +1436,7 @@ function AddRpgApp() {
           </dl>
         </section>
 
-        <section class="panel">
+        <section id="admin-resources" class="panel">
           <div class="panel-heading">
             <span>Resources</span>
             <span class="small-chip">${() => `${uiState()?.resources.length ?? 0} tracked`}</span>
@@ -1105,7 +1446,7 @@ function AddRpgApp() {
           </div>
         </section>
 
-        <section class="panel">
+        <section id="admin-objective" class="panel">
           <div class="panel-heading">
             <span>Objective</span>
             <span class="small-chip">${() => objectiveState()}</span>
@@ -1120,7 +1461,7 @@ function AddRpgApp() {
 
         ${() => adminStoryBrowserPanel()}
 
-        <section class="panel admin-recovery-panel">
+        <section id="admin-recovery" class="panel admin-recovery-panel">
           <div class="panel-heading">
             <span>Run recovery</span>
             <span class="small-chip">${() => (autosaveEnabled() ? "Autosave on" : "Manual save")}</span>
@@ -1156,162 +1497,7 @@ function AddRpgApp() {
           </div>
         </section>
 
-        <section class="panel developer-tools-panel">
-          <div class="panel-heading">
-            <span>Developer tools</span>
-            <button
-              id="toggle-developer-tools"
-              type="button"
-              class="ghost-button"
-              onClick=${() => setDevToolsOpen(!devToolsOpen())}
-              aria-expanded=${() => devToolsOpen()}
-              aria-controls="developer-tools-body"
-            >
-              ${() => (devToolsOpen() ? "Hide" : "Show")}
-            </button>
-          </div>
-          <p class="admin-panel-copy">
-            Agent and developer controls for testing saves, time, and simulation recovery.
-          </p>
-          <div
-            id="developer-tools-body"
-            class="developer-tools-body"
-            hidden=${() => !devToolsOpen()}
-          >
-            <section class="panel runtime-internals-panel">
-              <div class="panel-heading">
-                <span>Runtime internals</span>
-                <span class="small-chip">${() => (ready() ? "Ready" : "Starting")}</span>
-              </div>
-              <dl class="runtime-list">
-                <div>
-                  <dt>Boundary</dt>
-                  <dd>UI -> Worker -> Rust/WASM -> Snapshot</dd>
-                </div>
-                <div>
-                  <dt>Renderer</dt>
-                  <dd>${() => `${mapInfo().rendererType} / ${mapInfo().cells.total} cells`}</dd>
-                </div>
-                <div>
-                  <dt>Event</dt>
-                  <dd>${() => lastEvent()}</dd>
-                </div>
-              </dl>
-            </section>
-
-            <section class="panel command-panel">
-              <div class="panel-heading">
-                <span>Commands</span>
-                <span class="small-chip">${() => lastCommand() ?? "Idle"}</span>
-              </div>
-              <div class="command-grid">
-                <button id="tick-runtime" type="button" onClick=${() => void tickRuntime(5)} disabled=${() => !ready()}>
-                  Advance 5s
-                </button>
-                <button id="tick-runtime-fast" type="button" onClick=${() => void tickRuntime(120)} disabled=${() => !ready()}>
-                  Advance 2m
-                </button>
-                <button id="assign-hero" type="button" onClick=${() => void toggleHero()} disabled=${() => !ready()}>
-                  ${() => (snapshot()?.roster.heroAssigned ? "Unassign hero" : "Assign hero")}
-                </button>
-                <button
-                  type="button"
-                  onClick=${() => void runInteraction(primaryWorldActionInteraction())}
-                  disabled=${() => !Boolean(primaryWorldActionInteraction())}
-                >
-                  ${() => primaryWorldActionInteraction()?.label ?? "World action"}
-                </button>
-                <button
-                  type="button"
-                  id="recruit-survivor"
-                  onClick=${() => void runInteraction(recruitmentInteraction())}
-                  disabled=${() => !Boolean(recruitmentInteraction()?.enabled)}
-                >
-                  Recruit
-                </button>
-                <button id="reset-runtime" type="button" class="ghost-button" onClick=${() => void resetRuntime()} disabled=${() => !ready()}>
-                  Reset
-                </button>
-              </div>
-              <div class="quick-control-group" aria-label="First playable role controls">
-                ${() => roleQuickControls()}
-              </div>
-              <div class="quick-control-group" aria-label="First playable construction controls">
-                ${() => constructionQuickControls()}
-              </div>
-              <div class="quick-control-group" aria-label="Hero perk controls">
-                <p class="quick-control-heading">
-                  Perks
-                  <span class="small-chip">${() => `${perkProgress()?.pointsAvailable ?? 0} pts`}</span>
-                </p>
-                ${() => perkQuickControls()}
-              </div>
-              <div class="quick-control-group" aria-label="Hero inventory">
-                <p class="quick-control-heading">Inventory</p>
-                ${() => inventoryRows()}
-              </div>
-              ${() => (lastError() ? html`<p class="error-line">${lastError()}</p>` : null)}
-            </section>
-
-            <section class="panel run-panel">
-              <div class="panel-heading">
-                <span>Run</span>
-                <button
-                  id="toggle-autosave"
-                  type="button"
-                  class="ghost-button"
-                  onClick=${() => setAutosaveEnabled(!autosaveEnabled())}
-                  aria-pressed=${() => autosaveEnabled()}
-                >
-                  ${() => (autosaveEnabled() ? "Autosave" : "Manual")}
-                </button>
-              </div>
-              <dl class="runtime-list">
-                <div>
-                  <dt>Autosave</dt>
-                  <dd>${() => formatSaveTimestamp(autosaveRecord())}</dd>
-                </div>
-                <div>
-                  <dt>Offline</dt>
-                  <dd>${() => lastOfflineCopy()}</dd>
-                </div>
-              </dl>
-              <textarea
-                id="save-payload"
-                class="save-payload"
-                spellcheck="false"
-                value=${() => savePayload()}
-                onInput=${(event: InputEvent) => setSavePayload((event.currentTarget as HTMLTextAreaElement).value)}
-                aria-label="ADD save payload"
-              />
-              <div class="run-grid">
-                <button id="export-save" type="button" onClick=${() => void exportSaveNow()} disabled=${() => !ready()}>
-                  Save now
-                </button>
-                <button
-                  id="load-autosave"
-                  type="button"
-                  onClick=${() => void loadAutosave()}
-                  disabled=${() => !ready() || !autosaveRecord()}
-                >
-                  Load autosave
-                </button>
-                <button id="import-save" type="button" onClick=${() => void importSaveText()} disabled=${() => !ready()}>
-                  Import text
-                </button>
-                <button id="offline-catchup" type="button" onClick=${() => void runOfflineCatchup(3600)} disabled=${() => !ready()}>
-                  Offline 1h
-                </button>
-                <button id="clear-autosave" type="button" class="ghost-button" onClick=${clearBrowserAutosave}>
-                  Clear save
-                </button>
-              </div>
-              ${() => (storageError() ? html`<p class="error-line">${storageError()}</p>` : null)}
-            </section>
-          </div>
-        </section>
-
-        <section class="panel compact-panel">
+        <section id="admin-world-actions" class="panel compact-panel">
           <div class="panel-heading">
             <span>World actions</span>
             <span class="small-chip">${() => `${worldActions().filter((action) => action.enabled).length} ready`}</span>
@@ -1321,11 +1507,307 @@ function AddRpgApp() {
           </ul>
         </section>
       </aside>
+
+      <aside
+        id="dev-view"
+        data-interface-tier="developer"
+        class=${() => (devToolsOpen() ? "admin-view dev-view open" : "admin-view dev-view")}
+        aria-label="Developer menu"
+        aria-hidden=${() => !devToolsOpen()}
+      >
+        <div class="admin-header dev-header">
+          <div>
+            <span class="admin-title">Dev</span>
+            <small>Diagnostics, raw save tools, and deterministic runtime controls</small>
+          </div>
+          <button
+            id="close-dev"
+            type="button"
+            class="ghost-button"
+            onClick=${closeDevView}
+            aria-label="Close developer menu"
+          >
+            Close
+          </button>
+        </div>
+
+        <div id="developer-tools-body" class="developer-tools-body">
+          <nav class="drawer-section-map dev-section-map" aria-label="Developer sections">
+            <a href="#dev-runtime-internals">Runtime</a>
+            <a href="#dev-live-tuning">Tuning</a>
+            <a href="#dev-commands">Commands</a>
+            <a href="#dev-save-tools">Save</a>
+          </nav>
+
+          <section id="dev-runtime-internals" class="panel runtime-internals-panel">
+            <div class="panel-heading">
+              <span>Runtime internals</span>
+              <span class="small-chip">${() => (ready() ? "Ready" : "Starting")}</span>
+            </div>
+            <p class="admin-panel-copy">
+              Developer-only state for checking the UI -> Worker -> Rust/WASM -> Snapshot boundary.
+            </p>
+            <dl class="runtime-list">
+              <div>
+                <dt>Boundary</dt>
+                <dd>UI -> Worker -> Rust/WASM -> Snapshot</dd>
+              </div>
+              <div>
+                <dt>Renderer</dt>
+                <dd>${() => `${mapInfo().rendererType} / ${mapInfo().cells.total} cells`}</dd>
+              </div>
+              <div>
+                <dt>Event</dt>
+                <dd>${() => lastEvent()}</dd>
+              </div>
+            </dl>
+          </section>
+
+          <section id="dev-live-tuning" class="panel runtime-internals-panel">
+            <div class="panel-heading">
+              <span>Live tuning</span>
+              <span class="small-chip">${() => (liveTuningDashboardVisible() ? "Visible" : "Hidden")}</span>
+            </div>
+            <p class="admin-panel-copy">
+              Dev-only balance sliders are hidden by default. Show them only while tuning numbers, then remove the overlay from the play surface.
+            </p>
+            <button
+              id="toggle-live-tuning"
+              type="button"
+              class=${() => (liveTuningDashboardVisible() ? "ghost-button danger-button" : "ghost-button")}
+              onClick=${() => void setDevLiveTuningDashboardVisible(!liveTuningDashboardVisible())}
+            >
+              ${() => (liveTuningDashboardVisible() ? "Remove live tuning" : "Show live tuning")}
+            </button>
+          </section>
+
+          <section id="dev-commands" class="panel command-panel">
+            <div class="panel-heading">
+              <span>Commands</span>
+              <span class="small-chip">${() => lastCommand() ?? "Idle"}</span>
+            </div>
+            <div class="command-grid">
+              <button id="tick-runtime" type="button" onClick=${() => void tickRuntime(5)} disabled=${() => !ready()}>
+                Advance 5s
+              </button>
+              <button id="tick-runtime-fast" type="button" onClick=${() => void tickRuntime(120)} disabled=${() => !ready()}>
+                Advance 2m
+              </button>
+              <button id="assign-hero" type="button" onClick=${() => void toggleHero()} disabled=${() => !ready()}>
+                ${() => (snapshot()?.roster.heroAssigned ? "Unassign hero" : "Assign hero")}
+              </button>
+              <button
+                type="button"
+                onClick=${() => void runInteraction(primaryWorldActionInteraction())}
+                disabled=${() => !Boolean(primaryWorldActionInteraction())}
+              >
+                ${() => primaryWorldActionInteraction()?.label ?? "World action"}
+              </button>
+              <button
+                type="button"
+                id="recruit-survivor"
+                onClick=${() => void runInteraction(recruitmentInteraction())}
+                disabled=${() => !Boolean(recruitmentInteraction()?.enabled)}
+              >
+                Recruit
+              </button>
+              <button id="reset-runtime" type="button" class="ghost-button" onClick=${() => void resetRuntime()} disabled=${() => !ready()}>
+                Reset
+              </button>
+            </div>
+            <div class="quick-control-group" aria-label="First playable role controls">
+              ${() => roleQuickControls()}
+            </div>
+            <div class="quick-control-group" aria-label="First playable construction controls">
+              ${() => constructionQuickControls()}
+            </div>
+            <div class="quick-control-group" aria-label="Hero perk controls">
+              <p class="quick-control-heading">
+                Perks
+                <span class="small-chip">${() => `${perkProgress()?.pointsAvailable ?? 0} pts`}</span>
+              </p>
+              ${() => perkQuickControls()}
+            </div>
+            <div class="quick-control-group" aria-label="Hero inventory">
+              <p class="quick-control-heading">Inventory</p>
+              ${() => inventoryRows()}
+            </div>
+            ${() => (lastError() ? html`<p class="error-line">${lastError()}</p>` : null)}
+          </section>
+
+          <section id="dev-save-tools" class="panel run-panel">
+            <div class="panel-heading">
+              <span>Raw save</span>
+              <button
+                id="toggle-autosave"
+                type="button"
+                class="ghost-button"
+                onClick=${() => setAutosaveEnabled(!autosaveEnabled())}
+                aria-pressed=${() => autosaveEnabled()}
+              >
+                ${() => (autosaveEnabled() ? "Autosave" : "Manual")}
+              </button>
+            </div>
+            <dl class="runtime-list">
+              <div>
+                <dt>Autosave</dt>
+                <dd>${() => formatSaveTimestamp(autosaveRecord())}</dd>
+              </div>
+              <div>
+                <dt>Offline</dt>
+                <dd>${() => lastOfflineCopy()}</dd>
+              </div>
+            </dl>
+            <textarea
+              id="save-payload"
+              class="save-payload"
+              spellcheck="false"
+              value=${() => savePayload()}
+              onInput=${(event: InputEvent) => setSavePayload((event.currentTarget as HTMLTextAreaElement).value)}
+              aria-label="ADD save payload"
+            />
+            <div class="run-grid">
+              <button id="export-save" type="button" onClick=${() => void exportSaveNow()} disabled=${() => !ready()}>
+                Save now
+              </button>
+              <button
+                id="load-autosave"
+                type="button"
+                onClick=${() => void loadAutosave()}
+                disabled=${() => !ready() || !autosaveRecord()}
+              >
+                Load autosave
+              </button>
+              <button id="import-save" type="button" onClick=${() => void importSaveText()} disabled=${() => !ready()}>
+                Import text
+              </button>
+              <button id="offline-catchup" type="button" onClick=${() => void runOfflineCatchup(3600)} disabled=${() => !ready()}>
+                Offline 1h
+              </button>
+              <button id="clear-autosave" type="button" class="ghost-button" onClick=${clearBrowserAutosave}>
+                Clear save
+              </button>
+            </div>
+            ${() => (storageError() ? html`<p class="error-line">${storageError()}</p>` : null)}
+          </section>
+        </div>
+      </aside>
     </main>
   `
 }
 
+function openSettingsView(): void {
+  setShellMenuOpen(false)
+  setAdminOpen(false)
+  setDevToolsOpen(false)
+  setSettingsOpen(true)
+  focusElementById("close-settings")
+}
+
+function updatePlayerSettings(patch: Partial<AddSettings>): void {
+  const next = { ...playerSettings(), ...patch }
+  setPlayerSettings(next)
+  saveSettings(next)
+  applyDomSettings(next)
+  setReducedMotionMode(next.reducedMotion ? "reduced" : "system")
+  window.dispatchEvent(new CustomEvent<AddSettings>("add-settings-changed", { detail: next }))
+}
+
+function updateSettingsVolume(
+  key: "masterVolume" | "musicVolume" | "sfxVolume",
+  value: number,
+): void {
+  const clamped = Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : DEFAULT_SETTINGS[key]
+  updatePlayerSettings({ [key]: clamped } as Partial<AddSettings>)
+}
+
+function resetAudioSettings(): void {
+  updatePlayerSettings({
+    masterVolume: DEFAULT_SETTINGS.masterVolume,
+    musicVolume: DEFAULT_SETTINGS.musicVolume,
+    sfxVolume: DEFAULT_SETTINGS.sfxVolume,
+    muted: DEFAULT_SETTINGS.muted,
+  })
+}
+
+function settingsVolumePercent(key: "masterVolume" | "musicVolume" | "sfxVolume"): string {
+  return `${Math.round(playerSettings()[key] * 100)}%`
+}
+
+function soundStatusLabel(): string {
+  const settings = playerSettings()
+  if (settings.muted) return "Muted"
+  return `${Math.round(settings.masterVolume * 100)}% master`
+}
+
+function soundMixSummary(): string {
+  const settings = playerSettings()
+  if (settings.muted) return "All game music and interface sounds are muted."
+  return `Music ${Math.round(effectiveMusicVolume(settings) * 100)}% · Effects ${Math.round(
+    effectiveSfxVolume(settings) * 100,
+  )}%`
+}
+
+function settingsVolumeRow(
+  label: string,
+  detail: string,
+  key: "masterVolume" | "musicVolume" | "sfxVolume",
+) {
+  const inputId = `settings-${key.replace("Volume", "-volume").toLowerCase()}`
+  return html`
+    <label class="settings-row settings-volume-row" for=${inputId}>
+      <span>
+        <strong>${label}</strong>
+        <small>${detail}</small>
+      </span>
+      <span class="settings-volume-control">
+        <input
+          id=${inputId}
+          type="range"
+          min="0"
+          max="1"
+          step="0.05"
+          value=${() => playerSettings()[key]}
+          onInput=${(event: Event) =>
+            updateSettingsVolume(key, Number((event.currentTarget as HTMLInputElement).value))}
+          aria-label=${`${label} volume`}
+        />
+        <strong>${() => settingsVolumePercent(key)}</strong>
+      </span>
+    </label>
+  `
+}
+
+function openAdminView(): void {
+  setShellMenuOpen(false)
+  setSettingsOpen(false)
+  setDevToolsOpen(false)
+  setAdminOpen(true)
+  focusElementById("close-admin")
+}
+
+function openDevView(): void {
+  setShellMenuOpen(false)
+  setSettingsOpen(false)
+  setAdminOpen(false)
+  setDevToolsOpen(true)
+  focusElementById("close-dev")
+}
+
+function closeSettingsView(): void {
+  setSettingsOpen(false)
+}
+
 function closeAdminView(): void {
+  setAdminOpen(false)
+}
+
+function closeDevView(): void {
+  setDevToolsOpen(false)
+}
+
+function closeAdvancedViews(): void {
+  setSettingsOpen(false)
   setAdminOpen(false)
   setDevToolsOpen(false)
 }
@@ -1336,8 +1818,12 @@ function handleShellFocusIn(event: FocusEvent): void {
     setFocusedRegion("unknown")
     return
   }
-  if (target.closest("#admin-view")) {
+  if (target.closest("#settings-view")) {
+    setFocusedRegion("settings")
+  } else if (target.closest("#admin-view")) {
     setFocusedRegion("admin")
+  } else if (target.closest("#dev-view")) {
+    setFocusedRegion("dev")
   } else if (target.closest("#shell-menu-panel, .shell-menu")) {
     setFocusedRegion("menu")
   } else if (target.closest("#first-playable-panel")) {
@@ -1370,10 +1856,10 @@ function handleShellKeyDown(event: KeyboardEvent): void {
     return
   }
 
-  if (adminOpen()) {
+  if (settingsOpen() || adminOpen() || devToolsOpen()) {
     event.preventDefault()
     event.stopPropagation()
-    closeAdminView()
+    closeAdvancedViews()
     focusElementById("open-shell-menu")
   }
 }
@@ -1418,6 +1904,7 @@ function floatingPanelPosition(id: FloatingPanelId): FloatingPanelPosition {
 function floatingPanelTelemetry() {
   const travel = floatingPanelPosition("travel_dialog")
   const offline = floatingPanelPosition("offline_return")
+  const settings = floatingPanelPosition("settings")
   return {
     travelDialog: {
       open: travelDialog() !== null,
@@ -1438,6 +1925,16 @@ function floatingPanelTelemetry() {
       dragEnabled: true,
       bounded: floatingPanelWithinBounds("offline_return"),
       layer: "context",
+    },
+    settings: {
+      open: settingsOpen(),
+      x: settings.x,
+      y: settings.y,
+      dragging: floatingPanelDraggingId() === "settings",
+      lastAction: floatingPanelLastActions().settings,
+      dragEnabled: true,
+      bounded: floatingPanelWithinBounds("settings"),
+      layer: "modal",
     },
   } as const
 }
@@ -1461,13 +1958,15 @@ function defaultFloatingPanelPosition(id: FloatingPanelId): FloatingPanelPositio
 function floatingPanelSize(id: FloatingPanelId): { readonly width: number; readonly height: number } {
   const element = typeof document === "undefined" ? null : document.getElementById(floatingPanelDomId(id))
   return {
-    width: element?.offsetWidth ?? (id === "travel_dialog" ? 430 : 430),
-    height: element?.offsetHeight ?? (id === "travel_dialog" ? 260 : 560),
+    width: element?.offsetWidth ?? (id === "settings" ? 760 : 430),
+    height: element?.offsetHeight ?? (id === "travel_dialog" ? 260 : id === "settings" ? 720 : 560),
   }
 }
 
 function floatingPanelDomId(id: FloatingPanelId): string {
-  return id === "travel_dialog" ? "travel-confirmation-dialog" : "offline-return-panel"
+  if (id === "travel_dialog") return "travel-confirmation-dialog"
+  if (id === "settings") return "settings-view"
+  return "offline-return-panel"
 }
 
 function beginFloatingPanelDrag(id: FloatingPanelId, event: PointerEvent): void {
@@ -1523,6 +2022,7 @@ function endFloatingPanelDrag(id: FloatingPanelId, event: PointerEvent): void {
 }
 
 function handleFloatingPanelKeyboard(id: FloatingPanelId, event: KeyboardEvent): void {
+  if (event.target !== event.currentTarget) return
   const keyOffsets: Record<string, readonly [number, number]> = {
     ArrowUp: [0, -1],
     ArrowDown: [0, 1],
@@ -1592,6 +2092,9 @@ function clampFloatingPanelsToViewport(): void {
       : null,
     offline_return: current.offline_return
       ? clampFloatingPanelPosition("offline_return", current.offline_return.x, current.offline_return.y)
+      : null,
+    settings: current.settings
+      ? clampFloatingPanelPosition("settings", current.settings.x, current.settings.y)
       : null,
   })
 }
@@ -2583,11 +3086,27 @@ function interfaceHierarchyState(): AddInterfaceHierarchyState {
       answer: interfaceStatusCopy(),
       waitForecast: questions.whatHappensIfIWait,
     },
-    advanced: {
-      label: "Admin",
+    settings: {
+      label: "Settings",
       hiddenByDefault: true,
-      open: adminOpen(),
-      developerToolsOpen: devToolsOpen(),
+      open: settingsOpen(),
+      presentation: "hex_window",
+      motion: reducedMotionMode(),
+      autosave: autosaveEnabled(),
+      audio: {
+        muted: playerSettings().muted,
+        masterVolume: playerSettings().masterVolume,
+        musicVolume: playerSettings().musicVolume,
+        sfxVolume: playerSettings().sfxVolume,
+        effectiveMusicVolume: effectiveMusicVolume(playerSettings()),
+        effectiveSfxVolume: effectiveSfxVolume(playerSettings()),
+      },
+    },
+    advanced: {
+      label: "Tools",
+      hiddenByDefault: true,
+      adminOpen: adminOpen(),
+      developerOpen: devToolsOpen(),
       runtimeInternalsHiddenByDefault: true,
     },
     questions,
@@ -6919,6 +7438,7 @@ function toTextState(): RuntimeTextState {
     interfaceHierarchy: interfaceHierarchyState(),
     baseViewTransition: baseViewTransition(),
     shellMenuOpen: shellMenuOpen(),
+    settingsOpen: settingsOpen(),
     adminOpen: adminOpen(),
     devToolsOpen: devToolsOpen(),
     focusedRegion: focusedRegion(),
