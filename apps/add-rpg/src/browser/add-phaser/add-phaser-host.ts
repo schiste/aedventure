@@ -9,6 +9,8 @@ import type {
   PhaserMapRendererState,
 } from "./types"
 
+const TRACE_DEV = Boolean((import.meta as { env?: { DEV?: boolean } }).env?.DEV)
+
 export class AddRpgPhaserMapHost {
   private readonly scene: AddRpgHexScene
   private readonly game: Phaser.Game
@@ -27,6 +29,28 @@ export class AddRpgPhaserMapHost {
       this.scene = host.scene
       this.game = host.game
     }
+    this.publishMemoryProbe()
+  }
+
+  /** Dev-only: expose Phaser accumulator counts for the trace recorder's perf
+   *  samples, via a window hook (so prod never imports the dev recorder). */
+  private publishMemoryProbe(): void {
+    if (!TRACE_DEV || typeof window === "undefined") return
+    ;(window as unknown as { __ADD_MEM_PROBE?: () => Record<string, number> }).__ADD_MEM_PROBE =
+      () => {
+        const counts: Record<string, number> = {}
+        try {
+          counts.phaserObjects = this.scene.children.length
+        } catch {
+          /* scene torn down */
+        }
+        try {
+          counts.phaserTweens = this.scene.tweens.getTweens().length
+        } catch {
+          /* tween manager unavailable */
+        }
+        return counts
+      }
   }
 
   renderWorld(world: GameWorld): void {
@@ -71,6 +95,9 @@ export class AddRpgPhaserMapHost {
   }
 
   destroy(): void {
+    if (TRACE_DEV && typeof window !== "undefined") {
+      delete (window as unknown as { __ADD_MEM_PROBE?: unknown }).__ADD_MEM_PROBE
+    }
     this.game.destroy(true)
   }
 }
