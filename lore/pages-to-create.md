@@ -3,7 +3,7 @@
 > Living inventory of red wiki links. A missing page is intentional until its subject is authored.
 > Do not replace these links with prose in another page: create the focused subject here when ready.
 
-**Open pages: 99**
+**Open pages: 97**
 
 ## characters
 
@@ -49,8 +49,6 @@
   Referenced by: `creatures/README.md`
 ## factions
 
-- [ ] [factions/creatures/README.md](factions/creatures/README.md)  
-  Referenced by: `factions/sleepless_in_decibels/telegram_archives/channels/sounding_five/the_animal_ethics_debate.md`
 - [ ] [factions/sleepless_in_decibels/telegram_archives/channels/sounding_five/2029/09_previous.md](factions/sleepless_in_decibels/telegram_archives/channels/sounding_five/2029/09_previous.md)  
   Referenced by: `factions/sleepless_in_decibels/telegram_archives/channels/sounding_five/2029/09_september.md`
 - [ ] [factions/sleepless_in_decibels/telegram_archives/channels/sounding_five/2029/10_previous.md](factions/sleepless_in_decibels/telegram_archives/channels/sounding_five/2029/10_previous.md)  

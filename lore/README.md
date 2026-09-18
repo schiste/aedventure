@@ -5,7 +5,7 @@
 ## Navigation
 
 - [The Truth](the-truth.md) : Internal canon and hidden causal structure.
-- [Timeline](timeline.md) : Chronology from 2026 to Year 300 AS.
+- [Timeline](timeline.md) : Chronology from 2026 to Year 311 AS.
 - [Thesaurus](thesaurus.md) : Canonical terminology and cross-domain vocabulary.
 - [Characters](characters/README.md) : People, lineages, roles and character systems.
 - [Factions](factions/README.md) : Political, religious and survival communities.
@@ -24,3 +24,24 @@
 - `Draft` means usable but still open to revision.
 - `Open Question` means deliberately unresolved.
 - Contradictions must remain visible until explicitly resolved.
+
+## Shared canon data
+
+<!-- lore:include data/canon.json#present -->
+<!-- lore:generated -->
+```json
+{
+  "id": "present-day",
+  "as_year": 311,
+  "ce_year": 2345,
+  "status": "canonical",
+  "sources": [
+    "timeline.md",
+    "LORE_REVISION_v2.md",
+    "timeline_quiet_centuries_226-300.md"
+  ]
+}
+```
+<!-- lore:end -->
+
+See [Structured Data](STRUCTURED_DATA.md) for the authoring rules.

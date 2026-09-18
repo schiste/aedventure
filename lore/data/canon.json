@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "calendar": {
+    "id": "after-silence",
+    "label": "AS",
+    "anchor_event": "the-silence",
+    "anchor_date_ce": "2034-10-14",
+    "day_zero": "2034-10-14",
+    "day_zero_meaning": "The day of the Silence is Day 0.",
+    "year_one_starts": "2034-10-15",
+    "year_numbering": "canonical",
+    "year_one_ce": 2035,
+    "notes": "Day 0 is the day of the Silence, 14 October 2034. Year 1 AS begins on 15 October 2034."
+  },
+  "present": {
+    "id": "present-day",
+    "as_year": 311,
+    "ce_year": 2345,
+    "status": "canonical",
+    "sources": [
+      "timeline.md",
+      "LORE_REVISION_v2.md",
+      "timeline_quiet_centuries_226-300.md"
+    ]
+  },
+  "game_start": {
+    "id": "game-start",
+    "as_year": 311,
+    "ce_year": 2345,
+    "status": "canonical",
+    "sources": [
+      "timeline.md",
+      "LORE_REVISION_v2.md",
+      "timeline_quiet_centuries_226-300.md"
+    ]
+  },
+  "known_conflicts": []
+}

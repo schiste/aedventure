@@ -21,7 +21,7 @@
 | **Region** | Touraine, Loire Valley, France |
 | **Coordinates** | ~47.40°N, 0.65°E (rural commune near Pernay) |
 | **Crystal** | Class-3 (Large regional Crystal) |
-| **Status (Year 300 AS)** | Newly claimed by the Hero |
+| **Status (Year 311 AS)** | Newly claimed by the Hero |
 | **Prior Status** | Abandoned (266 years) |
 | **Population** | 1 (Hero) + Dweller Bane |
 | **Distance to Survivors Cave** | 6 tiles / 24 km east |
@@ -144,7 +144,7 @@ The Hero is the first Resilient to reach it and recognize its value.
 
 ---
 
-## After The Silence (Year 1 - Year 300 AS)
+## After The Silence (Year 1 - Year 311 AS)
 
 ### The Day of The Silence (October 14, 2034)
 
@@ -156,7 +156,7 @@ The studio survived because:
 - The natural "Loire hum" never fully stopped
 - Local wildlife found refuge in the structures
 
-### The Long Abandonment (Year 1 - Year 300 AS)
+### The Long Abandonment (Year 1 - Year 311 AS)
 
 **Year 1-10:** The roof begins to fail in sections. Water damage starts. Wildlife moves in — including the ancestors of Dweller Bane. The Crystal grows beneath the cellar.
 
@@ -168,11 +168,11 @@ The studio survived because:
 
 **Year 200-300:** Regional scouts note "something strange" about the area but don't explore. The Crystal reaches its current size. Dweller Bane becomes ancient.
 
-**Year 300 AS:** The Hero arrives.
+**Year 311 AS:** The Hero arrives.
 
 ---
 
-## Current State (Year 300 AS)
+## Current State (Year 311 AS)
 
 ### Building Status
 

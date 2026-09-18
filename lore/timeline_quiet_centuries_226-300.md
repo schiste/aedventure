@@ -103,7 +103,7 @@ A settlement called Stillwater (population ~3,000, coastal Norway) suffered a Cr
 
 **Year 240-250: Slow Decline to Stable Equilibrium**
 
-The population declined from ~220 million to ~205 million through:
+The population grew from ~1,000,000 to ~1,200,000 through:
 - Natural attrition (harsh conditions, disease)
 - Crystal failures (5-10 Crystals went dormant this decade)
 - Regulation policies (controlled reproduction)
@@ -273,10 +273,10 @@ The ceremony became a template adopted across multiple settlements, one of the f
 
 **Year 251-266: The Final Adjustment**
 
-Population continued declining from ~205 million to ~200 million, where it stabilized permanently. This decline was primarily due to:
+Population continued growing from ~1,200,000 to ~1,400,000, where it stabilized temporarily. This growth was shaped by:
 
 1. **Crystal failures** (8 more Crystals went dormant)
-2. **Plague years** (Year 257-258: respiratory illness killed ~2 million)
+2. **Plague years** (Year 257-258: respiratory illness killed ~2,000)
 3. **Faction wars** (Year 262-265: Second Crystal War, ~50,000 casualties)
 4. **Harsh winters** (Year 260: coldest winter in 200 years, crop failures)
 
@@ -286,10 +286,10 @@ By Year 266, every major settlement had reached its optimal size. Birth rates ma
 
 **Demographics stabilized at:**
 - ~80 controlled Crystals
-- ~200 million total population
+- ~2,000,000 total population
 - Average settlement size: 2,500 people
 - Largest settlements: 20,000-40,000
-- Scattered outpost populations: ~30 million (living in marginal conditions)
+- Scattered outpost populations: ~30,000 (living in marginal conditions)
 
 ### The Second Crystal War (Year 262-265)
 
@@ -356,7 +356,7 @@ Questions debated:
 
 Engineer scholars attempted to calculate how many humans survived the first year of the Silence by analyzing settlement founding myths and lineage records.
 
-**Estimate:** Between 800 million and 1.2 billion in Year 1 AS, declining to ~400 million by Year 5 AS.
+**Estimate:** ~120,000 in Year 1 AS, declining to ~100,000 by Year 5 AS.
 
 This estimate would be revised repeatedly in later years.
 
@@ -486,10 +486,10 @@ A Scholar in Year 267 visited Marchand's Deep and noted in her journal:
 
 Years 276-300 saw humanity reach a stable equilibrium. No longer scrambling to survive, people turned to politics, scholarship, and the future. This is the world the Hero inherits — complex, contentious, alive.
 
-### Population: The 200 Million Plateau (Year 266-300)
+### Population: The 2 Million Plateau (Year 266-300)
 
 **Stable Demographics:**
-- Total population: ~200 million
+- Total population: ~2,000,000
 - ~80 controlled Crystals (some lost, some discovered, net stable)
 - Urban concentration: ~70% live in settlements of 500+ people
 - Rural/outpost: ~30% in marginal zones
@@ -709,11 +709,11 @@ The maps showed:
 **Critical revelation:**
 The Cartographer had documented at least 400 separate survivor communities in Years 10-45 AS, with an estimated total surviving population in Central/Western Europe alone of ~80,000 by Year 45 AS.
 
-If true, the global survival estimates were dramatically wrong. Current estimates had been ~400 million globally by Year 5 AS. The maps suggested survival rates were higher than previously believed, but regional collapse was more severe (population consolidated faster around fewer sites).
+If true, the global survival estimates were dramatically wrong. Current estimates had been ~400,000 globally by Year 5 AS. The maps suggested survival rates were higher than previously believed, but regional collapse was more severe (population consolidated faster around fewer sites).
 
 **Year 299: Bernard Watcher's Logs (Switzerland)**
 
-The most dramatic discovery: a cave system in Switzerland contained the logs of "Bernard the Watcher" (real name Beaufort Mercier, dates 2019-2089 AS).
+The most dramatic discovery: a cave system in Switzerland contained the logs of "Bernard the Watcher" (real name Beaufort Mercier, dates 2019-2089 CE).
 
 Bernard was a ham radio operator before the Silence who survived in a deep cave system. His logs covered:
 - Years 1-70 AS in extraordinary detail
@@ -868,7 +868,7 @@ The Hero was sent back to the surface — effectively exiled — with minimal su
 
 ### The World When the Game Starts
 
-**Population:** ~200 million humans
+**Population:** ~2,000,000 humans
 **Controlled Crystals:** ~80 sites
 **Major settlements:** ~150 (population 500+)
 **Technology level:**
@@ -1325,8 +1325,8 @@ A Silent operative has infiltrated the Hero's crew. They've been subtly sabotagi
 
 ## Conclusion: The Hero's Inheritance
 
-The Hero emerges in Year 300 AS into a world that is:
-- **Stable but fragile** — 200 million people, 80 Crystals, constant low-level conflict
+The Hero emerges in Year 311 AS into a world that is:
+- **Stable but fragile** — 2 million people, 80 Crystals, constant low-level conflict
 - **Technologically regressed** — 1800s agriculture, 1900s medicine, but advanced acoustics
 - **Historically confused** — Recent discoveries upended everything, truth is contested
 - **Morally complex** — No faction is purely good or evil, all have valid concerns
@@ -1368,10 +1368,10 @@ And about drumming. Always about drumming.
 
 | Year AS | Population | Major Events |
 |---------|------------|--------------|
-| 216 | ~220 million | Post-plague peak |
-| 226-250 | 220M → 205M | Long decline, regulations, Crystal failures |
-| 251-266 | 205M → 200M | Final adjustment, stabilization |
-| 266-300 | ~200 million | Stable equilibrium |
+| 216 | ~900,000 | Post-plague recovery |
+| 226-250 | 1,000,000 → 1,200,000 | Growth, regulations, Crystal stabilization |
+| 251-266 | 1,200,000 → 1,400,000 | Recovery and consolidation |
+| 266-300 | ~1,400,000 → ~2,000,000 | Stable growth and settlement expansion |
 
 ### Crystal Count by Year
 

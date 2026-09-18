@@ -17,6 +17,8 @@
     "content:validate": "npm --workspace @aedventure/add-domain run build && node scripts/add-content-tools.cjs validate",
     "content:timeline": "npm --workspace @aedventure/add-domain run build && node scripts/add-content-tools.cjs timeline",
     "content:explain": "npm --workspace @aedventure/add-domain run build && node scripts/add-content-tools.cjs explain",
+    "lore:check": "python3 tools/lore_check.py",
+    "lore:render": "python3 tools/lore_render.py --write",
     "test:packages": "npm run test --workspaces --if-present",
     "verify": "tsc -b && npm run content:check && cargo test -p add-core && npm run test:packages",
     "verify:full": "npm run verify && npm run smoke:add-rpg",

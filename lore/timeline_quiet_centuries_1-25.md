@@ -1,8 +1,8 @@
 # The Quiet Centuries: Year-by-Year Chronicle
 
-> **300 years of underground survival, adaptation, and the slow rebuilding of human society.**
+> **25 years of underground survival, adaptation, and the first rebuilding of human society.**
 >
-> **Period Covered:** Year 1 AS - Year 300 AS (2035-2334 CE)
+> **Period Covered:** Year 1 AS - Year 25 AS (2035-2059 CE)
 >
 > **Related:** [timeline.md](timeline.md) | [the-truth.md](the-truth.md) | [thesaurus.md](thesaurus.md)
 
@@ -59,7 +59,7 @@ This chronicle is divided into periods:
 
 #### Week 1 (October 14-21): The Quiet Apocalypse
 
-**October 14, 2034 — Day 1**
+**October 14, 2034 — Day 0**
 
 At 4:34 AM UTC, The Filter activates. Sound stops propagating normally. Within minutes, the Hush-2 virus — dormant in 2+ billion carriers — begins its work.
 
@@ -70,7 +70,7 @@ At 4:34 AM UTC, The Filter activates. Sound stops propagating normally. Within m
 - Sleeping individuals in soundproofed bedrooms never wake
 
 **The First Day:**
-- Deaths: ~200 million (mostly sleeping, isolated, or in quiet spaces)
+- Deaths: ~200,000 (mostly sleeping, isolated, or in quiet spaces)
 - Survivors discover the first rule: *Sound equals life*
 - Emergency services overload within hours
 - First "Drum Tribes" form spontaneously — strangers banging pots in streets
@@ -564,7 +564,7 @@ Overcrowded Drum Tribes with poor sanitation face outbreaks:
 - "Cave Cough" (respiratory infection in underground spaces)
 - Unknown ailments (Hush-related? No one knows)
 
-Deaths: ~200 million worldwide
+Deaths: ~200,000 worldwide
 
 The Unplugged caves, with their established sanitation protocols, lose only 8 people (all elderly or already ill).
 

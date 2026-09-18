@@ -1176,7 +1176,7 @@ Millions freeze in silence.
 ### Year 1 (2034-2035)
 
 **Deaths:** ~6.5 billion
-**Survivors:** ~1.5 billion (and declining)
+**Survivors:** ~400,000 (and declining)
 
 The "Drum Tribe" becomes the basic unit of human society. Groups of 20-200 people who maintain constant sound through shift work.
 
@@ -1230,7 +1230,7 @@ But the myth is more comforting than the truth. Marc lets them have it.
 ### Years 2-5 (2035-2039)
 
 **Deaths:** Approximately 1 billion more
-**Stable population by Year 5:** ~400 million
+**Stable population by Year 5:** ~100,000
 
 The immediate die-off ends. Those who will survive have found their niches.
 
@@ -1242,7 +1242,7 @@ Human geography is rewritten:
 
 The first **Crystals** are discovered (see below).
 
-New diseases emerge in the cramped, noisy survival camps. Cholera. Typhus. The second plague year (2037) kills another 200 million.
+New diseases emerge in the cramped, noisy survival camps. Cholera. Typhus. The second plague year (2037) kills another 200,000.
 
 ---
 
@@ -1359,9 +1359,9 @@ The survivalism boom of 2028-2034 means more people were underground on Day 1 th
 | Year 200 AS | ~800,000 | Peak underground population, Crystals discovered |
 | Year 250 AS | ~1,200,000 | Post-Crystal Wars, cautious growth |
 | Year 290 AS | ~1,800,000 | First successful Crystal settlement (Austria) |
-| Year 300 AS | ~2,000,000 | Current (Hero emerges) |
+| Year 311 AS | ~2,000,000 | Current (Hero emerges) |
 
-**Distribution (Year 300 AS):**
+**Distribution (Year 311 AS):**
 - Underground settlements: ~1,600,000 (80%)
 - Sacrifice Cities (limited surface): ~350,000 (17.5%)
 - Crystal settlements (full surface): ~50,000 (2.5%)
@@ -1610,13 +1610,13 @@ By 2301, technology has stabilized at roughly:
 
 ---
 
-## The Current Era (c. 2334 — "Present Day" / Year 300 AS)
+## The Current Era (c. 2345 — "Present Day" / Year 311 AS)
 
 ### World Population
 
 **Total:** ~2 million humans (not 200 million — the old surface survival models were wrong)
 
-**Distribution (Year 300 AS):**
+**Distribution (Year 311 AS):**
 | Category | Population | Notes |
 |----------|------------|-------|
 | Underground settlements | ~1,600,000 | 80% — still the majority |
@@ -1654,7 +1654,7 @@ By 2301, technology has stabilized at roughly:
 
 ### The Hero's Context
 
-**The player begins:** Approximately Year 300 After [The Silence](thesaurus.md#the-silence--the-deadly-silent) (2334 CE).
+**The player begins:** Approximately Year 311 After [The Silence](thesaurus.md#the-silence--the-deadly-silent) (2345 CE).
 
 **The Hero is:**
 - A [Resilient](thesaurus.md#resilients) (24-hour tolerance)

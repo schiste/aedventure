@@ -102,11 +102,11 @@ The drive remains locked. The conspiracy remains buried. But Chloé's children a
 
 | Region | Population | Crystal Count | Major Settlements |
 |--------|------------|---------------|-------------------|
-| Former Europe | ~120M | 34 | Ardèche Network, The Foundry, Marseille Complex |
-| Former Asia | ~150M | 22 | Beijing Underground, Shanghai Docks, Tokyo Remnant |
-| Former Africa | ~40M | 11 | Mponeng (Crystal Site), Cairo Catacombs, Lagos Harbor |
-| Former Americas | ~35M | 8 | New York Tunnels, São Paulo Caves, Vancouver Sound |
-| Former Oceania | ~15M | 5 | Sydney Harbor, Wellington Drums, Brisbane Collective |
+| Former Europe | ~120,000 | 34 | Ardèche Network, The Foundry, Marseille Complex |
+| Former Asia | ~150,000 | 22 | Beijing Underground, Shanghai Docks, Tokyo Remnant |
+| Former Africa | ~40,000 | 11 | Mponeng (Crystal Site), Cairo Catacombs, Lagos Harbor |
+| Former Americas | ~35,000 | 8 | New York Tunnels, São Paulo Caves, Vancouver Sound |
+| Former Oceania | ~15,000 | 5 | Sydney Harbor, Wellington Drums, Brisbane Collective |
 
 ---
 
@@ -665,7 +665,7 @@ By late Year 96, four distinct factions exist:
 
 ### The Year of Echoes
 
-**Population:** ~352 million (slow decline continues)
+**Population:** ~352,000 (slow decline continues)
 
 **Theme:** The Resonant-Engineer split reverberates. Other settlements must choose sides or remain neutral.
 
@@ -746,7 +746,7 @@ The Archive announces it will release "select historical documents" at the centu
 
 Communities attempt to count remaining "Original Survivors" — those alive on October 14, 2034.
 
-Estimated worldwide: ~15,000 individuals (of 1.5 billion Year 1 survivors)
+Estimated worldwide: ~15,000 individuals (of 120,000 Year 1 survivors)
 
 Average age: 97-110 years old
 
@@ -795,7 +795,7 @@ It will prove accurate.
 
 ### The Century Mark
 
-**Global Population:** ~350 million
+**Global Population:** ~350,000
 
 **Theme:** Reflection, commemoration, and the question: What have we learned?
 
@@ -936,11 +936,11 @@ In the cave network descended from The Unplugged, **Chloé Delacroix** (now 76) 
 | Year | Population | % of Pre-Silence |
 |------|------------|------------------|
 | 2034 (Pre-Silence) | 8 billion | 100% |
-| Year 1 AS (2035) | 1.5 billion | 18.75% |
-| Year 25 AS (2059) | 810 million | 10.1% |
-| Year 50 AS (2084) | 520 million | 6.5% |
-| Year 75 AS (2109) | 362 million | 4.5% |
-| Year 100 AS (2134) | 350 million | 4.4% |
+| Year 1 AS (2035) | 120,000 | 0.0015% |
+| Year 25 AS (2059) | 810,000 | 0.0101% |
+| Year 50 AS (2084) | 520,000 | 0.0065% |
+| Year 75 AS (2109) | 362,000 | 0.0045% |
+| Year 100 AS (2134) | 350,000 | 0.0044% |
 
 **Faction Membership (Year 100):**
 
@@ -951,7 +951,7 @@ In the cave network descended from The Unplugged, **Chloé Delacroix** (now 76) 
 | The Resonants | ~3,000 core, ~15K affiliated | 6 networked + 3 independent | The Resonance, relay stations |
 | The Silent | ~500 (estimated) | 0 controlled, 4 destroyed | Unknown (decentralized) |
 | The Archive | ~5,000 core, ~2K couriers | 1 (heavily defended) | Archive Prime (Switzerland) |
-| Unaffiliated | ~300 million | ~45 controlled | Thousands of independent communities |
+| Unaffiliated | ~300,000 | ~45 controlled | Thousands of independent communities |
 
 ---
 
@@ -982,7 +982,7 @@ In the cave network descended from The Unplugged, **Chloé Delacroix** (now 76) 
 
 - More faction conflicts
 - First large-scale Crystal War (Years 147-150)
-- Continued population decline (to ~285M by Year 150)
+- Continued population decline (to ~285,000 by Year 150)
 - Growing tensions between Engineers and Resonants
 - The Silent's grand strategy revealed
 - More truth from The Archive (selective releases)
@@ -1001,7 +1001,7 @@ In the cave network descended from The Unplugged, **Chloé Delacroix** (now 76) 
 
 ### The Hardening Decade
 
-**Population:** ~350 million → ~330 million
+**Population:** ~350,000 → ~330,000
 
 **Theme:** Faction boundaries harden. Cooperation becomes rarer. The ideological cold war heats up.
 
@@ -1209,14 +1209,14 @@ The survivor position: "The rabbits will be fine" — ironic reference to Year 3
 
 **YEAR 116: The Population Milestone**
 
-Census estimates place global population at ~300 million — down 50 million from the century mark.
+Census estimates place global population at ~300,000 — down 50,000 from the century mark.
 
 **Breakdown by cause (Years 100-116):**
-- Natural deaths: ~25 million
-- Crystal War casualties: ~8 million
-- Disease: ~7 million
-- Accidents: ~6 million
-- Hush exposure (non-war): ~4 million
+- Natural deaths: ~25,000
+- Crystal War casualties: ~8,000
+- Disease: ~7,000
+- Accidents: ~6,000
+- Hush exposure (non-war): ~4,000
 
 The decline is slowing but hasn't stopped.
 
@@ -1342,7 +1342,7 @@ The Keeper's statement:
 **YEAR 126-130: The Build-Up**
 
 The decade's end approaches with:
-- Population: ~295 million (continued decline)
+- Population: ~295,000 (continued decline)
 - Resonant network: 31 linked Crystals (growing exponentially)
 - Engineer frustration: "Resonants are reckless"
 - Choir militarization: "Holy Defenders" now 2,000 strong
@@ -1507,10 +1507,10 @@ Following the Year 135 skirmish, tensions between technical factions escalate:
 **YEAR 138: The Population Crisis Recognition**
 
 Dr. Rousseau's demographic study reveals:
-- Global population: ~290 million (down 60M since Year 100)
+- Global population: ~290,000 (down 60,000 since Year 100)
 - Birth rate: Declining
 - Death rate: Rising slowly
-- Projection: ~250 million by Year 200 if trends continue
+- Projection: ~250,000 by Year 200 if trends continue
 
 **Primary causes of decline:**
 - Crystal War casualties
@@ -1532,7 +1532,7 @@ By decade's end:
 - Engineer-Resonant relations at historic low
 - Choir (both branches) increasingly militant
 - The Archive's neutrality questioned (accusations of favoring Engineers)
-- Population ~288 million
+- Population ~288,000
 - The question is no longer "Will there be war?" but "When?"
 
 ---
@@ -1677,7 +1677,7 @@ By late Year 146, the situation:
 - Trade between factions ceased
 - Courier services faction-separated
 - The Archive pleading for de-escalation
-- Population ~287 million (war hasn't started yet)
+- Population ~287,000 (war hasn't started yet)
 
 **The Final Peace Attempt:**
 
@@ -1800,7 +1800,7 @@ Year 148 brings no decisive victories. The war becomes attrition:
 - Combat deaths: ~1,800
 - Civilian deaths: ~4,500
 - Infrastructure damage: Severe (trade routes disrupted, supplies scarce)
-- Population: ~280 million (down 7M in two years)
+- Population: ~280,000 (down 7,000 in two years)
 
 **The Forgotten Enemy:**
 
@@ -1849,7 +1849,7 @@ Neither side has clean hands.
 
 ### YEAR 149 AS: The Breaking Point
 
-**Population:** ~277 million (down 10M since war began)
+**Population:** ~277,000 (down 10,000 since war began)
 
 **The Exhaustion:**
 
@@ -2002,8 +2002,8 @@ No one calls it victory. Everyone calls it necessary.
 
 ### The Aftermath (Late Year 150)
 
-**Population:** ~300 million (Year 116) → ~285 million (Year 150)
-- 15 million decline in 34 years
+**Population:** ~300,000 (Year 116) → ~285,000 (Year 150)
+- 15,000 decline in 34 years
 - War responsible for ~40% of decline
 
 **Political Situation:**

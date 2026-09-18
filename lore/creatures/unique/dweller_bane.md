@@ -1,7 +1,7 @@
 # Dweller Bane
 
 > **"There's something in the storage room. We call him Dweller Bane. He was here when we arrived."**
-> — First settler of Studio Echo, Year 300 AS
+> — First settler of Studio Echo, Year 311 AS
 >
 > **"Is it a rat? Is it a roach? Is it older than God? Yes. Yes. And probably."**
 >
@@ -23,7 +23,7 @@
 | **Individual Name** | Dweller Bane |
 | **Current Location** | Studio Echo, Storage Room B (the one with the old mixing consoles) |
 | **Status** | Alive (somehow) |
-| **First Documented** | Year 300 AS, Day 1 (was already there when the Hero arrived) |
+| **First Documented** | Year 311 AS, Day 1 (was already there when the Hero arrived) |
 | **Age** | Unknown; estimated 30-40 years (absurd even for a ratroach) |
 
 ---
@@ -263,19 +263,19 @@ Dweller Bane is at least 30. Possibly older. Possibly *much* older. The chitin d
 
 ### Known History
 
-**Pre-Year 300 AS — Unknown:**
-No one knows how long Dweller Bane has lived in Studio Echo. The building was abandoned for 266 years. When the Hero arrives in Year 300 AS, there he is — already ancient, already blind, already deaf, already annoyed at being disturbed.
+**Pre-Year 311 AS — Unknown:**
+No one knows how long Dweller Bane has lived in Studio Echo. The building was abandoned for 266 years. When the Hero arrives in Year 311 AS, there he is — already ancient, already blind, already deaf, already annoyed at being disturbed.
 
 The studio's records (water-damaged, partial) mention "vermin in the walls" as early as 2031. This is almost certainly different vermin. Almost certainly. The ratroach mutation hadn't even happened yet. ...Probably.
 
-**Year 300 AS, Day 1 — First Contact:**
+**Year 311 AS, Day 1 — First Contact:**
 When the Hero first enters Studio Echo to claim the Crystal, Dweller Bane is encountered in Storage Room B. He's not hostile. He's not friendly. He's just *there*, like he's always been there, like he'll always be there.
 
 The Hero's first choice in the post-apocalypse: deal with this rat, or leave him alone.
 
 Most choose to leave him alone. The ones who don't learn why the others did.
 
-**Year 300 AS, Day 1 — The Naming:**
+**Year 311 AS, Day 1 — The Naming:**
 The Hero (or an early settler) names him "Dweller Bane" — a creature that has been the bane of whoever dwelt here before. The name sticks. It fits.
 
 ### Why He Matters
@@ -490,7 +490,7 @@ DANGER:
 ## Author Notes
 
 **Created by:** Head Writer
-**Last Updated:** Year 300 AS
+**Last Updated:** Year 311 AS
 **Status:** Final
 
 **Tone Check:**

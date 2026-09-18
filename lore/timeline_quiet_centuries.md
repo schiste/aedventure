@@ -1,6 +1,6 @@
 # Quiet Centuries
 
-> Hub for the post-Silence chronology from Year 1 AS to Year 300 AS.
+> Hub for the post-Silence chronology from Year 1 AS to Year 311 AS.
 >
 > The split timeline files are the canonical event records; this page is only their navigation hub.
 
