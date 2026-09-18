@@ -3,10 +3,15 @@
 ## Purpose
 
 This document defines the current boundary between the reusable 2D game
-foundation and the virtual-office product code. The goal is to extract a
-domain-neutral engine cleanly enough that the existing virtual office and a
-future RPG/strategy/idle app can live in the same repo while sharing the same
-map, asset, renderer, input, protocol, and simulation primitives.
+foundation, the live ADD game, and the virtual-office product code. The goal is
+to keep the existing `apps/add-rpg` game moving while extracting only the map,
+asset, renderer, input, protocol, and simulation primitives that have a real
+consumer.
+
+`apps/add-rpg` is already the real RPG/idle application. `apps/engine-sandbox`
+is the neutral renderer/topology fixture. The office app is a separate product
+lane. No second placeholder RPG app should be created to prove that the engine
+works.
 
 This is a boundary audit only. No code movement is part of this phase.
 
@@ -44,6 +49,11 @@ may map the same primitive to "Harvest node" or "Enter building".
 
 | Path | Classification | Notes |
 | --- | --- | --- |
+| `apps/add-rpg` | `live product app` | The current ADD idle/RPG game: Solid UI, Phaser presentation, worker runtime, saves, telemetry, and player-facing flows. Engine work must keep this app working. |
+| `crates/add-core` | `game-domain authority` | Rust-authoritative ADD simulation, commands, progression, saves, and deterministic state transitions. It is not a generic engine package. |
+| `packages/add-domain` | `game-domain adapter/content` | Authored ADD content, validation, snapshot selectors, command mapping, and world/presentation adapters. |
+| `packages/game-*` | `engine-neutral` | Shared topology, world, renderer, input, and protocol primitives when they have a concrete app consumer. |
+| `apps/engine-sandbox` | `engine-neutral QA` | Development fixture for topology and renderer proof; not the product game and not the source of ADD mechanics. |
 | `packages/map-engine` | `engine-neutral` | Strongest current engine package. It owns vector movement, collision, zone overlap, speed limits, and permission-gated zone entry. Keep it neutral, but eventually rename concepts around generic entity movement instead of player-only movement if strategy units share it. |
 | `packages/protocol` | `engine-neutral` with social/product edges | Movement intents, snapshots, directions, run/walk, and reconciliation payloads are reusable. Chat scopes and animation naming are useful for the office but should move behind optional domain extensions before this becomes the shared protocol for RPG/idle. |
 | `packages/shared-types` | `server/product` with reusable IDs | Branded IDs are useful, but `TenantId`, `SessionId`, roles, permissions, and token claims are platform concerns. A future `game-core` should define engine IDs separately from account/platform IDs. |
@@ -58,7 +68,7 @@ may map the same primitive to "Harvest node" or "Enter building".
 | `apps/web/src/browser/client-motion-controller.ts` and `movement-*` | `engine-neutral` candidate | Client prediction, smoothing, and movement feel are reusable for local/remote entities. Need generic entity naming and package-level tests before extraction. |
 | `apps/web/src/browser/renderer/*` | mixed: mostly `engine-neutral` with office leaks | Tilemap, object, avatar/entity, zone, camera, DOM label, effects, telemetry, input, physics affordance, and QA support are reusable. `office-scene.ts`, `phaser-office-renderer.ts`, scene keys, meeting/media/audio naming, tenant lighting names, and zone action types are office/product leaks. |
 | `apps/web/src/browser/main.ts` | `app-ui` with extraction candidates | Product shell, state, panels, prompt-to-map flow, media controls, chat, lifecycle copy, and `render_game_to_text`. Some helpers can move later, but this file should remain the office app adapter after extraction. |
-| `apps/web/src/browser/styles.css` and `apps/web/index.html` | `app-ui` | Office product surface and layout. A future RPG app should not inherit these directly. |
+| `apps/web/src/browser/styles.css` and `apps/web/index.html` | `app-ui` | Office product surface and layout. The live ADD app must not inherit these directly. |
 | `apps/web/public/assets/internal-office-*` | `office-domain` | Office-specific generated atlas/manifest. The manifest schema is reusable; the files and source catalog belong to office-domain until a generic asset bundle layer exists. |
 | `scripts/build-internal-office-atlas.cjs` | `office-domain` with reusable pattern | The generation/validation pattern is useful, but this script emits office assets and hard-codes office frames. A future engine should expose atlas manifest validation; each domain should own its atlas build script. |
 | `scripts/frontend-smoke.test.cjs` | `app-ui` QA | Office demo smoke. Keep, but split multi-app smoke later. |
@@ -203,8 +213,8 @@ Target split:
     movement/reconciliation, performance, and capabilities.
 - App telemetry:
   - office session/media/chat/lifecycle panels.
-- A future RPG app can expose the same neutral engine payload plus RPG-specific
-  resource/building/progression sections.
+- The live ADD app should expose the same neutral engine payload plus ADD-
+  specific resource, progression, and story sections.
 
 ## Extraction Order
 
@@ -287,16 +297,21 @@ Leave in office app/server:
 - room chat/media messages until optional domain protocol extensions exist
 - OAuth/session/permission token claims
 
-### Fifth Move: Tiny RPG/Idle Demo
+### Fifth Move: Exercise The Live ADD App
 
-Add a minimal second app only after the first three packages exist.
+Do not add a minimal second RPG/idle app. The existing `apps/add-rpg` is the
+consumer that proves whether a shared engine seam is useful.
 
-Acceptance for the demo:
+Acceptance for this phase:
 
-- imports `game-assets`, `game-map`, `game-renderer-phaser`, and `game-input`
-- does not import `office-domain`
-- renders one map, one local actor/unit, one resource/object, and one zone
-- exposes neutral `render_game_to_text` fields plus a small RPG-specific section
+- the live ADD app continues to build and boot through its worker/WASM runtime
+- the ADD smoke test exercises the changed engine seam through a player-facing
+  flow
+- the seam has a focused package test and a deterministic fixture
+- ADD-specific rules remain in `crates/add-core` or `packages/add-domain`
+- the engine package does not import office or ADD domain code
+- `apps/engine-sandbox` covers neutral square/hex rendering cases where a
+  product flow would be unnecessarily expensive
 
 ## Package Target Shape
 
@@ -337,7 +352,7 @@ Every extraction phase must keep:
 - `npm run qa:responsive` passing
 - `git diff --check` clean
 
-After the placeholder RPG/idle demo is retired, keep:
+Keep the live ADD app as the product check:
 
 - ADD smoke test as the real RPG/idle app check
 - engine sandbox square/hex nonblank screenshot check
@@ -346,15 +361,16 @@ After the placeholder RPG/idle demo is retired, keep:
 
 ## Immediate Next Implementation Task
 
-Implement Phase 2 by extracting `packages/game-assets`:
+Build the first agent-observable scenario/replay seam around the live ADD app:
 
-1. Create the package with neutral asset metadata and validation helpers.
-2. Update `packages/asset-registry` to import those neutral types.
-3. Keep all office catalog data in the current package for the first extraction
-   commit.
-4. Add tests proving the office catalog still validates against the neutral
-   asset model.
-5. Do not change rendered output.
+1. Define a stable scenario format containing a seed, initial save, commands,
+   expected checkpoints, and an optional presentation assertion.
+2. Run it against `crates/add-core` headlessly before involving the browser.
+3. Reuse the same command sequence in `apps/add-rpg` smoke coverage.
+4. Expose a compact structured state report so an agent can explain what is
+   blocked and what action is available next.
 
-This first move gives the repo a real shared-engine package while keeping risk
-low and preserving the current virtual-office demo.
+Asset extraction remains valuable, but it should follow a concrete ADD feature
+or renderer need. The detailed sequence for scenarios, inspection, content,
+QA, and shared-engine extraction lives in
+[ADD Game Development Tooling Plan](add-game-development-tooling-plan.md).

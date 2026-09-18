@@ -1,17 +1,25 @@
 # Aedventure
 
-Aedventure is the canonical repository for the ADD idle/RPG game and the
-shared game platform that supports it. The current playable slice is an
-idle-game loop with Rust-authoritative simulation, a Web Worker/WASM boundary,
-Solid UI, and Phaser presentation. The long-term direction can grow into a
-strategy/RPG game without moving gameplay authority into the browser shell.
+Aedventure is the canonical repository for the ADD idle/RPG game. The playable
+game already exists and is the primary active product lane: the current slice
+includes an idle-game loop, Rust-authoritative simulation, a Web Worker/WASM
+boundary, Solid UI, Phaser presentation, authored content, saves, offline
+catch-up, and a playable hex overworld. The long-term direction can grow into
+a strategy/RPG game without moving gameplay authority into the browser shell.
+
+This is not a blank engine repository and `apps/add-rpg` is not a placeholder
+demo. New work should extend and finish the existing game, using the shared
+engine only where the current game benefits from it.
 
 The former standalone `ADD` repository is legacy/reference material. Its
 imported history remains under `legacy/add/`; new ADD work belongs in this
 repository.
 
-The remainder of this README documents the office/platform lane that also
-exists in the monorepo. It is not the authority for ADD mechanics.
+The monorepo also contains a separate office/platform lane. The office
+materials below are not the active ADD game, and they are not evidence that ADD
+still needs to be built from scratch. They remain in the repository because
+the shared engine and the office application are maintained alongside the
+game.
 
 This repository contains the hard-fork plan and implementation workspace for
 the Aedventure Customer Virtual Office App.
@@ -20,11 +28,55 @@ SkyOffice is not the product architecture. SkyOffice is a temporary legacy
 source reference that must be reduced, replaced, and rebuilt into a clean
 architecture before product feature work resumes.
 
+## Current Product Reality
+
+| Area | Current role | Source of truth |
+| --- | --- | --- |
+| `apps/add-rpg/` | Live ADD browser game: Solid UI, Phaser world, runtime client, saves, telemetry, and development tools | Player-facing application and app-level presentation behavior |
+| `crates/add-core/` | Live ADD gameplay runtime | Rust simulation, commands, progression, offline catch-up, saves, migrations, and deterministic rules |
+| `crates/add-web-bindings/` | Live browser boundary | WASM bindings consumed by the ADD worker |
+| `packages/add-domain/` | Live ADD content and translation layer | Authored content, validation, selectors, command mapping, and world/presentation adapters |
+| `packages/game-*` | Shared engine primitives | Neutral topology, world, renderer, input, and protocol contracts used when an app consumes them |
+| `apps/engine-sandbox/` | Engine fixture and QA surface | Square/hex renderer and topology proof, not a second product game |
+| `apps/web/`, `apps/api/`, `apps/world-server/`, `apps/media-gateway/` | Office/platform lane | Customer virtual-office product planning and infrastructure |
+| `legacy/add/` | Historical ADD reference | Imported source and design material only; never the live app |
+
+The current game is deliberately incomplete: combat, richer exploration,
+full dungeon gameplay, deeper save-slot metadata, and broader strategy/RPG
+systems remain future work. “Incomplete” means the existing game needs more
+features; it does not mean the app or its engine foundations are merely
+scaffolding.
+
+## Start With The Existing Game
+
+For gameplay work, begin with the live ADD path:
+
+1. Put authoritative rules and state transitions in `crates/add-core/`.
+2. Author content in `packages/add-domain/src/content/` and run the content
+   validation/code-generation path.
+3. Put player-facing presentation and command dispatch in `apps/add-rpg/`.
+4. Add or generalize `packages/game-*` only when the current ADD app (or the
+   office app) has a concrete consumer and an exercised test.
+5. Treat `legacy/add/` as reference material, not an implementation target.
+
+Useful focused checks:
+
+```sh
+npm run agent:verify:add-ui
+npm run smoke:add-rpg
+npm --workspace @aedventure/add-rpg run dev:browser
+```
+
+The full gate is reserved for phase boundaries, broad engine changes, and
+pre-push verification; see [AGENTS.md](AGENTS.md).
+
 ## Canonical Documentation
 
 - [ADD Canonical Architecture and Code Audit](docs/add-canonical-architecture.md)
 - [ADD Migration and Runtime Boundary](docs/add-migration-plan.md)
 - [ADD Systems Parity Audit](docs/add-systems-parity-audit.md)
+- [ADD Game Development Tooling Plan](docs/add-game-development-tooling-plan.md)
+- [Story and Content Engine Contract](docs/story-content-engine.md)
 - [Domain-Neutral Engine Boundary](docs/engine-boundary.md)
 - [Global Product and Technical Specification](docs/customer-virtual-office-platform-spec.md)
 - [Development Rollout Plan](docs/development-rollout-plan.md)
@@ -68,6 +120,18 @@ keeping future strategy/RPG layers possible. Every platform investment must
 either support the current idle slice or be demonstrated by a small,
 exercised future-facing example. Infrastructure with neither a current
 consumer nor a proven near-future seam is deferred.
+
+For the ADD lane, this means the existing playable app remains the driver of
+platform work. A neutral abstraction is valuable when it makes a real ADD
+feature easier to implement, test, inspect, or extend toward the future
+strategy/RPG layers. A generic abstraction without a current consumer stays
+out of the critical path.
+
+## Office/Platform Lane
+
+The following sections document the separate customer virtual-office track.
+They are retained for the shared repository and should not be read as the ADD
+game roadmap.
 
 ## Starting Position
 

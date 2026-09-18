@@ -1,5 +1,11 @@
 # Development Rollout Plan
 
+> Scope note: this is the customer virtual-office/platform rollout plan. It is
+> not the ADD game roadmap, and its statement that the browser app is not yet
+> product-shaped applies to the office lane only. The live ADD game is
+> documented in [ADD Canonical Architecture and Code Audit](add-canonical-architecture.md)
+> and [ADD Systems Parity Audit](add-systems-parity-audit.md).
+
 This document turns the product specification into an execution plan. It is the
 operational companion to the global spec and Phase 0 hard-fork plan.
 
@@ -159,7 +165,7 @@ Owns:
 
 Current state:
 
-- Browser app is intentionally not yet product-shaped.
+- The office browser app is intentionally not yet product-shaped.
 
 Next gates:
 

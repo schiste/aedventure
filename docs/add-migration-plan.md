@@ -1,5 +1,10 @@
 # ADD Migration Plan
 
+> Status: the initial migration bootstrap is complete enough for the live ADD
+> app to run in `apps/add-rpg`. This document records the boundary and the
+> remaining evolution work; it does not describe a future demo that still
+> needs to be created.
+
 This document defines the target structure and migration rules for moving ADD
 into `aedventure` as a first-class RPG/idle app while upgrading the shared Phaser
 engine to support both square and hex maps.
@@ -54,7 +59,7 @@ apps/
     Uses square-grid rooms and office collaboration domain logic.
 
   add-rpg/
-    ADD browser app.
+    Live ADD browser game, not a placeholder demo.
     Uses ADD Rust/WASM simulation, a worker runtime, Phaser presentation,
     hex overworld maps, and future square dungeons/interiors.
 
@@ -89,8 +94,8 @@ packages/
 
   game-core/
     Neutral TypeScript deterministic simulation helpers used by the office and
-    current TypeScript demo paths. ADD remains Rust-authoritative and should not
-    be ported here by default.
+    other explicitly supported TypeScript paths. ADD remains Rust-authoritative
+    and should not be ported here by default.
 
   office-domain/
     Office maps, office interaction mapping, meeting zones, collaboration

@@ -2,6 +2,12 @@
 
 Status: canonical working agreement for ADD inside `aedventure`.
 
+> The architecture described here is already used by the live `apps/add-rpg`
+> game. This is an implementation and extension contract, not a plan to create
+> a future placeholder app. The game is intentionally incomplete, but its
+> current idle loop, content pipeline, runtime boundary, saves, and Phaser
+> presentation are real and should be extended in place.
+
 ## Product direction
 
 ADD starts as an idle game: the player assigns people, advances deterministic
@@ -28,6 +34,9 @@ offline catch-up, saves, migrations, and deterministic state transitions. The
 browser owns presentation, input collection, persistence plumbing, and
 explanations of authoritative state. TypeScript must not reimplement ADD rules
 just to make a control look convenient.
+
+The next tooling and documentation sequence for accelerating this live app is
+tracked in [ADD Game Development Tooling Plan](add-game-development-tooling-plan.md).
 
 ## Repository ownership
 

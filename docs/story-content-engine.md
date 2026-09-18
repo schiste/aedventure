@@ -12,6 +12,10 @@ Story, objectives, tutorials, unlocks, and current actions should eventually be
 different projections of the same authored content graph. Until that extraction
 is complete, this contract is the rule set for where new logic belongs.
 
+This contract is consumed by the live `apps/add-rpg` game. It describes how to
+extend the existing product safely; it is not a proposal for a separate story
+demo or a replacement for the current playable loop.
+
 ## Current Architecture
 
 The live story/content path is:
