@@ -852,8 +852,8 @@ h1 {
   right: calc(12px + var(--map-side-rail-space));
   z-index: 8;
   display: grid;
-  width: min(430px, calc(100vw - 430px));
-  min-width: 320px;
+  width: min(400px, calc(100vw - 430px));
+  min-width: 300px;
   max-height: calc(100vh - 72px);
   gap: var(--space-panel);
   overflow: auto;
@@ -863,8 +863,8 @@ h1 {
   border: 1px solid rgb(95 209 216 / 34%);
   border-radius: var(--radius-ui);
   background:
-    linear-gradient(180deg, rgb(95 209 216 / 18%), rgb(95 209 216 / 4%)),
-    rgb(10 31 30 / 94%);
+    linear-gradient(180deg, rgb(95 209 216 / 15%), rgb(95 209 216 / 4%)),
+    rgb(10 31 30 / 91%);
   box-shadow:
     var(--shadow-panel),
     inset 4px 0 0 rgb(95 209 216 / 46%),
@@ -1187,6 +1187,32 @@ h1 {
   background: rgb(255 244 201 / 7%);
 }
 
+.discovery-movement {
+  border: 1px solid rgb(95 209 216 / 16%);
+  background:
+    linear-gradient(90deg, rgb(95 209 216 / 10%), rgb(255 244 201 / 5%)),
+    rgb(7 12 12 / 24%);
+}
+
+.discovery-movement span {
+  flex: 0 0 auto;
+  color: #c9fff9;
+  font-size: 0.68rem;
+  font-weight: 940;
+  text-transform: uppercase;
+}
+
+.discovery-movement small {
+  min-width: 0;
+  overflow: hidden;
+  color: rgb(247 238 210 / 68%);
+  font-size: 0.66rem;
+  font-weight: 760;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .discovery-tile-choice {
   width: 100%;
   min-height: 0;
@@ -1217,6 +1243,14 @@ h1 {
   border: 1px solid rgb(255 244 201 / 10%);
   border-radius: 8px;
   background: rgb(7 12 12 / 22%);
+}
+
+.context-detail-section:not([open]) {
+  background: rgb(7 12 12 / 14%);
+}
+
+.context-detail-section:not([open]) > summary {
+  min-height: 1.95rem;
 }
 
 .context-detail-section > summary {
@@ -1268,6 +1302,13 @@ h1 {
   display: grid;
   gap: 7px;
   padding: 0 0.62rem 0.62rem;
+}
+
+.story-context-section .story-moment {
+  border-color: rgb(255 244 201 / 12%);
+  background:
+    linear-gradient(180deg, rgb(240 185 93 / 8%), rgb(7 12 12 / 20%)),
+    rgb(7 12 12 / 24%);
 }
 
 .context-detail-section :is(button, summary, [href], [tabindex]):focus-visible,
@@ -1356,8 +1397,10 @@ h1 {
   gap: 0.22rem 0.6rem;
   border-radius: 7px;
   padding: 0.58rem 0.62rem;
-  background: rgb(9 22 20 / 62%);
-  border: 1px solid rgb(255 244 201 / 10%);
+  background:
+    linear-gradient(90deg, rgb(240 185 93 / 10%), rgb(9 22 20 / 38%)),
+    rgb(9 22 20 / 58%);
+  border: 1px solid rgb(240 185 93 / 14%);
 }
 
 .selected-tile-command strong {
@@ -1494,6 +1537,10 @@ h1 {
   pointer-events: auto;
 }
 
+.selected-tile-actions .secondary-action {
+  min-height: 2.05rem;
+}
+
 .selected-tile-travel-action,
 .secondary-action,
 .context-link-action {
@@ -1531,6 +1578,7 @@ h1 {
 .selected-tile-link small,
 .selected-tile-empty-link,
 .selected-tile-action-note {
+  display: block;
   color: rgb(247 238 210 / 72%);
   font-size: 0.64rem;
   font-weight: 740;
