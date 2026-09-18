@@ -806,6 +806,8 @@ export function installTraceRecorder(getSnapshot: () => SimulationSnapshot | nul
       ...(entry.workerMs !== undefined ? { workerMs: entry.workerMs } : {}),
       ...(entry.snapshotMs !== undefined ? { snapshotMs: entry.snapshotMs } : {}),
       ...(entry.diffMs !== undefined ? { diffMs: entry.diffMs } : {}),
+      ...(entry.toWorkerMs !== undefined ? { toWorkerMs: entry.toWorkerMs } : {}),
+      ...(entry.fromWorkerMs !== undefined ? { fromWorkerMs: entry.fromWorkerMs } : {}),
       ...(entry.request ? { request: entry.request } : {}),
       ...(entry.queueDepth !== undefined ? { queueDepth: entry.queueDepth } : {}),
       payload: trimPayload(entry.payload),

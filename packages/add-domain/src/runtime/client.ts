@@ -28,12 +28,21 @@ export interface TraceEntry {
   readonly workerMs?: number
   readonly snapshotMs?: number
   readonly diffMs?: number
+  /** Transport split (ms): send→worker-receive, and worker-post→client-receive. */
+  readonly toWorkerMs?: number
+  readonly fromWorkerMs?: number
   /** The full protocol payload (request or event). */
   readonly payload: WorkerRequest | WorkerEvent
 }
 
 const monotonicNow = (): number =>
   typeof performance !== 'undefined' ? performance.now() : Date.now()
+
+/** Absolute wall-clock ms, comparable to the worker's clock on the same machine. */
+const absNow = (): number =>
+  typeof performance !== 'undefined' ? performance.timeOrigin + performance.now() : Date.now()
+
+const clampPos = (n: number): number => (n > 0 ? Math.round(n * 10) / 10 : 0)
 
 /** The per-frame game events carried by a worker message (empty for non-snapshot messages). */
 function frameEventsOf(message: WorkerEvent): AddGameEvent[] {
@@ -68,6 +77,7 @@ export class SimulationClient {
   // Timing for the request currently awaiting a reply, so events can report
   // round-trip latency and name the command they completed.
   private inFlightSince = 0
+  private inFlightSentAbs = 0
   private inFlightRequest: WorkerRequest | null = null
   // Monotonic command id; the in-flight value is echoed onto the completing event
   // so a command can be linked to the events and state changes it produced.
@@ -213,6 +223,11 @@ export class SimulationClient {
     const message = event.data
 
     if (this.options.onTrace) {
+      // Split transport using absolute timestamps the worker stamped on the same
+      // machine clock: send→receive (inbound queue) and post→handle (main thread busy).
+      const recvAbs = absNow()
+      const hasWorkerStamps =
+        message.workerRecvAt !== undefined && message.workerPostAt !== undefined
       this.options.onTrace({
         dir: 'event',
         at: monotonicNow(),
@@ -224,6 +239,8 @@ export class SimulationClient {
         workerMs: message.workerMs,
         snapshotMs: message.snapshotMs,
         diffMs: message.diffMs,
+        toWorkerMs: hasWorkerStamps ? clampPos(message.workerRecvAt! - this.inFlightSentAbs) : undefined,
+        fromWorkerMs: hasWorkerStamps ? clampPos(recvAbs - message.workerPostAt!) : undefined,
         payload: message,
       })
     }
@@ -291,6 +308,7 @@ export class SimulationClient {
     this.inFlight = true
     this.inFlightRequest = next
     this.inFlightSince = monotonicNow()
+    this.inFlightSentAbs = absNow()
     this.inFlightSeq = ++this.seq
     if (this.options.onTrace) {
       this.options.onTrace({

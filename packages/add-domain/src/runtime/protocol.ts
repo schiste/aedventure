@@ -1091,6 +1091,10 @@ export interface WorkerEventTiming {
   snapshotMs?: number
   /** Of which: time diffing the snapshot for the delta channel (ms). */
   diffMs?: number
+  /** Absolute wall-clock ms (timeOrigin + now) when the worker received the request. */
+  workerRecvAt?: number
+  /** Absolute wall-clock ms (timeOrigin + now) when the worker posted this event. */
+  workerPostAt?: number
 }
 
 export type WorkerEvent = (

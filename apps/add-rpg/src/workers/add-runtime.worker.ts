@@ -13,8 +13,12 @@ let lastSnapshot: SimulationSnapshot | null = null
 // Per-message timing, so the client can split end-to-end latency into worker
 // compute vs serialization vs transport. Reset at the start of each message.
 let msgStart = 0
+let msgRecvAbs = 0
 let snapshotMs = 0
 let diffMs = 0
+
+/** Absolute wall-clock ms, comparable across worker/main contexts on one machine. */
+const absNow = (): number => performance.timeOrigin + performance.now()
 
 const round1 = (value: number): number => Math.round(value * 10) / 10
 
@@ -29,6 +33,7 @@ self.addEventListener('message', (event: MessageEvent<WorkerRequest>) => {
 
 async function handleMessage(message: WorkerRequest) {
   msgStart = performance.now()
+  msgRecvAbs = absNow()
   snapshotMs = 0
   diffMs = 0
   try {
@@ -235,6 +240,7 @@ function postWorkerEvent(message: WorkerEvent) {
     ...(workerMs !== undefined ? { workerMs } : {}),
     ...(snapshotMs ? { snapshotMs: round1(snapshotMs) } : {}),
     ...(diffMs ? { diffMs: round1(diffMs) } : {}),
+    ...(msgRecvAbs ? { workerRecvAt: msgRecvAbs, workerPostAt: absNow() } : {}),
   })
 }
 
