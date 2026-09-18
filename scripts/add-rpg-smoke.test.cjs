@@ -8,6 +8,9 @@ const { startStaticAppServer } = require("./app-qa-server.cjs")
 const ROOT_DIR = path.resolve(__dirname, "..")
 const DIST_DIR = path.join(ROOT_DIR, "apps/add-rpg/dist-app")
 const SCREENSHOT_PATH = path.join(ROOT_DIR, "tmp/add-rpg-smoke.png")
+const OFFLINE_RETURN_SCENARIO = JSON.parse(
+  fs.readFileSync(path.join(ROOT_DIR, "scenarios/add/offline-return.json"), "utf8"),
+)
 const ADD_AUTOSAVE_STORAGE_KEY = "aedventure.add-rpg.autosave.v1"
 const ADD_SETTINGS_STORAGE_KEY = "add-rpg:settings:v1"
 const RESET_CLOCK_TOLERANCE_SECONDS = 60
@@ -142,6 +145,71 @@ async function runScenario(name, scenario) {
     const wrapped = new Error(`Scenario "${name}" failed: ${cause.message}`)
     wrapped.stack = cause.stack ? `${wrapped.message}\nCaused by: ${cause.stack}` : wrapped.stack
     throw wrapped
+  }
+}
+
+function browserScenarioCommands(scenario) {
+  const commands = scenario.commands.filter((command) => command.type !== "SaveRoundTrip")
+  assert.deepEqual(
+    commands.map((command) => command.type),
+    ["SetHeroRole", "RunOfflineCatchup"],
+    "The offline browser smoke must reuse the compatible runtime command prefix from the committed scenario.",
+  )
+  return commands
+}
+
+async function runBrowserScenarioCommand(page, command, consoleErrors) {
+  switch (command.type) {
+    case "SetHeroRole": {
+      let state = await renderGameToText(page)
+      if (state.mapMode?.active !== "base_square") {
+        await clickMapMode(page, "base_square")
+        state = await waitForTextState(
+          page,
+          (nextState) => nextState.mapMode?.active === "base_square",
+          consoleErrors,
+        )
+      }
+      if (state.baseManagement?.selectedTab !== "crew") {
+        await clickVisibleElementByDomId(page, "base-tab-crew")
+        state = await waitForTextState(
+          page,
+          (nextState) =>
+            nextState.baseManagement?.active === true &&
+            nextState.baseManagement?.selectedTab === "crew",
+          consoleErrors,
+        )
+      }
+      const selector = page.locator("#base-hero-task-selector")
+      await selector.selectOption(command.roleId)
+      return waitForTextState(
+        page,
+        (nextState) =>
+          nextState.runtime?.error === null &&
+          nextState.snapshot?.roster?.heroRoleId === command.roleId,
+        consoleErrors,
+      )
+    }
+    case "RunOfflineCatchup": {
+      assert.equal(
+        command.seconds,
+        3600,
+        "The browser smoke maps the committed offline scenario's one-hour catch-up control.",
+      )
+      const before = await renderGameToText(page)
+      await page.locator("#offline-catchup").click()
+      return waitForTextState(
+        page,
+        (nextState) =>
+          nextState.persistence?.lastOfflineCatchupSeconds >= command.seconds &&
+          nextState.snapshot?.clockSeconds >= before.snapshot.clockSeconds + command.seconds - 100 &&
+          nextState.ui?.firstPlayable?.persistenceReady === true &&
+          nextState.offlineReturn?.elapsedSeconds >= command.seconds,
+        consoleErrors,
+      )
+    }
+    default:
+      throw new Error(`Unsupported browser scenario command: ${command.type}`)
   }
 }
 
@@ -2581,16 +2649,14 @@ async function exerciseSaveReloadOfflineAndReset(page, advanced, consoleErrors) 
   )
   assert.ok(imported.persistence.lastImportAtMs)
 
-  await page.locator("#offline-catchup").click()
-  const offlineTicked = await waitForTextState(
-    page,
-    (state) =>
-      state.persistence?.lastOfflineCatchupSeconds >= 3600 &&
-      state.snapshot?.clockSeconds >= imported.snapshot.clockSeconds + 3500 &&
-      state.ui?.firstPlayable?.persistenceReady === true &&
-      state.offlineReturn?.elapsedSeconds >= 3600,
-    consoleErrors,
+  const offlineCommands = browserScenarioCommands(OFFLINE_RETURN_SCENARIO)
+  assert.deepEqual(
+    OFFLINE_RETURN_SCENARIO.commands.map((command) => command.type),
+    ["SetHeroRole", "RunOfflineCatchup", "SaveRoundTrip"],
+    "The browser smoke and headless harness must keep the offline scenario contract aligned.",
   )
+  await runBrowserScenarioCommand(page, offlineCommands[0], consoleErrors)
+  const offlineTicked = await runBrowserScenarioCommand(page, offlineCommands[1], consoleErrors)
   assert.ok(offlineTicked.snapshot.clockSeconds > imported.snapshot.clockSeconds)
   assert.equal(offlineTicked.ui.firstPlayable.persistenceReady, true)
   assert.equal(offlineTicked.offlineReturn.source, "manual")

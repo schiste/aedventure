@@ -38,6 +38,7 @@ the Rust runtime owns mutation and deterministic outcomes.
 | Story timeline | `npm run content:timeline` | Story arcs and sequence gates are inspectable |
 | One content ID | `npm run content:explain -- <id>` | A content ID can be traced to its authored definition and dependencies |
 | Rust rules/state | `cargo test -p add-core` | Simulation rules, save behavior, and deterministic calculations pass core tests |
+| Headless ADD scenario/replay | `npm run scenario:add -- scenarios/add/<id>.json` | A committed seed/save/command log runs without the browser and checks canonical state checkpoints |
 | ADD type/content/WASM boundary | `npm run agent:verify:add-ui` | Diff checks, content generation, WASM build, ADD types, and smoke syntax pass |
 | Built ADD browser flow | `npm run smoke:add-rpg:built` | The already-built ADD app passes browser/player-flow assertions |
 | Build-and-smoke ADD flow | `npm run smoke:add-rpg` | ADD browser build and Playwright flow both run |
@@ -101,6 +102,13 @@ player path, including:
 - save reload, offline catch-up, reset, return review, mobile layout, stable
   screenshots, and console cleanliness.
 
+The headless gameplay path lives in `crates/add-scenario/` and
+`crates/add-scenario-runner/`. Run the committed idle and offline-return
+scenarios with the commands in the [scenario/replay harness guide](add-scenario-harness.md).
+The browser smoke reuses the offline scenario's `SetHeroRole` and
+`RunOfflineCatchup` command prefix; `SaveRoundTrip` remains a harness operation
+because the browser already exercises its equivalent through export/import.
+
 `npm run smoke:engine-sandbox` covers neutral square/hex coexistence. The
 office smoke and renderer QA belong to the separate office/shared-engine
 contracts and must not be mistaken for ADD gameplay coverage.
@@ -118,8 +126,8 @@ These are gaps, not reasons to create a second ADD app:
   future decision before richer procedural encounters;
 - the current dungeon layer proves entry, objectives, doors, locations, combat,
   inventory, and return flow, but not the full future dungeon/exploration game;
-- a committed headless scenario/replay harness is planned in Phase 1 of the
-  [tooling plan](add-game-development-tooling-plan.md);
+- broader scenario coverage, generated fixture tooling, and a richer browser
+  command bridge remain follow-up work after the committed Phase 1 harness;
 - larger strategy/RPG systems and neutral engine extraction remain demand-led
   future work, with `apps/add-rpg` staying the first consumer.
 

@@ -27,6 +27,7 @@ The repository already has meaningful pieces of the desired environment:
 | Authoritative deterministic simulation | `crates/add-core/` | Commands, progression, resources, offline catch-up, saves, migrations, and Rust tests |
 | Browser runtime boundary | `crates/add-web-bindings/`, `apps/add-rpg/src/workers/` | WASM runtime behind a typed worker protocol |
 | Authored content and code generation | `packages/add-domain/src/content/`, `scripts/build-add-content.cjs` | TypeScript authoring with generated Rust catalogs |
+| Deterministic scenarios and replay | `crates/add-scenario/`, `crates/add-scenario-runner/`, `scenarios/add/` | Headless command logs, canonical snapshots, checkpoints, save round-trips, and committed idle/offline fixtures |
 | Domain projections | `packages/add-domain/src/adapters/` | Snapshot selectors, command mapping, map/world adapters, and explanations |
 | Player-facing app | `apps/add-rpg/src/browser/` | Solid UI, Phaser map, saves, settings, telemetry, and development tools |
 | Content inspection | `npm run content:validate`, `content:graph`, `content:timeline`, `content:explain` | Deterministic text output for humans and agents |
@@ -106,7 +107,7 @@ Exit criteria:
   ADD application, not a future or placeholder product.
 - Office/platform documents carry an explicit scope note.
 
-### Phase 1 — Deterministic scenario and replay harness
+### Phase 1 — Deterministic scenario and replay harness (implemented)
 
 Goal: test gameplay without booting the browser and make bugs reproducible.
 
@@ -127,16 +128,25 @@ Planned scenario shape:
 }
 ```
 
-Deliverables:
+Implemented deliverables:
 
-- A headless runner around `crates/add-core` that accepts a seed, save, and
-  command sequence.
-- Canonical snapshot normalization and stable JSON output.
-- Checkpoint assertions for resources, jobs, story, recruitment, survival,
-  map state, and save round-trips.
-- Failure output that includes the first divergent checkpoint and a replayable
-  command log.
-- One scenario for the current idle loop and one offline-return scenario.
+- `add-scenario-runner` runs a scenario file against `crates/add-core`; the
+  scenario owns its human-readable seed, optional relative initial save, and
+  typed command sequence.
+- Canonical snapshots remove transient events, normalize derived save-boundary
+  state, sort JSON objects, and round floating-point noise for stable output.
+- Checkpoints support exact values, partial objects, and `equals`, `atLeast`,
+  `atMost`, and `contains` predicates. Committed scenarios cover resources,
+  construction jobs, story, recruitment, survival, map state, offline return,
+  and save round-trips.
+- Failures print the first divergent checkpoint/path plus a replayable command
+  prefix. `--write-final-save` supports fixture generation and investigation.
+- `scenarios/add/idle-base-first-cycle.json` covers the current idle/base loop;
+  `scenarios/add/offline-return.json` covers a one-hour offline return from a
+  committed save fixture.
+- The built ADD browser smoke consumes the offline scenario's compatible
+  runtime command prefix so browser and headless checks share command IDs and
+  parameters.
 
 Exit criteria:
 
@@ -144,6 +154,9 @@ Exit criteria:
   browser.
 - Rust tests and scenario tests agree on the same command/state contract.
 - The ADD browser smoke can reuse at least one scenario command sequence.
+
+See [ADD Deterministic Scenario and Replay Harness](add-scenario-harness.md)
+for the file contract, commands, failure format, and extension rules.
 
 ### Phase 2 — Agent-readable runtime inspection
 

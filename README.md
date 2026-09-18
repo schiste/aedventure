@@ -80,6 +80,8 @@ scenarios, focused verification, and likely follow-up before implementation.
 Useful focused checks:
 
 ```sh
+npm run scenario:add -- scenarios/add/idle-base-first-cycle.json
+npm run scenario:add -- scenarios/add/offline-return.json
 npm run agent:verify:add-ui
 npm run smoke:add-rpg
 npm --workspace @aedventure/add-rpg run dev:browser
@@ -96,6 +98,7 @@ pre-push verification; see [AGENTS.md](AGENTS.md).
 - [ADD Migration and Runtime Boundary](docs/add-migration-plan.md)
 - [ADD Systems Parity Audit](docs/add-systems-parity-audit.md)
 - [ADD Game Development Tooling Plan](docs/add-game-development-tooling-plan.md)
+- [ADD Deterministic Scenario and Replay Harness](docs/add-scenario-harness.md)
 - [Story and Content Engine Contract](docs/story-content-engine.md)
 - [Domain-Neutral Engine Boundary](docs/engine-boundary.md)
 - [Global Product and Technical Specification](docs/customer-virtual-office-platform-spec.md)

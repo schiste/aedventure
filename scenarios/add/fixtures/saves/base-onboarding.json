@@ -1,0 +1,1301 @@
+{
+  "schemaVersion": 15,
+  "catalogVersion": 1,
+  "clockSeconds": 42.0,
+  "resources": {
+    "bassline": 0.0,
+    "basslineCap": 90.0,
+    "chorus": 0.0,
+    "chorusCap": 60.0,
+    "harmonics": 0.0,
+    "harmonicsCap": 40.0,
+    "stone": 400.0,
+    "stoneCap": 1000.0,
+    "baseStoneStock": 9000.0,
+    "water": 0.0,
+    "waterCap": 5.0,
+    "baseWaterStock": 5.1259999999999994,
+    "vibes": 0.0,
+    "vibesCap": 100.0,
+    "lifetimeGenerated": 0.0,
+    "lifetimeSpent": 0.0
+  },
+  "roster": {
+    "heroAssigned": true,
+    "heroRoleId": "role.construction",
+    "totalCrew": 2,
+    "crewByRole": {
+      "role.construction": 0,
+      "role.crystal_bassline": 0,
+      "role.crystal_chorus": 0,
+      "role.crystal_harmonics": 0,
+      "role.fire_pit": 0,
+      "role.scavenge": 0,
+      "role.water": 0
+    }
+  },
+  "heroProgress": {
+    "drummerLevel": 0,
+    "drummerXp": 0.0,
+    "vocalistLevel": 1,
+    "vocalistXp": 22.0,
+    "synthLevel": 0,
+    "synthXp": 0.0
+  },
+  "heroSurvival": {
+    "sustain": 0,
+    "viralLoadRatio": 0.3041666666666667,
+    "location": "studio",
+    "requiredTimeToReenterBubbleSeconds": 0.0,
+    "returnToStudioSeconds": 0.0,
+    "pointOfNoReturnRatio": 1.0,
+    "secondsUntilForcedReturn": 999999.0,
+    "echoScars": 0,
+    "debuffTier": 0,
+    "workEfficiencyMultiplier": 1.0,
+    "movementSpeedMultiplier": 1.0,
+    "encounterRateMultiplier": 1.0,
+    "wounds": {
+      "majorWoundsMax": 3,
+      "lightWoundsPerMajor": 6,
+      "woundUnitsTaken": 0
+    },
+    "forcedReturn": null
+  },
+  "narrative": {
+    "activeBeatId": "story.beat.build_fire_pit",
+    "completedBeatIds": [
+      "story.beat.road_to_base",
+      "story.beat.first_glimpse",
+      "story.beat.enter_the_bubble",
+      "story.beat.investigate_base",
+      "story.beat.explore_base",
+      "story.beat.restore_studio"
+    ],
+    "choiceByBeat": {
+      "story.beat.enter_the_bubble": "story.choice.bubble.trust_sound",
+      "story.beat.explore_base": "story.choice.explore.look_for_tools",
+      "story.beat.first_glimpse": "story.choice.glimpse.watch_lights",
+      "story.beat.investigate_base": "story.choice.investigate.search_power",
+      "story.beat.road_to_base": "story.choice.road.follow_signal"
+    },
+    "qualities": {
+      "hope": 1,
+      "resolve": 1
+    },
+    "activatedBeatIds": [
+      "story.beat.build_fire_pit",
+      "story.beat.enter_the_bubble",
+      "story.beat.explore_base",
+      "story.beat.first_glimpse",
+      "story.beat.investigate_base",
+      "story.beat.restore_studio",
+      "story.beat.road_to_base"
+    ]
+  },
+  "crystalCircle": {
+    "baseSlots": 3,
+    "slotCapacityLevel": 0,
+    "outputLevel": 0,
+    "storageLevel": 0,
+    "fieldPolishLevel": 0,
+    "removingMossUnlocked": true,
+    "removingMossCompleted": false
+  },
+  "processing": {
+    "resonanceCalibrationLevel": 0,
+    "mixCalibrationLevel": 0,
+    "workshopToolingLevel": 0,
+    "workshopWaterCondensersLevel": 0,
+    "researchChorusRoutingLevel": 0,
+    "researchHarmonicStudyLevel": 0,
+    "activeJobs": {}
+  },
+  "expeditions": {
+    "activeJobs": [],
+    "completedReports": [],
+    "nextJobId": 1,
+    "totalWounds": 0,
+    "totalClues": 0,
+    "totalDungeonLeads": 0
+  },
+  "resonance": {
+    "materials": {
+      "echoShards": 0,
+      "signalScrap": 0,
+      "harmonicResidue": 0
+    },
+    "tuning": {
+      "basslineLevel": 0,
+      "chorusLevel": 0,
+      "harmonicsLevel": 0
+    },
+    "expeditionSupportLevel": 0,
+    "activeJobs": {},
+    "completedReports": [],
+    "stationSpecializations": {}
+  },
+  "base": {
+    "studioRestored": true,
+    "studioRestoreUnlocked": true,
+    "bunksCapacity": 15,
+    "occupantCount": 3,
+    "freeBunks": 12,
+    "missingBunks": 0,
+    "firePitBuilt": false,
+    "resonanceChamberBuilt": false,
+    "mixConsoleBuilt": false,
+    "workshopBuilt": false,
+    "researchBoothBuilt": false,
+    "tutorialInvestigated": true,
+    "tutorialExplored": true,
+    "waterCollectionUnlocked": true,
+    "skins": 1,
+    "overcrowdedSeconds": 0.0,
+    "badVibesMultiplier": 1.0,
+    "effectiveBadVibesRate": 0.0,
+    "crewEfficiencyMultiplier": 1.0
+  },
+  "power": {
+    "requestedUpkeepPerSecond": 0.0,
+    "activeUpkeepPerSecond": 0.0,
+    "lifeSupportUpkeepPerSecond": 0.0,
+    "brownoutActive": false,
+    "brownoutSeverity": 0.0,
+    "activeStaffCount": 1,
+    "harmonicsTier": 0,
+    "basslineGenerationPerSecond": 0.0,
+    "chorusGenerationPerSecond": 0.0,
+    "harmonicsGenerationPerSecond": 0.0,
+    "harmonicsEfficiencyMultiplier": 1.0,
+    "basslineOutputMultiplier": 1.0,
+    "chorusOutputMultiplier": 1.0,
+    "harmonicsOutputMultiplier": 1.0,
+    "fieldMultiplier": 1.0
+  },
+  "stations": {
+    "station.crystal_circle": {
+      "requestedEnabled": true,
+      "isPowered": true,
+      "powerOrder": 10
+    },
+    "station.fire_pit": {
+      "requestedEnabled": true,
+      "isPowered": false,
+      "powerOrder": 20
+    },
+    "station.mix_console": {
+      "requestedEnabled": true,
+      "isPowered": false,
+      "powerOrder": 40
+    },
+    "station.research_booth": {
+      "requestedEnabled": true,
+      "isPowered": false,
+      "powerOrder": 60
+    },
+    "station.resonance_chamber": {
+      "requestedEnabled": true,
+      "isPowered": false,
+      "powerOrder": 30
+    },
+    "station.workshop": {
+      "requestedEnabled": true,
+      "isPowered": false,
+      "powerOrder": 50
+    }
+  },
+  "recruitment": {
+    "totalRecruitedThisRun": 0,
+    "instantRecruitsUsed": 0,
+    "pendingRecruits": [],
+    "nextRecruitCost": 30.0
+  },
+  "bubble": {
+    "stabilizedRing": 0,
+    "frontierProgress": 0.0,
+    "targetRing": 0,
+    "targetFrontierProgress": 0.0,
+    "holdSecondsRemaining": 10.0,
+    "degradeSecondsAccumulated": 0.0,
+    "stabilizedHexes": 1,
+    "reachFromBase": 0,
+    "fieldBudget": 0.0,
+    "activeCoverageCost": 0.0,
+    "nextRingCost": 6.0
+  },
+  "objectives": {
+    "reachObjectiveTarget": 3,
+    "reachObjectiveMet": false,
+    "survivorCaveDistance": 6,
+    "recruitmentRangeTiles": 3,
+    "recruitmentEnabled": false,
+    "survivorCaveInBubble": false,
+    "activeObjectiveId": "objective.build_fire_pit",
+    "completedObjectiveIds": [
+      "objective.restore_studio"
+    ]
+  },
+  "discoveredCells": [
+    {
+      "q": 5,
+      "r": 0
+    },
+    {
+      "q": 5,
+      "r": 1
+    },
+    {
+      "q": 6,
+      "r": -1
+    },
+    {
+      "q": 6,
+      "r": 0
+    }
+  ],
+  "heroMap": {
+    "q": 6,
+    "r": 0
+  },
+  "hexes": [
+    {
+      "q": 0,
+      "r": 3,
+      "distance": 0,
+      "tileId": "tile.base_core",
+      "state": "stabilized",
+      "progress": 1.0
+    },
+    {
+      "q": -1,
+      "r": 3,
+      "distance": 1,
+      "tileId": "tile.plains_open",
+      "state": "converting",
+      "progress": 0.0
+    },
+    {
+      "q": -1,
+      "r": 4,
+      "distance": 1,
+      "tileId": "tile.plains_open",
+      "state": "converting",
+      "progress": 0.0
+    },
+    {
+      "q": 0,
+      "r": 2,
+      "distance": 1,
+      "tileId": "tile.plains_open",
+      "state": "converting",
+      "progress": 0.0
+    },
+    {
+      "q": 0,
+      "r": 4,
+      "distance": 1,
+      "tileId": "tile.plains_open",
+      "state": "converting",
+      "progress": 0.0
+    },
+    {
+      "q": 1,
+      "r": 2,
+      "distance": 1,
+      "tileId": "tile.plains_open",
+      "state": "converting",
+      "progress": 0.0
+    },
+    {
+      "q": 1,
+      "r": 3,
+      "distance": 1,
+      "tileId": "tile.plains_open",
+      "state": "converting",
+      "progress": 0.0
+    },
+    {
+      "q": -2,
+      "r": 3,
+      "distance": 2,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": -2,
+      "r": 4,
+      "distance": 2,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": -2,
+      "r": 5,
+      "distance": 2,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": -1,
+      "r": 2,
+      "distance": 2,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": -1,
+      "r": 5,
+      "distance": 2,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 0,
+      "r": 1,
+      "distance": 2,
+      "tileId": "tile.river_shallows",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 0,
+      "r": 5,
+      "distance": 2,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 1,
+      "r": 1,
+      "distance": 2,
+      "tileId": "tile.river_shallows",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 1,
+      "r": 4,
+      "distance": 2,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 2,
+      "r": 1,
+      "distance": 2,
+      "tileId": "tile.river_shallows",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 2,
+      "r": 2,
+      "distance": 2,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 2,
+      "r": 3,
+      "distance": 2,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": -3,
+      "r": 3,
+      "distance": 3,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": -3,
+      "r": 4,
+      "distance": 3,
+      "tileId": "tile.mountain_wall",
+      "state": "blocked",
+      "progress": 0.0
+    },
+    {
+      "q": -3,
+      "r": 5,
+      "distance": 3,
+      "tileId": "tile.mountain_wall",
+      "state": "blocked",
+      "progress": 0.0
+    },
+    {
+      "q": -3,
+      "r": 6,
+      "distance": 3,
+      "tileId": "tile.mountain_wall",
+      "state": "blocked",
+      "progress": 0.0
+    },
+    {
+      "q": -2,
+      "r": 2,
+      "distance": 3,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": -2,
+      "r": 6,
+      "distance": 3,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": -1,
+      "r": 1,
+      "distance": 3,
+      "tileId": "tile.river_shallows",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": -1,
+      "r": 6,
+      "distance": 3,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 0,
+      "r": 0,
+      "distance": 3,
+      "tileId": "tile.scrub_patch",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 0,
+      "r": 6,
+      "distance": 3,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 1,
+      "r": 0,
+      "distance": 3,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 1,
+      "r": 5,
+      "distance": 3,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 2,
+      "r": 0,
+      "distance": 3,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 2,
+      "r": 4,
+      "distance": 3,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 3,
+      "r": 0,
+      "distance": 3,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 3,
+      "r": 1,
+      "distance": 3,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 3,
+      "r": 2,
+      "distance": 3,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 3,
+      "r": 3,
+      "distance": 3,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": -4,
+      "r": 3,
+      "distance": 4,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": -4,
+      "r": 4,
+      "distance": 4,
+      "tileId": "tile.mountain_wall",
+      "state": "blocked",
+      "progress": 0.0
+    },
+    {
+      "q": -4,
+      "r": 5,
+      "distance": 4,
+      "tileId": "tile.mountain_wall",
+      "state": "blocked",
+      "progress": 0.0
+    },
+    {
+      "q": -4,
+      "r": 6,
+      "distance": 4,
+      "tileId": "tile.mountain_wall",
+      "state": "blocked",
+      "progress": 0.0
+    },
+    {
+      "q": -3,
+      "r": 2,
+      "distance": 4,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": -2,
+      "r": 1,
+      "distance": 4,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": -1,
+      "r": 0,
+      "distance": 4,
+      "tileId": "tile.scrub_patch",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 0,
+      "r": -1,
+      "distance": 4,
+      "tileId": "tile.scrub_patch",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 1,
+      "r": -1,
+      "distance": 4,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 2,
+      "r": -1,
+      "distance": 4,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 3,
+      "r": -1,
+      "distance": 4,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 4,
+      "r": -1,
+      "distance": 4,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 4,
+      "r": 0,
+      "distance": 4,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 4,
+      "r": 1,
+      "distance": 4,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 4,
+      "r": 2,
+      "distance": 4,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": -5,
+      "r": 3,
+      "distance": 5,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": -5,
+      "r": 4,
+      "distance": 5,
+      "tileId": "tile.mountain_wall",
+      "state": "blocked",
+      "progress": 0.0
+    },
+    {
+      "q": -5,
+      "r": 5,
+      "distance": 5,
+      "tileId": "tile.mountain_wall",
+      "state": "blocked",
+      "progress": 0.0
+    },
+    {
+      "q": -5,
+      "r": 6,
+      "distance": 5,
+      "tileId": "tile.mountain_wall",
+      "state": "blocked",
+      "progress": 0.0
+    },
+    {
+      "q": -4,
+      "r": 2,
+      "distance": 5,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": -3,
+      "r": 1,
+      "distance": 5,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": -2,
+      "r": 0,
+      "distance": 5,
+      "tileId": "tile.scrub_patch",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": -1,
+      "r": -1,
+      "distance": 5,
+      "tileId": "tile.scrub_patch",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 0,
+      "r": -2,
+      "distance": 5,
+      "tileId": "tile.scrub_patch",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 1,
+      "r": -2,
+      "distance": 5,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 2,
+      "r": -2,
+      "distance": 5,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 3,
+      "r": -2,
+      "distance": 5,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 4,
+      "r": -2,
+      "distance": 5,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 5,
+      "r": -2,
+      "distance": 5,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 5,
+      "r": -1,
+      "distance": 5,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 5,
+      "r": 0,
+      "distance": 5,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 5,
+      "r": 1,
+      "distance": 5,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": -6,
+      "r": 3,
+      "distance": 6,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": -6,
+      "r": 4,
+      "distance": 6,
+      "tileId": "tile.mountain_wall",
+      "state": "blocked",
+      "progress": 0.0
+    },
+    {
+      "q": -6,
+      "r": 5,
+      "distance": 6,
+      "tileId": "tile.mountain_wall",
+      "state": "blocked",
+      "progress": 0.0
+    },
+    {
+      "q": -6,
+      "r": 6,
+      "distance": 6,
+      "tileId": "tile.mountain_wall",
+      "state": "blocked",
+      "progress": 0.0
+    },
+    {
+      "q": -5,
+      "r": 2,
+      "distance": 6,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": -4,
+      "r": 1,
+      "distance": 6,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": -3,
+      "r": 0,
+      "distance": 6,
+      "tileId": "tile.scrub_patch",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": -2,
+      "r": -1,
+      "distance": 6,
+      "tileId": "tile.scrub_patch",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": -1,
+      "r": -2,
+      "distance": 6,
+      "tileId": "tile.scrub_patch",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 0,
+      "r": -3,
+      "distance": 6,
+      "tileId": "tile.scrub_patch",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 1,
+      "r": -3,
+      "distance": 6,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 2,
+      "r": -3,
+      "distance": 6,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 3,
+      "r": -3,
+      "distance": 6,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 4,
+      "r": -3,
+      "distance": 6,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 5,
+      "r": -3,
+      "distance": 6,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 6,
+      "r": -3,
+      "distance": 6,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 6,
+      "r": -2,
+      "distance": 6,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 6,
+      "r": -1,
+      "distance": 6,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 6,
+      "r": 0,
+      "distance": 6,
+      "tileId": "tile.survivor_cave",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": -6,
+      "r": 2,
+      "distance": 7,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": -5,
+      "r": 1,
+      "distance": 7,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": -4,
+      "r": 0,
+      "distance": 7,
+      "tileId": "tile.scrub_patch",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": -3,
+      "r": -1,
+      "distance": 7,
+      "tileId": "tile.scrub_patch",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": -2,
+      "r": -2,
+      "distance": 7,
+      "tileId": "tile.scrub_patch",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": -1,
+      "r": -3,
+      "distance": 7,
+      "tileId": "tile.scrub_patch",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 0,
+      "r": -4,
+      "distance": 7,
+      "tileId": "tile.scrub_patch",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 1,
+      "r": -4,
+      "distance": 7,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 2,
+      "r": -4,
+      "distance": 7,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 3,
+      "r": -4,
+      "distance": 7,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 4,
+      "r": -4,
+      "distance": 7,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 5,
+      "r": -4,
+      "distance": 7,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 6,
+      "r": -4,
+      "distance": 7,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": -6,
+      "r": 1,
+      "distance": 8,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": -5,
+      "r": 0,
+      "distance": 8,
+      "tileId": "tile.scrub_patch",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": -4,
+      "r": -1,
+      "distance": 8,
+      "tileId": "tile.scrub_patch",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": -3,
+      "r": -2,
+      "distance": 8,
+      "tileId": "tile.scrub_patch",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": -2,
+      "r": -3,
+      "distance": 8,
+      "tileId": "tile.scrub_patch",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": -1,
+      "r": -4,
+      "distance": 8,
+      "tileId": "tile.scrub_patch",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 0,
+      "r": -5,
+      "distance": 8,
+      "tileId": "tile.scrub_patch",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 1,
+      "r": -5,
+      "distance": 8,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 2,
+      "r": -5,
+      "distance": 8,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 3,
+      "r": -5,
+      "distance": 8,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 4,
+      "r": -5,
+      "distance": 8,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 5,
+      "r": -5,
+      "distance": 8,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 6,
+      "r": -5,
+      "distance": 8,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": -6,
+      "r": 0,
+      "distance": 9,
+      "tileId": "tile.scrub_patch",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": -5,
+      "r": -1,
+      "distance": 9,
+      "tileId": "tile.scrub_patch",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": -4,
+      "r": -2,
+      "distance": 9,
+      "tileId": "tile.scrub_patch",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": -3,
+      "r": -3,
+      "distance": 9,
+      "tileId": "tile.scrub_patch",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": -2,
+      "r": -4,
+      "distance": 9,
+      "tileId": "tile.scrub_patch",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": -1,
+      "r": -5,
+      "distance": 9,
+      "tileId": "tile.scrub_patch",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 0,
+      "r": -6,
+      "distance": 9,
+      "tileId": "tile.scrub_patch",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 1,
+      "r": -6,
+      "distance": 9,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 2,
+      "r": -6,
+      "distance": 9,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 3,
+      "r": -6,
+      "distance": 9,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 4,
+      "r": -6,
+      "distance": 9,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 5,
+      "r": -6,
+      "distance": 9,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    },
+    {
+      "q": 6,
+      "r": -6,
+      "distance": 9,
+      "tileId": "tile.plains_open",
+      "state": "inactive",
+      "progress": 0.0
+    }
+  ],
+  "activeConstruction": null,
+  "activeWorldAction": null,
+  "notes": [
+    "Scavenged 1000.0 Stone.",
+    "Advanced simulation by 15.0s, +0.0 Bassline, +0.0 Chorus, +0.0 Harmonics, +1000.0 Stone, +0.0 Water, 0.0 Vibes, reach 0.",
+    "Restore Studio started.",
+    "Hero switched to Construction.",
+    "Restore Studio completed.",
+    "Objective complete: the Studio stands again.",
+    "Objective complete: Restore the Studio",
+    "Advanced simulation by 12.0s, +0.0 Bassline, +0.0 Chorus, +0.0 Harmonics, +0.0 Stone, +0.0 Water, 0.0 Vibes, reach 0."
+  ],
+  "events": [],
+  "rngSeed": "17145289649399768564",
+  "activeCombat": null,
+  "openDoors": [],
+  "acquiredPerks": [],
+  "inventory": {
+    "item.scrap_metal": 3
+  },
+  "clearedLocations": [],
+  "droppedItems": {}
+}

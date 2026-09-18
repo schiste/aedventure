@@ -27,6 +27,7 @@ const migration = read("docs/add-migration-plan.md")
 const engineBoundary = read("docs/engine-boundary.md")
 const storyContract = read("docs/story-content-engine.md")
 const capabilityMap = read("docs/add-capability-map.md")
+const scenarioHarness = read("docs/add-scenario-harness.md")
 const taskBrief = read("docs/templates/add-task-brief.md")
 const parityAudit = read("docs/add-systems-parity-audit.md")
 const packageJson = JSON.parse(read("package.json"))
@@ -37,6 +38,7 @@ for (const fragment of [
   "Office/Platform Lane",
   "legacy/add/",
   "docs/add-capability-map.md",
+  "docs/add-scenario-harness.md",
   "docs/templates/add-task-brief.md",
   "npm run agent:verify:add-ui",
 ]) {
@@ -47,6 +49,8 @@ requireHeading(architecture, "## Where does this change belong?", "ADD architect
 requireHeading(migration, "## Where does this change belong?", "ADD migration")
 requireHeading(engineBoundary, "## Where does this change belong?", "engine boundary")
 requireHeading(storyContract, "## Where does this change belong?", "story contract")
+requireHeading(scenarioHarness, "## Purpose and ownership", "ADD scenario harness")
+requireHeading(scenarioHarness, "## Focused verification", "ADD scenario harness")
 
 for (const heading of [
   "## First route: where does this change belong?",
@@ -83,6 +87,7 @@ for (const command of [
   "content:timeline",
   "content:explain",
   "agent:verify:add-ui",
+  "scenario:add",
   "agent:verify:types",
   "agent:verify:gate",
   "smoke:add-rpg",

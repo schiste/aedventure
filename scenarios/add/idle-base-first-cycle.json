@@ -1,0 +1,80 @@
+{
+  "id": "idle-base-first-cycle",
+  "seed": "fixture-seed",
+  "commands": [
+    { "type": "CompletePreArrivalRoute" },
+    {
+      "type": "ChooseStoryOption",
+      "beatId": "story.beat.investigate_base",
+      "optionId": "story.choice.investigate.search_power"
+    },
+    { "type": "StartWorldAction", "actionId": "world_action.investigate_base" },
+    { "type": "Tick", "seconds": 5 },
+    {
+      "type": "ChooseStoryOption",
+      "beatId": "story.beat.explore_base",
+      "optionId": "story.choice.explore.look_for_tools"
+    },
+    { "type": "StartWorldAction", "actionId": "world_action.explore_base" },
+    { "type": "Tick", "seconds": 10 },
+    { "type": "SetHeroRole", "roleId": "role.scavenge" },
+    { "type": "Tick", "seconds": 15 },
+    { "type": "StartConstruction", "id": "project.restore_studio" },
+    { "type": "SetHeroRole", "roleId": "role.construction" },
+    { "type": "Tick", "seconds": 12 },
+    { "type": "SaveRoundTrip" }
+  ],
+  "checkpoints": [
+    {
+      "id": "new-run-map-and-story",
+      "after": 0,
+      "state": {
+        "narrative": { "activeBeatId": "story.beat.road_to_base" },
+        "heroMap": { "q": 6, "r": 0 },
+        "discoveredCells": {
+          "contains": [{ "q": 6, "r": 0 }]
+        },
+        "recruitment": { "pendingRecruits": [] },
+        "heroSurvival": { "location": "studio" }
+      }
+    },
+    {
+      "id": "base-investigation-started",
+      "after": 3,
+      "state": {
+        "narrative": { "activeBeatId": "story.beat.investigate_base" },
+        "activeWorldAction": { "actionId": "world_action.investigate_base" },
+        "heroSurvival": { "location": "studio" }
+      }
+    },
+    {
+      "id": "studio-restoration-started",
+      "after": 10,
+      "state": {
+        "resources": { "stone": 400 },
+        "activeConstruction": { "optionId": "project.restore_studio" },
+        "narrative": { "activeBeatId": "story.beat.restore_studio" }
+      }
+    },
+    {
+      "id": "studio-restored",
+      "after": 12,
+      "state": {
+        "base": { "studioRestored": true },
+        "activeConstruction": null,
+        "resources": { "stone": { "atLeast": 0 } },
+        "recruitment": { "pendingRecruits": [] },
+        "heroSurvival": { "location": "studio" },
+        "heroMap": { "q": 6, "r": 0 }
+      }
+    },
+    {
+      "id": "save-round-trip-stable",
+      "after": 13,
+      "state": {
+        "base": { "studioRestored": true },
+        "narrative": { "activeBeatId": "story.beat.build_fire_pit" }
+      }
+    }
+  ]
+}
