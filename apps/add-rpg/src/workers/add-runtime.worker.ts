@@ -10,6 +10,14 @@ let runtimeReady: Promise<void> | null = null
 // top-level sections (a delta) on subsequent updates.
 let lastSnapshot: SimulationSnapshot | null = null
 
+// Per-message timing, so the client can split end-to-end latency into worker
+// compute vs serialization vs transport. Reset at the start of each message.
+let msgStart = 0
+let snapshotMs = 0
+let diffMs = 0
+
+const round1 = (value: number): number => Math.round(value * 10) / 10
+
 interface OptionalTuningRuntime {
   setBalanceOverride?: (path: string, value: number) => void
   resetBalanceOverrides?: () => void
@@ -20,6 +28,9 @@ self.addEventListener('message', (event: MessageEvent<WorkerRequest>) => {
 })
 
 async function handleMessage(message: WorkerRequest) {
+  msgStart = performance.now()
+  snapshotMs = 0
+  diffMs = 0
   try {
     await ensureRuntime()
 
@@ -191,13 +202,18 @@ function postSnapshotUpdate() {
     postWorkerEvent({ type: 'snapshot', snapshot: next })
     return
   }
+  const diffStart = performance.now()
   const changed = diffSnapshot(lastSnapshot, next)
+  diffMs += performance.now() - diffStart
   lastSnapshot = next
   postWorkerEvent({ type: 'snapshotDelta', changed })
 }
 
 function snapshot(): SimulationSnapshot {
-  return runtime?.snapshot() as SimulationSnapshot
+  const start = performance.now()
+  const next = runtime?.snapshot() as SimulationSnapshot
+  snapshotMs += performance.now() - start
+  return next
 }
 
 function catalog(): CatalogSnapshot {
@@ -213,7 +229,13 @@ function runtimeTuningApi(): Required<OptionalTuningRuntime> {
 }
 
 function postWorkerEvent(message: WorkerEvent) {
-  postMessage(message)
+  const workerMs = msgStart ? round1(performance.now() - msgStart) : undefined
+  postMessage({
+    ...message,
+    ...(workerMs !== undefined ? { workerMs } : {}),
+    ...(snapshotMs ? { snapshotMs: round1(snapshotMs) } : {}),
+    ...(diffMs ? { diffMs: round1(diffMs) } : {}),
+  })
 }
 
 export {}
