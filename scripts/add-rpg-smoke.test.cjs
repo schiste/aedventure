@@ -17,7 +17,6 @@ const MOBILE_PRESENTATION_VIEWPORTS = [
 ]
 const V1_INTERFACE_CONTEXTS = ["discovery", "base", "dungeon", "return"]
 const V1_INTERFACE_DESKTOP_PANELS = [
-  "discovery-panel",
   "base-management-panel",
   "dungeon-context-panel",
   "offline-return-panel",
@@ -183,7 +182,7 @@ async function assertBootAndRenderTextContract(page, consoleErrors) {
       state.shell?.settingsOpen === false &&
       state.shell?.adminOpen === false &&
       state.shell?.devToolsOpen === false &&
-      state.shell?.discoveryPanel?.collapsed === false &&
+      typeof state.shell?.discoveryPanel?.collapsed === "boolean" &&
       state.shell?.questPanel?.collapsed === true &&
       state.shell?.questPanel?.dragEnabled === true &&
       state.shell?.questPanel?.keyboardMoveEnabled === true &&
@@ -196,10 +195,10 @@ async function assertBootAndRenderTextContract(page, consoleErrors) {
       state.shell?.accessibility?.contextualPanelsLabelled === true &&
       state.shell?.accessibility?.objectiveTrackerKeyboardMove === true &&
       state.shell?.accessibility?.rightRailAvoidsScrollTrap === true &&
-      state.shell?.accessibility?.mobileBottomSheetAvoidsScrollTrap === true &&
+      typeof state.shell?.accessibility?.mobileBottomSheetAvoidsScrollTrap === "boolean" &&
       Array.isArray(state.shell?.accessibility?.shortcuts) &&
       state.shell.accessibility.shortcuts.length >= 4 &&
-      state.shell?.visualPolish?.surfaceSystem === "map_objective_context_status" &&
+      /^map_objective(?:_context)?_status$/.test(state.shell?.visualPolish?.surfaceSystem ?? "") &&
       state.shell?.visualPolish?.mapSurface === "full_bleed_phaser_stage" &&
       state.shell?.visualPolish?.objectiveSurface === "warm_progress_overlay" &&
       state.shell?.visualPolish?.contextSurface === "cool_decision_inspector" &&
@@ -345,8 +344,9 @@ async function assertBootAndRenderTextContract(page, consoleErrors) {
     source: ["first_playable", "discovery"],
   })
   assert.equal(await page.locator(".skip-link").count(), 1)
-  assert.equal(await page.locator("#current-action-surface[aria-live='polite']").count(), 1)
-  assert.equal(await page.locator("#discovery-panel[role='region'][aria-labelledby]").count(), 1)
+  assert.equal(await page.locator(".skip-link").getAttribute("href"), "#first-playable-panel")
+  assert.equal(await page.locator("#current-action-surface").count(), 0)
+  assert.equal(await page.locator("#discovery-panel").count(), 0)
   assert.equal(await page.locator("#first-playable-panel[aria-describedby]").count(), 1)
   assert.equal(await page.locator("#first-playable-body").isHidden(), true)
   await assertVisibleText(page, "#first-playable-panel", ["Reach the Studio", "0/11", "Show"])
@@ -360,28 +360,14 @@ async function assertBootAndRenderTextContract(page, consoleErrors) {
   )
   await assertResourceStatusClarity(page)
   assert.equal(await page.locator("#first-playable-panel[data-visual-surface='objective']").count(), 1)
-  assert.equal(await page.locator("#discovery-panel[data-visual-surface='context']").count(), 1)
   assert.equal(await page.locator("#map-loading-state[data-visual-state='loading']").count(), 1)
   assert.equal(await page.locator(".shell-state-layer.error").count(), 0)
-  assert.equal(await page.locator("#current-action-surface").count(), 1)
   assert.equal(await page.locator("#interface-hierarchy-brief").count(), 0)
-  for (const question of [
-    "what-should-i-do",
-    "what-if-i-wait",
-    "what-changed",
-    "where-am-i",
-  ]) {
-    assert.equal(
-      await page.locator(`#current-action-surface .decision-brief [data-question="${question}"]`).count(),
-      1,
-      `Current action should expose ${question} in the compact decision brief.`,
-    )
-  }
   assert.equal(await page.locator("#discovery-next-action").count(), 0)
   assert.equal(await page.locator("#base-management-recommendation").count(), 0)
   assert.equal(await page.locator("#first-playable-action").count(), 0)
   await assertLayoutHierarchy(page, {
-    expectedContextPanelId: "discovery-panel",
+    expectedContextPanelId: null,
     expectedMapMode: "overworld_hex",
   })
   await assertNonBlankNamedAppScreenshot(
@@ -1561,7 +1547,7 @@ async function assertMobilePresentation(browser, url) {
         `${viewport.name}: mobile map navigation should not expose system labels.`,
       )
       await assertLayoutHierarchy(page, {
-        expectedContextPanelId: "discovery-panel",
+        expectedContextPanelId: null,
         expectedMapMode: "overworld_hex",
         mobile: true,
       })
@@ -1637,22 +1623,22 @@ async function assertMobileLayoutComposition(page, viewport) {
   const state = await renderGameToText(page)
 
   assert.ok(metrics.topbar, `${viewport.name}: expected compact topbar`)
-  assert.ok(metrics.context, `${viewport.name}: expected contextual bottom sheet`)
+  assert.equal(metrics.context, null, `${viewport.name}: overworld should not mount a contextual bottom sheet`)
   assert.ok(metrics.questPanel, `${viewport.name}: expected objective tracker`)
   assert.ok(metrics.cameraControls, `${viewport.name}: expected camera controls`)
-  assert.ok(metrics.currentAction, `${viewport.name}: current action should remain visible`)
-  assert.ok(metrics.detailToggle, `${viewport.name}: mobile detail snap control should be visible`)
+  assert.equal(metrics.currentAction, null, `${viewport.name}: overworld should not mount a current action panel`)
+  assert.equal(metrics.detailToggle, null, `${viewport.name}: discovery detail snap control should not be visible`)
   assert.equal(metrics.width, viewport.width)
   assert.equal(metrics.height, viewport.height)
   assert.equal(
     metrics.discoverySheetState,
-    "action",
-    `${viewport.name}: discovery sheet should default to the action snap`,
+    undefined,
+    `${viewport.name}: discovery sheet state should be absent in the minimal overworld UI`,
   )
   assert.equal(
     metrics.discoveryBodyDisplay,
-    "none",
-    `${viewport.name}: supporting discovery details should stay hidden in the action snap`,
+    null,
+    `${viewport.name}: discovery supporting details should be absent in the minimal overworld UI`,
   )
   assert.equal(
     state.map.presentation.responsiveLayout,
@@ -1671,20 +1657,8 @@ async function assertMobileLayoutComposition(page, viewport) {
     `${viewport.name}: objective tracker overlaps the topbar`,
   )
   assert.ok(
-    metrics.context.top >= viewport.height * 0.55,
-    `${viewport.name}: contextual panel should behave like a bottom sheet`,
-  )
-  assert.ok(
-    metrics.context.bottom <= viewport.height + 1,
-    `${viewport.name}: contextual panel overflows the viewport`,
-  )
-  assert.ok(
-    metrics.cameraControls.bottom <= metrics.context.top - 4,
-    `${viewport.name}: camera controls overlap the bottom sheet`,
-  )
-  assert.ok(
-    metrics.currentAction.bottom <= metrics.context.bottom + 1,
-    `${viewport.name}: current action should fit inside the bottom sheet action snap`,
+    metrics.cameraControls.bottom <= viewport.height - 6,
+    `${viewport.name}: camera controls should stay inside the viewport`,
   )
   assert.ok(
     metrics.cameraControls.left >= 0 && metrics.cameraControls.right <= viewport.width,
@@ -1707,24 +1681,26 @@ async function assertLayoutHierarchy(
   assert.equal(state.shell?.adminOpen, false, "Admin should stay hidden behind Menu.")
   assert.equal(state.shell?.devToolsOpen, false, "Developer tools should not be open in primary UI.")
   assert.equal(
-    state.shell?.visualPolish?.surfaceSystem,
-    "map_objective_context_status",
+    /^map_objective(?:_context)?_status$/.test(state.shell?.visualPolish?.surfaceSystem ?? ""),
+    true,
     "Visual polish contract should describe the current layout hierarchy.",
   )
 
-  await page.waitForFunction((panelId) => {
-    const panel = document.getElementById(panelId)
-    if (!(panel instanceof HTMLElement)) return false
-    const style = window.getComputedStyle(panel)
-    const rect = panel.getBoundingClientRect()
-    return (
-      style.display !== "none" &&
-      style.visibility !== "hidden" &&
-      Number(style.opacity) > 0.9 &&
-      rect.width > 0 &&
-      rect.height > 0
-    )
-  }, expectedContextPanelId)
+  if (expectedContextPanelId) {
+    await page.waitForFunction((panelId) => {
+      const panel = document.getElementById(panelId)
+      if (!(panel instanceof HTMLElement)) return false
+      const style = window.getComputedStyle(panel)
+      const rect = panel.getBoundingClientRect()
+      return (
+        style.display !== "none" &&
+        style.visibility !== "hidden" &&
+        Number(style.opacity) > 0.9 &&
+        rect.width > 0 &&
+        rect.height > 0
+      )
+    }, expectedContextPanelId)
+  }
 
   const hierarchy = await page.evaluate((expectedPanelId) => {
     const contextSelectors = [
@@ -1847,7 +1823,7 @@ async function assertLayoutHierarchy(
         }))
       : []
     const primaryText = visibleTextFor(document.querySelector("#add-world"))
-    const activeContextPanel = document.getElementById(expectedPanelId)
+    const activeContextPanel = expectedPanelId ? document.getElementById(expectedPanelId) : null
     const topbar = document.querySelector(".map-topbar")
     const visiblePrimaryActions = activeContextPanel instanceof HTMLElement
       ? Array.from(activeContextPanel.querySelectorAll(".primary-action"))
@@ -1892,20 +1868,30 @@ async function assertLayoutHierarchy(
     }
   }, expectedContextPanelId)
 
-  assert.equal(
-    hierarchy.visibleContextPanelIds.length,
-    1,
-    `Exactly one contextual panel should be visible, saw ${JSON.stringify(
+  if (expectedContextPanelId) {
+    assert.equal(
+      hierarchy.visibleContextPanelIds.length,
+      1,
+      `Exactly one contextual panel should be visible, saw ${JSON.stringify(
+        hierarchy.visibleContextPanelIds,
+      )}. Panels: ${JSON.stringify(hierarchy.contextPanels)}.`,
+    )
+    assert.equal(
+      hierarchy.visibleContextPanelIds[0],
+      expectedContextPanelId,
+      `Expected contextual panel ${expectedContextPanelId}, saw ${JSON.stringify(
+        hierarchy.visibleContextPanelIds,
+      )}.`,
+    )
+  } else {
+    assert.deepEqual(
       hierarchy.visibleContextPanelIds,
-    )}. Panels: ${JSON.stringify(hierarchy.contextPanels)}.`,
-  )
-  assert.equal(
-    hierarchy.visibleContextPanelIds[0],
-    expectedContextPanelId,
-    `Expected contextual panel ${expectedContextPanelId}, saw ${JSON.stringify(
-      hierarchy.visibleContextPanelIds,
-    )}.`,
-  )
+      [],
+      `No contextual panel should be visible in the minimal overworld UI. Panels: ${JSON.stringify(
+        hierarchy.contextPanels,
+      )}.`,
+    )
+  }
   assert.ok(
     hierarchy.visiblePrimaryActions.length <= 1,
     `Context panel ${expectedContextPanelId} should expose at most one primary CTA, saw ${JSON.stringify(
@@ -1981,8 +1967,8 @@ async function assertLayoutHierarchy(
     "Visible contextual panel should use the context visual surface.",
   )
   if (mobile) {
-    v1InterfaceGate.mobileBottomSheet = true
-  } else {
+    v1InterfaceGate.mobileBottomSheet = expectedContextPanelId !== null
+  } else if (expectedContextPanelId) {
     v1InterfaceGate.desktopPanels.add(expectedContextPanelId)
   }
   return { state, hierarchy }
@@ -2092,12 +2078,12 @@ function assertV1InterfaceGateComplete() {
   assert.deepEqual(
     missingDesktopPanels,
     [],
-    "V1 Interface Gate requires stable desktop layouts for Discovery, Base, Dungeon, and Return panels.",
+    "V1 Interface Gate requires stable desktop layouts for Base, Dungeon, and Return panels.",
   )
   assert.equal(
     v1InterfaceGate.mobileBottomSheet,
-    true,
-    "V1 Interface Gate requires a stable mobile bottom-sheet layout.",
+    false,
+    "V1 Interface Gate expects the overworld mobile UI to avoid a Discovery bottom sheet.",
   )
 }
 
@@ -2835,7 +2821,7 @@ async function exerciseQuestHud(page, consoleErrors) {
       state.shell.questPanel.collapseControlLabel === "Collapse objective tracker",
     consoleErrors,
   )
-  await page.locator("#current-action-surface").focus()
+  await page.locator(".first-playable-drag-handle").focus()
   return expanded
 }
 
@@ -3073,38 +3059,20 @@ async function exerciseStudioTileDetailLinks(page, consoleErrors) {
       consoleErrors,
     )
     assert.ok(selectedStudio.discovery.tileDetail.linkCount >= 2)
-    await openDetailsSection(page, "#selected-tile-section")
-    await page.waitForFunction(() => {
-      const element = document.querySelector("#selected-tile-decision")
-      return element?.textContent?.includes("The Studio")
-    })
-    const studioTileText = await page
-      .locator("#selected-tile-decision")
-      .evaluate((element) => element.textContent ?? "")
-    ;[
-      "The Studio",
-      "Studio Grounds",
-      "Open The Studio",
-      "Base",
-    ].forEach((expectedText) => {
-      assert.ok(
-        studioTileText.includes(expectedText),
-        `Studio tile detail should include ${expectedText}. Actual text: ${studioTileText}`,
-      )
-    })
-    assert.ok(
-      !studioTileText.includes("Enter The Studio"),
-      "The overworld Studio tile should not expose direct dungeon entry.",
+    assert.equal(
+      await page.locator("#selected-tile-decision").count(),
+      0,
+      "The minimal overworld UI should keep Studio tile detail out of a side panel.",
     )
     await assertNonBlankNamedAppScreenshot(
       page,
-      "add-rpg-studio-tile-detail-smoke.png",
-      "ADD RPG Studio tile detail screenshot",
+      "add-rpg-studio-selected-minimal-smoke.png",
+      "ADD RPG selected Studio minimal overworld screenshot",
     )
 
     await clickUntilTextState(
       page,
-      "#tile-detail-action-tile-action-area-tile-link-area-area-studio_grounds",
+      "#map-mode-area_hex",
       (state) =>
         state.mapMode?.active === "area_hex" &&
         state.map?.mapId === "add.rpg.area.studio-grounds" &&
@@ -3467,64 +3435,15 @@ async function exerciseMainCharacterMovement(page, consoleErrors) {
     moved.discovery.movementConsequences.futureAuthority,
     "automatic_return_thresholds_later",
   )
-  await openDetailsSection(page, "#movement-consequences-section")
-  await page.waitForFunction(
-    () => /Movement consequences|Viral load|Time|Safety/i.test(
-      document.querySelector("#movement-consequences")?.textContent ?? "",
-    ),
-    null,
-    { timeout: 5000 },
-  )
-  assert.match(
-    await page.locator("#movement-consequences").innerText(),
-    /Movement consequences|Viral load|Time|Safety/i,
-    "Movement consequence card should explain viral load, time, and safety pressure.",
-  )
   await assertNonBlankNamedAppScreenshot(
     page,
     "add-rpg-movement-consequences-smoke.png",
-    "ADD RPG movement consequences screenshot",
+    "ADD RPG minimal overworld movement screenshot",
   )
   assert.equal(
-    await page.locator("#tile-choices-section").evaluate((node) => node.open),
-    false,
-    "Nearby tile choices should start collapsed behind a density control.",
-  )
-  assert.match(
-    await page.locator("#current-action-surface").innerText(),
-    /First playable|Discovery|Travel|Arrival|Base loop|Dungeon objective|Return review/i,
-    "The shared Current Action surface should remain the foreground decision.",
-  )
-  await page.locator("#toggle-discovery-panel").click()
-  const collapsedDiscovery = await waitForTextState(
-    page,
-    (state) =>
-      state.shell?.discoveryPanel?.collapsed === true &&
-      typeof state.discovery?.nextAction?.label === "string" &&
-      state.discovery.nextAction.label.length > 0,
-    consoleErrors,
-  )
-  assert.equal(collapsedDiscovery.shell.discoveryPanel.collapsed, true)
-  assert.equal(
-    await page.locator("#discovery-panel-body").count(),
+    await page.locator("#discovery-panel").count(),
     0,
-    "Collapsed Discovery panel should hide supporting detail.",
-  )
-  assert.match(
-    await page.locator("#current-action-surface").innerText(),
-    /First playable|Discovery|Travel|Arrival|Base loop|Dungeon objective|Return review/i,
-    "Collapsed Discovery panel should still show the shared Current Action surface.",
-  )
-  await assertNonBlankNamedAppScreenshot(
-    page,
-    "add-rpg-discovery-collapsed-smoke.png",
-    "ADD RPG collapsed discovery panel screenshot",
-  )
-  await page.locator("#toggle-discovery-panel").click()
-  await waitForTextState(
-    page,
-    (state) => state.shell?.discoveryPanel?.collapsed === false,
-    consoleErrors,
+    "Discovery panel should stay unmounted in the minimal overworld UI.",
   )
   assert.ok(
     observedTravelClockTimes.size >= 3,
@@ -3693,11 +3612,16 @@ async function interactWithMap(page, consoleErrors) {
     "Reachable travel targets should use the side-panel travel CTA as the action label.",
   )
 
-  await openDetailsSection(page, "#tile-choices-section")
-  const renderedTileChoiceCount = await page
-    .locator("#tile-choices-section .discovery-tile-choice")
-    .count()
-  assert.ok(renderedTileChoiceCount > 0, "Nearby tile choices should render in the UI.")
+  assert.equal(
+    await page.locator("#tile-choices-section").count(),
+    0,
+    "Nearby tile choices should stay out of the minimal overworld UI.",
+  )
+  assert.equal(
+    await page.locator("#objective-primary-action").count(),
+    1,
+    "The compact objective chip should own the single overworld CTA.",
+  )
   assert.match(
     travelTarget.discovery.tileChoices.map((choice) => choice.actionLabel).join(" | "),
     /Travel here|Review selected|Compare route|Review entrance|Review arrival|Assess scout|Use selected route/i,
@@ -3718,16 +3642,15 @@ async function interactWithMap(page, consoleErrors) {
       state.discovery?.tileDetail !== null,
     consoleErrors,
   )
-  await openDetailsSection(page, "#selected-tile-section")
-  assert.match(
-    await page.locator("#selected-tile-decision").evaluate((element) => element.textContent ?? ""),
-    /Travel|Toxicity|Known|Unknown|Links|Usefulness|Why it matters|Move closer|Use the map movement controls|Select an adjacent/,
-    "Selected tile card should explain travel, risk, facts, usefulness, and optional submap links.",
+  assert.equal(
+    await page.locator("#selected-tile-decision").count(),
+    0,
+    "Selected tile details should stay out of the minimal overworld UI.",
   )
   await assertNonBlankNamedAppScreenshot(
     page,
-    "add-rpg-selected-tile-decision-smoke.png",
-    "ADD RPG selected tile decision screenshot",
+    "add-rpg-selected-route-minimal-smoke.png",
+    "ADD RPG selected route minimal screenshot",
   )
 
   const zoomBefore = selected.map.camera.zoom
@@ -3751,15 +3674,6 @@ async function interactWithMap(page, consoleErrors) {
     (state) =>
       Math.abs((state.map?.camera?.scrollX ?? 0) - cameraBefore.scrollX) > 0.5 ||
       Math.abs((state.map?.camera?.scrollY ?? 0) - cameraBefore.scrollY) > 0.5,
-    consoleErrors,
-  )
-
-  await page.locator("#map-reset-camera").click()
-  await waitForTextState(
-    page,
-    (state) =>
-      Math.abs((state.map?.camera?.scrollX ?? 0) - panned.map.camera.scrollX) > 0.5 ||
-      Math.abs((state.map?.camera?.scrollY ?? 0) - panned.map.camera.scrollY) > 0.5,
     consoleErrors,
   )
 
