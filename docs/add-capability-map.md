@@ -34,12 +34,17 @@ the Rust runtime owns mutation and deterministic outcomes.
 | Capability | Command | What it proves |
 | --- | --- | --- |
 | Documentation contract | `npm run docs:check` | Required maps, task brief fields, routing sections, commands, and office scope notes exist |
+| Changed-path agent loop | `npm run agent:task` | Chooses the cheapest focused checks from changed paths and writes an actionable result artifact |
+| Machine-readable verification report | `npm run agent:report -- --format json` | Writes/emits the focused result contract with commit, duration, checks, artifacts, and failure hints |
+| Task brief readiness | `npm run agent:task -- --describe <task-id>` | Resolves a brief and rejects missing acceptance scenarios or completion evidence |
 | ADD content/code generation | `npm run content:check` | Authored content builds, validates, and matches generated Rust catalog output |
 | Content graph and IDs | `npm run content:graph` | Story/content dependencies are inspectable as stable text |
 | Story timeline | `npm run content:timeline` | Story arcs and sequence gates are inspectable |
 | One content ID | `npm run content:explain -- <id>` | A content ID can be traced to its authored definition and dependencies |
 | Rust rules/state | `cargo test -p add-core` | Simulation rules, save behavior, and deterministic calculations pass core tests |
 | Headless ADD scenario/replay | `npm run scenario:add -- scenarios/add/<id>.json` | A committed seed/save/command log runs without the browser and checks canonical state checkpoints |
+| Agent scenario artifact | `npm run agent:scenario -- scenarios/add/<id>.json` | Runs the same Rust scenario and records the report, normalized snapshot, replay log, and command output |
+| Agent save inspection | `npm run agent:state -- --save <path>` | Reads a save through Rust and returns the versioned `agent_runtime_v1` report |
 | Agent-readable runtime report | `npm --workspace @aedventure/add-domain test` and `cargo test -p add-scenario` | The versioned authoritative/derived/diagnostic report, stable IDs, blocker reasons, and headless/browser parity checks |
 | ADD type/content/WASM boundary | `npm run agent:verify:add-ui` | Diff checks, content generation, WASM build, ADD types, and smoke syntax pass |
 | Built ADD browser flow | `npm run smoke:add-rpg:built` | The already-built ADD app passes browser/player-flow assertions |
@@ -52,6 +57,23 @@ the Rust runtime owns mutation and deterministic outcomes.
 Use the cheapest command that exercises the changed authority first. Run the
 full gate at phase boundaries, before publication, or after broad shared-engine
 changes.
+
+## Agent verification loop
+
+The focused runner classifies staged, unstaged, untracked, and
+integration-relative paths. It does not launch browser or renderer QA unless
+explicitly requested:
+
+| Mode | Command | Scope |
+| --- | --- | --- |
+| Focused | `npm run agent:task` | Cheapest relevant checks for the current diff |
+| Browser override | `npm run agent:task -- --smoke` | Focused checks plus ADD browser build and smoke |
+| Phase gate | `npm run agent:task -- --gate` | Full target-stack gate; expensive and explicit |
+
+Results and child logs live under the ignored
+`artifacts/agent-verification/<run-id>/` directory. The detailed result
+schema, artifact naming, task evidence rules, and failure workflow are in
+[ADD One-Command Agent Verification Loop](add-agent-verification-loop.md).
 
 ## Content families
 
@@ -134,7 +156,8 @@ These are gaps, not reasons to create a second ADD app:
 - the current dungeon layer proves entry, objectives, doors, locations, combat,
   inventory, and return flow, but not the full future dungeon/exploration game;
 - broader scenario coverage, generated fixture tooling, and a richer browser
-  command bridge remain follow-up work after the committed Phase 1/2 harness;
+  command bridge remain follow-up work after the committed Phase 1/2 harness
+  and Phase 3 verification loop;
 - larger strategy/RPG systems and neutral engine extraction remain demand-led
   future work, with `apps/add-rpg` staying the first consumer.
 

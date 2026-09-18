@@ -33,7 +33,7 @@ function main() {
   assertScript(packageJson, "smoke:apps", "smoke:engine-sandbox")
   assertScript(packageJson, "qa:renderer", "scripts/renderer-qa.test.cjs")
   assertScript(packageJson, "qa:multi-app", "scripts/multi-app-qa-contracts.test.cjs")
-  assertScript(packageJson, "agent:verify", "scripts/agent-verify.sh focused")
+  assertScript(packageJson, "agent:verify", "scripts/agent-task.cjs")
   assertScript(packageJson, "agent:verify:add-ui", "scripts/agent-verify.sh add-ui")
   assertScript(packageJson, "agent:verify:types", "scripts/agent-verify.sh types")
   assertScript(packageJson, "agent:verify:gate", "scripts/agent-verify.sh gate")

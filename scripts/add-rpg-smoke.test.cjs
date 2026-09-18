@@ -7,7 +7,10 @@ const { startStaticAppServer } = require("./app-qa-server.cjs")
 
 const ROOT_DIR = path.resolve(__dirname, "..")
 const DIST_DIR = path.join(ROOT_DIR, "apps/add-rpg/dist-app")
-const SCREENSHOT_PATH = path.join(ROOT_DIR, "tmp/add-rpg-smoke.png")
+const SMOKE_ARTIFACT_DIR = process.env.AGENT_ARTIFACT_DIR
+  ? path.join(process.env.AGENT_ARTIFACT_DIR, "screenshots")
+  : path.join(ROOT_DIR, "tmp")
+const SCREENSHOT_PATH = path.join(SMOKE_ARTIFACT_DIR, "add-rpg-smoke.png")
 const OFFLINE_RETURN_SCENARIO = JSON.parse(
   fs.readFileSync(path.join(ROOT_DIR, "scenarios/add/offline-return.json"), "utf8"),
 )
@@ -4180,7 +4183,7 @@ function collectTravelAnimationObservation(
 
 async function assertNonBlankNamedMapScreenshot(page, filename, label) {
   fs.mkdirSync(path.dirname(SCREENSHOT_PATH), { recursive: true })
-  const mapPath = path.join(ROOT_DIR, "tmp", filename)
+  const mapPath = path.join(SMOKE_ARTIFACT_DIR, filename)
   await page.locator("#add-world canvas").screenshot({ path: mapPath })
   assertNonBlankImageBuffer(
     fs.readFileSync(mapPath),
@@ -4549,7 +4552,7 @@ async function assertNonBlankAppScreenshot(page) {
 
 async function assertNonBlankNamedAppScreenshot(page, filename, label) {
   fs.mkdirSync(path.dirname(SCREENSHOT_PATH), { recursive: true })
-  const screenshotPath = path.join(ROOT_DIR, "tmp", filename)
+  const screenshotPath = path.join(SMOKE_ARTIFACT_DIR, filename)
   await page.locator("#app").screenshot({ path: screenshotPath })
   assertNonBlankImageBuffer(
     fs.readFileSync(screenshotPath),

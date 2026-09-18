@@ -81,16 +81,24 @@ scenarios, focused verification, and likely follow-up before implementation.
 Useful focused checks:
 
 ```sh
+npm run agent:task
+npm run agent:report -- --format json
+npm run agent:scenario -- scenarios/add/idle-base-first-cycle.json
+npm run agent:state -- --save scenarios/add/fixtures/saves/base-onboarding.json
 npm run scenario:add -- scenarios/add/idle-base-first-cycle.json
 npm run scenario:add -- scenarios/add/offline-return.json
 npm --workspace @aedventure/add-domain test
 npm run agent:verify:add-ui
-npm run smoke:add-rpg
+npm run agent:task -- --smoke
 npm --workspace @aedventure/add-rpg run dev:browser
 ```
 
-The full gate is reserved for phase boundaries, broad engine changes, and
-pre-push verification; see [AGENTS.md](AGENTS.md).
+The focused loop writes machine-readable evidence under
+`artifacts/agent-verification/<run-id>/` and does not launch the browser or
+renderer gate by default. Use `npm run agent:task -- --smoke` when the
+player-facing ADD surface needs explicit browser verification. The full gate
+is reserved for phase boundaries, broad engine changes, and pre-push
+verification; see [AGENTS.md](AGENTS.md).
 
 ## Canonical Documentation
 
@@ -102,6 +110,7 @@ pre-push verification; see [AGENTS.md](AGENTS.md).
 - [ADD Game Development Tooling Plan](docs/add-game-development-tooling-plan.md)
 - [ADD Deterministic Scenario and Replay Harness](docs/add-scenario-harness.md)
 - [ADD Agent-Readable Runtime Inspection](docs/add-runtime-inspection.md)
+- [ADD One-Command Agent Verification Loop](docs/add-agent-verification-loop.md)
 - [Story and Content Engine Contract](docs/story-content-engine.md)
 - [Domain-Neutral Engine Boundary](docs/engine-boundary.md)
 - [Global Product and Technical Specification](docs/customer-virtual-office-platform-spec.md)

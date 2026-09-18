@@ -1,7 +1,7 @@
 # ADD Game Development Tooling Plan
 
 Status: active execution plan for accelerating the live ADD game. Phases 0, 1,
-and 2 are implemented and checked by their focused contracts plus
+2, and 3 are implemented and checked by their focused contracts plus
 `npm run docs:check`.
 
 ## Purpose
@@ -36,6 +36,7 @@ The repository already has meaningful pieces of the desired environment:
 | Repository capability map | `docs/add-capability-map.md` | Owning layers, content families, runtime state, smoke flows, and known gaps |
 | Standard task brief | `docs/templates/add-task-brief.md` | Player outcome, authority, content IDs, scenarios, verification, and follow-up |
 | Focused verification | `npm run agent:verify:add-ui` | Cheap ADD-focused build/type/content checks |
+| One-command agent loop | `scripts/agent-task.cjs`, `scripts/agent-scenario.cjs`, `scripts/agent-state.cjs` | Changed-path checks, headless state/scenario reports, and ignored evidence artifacts |
 | Product smoke | `npm run smoke:add-rpg` | Browser build and ADD flow verification |
 | Shared-engine fixtures | `apps/engine-sandbox/`, `packages/game-*` | Neutral topology/rendering proof where it is useful |
 | Brokered parallel work | Aethyme sessions/worktrees | Isolated agent changes and reviewed integration |
@@ -195,11 +196,11 @@ See [ADD Agent-Readable Runtime Inspection](add-runtime-inspection.md) for the
 field contract, ownership rules, stable IDs, browser accessors, and focused
 verification.
 
-### Phase 3 — One-command agent verification loop
+### Phase 3 — One-command agent verification loop (implemented)
 
 Goal: reduce every small task to a predictable inspect/change/check cycle.
 
-Planned command family (names are proposals until implemented):
+Implemented command family:
 
 ```sh
 npm run agent:task -- --describe <task-id>
@@ -209,15 +210,27 @@ npm run agent:verify:add-ui
 npm run agent:report -- --format json
 ```
 
-Deliverables:
+Implemented deliverables:
 
-- A focused runner that chooses the cheapest relevant checks from changed
-  paths, with an explicit override for browser smoke.
-- Machine-readable result files containing command, commit, duration, status,
-  artifacts, and failure hints.
-- Artifact conventions for snapshots, replay logs, screenshots, and traces.
-- A clean distinction between focused checks and the expensive phase gate.
-- A task template that requires acceptance evidence before a task is complete.
+- `scripts/agent-task.cjs` classifies staged, unstaged, untracked, and
+  integration-relative changed paths and chooses the cheapest relevant
+  existing checks. `--smoke` explicitly adds the ADD browser build and smoke;
+  `--gate` is reserved for the expensive target-stack gate.
+- Every run writes a versioned JSON result with command, commit, duration,
+  status, selected source boundaries, artifacts, and failure hints under the
+  ignored `artifacts/agent-verification/<run-id>/` directory.
+- `agent:scenario` records canonical scenario output, snapshots, replay
+  commands, and the Rust command log; child tools receive a common artifact
+  directory for screenshots and traces.
+- `agent:state` loads a save through the existing Rust scenario boundary and
+  exposes the same `agent_runtime_v1` report as headless checks.
+- The task brief now requires acceptance evidence for replay/state artifacts,
+  focused command results, player-facing evidence when applicable, and
+  explicit remaining risk.
+
+See [ADD One-Command Agent Verification Loop](add-agent-verification-loop.md)
+for the result contract, path-selection table, artifact conventions, and
+failure workflow.
 
 Exit criteria:
 

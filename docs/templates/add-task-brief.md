@@ -40,6 +40,17 @@ state or player-facing outcomes.
 - Additional command(s):
 - Browser/screenshot/state evidence, if presentation changes:
 
+## Acceptance evidence (required before completion)
+
+Record the evidence produced by the focused loop before marking the task
+complete. Use `none` only when the field genuinely does not apply, with the
+reason recorded in the final field.
+
+- Scenario/replay artifact:
+- Focused command/result artifact:
+- Player-facing evidence (if applicable):
+- Remaining risk or explicit reason:
+
 ## Likely follow-up
 
 What remains intentionally out of scope, and what future task should pick it

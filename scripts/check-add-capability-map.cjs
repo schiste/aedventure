@@ -29,6 +29,7 @@ const storyContract = read("docs/story-content-engine.md")
 const capabilityMap = read("docs/add-capability-map.md")
 const scenarioHarness = read("docs/add-scenario-harness.md")
 const runtimeInspection = read("docs/add-runtime-inspection.md")
+const agentVerification = read("docs/add-agent-verification-loop.md")
 const taskBrief = read("docs/templates/add-task-brief.md")
 const parityAudit = read("docs/add-systems-parity-audit.md")
 const packageJson = JSON.parse(read("package.json"))
@@ -41,6 +42,7 @@ for (const fragment of [
   "docs/add-capability-map.md",
   "docs/add-scenario-harness.md",
   "docs/add-runtime-inspection.md",
+  "docs/add-agent-verification-loop.md",
   "docs/templates/add-task-brief.md",
   "npm run agent:verify:add-ui",
 ]) {
@@ -57,6 +59,11 @@ requireHeading(runtimeInspection, "## Contract", "ADD runtime inspection")
 requireHeading(runtimeInspection, "## Stable identity rules", "ADD runtime inspection")
 requireHeading(runtimeInspection, "## Focused verification", "ADD runtime inspection")
 requireText(runtimeInspection, "agent_runtime_v1", "ADD runtime inspection")
+requireHeading(agentVerification, "## Command family", "ADD agent verification")
+requireHeading(agentVerification, "## Focused path selection", "ADD agent verification")
+requireHeading(agentVerification, "## Result contract and failure workflow", "ADD agent verification")
+requireHeading(agentVerification, "## Task brief completion evidence", "ADD agent verification")
+requireText(agentVerification, "artifacts/agent-verification/<run-id>/", "ADD agent verification")
 
 for (const heading of [
   "## First route: where does this change belong?",
@@ -75,6 +82,7 @@ for (const field of [
   "## Affected content IDs",
   "## Acceptance scenarios",
   "## Focused verification",
+  "## Acceptance evidence (required before completion)",
   "## Likely follow-up",
 ]) {
   requireHeading(taskBrief, field, "ADD task brief")
@@ -88,6 +96,11 @@ requireText(
 
 for (const command of [
   "docs:check",
+  "agent:task",
+  "agent:scenario",
+  "agent:state",
+  "agent:report",
+  "agent:verification:test",
   "content:check",
   "content:graph",
   "content:timeline",

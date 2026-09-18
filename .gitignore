@@ -14,6 +14,7 @@ coverage/
 tmp/
 temp/
 target/
+artifacts/agent-verification/
 
 # Local-mode verbose trace logs
 logs/
