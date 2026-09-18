@@ -1145,6 +1145,8 @@ function AddRpgApp() {
               id="close-settings"
               type="button"
               class="ghost-button"
+              data-key-action="cancel"
+              aria-keyshortcuts="Escape"
               onClick=${closeSettingsView}
               aria-label="Close settings"
             >
@@ -1326,6 +1328,8 @@ function AddRpgApp() {
             id="close-admin"
             type="button"
             class="ghost-button"
+            data-key-action="cancel"
+            aria-keyshortcuts="Escape"
             onClick=${closeAdminView}
             aria-label="Close admin"
           >
@@ -1457,6 +1461,8 @@ function AddRpgApp() {
             id="close-dev"
             type="button"
             class="ghost-button"
+            data-key-action="cancel"
+            aria-keyshortcuts="Escape"
             onClick=${closeDevView}
             aria-label="Close developer menu"
           >
@@ -1779,7 +1785,15 @@ function handleShellFocusIn(event: FocusEvent): void {
 }
 
 function handleShellKeyDown(event: KeyboardEvent): void {
+  if (event.defaultPrevented) return
+
+  if (event.key === "Enter") {
+    if (handleKeyboardConfirm(event)) return
+  }
+
   if (event.key !== "Escape") return
+
+  if (handleKeyboardCancel(event)) return
 
   if (shellMenuOpen()) {
     event.preventDefault()
@@ -1795,6 +1809,57 @@ function handleShellKeyDown(event: KeyboardEvent): void {
     closeAdvancedViews()
     focusElementById("open-shell-menu")
   }
+}
+
+function handleKeyboardConfirm(event: KeyboardEvent): boolean {
+  if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return false
+  if (shouldLetNativeKeyboardActivationHandle(event.target)) return false
+
+  if (travelDialog()) {
+    consumeKeyboardShortcut(event)
+    answerTravelDialog(true)
+    return true
+  }
+
+  if (offlineReturnSummary()) {
+    consumeKeyboardShortcut(event)
+    dismissOfflineReturnSummary()
+    return true
+  }
+
+  return false
+}
+
+function handleKeyboardCancel(event: KeyboardEvent): boolean {
+  if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return false
+
+  if (travelDialog()) {
+    consumeKeyboardShortcut(event)
+    cancelTravelDialogFromKeyboard()
+    return true
+  }
+
+  if (offlineReturnSummary()) {
+    consumeKeyboardShortcut(event)
+    dismissOfflineReturnSummary()
+    return true
+  }
+
+  return false
+}
+
+function consumeKeyboardShortcut(event: KeyboardEvent): void {
+  event.preventDefault()
+  event.stopPropagation()
+}
+
+function shouldLetNativeKeyboardActivationHandle(target: EventTarget | null): boolean {
+  const element = target instanceof Element ? target : null
+  return Boolean(
+    element?.closest(
+      'button, a[href], summary, input, textarea, select, [role="button"], [contenteditable="true"]',
+    ),
+  )
 }
 
 function focusElementById(id: string): void {
@@ -2979,6 +3044,8 @@ function currentActionSurface(): unknown {
                 id="current-action-primary"
                 type="button"
                 class="primary-action"
+                data-key-action="confirm"
+                aria-keyshortcuts="Enter"
                 onClick=${() => void runCurrentAction()}
                 disabled=${() => !currentActionState().primaryEnabled}
                 aria-label=${() => currentActionPrimaryAriaLabel()}
@@ -5301,13 +5368,18 @@ function objectivePanelPrimaryAction(): AddCurrentActionState | null {
   return action
 }
 
-function objectivePanelPrimaryButton(action: AddCurrentActionState | null): unknown {
+function objectivePanelPrimaryButton(
+  action: AddCurrentActionState | null,
+  id = "objective-primary-action",
+): unknown {
   if (!action?.primaryLabel) return null
   return html`
     <button
-      id="objective-primary-action"
+      id=${id}
       type="button"
       class="objective-primary-action"
+      data-key-action="confirm"
+      aria-keyshortcuts="Enter"
       onClick=${() => void runCurrentAction()}
       disabled=${() => !currentActionState().primaryEnabled}
       aria-label=${() => currentActionPrimaryAriaLabel()}
@@ -5338,6 +5410,7 @@ function objectivePanelBody(): unknown {
     <div class="progress-track" aria-hidden="true">
       <span style=${() => ({ width: firstPlayableProgressWidth() })} />
     </div>
+    ${() => objectivePanelPrimaryButton(objectivePanelPrimaryAction(), "objective-body-primary-action")}
     <p class="objective-copy">
       ${() => firstPlayableCopy()}
     </p>
@@ -5807,7 +5880,8 @@ async function confirmFirstCharacterTravel(event: AddCharacterTravelEvent): Prom
   }
 
   if (travelDramaState === "declined_once") {
-    await showTravelDialog("dramatic_reprise", event)
+    const accepted = await showTravelDialog("dramatic_reprise", event)
+    if (!accepted) return false
     travelDramaState = "complete"
     return true
   }
@@ -5896,6 +5970,16 @@ function answerTravelDialog(accepted: boolean): void {
   current.resolve(accepted)
 }
 
+function cancelTravelDialogFromKeyboard(): void {
+  const current = travelDialog()
+  if (!current) return
+  if (current.kind === "first_declined") {
+    answerTravelDialog(true)
+    return
+  }
+  answerTravelDialog(false)
+}
+
 function travelDialogView(): unknown {
   const dialog = travelDialog()
   if (!dialog) return null
@@ -5909,6 +5993,7 @@ function travelDialogView(): unknown {
         role="dialog"
         aria-modal="true"
         aria-labelledby="travel-dialog-title"
+        aria-keyshortcuts="Enter Escape"
         data-kind=${dialog.kind}
         data-dragging=${() => floatingPanelDraggingId() === "travel_dialog"}
         data-last-action=${() => floatingPanelLastActions().travel_dialog}
@@ -5953,6 +6038,7 @@ function offlineReturnPanel(): unknown {
       role="region"
       aria-labelledby="offline-return-title"
       aria-live="polite"
+      aria-keyshortcuts="Enter Escape"
     >
       <div
         class="floating-panel-handle offline-return-heading"
@@ -5974,6 +6060,8 @@ function offlineReturnPanel(): unknown {
           id="dismiss-offline-return"
           type="button"
           class="ghost-button offline-return-dismiss"
+          data-key-action="cancel"
+          aria-keyshortcuts="Escape"
           onClick=${dismissOfflineReturnSummary}
           aria-label="Dismiss offline return summary"
         >
@@ -5998,6 +6086,8 @@ function offlineReturnPanel(): unknown {
           id="dismiss-offline-return-primary"
           type="button"
           class="primary-action"
+          data-key-action="confirm"
+          aria-keyshortcuts="Enter"
           onClick=${dismissOfflineReturnSummary}
         >
           Continue to next action
@@ -6211,6 +6301,8 @@ function travelDialogActions(kind: TravelDialogKind): readonly unknown[] {
           id="travel-dialog-dismiss"
           type="button"
           class="primary-action"
+          data-key-action="confirm"
+          aria-keyshortcuts="Enter Escape"
           onClick=${() => answerTravelDialog(true)}
         >
           Fine
@@ -6223,9 +6315,23 @@ function travelDialogActions(kind: TravelDialogKind): readonly unknown[] {
     return [
       html`
         <button
+          id="travel-dialog-cancel"
+          type="button"
+          class="ghost-button"
+          data-key-action="cancel"
+          aria-keyshortcuts="Escape"
+          onClick=${() => answerTravelDialog(false)}
+        >
+          Actually wait
+        </button>
+      `,
+      html`
+        <button
           id="travel-dialog-venture"
           type="button"
           class="primary-action"
+          data-key-action="confirm"
+          aria-keyshortcuts="Enter"
           onClick=${() => answerTravelDialog(true)}
         >
           Venture forth
@@ -6240,6 +6346,8 @@ function travelDialogActions(kind: TravelDialogKind): readonly unknown[] {
         id="travel-dialog-cancel"
         type="button"
         class="ghost-button"
+        data-key-action="cancel"
+        aria-keyshortcuts="Escape"
         onClick=${() => answerTravelDialog(false)}
       >
         ${kind === "first_warning" ? "No, stay here" : "Not yet"}
@@ -6250,6 +6358,8 @@ function travelDialogActions(kind: TravelDialogKind): readonly unknown[] {
         id="travel-dialog-confirm"
         type="button"
         class="primary-action"
+        data-key-action="confirm"
+        aria-keyshortcuts="Enter"
         onClick=${() => answerTravelDialog(true)}
       >
         ${kind === "first_warning" ? "OK, venture forth" : "Yes, I know"}

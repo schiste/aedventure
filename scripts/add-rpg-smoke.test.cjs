@@ -530,7 +530,14 @@ async function assertAdminDeveloperSeparation(page, consoleErrors) {
     "add-rpg-settings-smoke.png",
     "ADD RPG player settings screenshot",
   )
-  await closeSettings(page, consoleErrors)
+  await page.locator("#close-settings").focus()
+  await page.keyboard.press("Enter")
+  await waitForTextState(
+    page,
+    (state) => state.shell?.settingsOpen === false,
+    consoleErrors,
+  )
+  await page.waitForTimeout(240)
 
   const opened = await openAdmin(page, consoleErrors)
   assert.equal(opened.shell.adminOpen, true)
@@ -2163,7 +2170,7 @@ async function completeFirstPlayableArc(page, consoleErrors) {
 
     const action = state.ui?.firstPlayable?.currentAction
     if (state.shell?.currentAction?.actionId === "first-playable:reach-base-route") {
-      await clickVisibleElementByDomId(page, "current-action-primary")
+      await clickVisibleCurrentAction(page, state)
       await waitForTextState(
         page,
         (nextState) =>
@@ -2183,7 +2190,7 @@ async function completeFirstPlayableArc(page, consoleErrors) {
       state.shell.currentAction.actionId === "travel:selected-tile"
     ) {
       const beforeDigest = firstPlayableDigest(state)
-      await clickVisibleElementByDomId(page, "current-action-primary")
+      await clickVisibleCurrentAction(page, state)
       await resolveTravelDialogIfNeeded(page, consoleErrors)
       await waitForTextState(
         page,
@@ -2231,7 +2238,7 @@ async function completeFirstPlayableArc(page, consoleErrors) {
         "add-rpg-studio-arrival-handoff-smoke.png",
         "ADD RPG Studio arrival handoff screenshot",
       )
-      await clickVisibleElementByDomId(page, "current-action-primary")
+      await clickVisibleCurrentAction(page, state)
       const openedBase = await waitForTextState(
         page,
         (nextState) =>
@@ -2257,7 +2264,7 @@ async function completeFirstPlayableArc(page, consoleErrors) {
     const beforeDigest = firstPlayableDigest(state)
     const beforeProgressDigest = firstPlayableProgressDigest(state)
     if (state.shell?.currentAction?.source === "base_loop") {
-      const actionDisabled = await isElementDisabledByDomId(page, "current-action-primary")
+      const actionDisabled = await isVisibleCurrentActionDisabled(page, state)
       if (actionDisabled) {
         throw new Error(
           `Base loop action disabled before first playable completion: ${JSON.stringify(
@@ -2267,7 +2274,7 @@ async function completeFirstPlayableArc(page, consoleErrors) {
       }
       const shouldAdvanceClock =
         state.shell.currentAction.kind === "wait" || action?.type === "tick"
-      await clickVisibleElementByDomId(page, "current-action-primary")
+      await clickVisibleCurrentAction(page, state)
       await waitForTextState(
         page,
         (nextState) =>
@@ -2294,7 +2301,7 @@ async function completeFirstPlayableArc(page, consoleErrors) {
         state.ui?.firstPlayable,
       )}`,
     )
-    const actionDisabled = await isElementDisabledByDomId(page, "current-action-primary")
+    const actionDisabled = await isVisibleCurrentActionDisabled(page, state)
     if (actionDisabled) {
       const completedState = await renderGameToText(page)
       if (
@@ -2309,7 +2316,7 @@ async function completeFirstPlayableArc(page, consoleErrors) {
         )}`,
       )
     }
-    await clickVisibleElementByDomId(page, "current-action-primary")
+    await clickVisibleCurrentAction(page, state)
     await waitForTextState(
       page,
       (nextState) =>
@@ -2558,7 +2565,8 @@ async function exerciseSaveReloadOfflineAndReset(page, advanced, consoleErrors) 
     "add-rpg-offline-return-hierarchy-smoke.png",
     "ADD RPG offline return layout hierarchy screenshot",
   )
-  await page.locator("#dismiss-offline-return-primary").click()
+  await page.locator("#offline-return-panel .offline-return-heading").focus()
+  await page.keyboard.press("Enter")
   await page.locator("#offline-return-panel").waitFor({ state: "hidden" })
   await waitForTextState(
     page,
@@ -3273,7 +3281,7 @@ async function exerciseMainCharacterMovement(page, consoleErrors) {
   assert.equal(travelTarget.discovery.selectedTile.travelMinutes, 60)
   assert.equal(travelTarget.map.presentation.mapPrimaryAffordances.pathTimePreviewVisible, true)
 
-  await clickVisibleElementByDomId(page, "current-action-primary")
+  await clickVisibleCurrentAction(page, travelTarget)
   const firstDialog = await waitForTextState(
     page,
     (state) =>
@@ -3300,7 +3308,8 @@ async function exerciseMainCharacterMovement(page, consoleErrors) {
   assert.equal(draggedDialog.shell.popins.travelDialog.bounded, true)
   await assertClickableCenter(page, "#travel-dialog-cancel")
 
-  await page.locator("#travel-dialog-cancel").click()
+  await page.locator(".travel-dialog-handle").focus()
+  await page.keyboard.press("Escape")
   await waitForTextState(
     page,
     (state) =>
@@ -3309,7 +3318,8 @@ async function exerciseMainCharacterMovement(page, consoleErrors) {
       state.map?.character?.cell === before.map.character.cell,
     consoleErrors,
   )
-  await page.locator("#travel-dialog-dismiss").click()
+  await page.locator(".travel-dialog-handle").focus()
+  await page.keyboard.press("Enter")
   await waitForTextState(
     page,
     (state) =>
@@ -3319,7 +3329,8 @@ async function exerciseMainCharacterMovement(page, consoleErrors) {
     consoleErrors,
   )
 
-  await clickVisibleElementByDomId(page, "current-action-primary")
+  const afterDismiss = await renderGameToText(page)
+  await clickVisibleCurrentAction(page, afterDismiss)
   await waitForTextState(
     page,
     (state) =>
@@ -3328,7 +3339,8 @@ async function exerciseMainCharacterMovement(page, consoleErrors) {
       state.map?.character?.cell === before.map.character.cell,
     consoleErrors,
   )
-  await page.locator("#travel-dialog-venture").click()
+  await page.locator(".travel-dialog-handle").focus()
+  await page.keyboard.press("Enter")
   const minimumArrivalClockSeconds = before.snapshot.clockSeconds + 59
   const observedTravelClockTimes = new Set()
   const observedTravelRevealProgress = new Set()
@@ -4029,6 +4041,101 @@ async function clickVisibleElementByDomId(page, id) {
     element.scrollIntoView({ block: "center", inline: "nearest" })
     element.click()
   }, id)
+}
+
+function visibleCurrentActionButtonId(state) {
+  return state.mapMode?.active === "overworld_hex"
+    ? "objective-primary-action"
+    : "current-action-primary"
+}
+
+async function clickVisibleCurrentAction(page, state) {
+  if (state.mapMode?.active === "overworld_hex") {
+    await clickVisibleElementBySelector(
+      page,
+      "#objective-primary-action, #objective-body-primary-action",
+    )
+    return
+  }
+  await clickVisibleElementByDomId(page, visibleCurrentActionButtonId(state))
+}
+
+async function isVisibleCurrentActionDisabled(page, state) {
+  if (state.mapMode?.active === "overworld_hex") {
+    return isVisibleElementDisabledBySelector(
+      page,
+      "#objective-primary-action, #objective-body-primary-action",
+    )
+  }
+  return isElementDisabledByDomId(page, visibleCurrentActionButtonId(state))
+}
+
+async function clickVisibleElementBySelector(page, selector) {
+  await page.waitForFunction((targetSelector) => {
+    return Array.from(document.querySelectorAll(targetSelector)).some((element) => {
+      if (!(element instanceof HTMLElement)) return false
+      const style = window.getComputedStyle(element)
+      const rect = element.getBoundingClientRect()
+      return (
+        style.display !== "none" &&
+        style.visibility !== "hidden" &&
+        Number(style.opacity) > 0 &&
+        rect.width > 0 &&
+        rect.height > 0
+      )
+    })
+  }, selector)
+  await page.evaluate((targetSelector) => {
+    const element = Array.from(document.querySelectorAll(targetSelector)).find((candidate) => {
+      if (!(candidate instanceof HTMLElement)) return false
+      const style = window.getComputedStyle(candidate)
+      const rect = candidate.getBoundingClientRect()
+      return (
+        style.display !== "none" &&
+        style.visibility !== "hidden" &&
+        Number(style.opacity) > 0 &&
+        rect.width > 0 &&
+        rect.height > 0
+      )
+    })
+    if (!(element instanceof HTMLElement)) {
+      throw new Error(`Expected visible element for ${targetSelector}.`)
+    }
+    element.scrollIntoView({ block: "center", inline: "nearest" })
+    element.click()
+  }, selector)
+}
+
+async function isVisibleElementDisabledBySelector(page, selector) {
+  await page.waitForFunction((targetSelector) => {
+    return Array.from(document.querySelectorAll(targetSelector)).some((element) => {
+      if (!(element instanceof HTMLElement)) return false
+      const style = window.getComputedStyle(element)
+      const rect = element.getBoundingClientRect()
+      return (
+        style.display !== "none" &&
+        style.visibility !== "hidden" &&
+        Number(style.opacity) > 0 &&
+        rect.width > 0 &&
+        rect.height > 0
+      )
+    })
+  }, selector)
+  return page.evaluate((targetSelector) => {
+    const element = Array.from(document.querySelectorAll(targetSelector)).find((candidate) => {
+      if (!(candidate instanceof HTMLElement)) return false
+      const style = window.getComputedStyle(candidate)
+      const rect = candidate.getBoundingClientRect()
+      return (
+        style.display !== "none" &&
+        style.visibility !== "hidden" &&
+        Number(style.opacity) > 0 &&
+        rect.width > 0 &&
+        rect.height > 0
+      )
+    })
+    return element instanceof HTMLButtonElement ? element.disabled : false
+  }, selector)
 }
 
 async function assertFloatingPanelDraggable(

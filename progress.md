@@ -3127,3 +3127,11 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   cartouche, and the objective tracker collapsed state is visually smaller.
   Smoke expectations were updated so overworld is checked as map + objective +
   status, with contextual panels reserved for Base, Dungeon, and Return modes.
+- Added keyboard confirmation/cancellation semantics for ADD pop-ins and
+  primary CTAs. Enter now confirms active travel/offline-return prompts when
+  focus is on the pop-in body/handle, Escape cancels travel prompts or dismisses
+  return summaries, and native focused buttons still keep their normal Enter
+  behavior. The dramatic reprise travel prompt now exposes a visible cancel
+  option so Escape and the UI agree. Focused verification passed, and a targeted
+  Playwright probe confirmed route preview, travel cancel, dismiss, and confirm
+  flows through keyboard only.
