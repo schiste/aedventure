@@ -238,7 +238,7 @@ async function assertBootAndRenderTextContract(page, consoleErrors) {
       state.map?.interaction?.activeCell === state.map?.interaction?.selectedCell &&
       state.map?.interaction?.lastInput === "none" &&
       state.map?.interaction?.markerVisible === true &&
-      state.map?.interaction?.primaryMarkerVisible === true &&
+      state.map?.interaction?.primaryMarkerVisible === false &&
       state.map?.presentation?.terrainArt === "procedural_painterly_topology" &&
       state.map?.presentation?.bubbleEffects === "animated_halo_edge" &&
       state.map?.presentation?.landmarkSprites === "procedural_sprite_stack" &&
@@ -3253,14 +3253,25 @@ async function exerciseSurvivorCaveDungeonEntry(page, consoleErrors) {
   assert.equal(before.mapMode.active, "overworld_hex")
   assert.equal(before.map.character.coord, before.map.landmarks.survivorCave)
   assert.ok(before.map.landmarks.survivorCaveViewport, "Survivor Cave viewport point should be available.")
-  const selectedCave = await clickViewportPointUntilSelected(
+  const canvas = page.locator("#add-world canvas")
+  await canvas.waitFor({ state: "visible" })
+  const box = await canvas.boundingBox()
+  assert.ok(box, "ADD RPG Phaser canvas should have a browser box")
+  const cavePoint = {
+    x: box.x + before.map.landmarks.survivorCaveViewport.x,
+    y: box.y + before.map.landmarks.survivorCaveViewport.y,
+  }
+
+  await page.mouse.move(cavePoint.x, cavePoint.y)
+  const selectedCave = await waitForTextState(
     page,
-    before.map.landmarks.survivorCaveViewport,
     (state) =>
       state.mapMode?.active === "overworld_hex" &&
       state.map?.character?.coord === state.map?.landmarks?.survivorCave &&
       state.discovery?.phase === "enter_dungeon" &&
-      state.discovery?.dungeonEntryAvailable === true,
+      state.discovery?.dungeonEntryAvailable === true &&
+      state.map?.interaction?.primaryMarkerVisible === true &&
+      state.map?.interaction?.activeCell === state.map?.character?.cell,
     consoleErrors,
   )
   assert.ok(
@@ -3275,14 +3286,8 @@ async function exerciseSurvivorCaveDungeonEntry(page, consoleErrors) {
   assert.equal(selectedCave.discovery.phase, "enter_dungeon")
   assert.equal(selectedCave.discovery.dungeonEntryAvailable, true)
 
-  assert.match(
-    await page.locator("#enter-dungeon").innerText(),
-    /Enter Survivor Cave/,
-    "The overworld action should invite the player into the Survivor Cave.",
-  )
-
   await page.waitForTimeout(160)
-  await clickVisibleElementByDomId(page, "enter-dungeon")
+  await page.mouse.click(cavePoint.x, cavePoint.y)
   const dungeon = await waitForTextState(
     page,
     (state) =>
@@ -3294,6 +3299,8 @@ async function exerciseSurvivorCaveDungeonEntry(page, consoleErrors) {
       state.map?.topology?.kind === "square" &&
       state.map?.validationValid === true &&
       state.map?.character?.cell === "square:2,4" &&
+      state.map?.interaction?.lastTileActivation?.accepted === true &&
+      state.map?.interaction?.lastTileActivation?.cell === selectedCave.map.character.cell &&
       state.dungeonObjective?.active === true &&
       state.dungeonObjective?.label === "Survivor Cave" &&
       state.dungeonObjective?.mapId === "add.rpg.dungeon.survivor-cave" &&

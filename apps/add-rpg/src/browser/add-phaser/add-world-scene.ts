@@ -15,6 +15,7 @@ import {
 } from "@aedventure/game-renderer-phaser"
 import {
   addMapCoordKey,
+  addAreaById,
   createAddCellPresentationPolicy,
   createAddTopologyNavigationPolicy,
   createAddWorldInteractionPolicy,
@@ -40,7 +41,6 @@ import {
   dungeonLinksForCoord,
   emptyMapInfo,
   emptyRendererState,
-  hasDungeonLinks,
   projectAddPhaserMapInfo,
   rendererType,
 } from "./add-map-telemetry"
@@ -70,6 +70,7 @@ import {
   type AddCharacterTravelEvent,
   type AddPhaserMapInfo,
   type AddRpgPhaserMapHostOptions,
+  type AddTileActivationTelemetry,
   type CharacterMoveStatus,
   type CharacterTravelState,
   type PhaserMapRendererState,
@@ -111,6 +112,11 @@ type MobileEdgeCullObject = Phaser.GameObjects.GameObject & {
 
 type AddLandmarkRole = "cave" | "base" | "crystal" | "door" | "interior" | "generic"
 
+interface TileSubmapAffordanceLink {
+  readonly label: string
+  readonly enabled: boolean
+}
+
 export class AddRpgHexScene extends Phaser.Scene {
   private readonly hostOptions: AddRpgPhaserMapHostOptions
   private readonly cellPresentationPolicy = createAddCellPresentationPolicy()
@@ -140,8 +146,11 @@ export class AddRpgHexScene extends Phaser.Scene {
   private frameCount = 0
   private cameraInitialized = false
   private hoveredCoord: CellCoord | null = null
+  private lastHoverCoord: CellCoord | null = null
+  private lastHoverScreen: Vector2 | null = null
   private selectedCoord: CellCoord | null = null
   private lastInteractionInput: "keyboard" | "pointer" | "programmatic" | "none" = "none"
+  private lastTileActivation: AddTileActivationTelemetry | null = null
   private tooltipText?: Phaser.GameObjects.Text
   private minimapGraphics?: Phaser.GameObjects.Graphics
   private lastRenderedMapId: string | null = null
@@ -152,6 +161,7 @@ export class AddRpgHexScene extends Phaser.Scene {
   private followHero = true
   private dragStartScreen: Vector2 = { x: 0, y: 0 }
   private dragStartScroll: Vector2 = { x: 0, y: 0 }
+  private pointerDownCoord: CellCoord | null = null
   private transitionState: "idle" | "entering" = "idle"
   private transitionProgress = 1
   private characterCoord: CellCoord | null = null
@@ -1621,8 +1631,8 @@ export class AddRpgHexScene extends Phaser.Scene {
   ): readonly WorldCellInteractionAffordance[] {
     const affordances: WorldCellInteractionAffordance[] = []
     for (const cell of context.terrainCells) {
-      if (!hasDungeonLinks(cell)) continue
-      const links = dungeonLinksForCoord(cell.coord, context).map(dungeonLinkInfo)
+      const links = this.submapAffordanceLinksForCell(cell, context)
+      if (links.length === 0) continue
       affordances.push({
         id: `portal:${addMapCoordKey(cell.coord)}`,
         coord: cell.coord,
@@ -1634,29 +1644,51 @@ export class AddRpgHexScene extends Phaser.Scene {
       })
     }
 
-    const primaryCoord = this.selectedCoord ?? this.hoveredCoord
+    const primaryCoord = this.hoveredCoord
     if (!primaryCoord) return affordances
     const primaryCell = context.terrainByCoord.get(addMapCoordKey(primaryCoord))
-    const primaryInteraction = this.worldInteractionPolicy.interactionForCell(
-      primaryCoord,
-      primaryCell,
-    )
-    if (!primaryInteraction) return affordances
-
-    const portal = primaryInteraction.metadata?.dungeonActionsVisible === true
-    if (!portal) return affordances
+    if (!primaryCell || !this.characterCoord || !sameCoord(primaryCoord, this.characterCoord)) {
+      return affordances
+    }
+    const primaryLinks = this.submapAffordanceLinksForCell(primaryCell, context)
+    if (primaryLinks.length === 0) return affordances
 
     affordances.push({
-      id: `primary:${primaryInteraction.id}`,
+      id: `primary:current-tile:${addMapCoordKey(primaryCoord)}`,
       coord: primaryCoord,
       kind: "portal",
-      label: primaryInteraction.label,
+      label: primaryLinks.map((link) => link.label).join(", "),
       actionLabel: "Enter",
-      enabled: primaryInteraction.enabled,
+      enabled: primaryLinks.some((link) => link.enabled),
       emphasis: "primary",
       color: 0xe3a64a,
     })
     return affordances
+  }
+
+  private submapAffordanceLinksForCell(
+    cell: GameCellPlacement,
+    context: RenderContext,
+  ): readonly TileSubmapAffordanceLink[] {
+    const detail = tileInteractionDetailForCoord(cell.coord, context.terrainByCoord)
+    if (!detail || detail.visibility === "hidden") return []
+    const dungeonLinks = dungeonLinksForCoord(cell.coord, context).map(dungeonLinkInfo)
+    const areaLinks: TileSubmapAffordanceLink[] = []
+    for (const areaId of detail.areaIds) {
+      const area = addAreaById(areaId)
+      if (!area) continue
+      areaLinks.push({
+        label: area.label,
+        enabled: true,
+      })
+    }
+    return [
+      ...dungeonLinks.map((link) => ({
+        label: link.label,
+        enabled: link.enabled,
+      })),
+      ...areaLinks,
+    ]
   }
 
   private fitCameraToContext(context: RenderContext): void {
@@ -1738,6 +1770,11 @@ export class AddRpgHexScene extends Phaser.Scene {
   private onPointerDown(pointer: Phaser.Input.Pointer): void {
     this.dragging = true
     this.dragMoved = false
+    this.pointerDownCoord =
+      this.coordAtPointer(pointer) ??
+      this.hoveredCoord ??
+      this.recentHoverCoordForPointer(pointer) ??
+      this.currentTileCoordNearPointer(pointer)
     this.cancelCameraPan()
     this.dragStartScreen = { x: pointer.x, y: pointer.y }
     this.dragStartScroll = {
@@ -1763,6 +1800,10 @@ export class AddRpgHexScene extends Phaser.Scene {
     const nextHover = this.coordAtPointer(pointer)
     if (sameCoord(nextHover, this.hoveredCoord)) return
     this.hoveredCoord = nextHover
+    if (nextHover) {
+      this.lastHoverCoord = nextHover
+      this.lastHoverScreen = { x: pointer.x, y: pointer.y }
+    }
     this.lastInteractionInput = "pointer"
     this.drawOverlay()
     this.refreshInfo()
@@ -1771,11 +1812,63 @@ export class AddRpgHexScene extends Phaser.Scene {
   private onPointerUp(pointer: Phaser.Input.Pointer): void {
     this.dragging = false
     if (!this.dragMoved) {
-      this.selectedCoord = this.coordAtPointer(pointer)
+      const clickedCoord =
+        this.coordAtPointer(pointer) ??
+        this.hoveredCoord ??
+        this.pointerDownCoord ??
+        this.recentHoverCoordForPointer(pointer) ??
+        this.currentTileCoordNearPointer(pointer)
+      this.selectedCoord = clickedCoord
       this.lastInteractionInput = "pointer"
       this.drawOverlay()
+      if (clickedCoord && this.characterCoord && sameCoord(clickedCoord, this.characterCoord)) {
+        this.activateCurrentTile(clickedCoord)
+      } else {
+        this.lastTileActivation = {
+          cell: clickedCoord ? displayAddCell(clickedCoord) : null,
+          accepted: false,
+          reason: "not_current_tile",
+          trigger: "current_tile_click",
+        }
+      }
     }
+    this.pointerDownCoord = null
     this.refreshInfo()
+  }
+
+  private activateCurrentTile(coord: CellCoord): void {
+    const context = this.context
+    if (!context) return
+    const cell = context.terrainByCoord.get(addMapCoordKey(coord))
+    if (!cell || !this.cellPresentationPolicy.cellVisible(cell)) {
+      this.lastTileActivation = {
+        cell: displayAddCell(coord),
+        accepted: false,
+        reason: "hidden_or_missing_cell",
+        trigger: "current_tile_click",
+      }
+      return
+    }
+    if (!this.hostOptions.onTileAction) {
+      this.lastTileActivation = {
+        cell: displayAddCell(coord),
+        accepted: false,
+        reason: "no_handler",
+        trigger: "current_tile_click",
+      }
+      return
+    }
+    this.lastTileActivation = {
+      cell: displayAddCell(coord),
+      accepted: true,
+      reason: "activated",
+      trigger: "current_tile_click",
+    }
+    this.hostOptions.onTileAction?.({
+      coord,
+      cell: displayAddCell(coord),
+      trigger: "current_tile_click",
+    })
   }
 
   private onWheel(
@@ -1848,7 +1941,7 @@ export class AddRpgHexScene extends Phaser.Scene {
   private coordAtPointer(pointer: Phaser.Input.Pointer): CellCoord | null {
     const context = this.context
     if (!context) return null
-    const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y)
+    const worldPoint = this.worldPointForPointer(pointer)
     const localPoint = {
       x: worldPoint.x - context.origin.x,
       y: worldPoint.y - context.origin.y,
@@ -1860,6 +1953,32 @@ export class AddRpgHexScene extends Phaser.Scene {
     if (!coord) return null
     const cell = context.terrainByCoord.get(addMapCoordKey(coord))
     return cell && this.cellPresentationPolicy.cellVisible(cell) ? coord : null
+  }
+
+  private currentTileCoordNearPointer(pointer: Phaser.Input.Pointer): CellCoord | null {
+    const context = this.context
+    if (!context || !this.characterCoord || !this.characterPosition) return null
+    const worldPoint = this.worldPointForPointer(pointer)
+    const threshold =
+      context.topologyKind === "hex"
+        ? visualCellRadius(context) * 1.15
+        : squareCellSize(context) * 0.72
+    return distanceBetween(worldPoint, this.characterPosition) <= threshold
+      ? this.characterCoord
+      : null
+  }
+
+  private worldPointForPointer(pointer: Phaser.Input.Pointer): Vector2 {
+    return this.cameras.main.getWorldPoint(pointer.x, pointer.y)
+  }
+
+  private recentHoverCoordForPointer(pointer: Phaser.Input.Pointer): CellCoord | null {
+    if (!this.lastHoverCoord || !this.lastHoverScreen) return null
+    const screenDistance = distanceBetween(
+      { x: pointer.x, y: pointer.y },
+      this.lastHoverScreen,
+    )
+    return screenDistance <= 28 ? this.lastHoverCoord : null
   }
 
   private refreshInfo(
@@ -1996,6 +2115,7 @@ export class AddRpgHexScene extends Phaser.Scene {
         activeSource: this.selectedCoord ? "selection" : this.hoveredCoord ? "hover" : "none",
         lastInput: this.lastInteractionInput,
         dragging: this.dragging,
+        lastTileActivation: this.lastTileActivation,
       },
       presentation: {
         terrainArt: "procedural_painterly_topology",

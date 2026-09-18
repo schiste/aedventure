@@ -186,7 +186,7 @@ export class WorldCellInteractionRenderer {
   ): void {
     const style = styleForAffordance(affordance)
     const pulse = (Math.sin(frameCount / 13) + 1) / 2
-    const y = center.y - 32 - pulse * 1.6
+    const y = center.y - 30 - pulse * 1.6
     const container = this.scene.add.container(center.x, y)
     container.setDepth(depth)
     container.setName(`world-cell-action:${affordance.id}`)
@@ -194,27 +194,34 @@ export class WorldCellInteractionRenderer {
     const labelText = compactLabel(
       style.enabled ? (affordance.actionLabel ?? affordance.label ?? "Action") : "Blocked",
     )
-    const label = this.scene.add.text(0, -4, labelText, {
+    const icon = this.scene.add.graphics()
+    icon.fillStyle(0x151915, 0.24)
+    icon.fillEllipse(0, 18, 40, 10)
+    icon.fillStyle(style.enabled ? 0xfff5d7 : 0x2b231f, style.enabled ? 0.96 : 0.88)
+    icon.fillCircle(0, 0, 18)
+    icon.lineStyle(2.2, style.color, style.enabled ? 0.92 : 0.44)
+    icon.strokeCircle(0, 0, 18)
+    icon.lineStyle(1.1, 0xffffff, style.enabled ? 0.46 : 0.18)
+    icon.strokeCircle(0, 0, 13)
+    drawSymbolicAffordance(icon, affordance, { x: 0, y: -1 }, 26)
+
+    const label = this.scene.add.text(0, -27, labelText, {
       color: style.textColor,
       fontFamily: "Aptos, Segoe UI, sans-serif",
-      fontSize: "11px",
+      fontSize: "10px",
       fontStyle: "800",
       align: "center",
-      backgroundColor: style.enabled ? "rgba(255, 250, 226, 0.92)" : "rgba(35, 29, 24, 0.92)",
+      backgroundColor: style.enabled ? "rgba(255, 250, 226, 0.86)" : "rgba(35, 29, 24, 0.88)",
       stroke: "rgba(255, 255, 255, 0.52)",
-      strokeThickness: 2,
-      padding: { x: 7, y: 4 },
+      strokeThickness: 1.4,
+      padding: { x: 5, y: 2 },
     })
     applyCrispWorldText(label)
     label.setOrigin(0.5, 0.5)
-    const width = Math.max(46, label.width + 12)
-    const shadow = this.scene.add.ellipse(0, 17, width * 0.68, 8, 0x161915, 0.18)
-    const halo = this.scene.add.ellipse(0, 3, width, 28, style.color, style.enabled ? 0.12 : 0.07)
-    halo.setStrokeStyle(1.5, style.color, style.enabled ? 0.32 : 0.18)
-    const stem = this.scene.add.rectangle(0, 19, 3, 11, style.color, style.enabled ? 0.72 : 0.42)
-    const dot = this.scene.add.ellipse(0, 26, 8, 8, style.color, style.enabled ? 0.86 : 0.48)
-    dot.setStrokeStyle(1, 0xfffdf7, style.enabled ? 0.72 : 0.36)
-    container.add([shadow, halo, stem, dot, label])
+    const stem = this.scene.add.rectangle(0, 19, 3, 9, style.color, style.enabled ? 0.7 : 0.38)
+    const dot = this.scene.add.ellipse(0, 25, 7, 7, style.color, style.enabled ? 0.86 : 0.48)
+    dot.setStrokeStyle(1, 0xfffdf7, style.enabled ? 0.7 : 0.32)
+    container.add([stem, dot, icon, label])
     this.markerObjects.push(container)
   }
 }

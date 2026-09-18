@@ -249,6 +249,7 @@ export function projectAddPhaserMapInfo(
       primaryMarkerVisible: Boolean(
         (rendererState.renderers.interactions?.primaryMarkerCount ?? 0) > 0,
       ),
+      lastTileActivation: rendererState.interaction.lastTileActivation,
       selectedLabel: selectedDetail?.label ?? selectedInteraction?.label ?? null,
       hoveredDetail,
       selectedDetail,
@@ -344,6 +345,7 @@ export function emptyRendererState(): PhaserMapRendererState {
       activeSource: "none",
       lastInput: "none",
       dragging: false,
+      lastTileActivation: null,
     },
     presentation: {
       terrainArt: "procedural_painterly_topology",
@@ -583,6 +585,7 @@ export function emptyMapInfo(): AddPhaserMapInfo {
       activeLabel: null,
       markerVisible: false,
       primaryMarkerVisible: false,
+      lastTileActivation: null,
       selectedLabel: null,
       hoveredDetail: null,
       selectedDetail: null,
