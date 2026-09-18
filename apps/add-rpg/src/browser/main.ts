@@ -55,6 +55,7 @@ import {
   createAddWorldForMapMode,
   selectAddStoryMoment,
   selectAddStoryContentBrowserState,
+  selectPreferredTileAction,
   type AddStoryMoment,
   type AddUiState,
   type AddDiscoveryActionLink,
@@ -6753,29 +6754,11 @@ function handleTileActivation(event: AddTileActivationEvent): void {
   if (selected) refreshMapInfo()
   const detail = discoveryState()?.tileDetail
   if (!detail || detail.cell !== event.cell) return
-  const action = preferredTileAction(detail)
+  const action = selectPreferredTileAction(detail)
   if (!action) return
   lastTileActionAtMs = Date.now()
   setLastTileActionTarget(action.linkId ?? event.cell)
   runTileDetailAction(detail, action)
-}
-
-function preferredTileAction(detail: AddTileDetailSummary): AddTileAction | null {
-  const enabledActions = detail.actions.filter((action) => action.enabled)
-  const linkedAction = (action: AddTileAction) =>
-    action.linkId ? detail.links.find((link) => link.id === action.linkId) : null
-  return (
-    enabledActions.find(
-      (action) => action.kind === "enter_submap" && linkedAction(action)?.kind === "area",
-    ) ??
-    enabledActions.find(
-      (action) => action.kind === "enter_submap" && linkedAction(action)?.kind === "dungeon",
-    ) ??
-    enabledActions.find((action) => action.kind === "enter_submap") ??
-    enabledActions.find((action) => action.kind === "manage_base") ??
-    enabledActions.find((action) => action.kind === "travel") ??
-    null
-  )
 }
 
 function enterDungeonInteraction(interaction: GameInteraction): void {

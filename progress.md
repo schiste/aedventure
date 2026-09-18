@@ -216,6 +216,10 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   actions, renders hover/click affordances from that list, and emits a neutral
   `tile_click` event for every scene. Current-tile dungeon entry and adjacent
   travel both use the same activation path.
+- ADD tile action priority and visual affordance projection now live in
+  `add-domain` through `selectPreferredTileAction` and
+  `selectTileActionAffordances`, so the app shell and Phaser renderer consume
+  the same ordered action model instead of maintaining parallel priority rules.
 - Verification for the travel halo trail: `npm --workspace @aedventure/add-rpg
   run build:browser` and `npm run smoke:add-rpg` pass. The broader
   `npm run check` is currently blocked by unrelated dirty ADD dungeon work
