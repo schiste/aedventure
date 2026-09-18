@@ -471,6 +471,12 @@ async function assertAdminDeveloperSeparation(page, consoleErrors) {
     (state) => state.shell?.accessibility?.focusedRegion === "settings",
     consoleErrors,
   )
+  await assertPopinKeyboardNavigation(page, {
+    rootSelector: "#settings-view",
+    textSectionSelector: ".settings-panel.keyboard-section",
+    firstStopClass: "settings-drag-handle",
+    label: "Settings",
+  })
   const settingsText = await page.locator("#settings-view").innerText()
   ;[
     "Sound",
@@ -552,6 +558,12 @@ async function assertAdminDeveloperSeparation(page, consoleErrors) {
     (state) => state.shell?.accessibility?.focusedRegion === "admin",
     consoleErrors,
   )
+  await assertPopinKeyboardNavigation(page, {
+    rootSelector: "#admin-view",
+    textSectionSelector: "#admin-run-status.keyboard-section",
+    firstStopClass: "drawer-section-map",
+    label: "Admin",
+  })
 
   const adminText = await page.locator("#admin-view").innerText()
   ;[
@@ -595,6 +607,12 @@ async function assertAdminDeveloperSeparation(page, consoleErrors) {
   assert.equal(revealed.shell.interfaceHierarchy.advanced.adminOpen, false)
   assert.equal(revealed.shell.interfaceHierarchy.advanced.developerOpen, true)
   await page.locator("#save-payload").waitFor({ state: "visible" })
+  await assertPopinKeyboardNavigation(page, {
+    rootSelector: "#dev-view",
+    textSectionSelector: "#dev-runtime-internals.keyboard-section",
+    firstStopClass: "drawer-section-map",
+    label: "Developer menu",
+  })
   const devText = await page.locator("#developer-tools-body").innerText()
   assert.match(devText, /Runtime internals/i)
   assert.match(devText, /UI -> Worker -> Rust\/WASM -> Snapshot/i)
@@ -623,6 +641,104 @@ async function assertAdminDeveloperSeparation(page, consoleErrors) {
     "hidden",
     "Closed admin drawer should be hidden after normal close.",
   )
+}
+
+async function assertPopinKeyboardNavigation(page, options) {
+  const { rootSelector, textSectionSelector, firstStopClass, label } = options
+  await page.locator(textSectionSelector).first().waitFor({ state: "visible" })
+  await page.locator(textSectionSelector).first().focus()
+  let snapshot = await popinKeyboardSnapshot(page, rootSelector)
+  assert.equal(
+    snapshot.activeInsideRoot,
+    true,
+    `${label} text section should be reachable by keyboard focus.`,
+  )
+  assert.ok(
+    snapshot.activeClassName.includes("keyboard-section"),
+    `${label} should include readable text sections in the Tab order.`,
+  )
+
+  await focusPopinStop(page, rootSelector, -1)
+  await page.keyboard.press("Tab")
+  snapshot = await popinKeyboardSnapshot(page, rootSelector)
+  assert.equal(snapshot.activeInsideRoot, true, `${label} Tab cycle should stay inside the pop-in.`)
+  assert.equal(
+    snapshot.activeIndex,
+    0,
+    `${label} Tab from the last stop should loop back to the first pop-in stop.`,
+  )
+  assert.ok(
+    snapshot.activeClassName.includes(firstStopClass),
+    `${label} first focus stop should be the expected panel/navigation start.`,
+  )
+}
+
+async function focusPopinStop(page, rootSelector, index) {
+  await page.evaluate(
+    ({ rootSelector, index }) => {
+      const root = document.querySelector(rootSelector)
+      if (!(root instanceof HTMLElement)) throw new Error(`Missing ${rootSelector}`)
+      const stops = Array.from(
+        root.querySelectorAll(
+          [
+            "a[href]",
+            "button:not([disabled])",
+            "input:not([disabled])",
+            "select:not([disabled])",
+            "textarea:not([disabled])",
+            "summary",
+            "[tabindex]:not([tabindex='-1'])",
+          ].join(", "),
+        ),
+      ).filter((element) => {
+        if (!(element instanceof HTMLElement)) return false
+        if (element.closest("[hidden], [aria-hidden='true']")) return false
+        const style = getComputedStyle(element)
+        if (style.display === "none" || style.visibility === "hidden") return false
+        const rect = element.getBoundingClientRect()
+        return rect.width > 0 || rect.height > 0
+      })
+      if (stops.length === 0) throw new Error(`No focus stops in ${rootSelector}`)
+      const resolvedIndex = index < 0 ? stops.length + index : index
+      stops[Math.max(0, Math.min(stops.length - 1, resolvedIndex))].focus()
+    },
+    { rootSelector, index },
+  )
+}
+
+async function popinKeyboardSnapshot(page, rootSelector) {
+  return page.evaluate((rootSelector) => {
+    const root = document.querySelector(rootSelector)
+    if (!(root instanceof HTMLElement)) throw new Error(`Missing ${rootSelector}`)
+    const stops = Array.from(
+      root.querySelectorAll(
+        [
+          "a[href]",
+          "button:not([disabled])",
+          "input:not([disabled])",
+          "select:not([disabled])",
+          "textarea:not([disabled])",
+          "summary",
+          "[tabindex]:not([tabindex='-1'])",
+        ].join(", "),
+      ),
+    ).filter((element) => {
+      if (!(element instanceof HTMLElement)) return false
+      if (element.closest("[hidden], [aria-hidden='true']")) return false
+      const style = getComputedStyle(element)
+      if (style.display === "none" || style.visibility === "hidden") return false
+      const rect = element.getBoundingClientRect()
+      return rect.width > 0 || rect.height > 0
+    })
+    const active = document.activeElement
+    return {
+      activeInsideRoot: active instanceof HTMLElement && root.contains(active),
+      activeIndex: stops.indexOf(active),
+      activeId: active instanceof HTMLElement ? active.id : "",
+      activeClassName: active instanceof HTMLElement ? active.className.toString() : "",
+      stopCount: stops.length,
+    }
+  }, rootSelector)
 }
 
 function assertInitialVisibilityContract(initial) {
