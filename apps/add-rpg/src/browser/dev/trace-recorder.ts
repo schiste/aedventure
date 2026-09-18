@@ -1,0 +1,376 @@
+import type { AddGameEvent, SimulationSnapshot, TraceEntry } from "@aedventure/add-domain"
+
+/**
+ * Local-mode verbose tracing.
+ *
+ * Captures the full simulation protocol — every command sent to the worker, every
+ * event received, and every semantic `add-game-event` — and streams it as NDJSON
+ * to the dev-only `/__trace` sink (see apps/add-rpg/dev/trace-sink.mjs), which
+ * appends it to `logs/session-*.jsonl`.
+ *
+ * Everything is gated behind `import.meta.env.DEV`: in a production build
+ * `installTraceRecorder` returns a no-op and nothing here runs.
+ *
+ * Analyse a session afterwards with jq, e.g.:
+ *   jq -c 'select(.kind=="combat_resolved")'        logs/session-*.jsonl
+ *   jq -c 'select(.dir=="event" and .latencyMs>16)' logs/session-*.jsonl
+ */
+
+const DEV = Boolean((import.meta as { env?: { DEV?: boolean } }).env?.DEV)
+
+/** Full snapshot bodies are huge and largely redundant tick-to-tick. By default
+ *  we keep only the per-frame `events[]` (the real signal) plus the message type.
+ *  Flip this to true if you need the entire reconstructed state on every tick. */
+const KEEP_FULL_SNAPSHOTS = false
+
+const SESSION = new Date().toISOString().replace(/[:.]/g, "-")
+const FLUSH_MS = 1000
+const MAX_BATCH = 200
+
+const buffer: string[] = []
+let flushTimer: ReturnType<typeof setTimeout> | undefined
+let warnedSinkDown = false
+
+function enqueue(record: unknown): void {
+  buffer.push(JSON.stringify(record))
+  if (buffer.length >= MAX_BATCH) flush()
+  else if (!flushTimer) flushTimer = setTimeout(flush, FLUSH_MS)
+}
+
+function flush(): void {
+  if (flushTimer) {
+    clearTimeout(flushTimer)
+    flushTimer = undefined
+  }
+  if (buffer.length === 0) return
+  const body = `${buffer.join("\n")}\n`
+  buffer.length = 0
+  // keepalive lets the final batch survive a page nav / refresh.
+  void fetch("/__trace", {
+    method: "POST",
+    headers: { "content-type": "application/x-ndjson", "x-trace-session": SESSION },
+    body,
+    keepalive: true,
+  }).catch(() => {
+    if (!warnedSinkDown) {
+      warnedSinkDown = true
+      console.warn("[trace] /__trace sink unreachable — trace lines are being dropped")
+    }
+  })
+}
+
+/** Trim payloads that carry bulky, low-signal blobs while keeping their useful shape. */
+function trimPayload(payload: TraceEntry["payload"]): unknown {
+  if (!KEEP_FULL_SNAPSHOTS && "snapshot" in payload && payload.snapshot) {
+    return { type: payload.type, events: payload.snapshot.events }
+  }
+  // Save/import blobs dominate log volume (~70%) and add no debugging value;
+  // keep only their size. Flip KEEP_FULL_SNAPSHOTS to retain everything.
+  if (
+    !KEEP_FULL_SNAPSHOTS &&
+    (payload.type === "save" || payload.type === "importSave") &&
+    typeof payload.payload === "string"
+  ) {
+    return { type: payload.type, saveBytes: payload.payload.length }
+  }
+  return payload
+}
+
+// ── Performance sampling ────────────────────────────────────────────────────
+// Render / main-thread perf is time-sampled (a rate, not a per-command fact), so
+// it rides its own `dir:"perf"` stream rather than bloating every ctx.
+
+const PERF_SAMPLE_MS = 1000
+/** A frame slower than this is a visible hitch (well past the ~16.7ms 60fps budget). */
+const JANK_FRAME_MS = 50
+
+interface PerfMemory {
+  readonly usedJSHeapSize: number
+  readonly totalJSHeapSize: number
+  readonly jsHeapSizeLimit: number
+}
+
+/** Latest worker back-pressure seen at the boundary, folded into each perf sample. */
+let lastQueueDepth = 0
+
+/** One-shot boot timing: navigation + paint milestones. Deferred until the `load`
+ *  event so domContentLoaded/load/paint are actually populated (they read 0 if
+ *  sampled mid-load, while the tracer is installing). */
+function recordStartupPerf(): void {
+  const emit = (): void => {
+    try {
+      const nav = performance.getEntriesByType("navigation")[0] as
+        | PerformanceNavigationTiming
+        | undefined
+      const paints = performance.getEntriesByType("paint")
+      const fp = paints.find((p) => p.name === "first-paint")?.startTime
+      const fcp = paints.find((p) => p.name === "first-contentful-paint")?.startTime
+      enqueue({
+        t: performance.now(),
+        dir: "perf",
+        kind: "startup",
+        ...(nav
+          ? {
+              domInteractiveMs: Math.round(nav.domInteractive),
+              domContentLoadedMs: Math.round(nav.domContentLoadedEventEnd),
+              loadMs: Math.round(nav.loadEventEnd),
+            }
+          : {}),
+        ...(fp !== undefined ? { firstPaintMs: Math.round(fp) } : {}),
+        ...(fcp !== undefined ? { firstContentfulPaintMs: Math.round(fcp) } : {}),
+      })
+    } catch {
+      // Timing APIs unavailable — startup metrics are best-effort.
+    }
+  }
+  // `loadEventEnd` is only set after the load event finishes dispatching, so defer
+  // one task past it; reading inside the handler itself yields 0.
+  if (document.readyState === "complete") emit()
+  else window.addEventListener("load", () => setTimeout(emit, 0), { once: true })
+}
+
+/** Begin per-second frame/jank/heap sampling. Returns a stop function. */
+function startPerfSampling(): () => void {
+  const frameMs: number[] = []
+  let lastTs = 0
+  let raf = requestAnimationFrame(function onFrame(ts) {
+    if (lastTs) frameMs.push(ts - lastTs)
+    lastTs = ts
+    raf = requestAnimationFrame(onFrame)
+  })
+
+  let longTasks = 0
+  let blockingMs = 0
+  let observer: PerformanceObserver | undefined
+  try {
+    observer = new PerformanceObserver((list) => {
+      for (const entry of list.getEntries()) {
+        longTasks += 1
+        blockingMs += entry.duration
+      }
+    })
+    observer.observe({ entryTypes: ["longtask"] })
+  } catch {
+    // longtask observation unsupported (e.g. Firefox); frame timing still works.
+  }
+
+  const sample = (): void => {
+    const samples = frameMs.splice(0)
+    const n = samples.length
+    const sum = samples.reduce((a, b) => a + b, 0)
+    const avg = n ? sum / n : 0
+    const sorted = [...samples].sort((a, b) => a - b)
+    const p95 = n ? sorted[Math.min(n - 1, Math.floor(0.95 * n))] : 0
+    const mem = (performance as unknown as { memory?: PerfMemory }).memory
+
+    enqueue({
+      t: performance.now(),
+      dir: "perf",
+      kind: "sample",
+      fps: avg ? Math.round(1000 / avg) : 0,
+      frameMsAvg: Math.round(avg * 10) / 10,
+      frameMsP95: Math.round(p95 * 10) / 10,
+      frameMsMax: n ? Math.round(Math.max(...samples) * 10) / 10 : 0,
+      jankFrames: samples.filter((d) => d >= JANK_FRAME_MS).length,
+      longTasks,
+      blockingMs: Math.round(blockingMs),
+      queueDepth: lastQueueDepth,
+      ...(mem
+        ? {
+            heapUsedMB: Math.round(mem.usedJSHeapSize / 1048576),
+            heapLimitMB: Math.round(mem.jsHeapSizeLimit / 1048576),
+          }
+        : {}),
+    })
+    longTasks = 0
+    blockingMs = 0
+  }
+
+  const timer = setInterval(sample, PERF_SAMPLE_MS)
+  return () => {
+    cancelAnimationFrame(raf)
+    clearInterval(timer)
+    observer?.disconnect()
+  }
+}
+
+/**
+ * Per-entry context stamped on EVERY trace line — the index that makes a
+ * record-everything trace searchable. Grouped by analysis concern so jq reads
+ * cleanly, e.g.:
+ *   jq -c 'select(.ctx.power.brownout)'                    logs/session-*.jsonl
+ *   jq -c 'select(.ctx.survival.forcedReturn)'            logs/session-*.jsonl
+ *   jq -c '[.ctx.time.clock, .ctx.bubble.ring] | @csv'    logs/session-*.jsonl
+ *
+ * All values are rounded/counted to keep each line small; the `combat` group is
+ * null unless a skirmish is live, so idle lines stay lean. Add or trim freely —
+ * this is the one spot where you decide what questions the trace can answer.
+ */
+export function frameContext(s: SimulationSnapshot): Record<string, unknown> {
+  const r1 = (n: number): number => Math.round(n * 10) / 10
+  const r2 = (n: number): number => Math.round(n * 100) / 100
+  const pct = (cur: number, max: number): number => Math.round((cur / Math.max(1, max)) * 100) / 100
+
+  return {
+    // Pacing — the x-axis of every time series.
+    time: { clock: Math.round(s.clockSeconds) },
+
+    // Hero power curve: the three class tracks you balance difficulty against.
+    hero: {
+      drummer: s.heroProgress.drummerLevel,
+      vocalist: s.heroProgress.vocalistLevel,
+      synth: s.heroProgress.synthLevel,
+    },
+
+    // Survival loop: risk, debuffs, and the forced-return timer (death-spiral debugging).
+    survival: {
+      sustain: r1(s.heroSurvival.sustain),
+      where: s.heroSurvival.location,
+      debuffTier: s.heroSurvival.debuffTier,
+      echoScars: s.heroSurvival.echoScars,
+      viralLoad: r2(s.heroSurvival.viralLoadRatio),
+      pointOfNoReturn: r2(s.heroSurvival.pointOfNoReturnRatio),
+      forcedReturnInS: Math.round(s.heroSurvival.secondsUntilForcedReturn),
+      workEff: r2(s.heroSurvival.workEfficiencyMultiplier),
+      forcedReturn: s.heroSurvival.forcedReturn !== null,
+    },
+
+    // Economy: currencies + lifetime flow for spotting source/sink drift.
+    econ: {
+      bassline: Math.round(s.resources.bassline),
+      chorus: Math.round(s.resources.chorus),
+      harmonics: Math.round(s.resources.harmonics),
+      stone: Math.round(s.resources.stone),
+      water: Math.round(s.resources.water),
+      vibes: Math.round(s.resources.vibes),
+      lifeGen: Math.round(s.resources.lifetimeGenerated),
+      lifeSpent: Math.round(s.resources.lifetimeSpent),
+    },
+
+    // Production & power: brownouts are a top balance/debug signal.
+    power: {
+      brownout: s.power.brownoutActive,
+      brownoutSev: r2(s.power.brownoutSeverity),
+      harmonicsTier: s.power.harmonicsTier,
+      staff: s.power.activeStaffCount,
+      upkeepReq: r1(s.power.requestedUpkeepPerSecond),
+      upkeepActive: r1(s.power.activeUpkeepPerSecond),
+    },
+
+    // Crew & base: growth, overcrowding, milestone unlocks.
+    base: {
+      crew: s.roster.totalCrew,
+      occupants: s.base.occupantCount,
+      freeBunks: s.base.freeBunks,
+      missingBunks: s.base.missingBunks,
+      overcrowdedS: Math.round(s.base.overcrowdedSeconds),
+      studioRestored: s.base.studioRestored,
+      badVibes: r2(s.base.badVibesMultiplier),
+    },
+
+    // Bubble frontier: the core expansion mechanic.
+    bubble: {
+      ring: s.bubble.stabilizedRing,
+      frontier: r2(s.bubble.frontierProgress),
+      targetRing: s.bubble.targetRing,
+      hexes: s.bubble.stabilizedHexes,
+      reach: r1(s.bubble.reachFromBase),
+      holdLeftS: Math.round(s.bubble.holdSecondsRemaining),
+    },
+
+    // Progression spine: where the player is in quests and story.
+    quest: {
+      objective: s.objectives.activeObjectiveId,
+      objectivesDone: s.objectives.completedObjectiveIds.length,
+      recruitOpen: s.objectives.recruitmentEnabled,
+      caveInBubble: s.objectives.survivorCaveInBubble,
+      beat: s.narrative.activeBeatId,
+      beatsDone: s.narrative.completedBeatIds.length,
+    },
+
+    // Roster pipeline.
+    recruit: {
+      total: s.recruitment.totalRecruitedThisRun,
+      pending: s.recruitment.pendingRecruits.length,
+      nextCost: Math.round(s.recruitment.nextRecruitCost),
+    },
+
+    // Field activity & rewards.
+    expe: {
+      active: s.expeditions.activeJobs.length,
+      reports: s.expeditions.completedReports.length,
+      clues: s.expeditions.totalClues,
+      leads: s.expeditions.totalDungeonLeads,
+      wounds: s.expeditions.totalWounds,
+    },
+
+    // Exploration footprint + hero position.
+    map: { discovered: s.discoveredCells.length, q: s.heroMap.q, r: s.heroMap.r },
+
+    // Combat — only when a skirmish is live, to keep idle lines lean.
+    combat: s.activeCombat
+      ? {
+          creature: s.activeCombat.creatureId,
+          round: s.activeCombat.round,
+          heroHpPct: pct(s.activeCombat.heroHp, s.activeCombat.heroHpMax),
+          enemyHpPct: pct(s.activeCombat.creatureHp, s.activeCombat.creatureHpMax),
+          threat: r1(s.activeCombat.threat),
+        }
+      : null,
+  }
+}
+
+export interface TraceRecorder {
+  /** Pass to `SimulationClient` as its `onTrace` option. */
+  readonly onTrace: (entry: TraceEntry) => void
+}
+
+/**
+ * Wire up local-mode tracing. No-op (returns an empty `onTrace`) outside dev builds.
+ * @param getSnapshot returns the latest snapshot so each line can be stamped with context.
+ */
+export function installTraceRecorder(getSnapshot: () => SimulationSnapshot | null): TraceRecorder {
+  if (DEV !== true || typeof window === "undefined") {
+    return { onTrace: () => {} }
+  }
+
+  const stamp = (): Record<string, unknown> => {
+    const snap = getSnapshot()
+    return snap ? frameContext(snap) : {}
+  }
+
+  // Boundary tap: every command out + every worker event in, with latency + back-pressure.
+  const onTrace = (entry: TraceEntry): void => {
+    if (entry.queueDepth !== undefined) lastQueueDepth = entry.queueDepth
+    enqueue({
+      t: entry.at,
+      dir: entry.dir,
+      kind: entry.kind,
+      ...(entry.latencyMs !== undefined ? { latencyMs: Math.round(entry.latencyMs) } : {}),
+      ...(entry.request ? { request: entry.request } : {}),
+      ...(entry.queueDepth !== undefined ? { queueDepth: entry.queueDepth } : {}),
+      payload: trimPayload(entry.payload),
+      ctx: stamp(),
+    })
+  }
+
+  // Semantic tap: the same add-game-event stream music-event-bridge listens to.
+  window.addEventListener("add-game-event", (event) => {
+    const detail = (event as CustomEvent<AddGameEvent>).detail
+    if (!detail?.kind) return
+    enqueue({ t: performance.now(), dir: "game", kind: detail.kind, payload: detail, ctx: stamp() })
+  })
+
+  // Performance: one-shot boot timing, then a per-second render/jank/heap sample.
+  recordStartupPerf()
+  const stopPerf = startPerfSampling()
+
+  // Don't lose the tail when the page closes or reloads.
+  window.addEventListener("beforeunload", () => {
+    stopPerf()
+    flush()
+  })
+  console.info(`[trace] recording to logs/session-${SESSION}.jsonl`)
+
+  return { onTrace }
+}

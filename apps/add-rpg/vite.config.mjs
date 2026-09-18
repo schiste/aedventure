@@ -2,12 +2,15 @@ import { fileURLToPath } from "node:url"
 
 import { defineConfig } from "vite"
 
+import { traceSink } from "./dev/trace-sink.mjs"
+
 const root = fileURLToPath(new URL("../..", import.meta.url))
 const packageSource = (packagePath) =>
   fileURLToPath(new URL(`../../packages/${packagePath}/src`, import.meta.url))
 
 export default defineConfig({
   base: "/app/",
+  plugins: [traceSink()],
   resolve: {
     alias: {
       "@aedventure/add-domain": packageSource("add-domain"),

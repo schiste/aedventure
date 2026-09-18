@@ -1,4 +1,5 @@
 import type {
+  AddGameEvent,
   CatalogSnapshot,
   SimulationSnapshot,
   StationSpecializationPath,
@@ -7,11 +8,43 @@ import type {
 } from './protocol'
 import { mergeSnapshotDelta } from './snapshot-delta'
 
+/** A single observation at the worker boundary: a command going out, or an event coming back. */
+export interface TraceEntry {
+  /** 'command' = request sent to the worker; 'event' = result received from it. */
+  readonly dir: 'command' | 'event'
+  /** High-resolution timestamp (ms) when this crossed the boundary. */
+  readonly at: number
+  /** Protocol message type — 'tick', 'engage', 'snapshot', 'error', … */
+  readonly kind: string
+  /** Round-trip ms (send→receive) for events; undefined for commands. */
+  readonly latencyMs?: number
+  /** For events, the type of the command this completed (if one was in flight). */
+  readonly request?: string
+  /** Requests still waiting behind this one — worker back-pressure / throughput signal. */
+  readonly queueDepth?: number
+  /** The full protocol payload (request or event). */
+  readonly payload: WorkerRequest | WorkerEvent
+}
+
+const monotonicNow = (): number =>
+  typeof performance !== 'undefined' ? performance.now() : Date.now()
+
+/** The per-frame game events carried by a worker message (empty for non-snapshot messages). */
+function frameEventsOf(message: WorkerEvent): AddGameEvent[] {
+  if (message.type === 'ready' || message.type === 'snapshot') return message.snapshot.events
+  if (message.type === 'snapshotDelta') return message.changed.events ?? []
+  return []
+}
+
 export interface SimulationClientOptions {
   onSnapshot(snapshot: SimulationSnapshot): void
   onReady(snapshot: SimulationSnapshot, catalog: CatalogSnapshot): void
   onSave(payload: string): void
   onError(message: string): void
+  /** Per-frame structured game events (combat, level-ups, discoveries, …) as they occur. */
+  onEvents?(events: AddGameEvent[]): void
+  /** Dev-only: receives a structured entry for every command sent and event received. */
+  onTrace?(entry: TraceEntry): void
   worker?: Worker
   createWorker?: () => Worker
 }
@@ -26,6 +59,10 @@ export class SimulationClient {
   // one round-trip at a time, so a slow worker can never be flooded.
   private readonly queue: WorkerRequest[] = []
   private inFlight = false
+  // Timing for the request currently awaiting a reply, so events can report
+  // round-trip latency and name the command they completed.
+  private inFlightSince = 0
+  private inFlightRequest: WorkerRequest | null = null
 
   constructor(options: SimulationClientOptions) {
     this.options = options
@@ -165,6 +202,18 @@ export class SimulationClient {
   private onMessage = (event: MessageEvent<WorkerEvent>) => {
     const message = event.data
 
+    if (this.options.onTrace) {
+      this.options.onTrace({
+        dir: 'event',
+        at: monotonicNow(),
+        kind: message.type,
+        latencyMs: this.inFlightSince ? monotonicNow() - this.inFlightSince : undefined,
+        request: this.inFlightRequest?.type,
+        queueDepth: this.queue.length,
+        payload: message,
+      })
+    }
+
     switch (message.type) {
       case 'ready':
         this.currentSnapshot = message.snapshot
@@ -195,6 +244,13 @@ export class SimulationClient {
         break
     }
 
+    // Surface this frame's game events after app state is current, so consumers
+    // (music, telemetry) read a snapshot that already reflects them.
+    if (this.options.onEvents) {
+      const events = frameEventsOf(message)
+      if (events.length) this.options.onEvents(events)
+    }
+
     // Every worker event completes the in-flight request; drain the next.
     this.inFlight = false
     this.pump()
@@ -219,6 +275,17 @@ export class SimulationClient {
     const next = this.queue.shift()
     if (!next) return
     this.inFlight = true
+    this.inFlightRequest = next
+    this.inFlightSince = monotonicNow()
+    if (this.options.onTrace) {
+      this.options.onTrace({
+        dir: 'command',
+        at: this.inFlightSince,
+        kind: next.type,
+        queueDepth: this.queue.length,
+        payload: next,
+      })
+    }
     this.worker.postMessage(next)
   }
 }
