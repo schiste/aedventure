@@ -22,7 +22,7 @@
   },
   "roster": {
     "heroAssigned": true,
-    "heroRoleId": "role.construction",
+    "heroRoleId": "role.crystal_bassline",
     "totalCrew": 2,
     "crewByRole": {
       "role.construction": 0,
@@ -1279,14 +1279,14 @@
   "activeConstruction": null,
   "activeWorldAction": null,
   "notes": [
-    "Scavenged 1000.0 Stone.",
     "Advanced simulation by 15.0s, +0.0 Bassline, +0.0 Chorus, +0.0 Harmonics, +1000.0 Stone, +0.0 Water, 0.0 Vibes, reach 0.",
     "Restore Studio started.",
     "Hero switched to Construction.",
     "Restore Studio completed.",
     "Objective complete: the Studio stands again.",
     "Objective complete: Restore the Studio",
-    "Advanced simulation by 12.0s, +0.0 Bassline, +0.0 Chorus, +0.0 Harmonics, +0.0 Stone, +0.0 Water, 0.0 Vibes, reach 0."
+    "Advanced simulation by 12.0s, +0.0 Bassline, +0.0 Chorus, +0.0 Harmonics, +0.0 Stone, +0.0 Water, 0.0 Vibes, reach 0.",
+    "Hero switched to Crystal: Bassline."
   ],
   "events": [],
   "rngSeed": "17145289649399768564",

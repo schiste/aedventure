@@ -145,8 +145,8 @@ Implemented deliverables:
   `scenarios/add/offline-return.json` covers a one-hour offline return from a
   committed save fixture.
 - The built ADD browser smoke consumes the offline scenario's compatible
-  runtime command prefix so browser and headless checks share command IDs and
-  parameters.
+  `RunOfflineCatchup` command so browser and headless checks share the command
+  ID and parameter.
 
 Exit criteria:
 

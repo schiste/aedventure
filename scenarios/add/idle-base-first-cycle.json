@@ -22,7 +22,8 @@
     { "type": "StartConstruction", "id": "project.restore_studio" },
     { "type": "SetHeroRole", "roleId": "role.construction" },
     { "type": "Tick", "seconds": 12 },
-    { "type": "SaveRoundTrip" }
+    { "type": "SaveRoundTrip" },
+    { "type": "SetHeroRole", "roleId": "role.crystal_bassline" }
   ],
   "checkpoints": [
     {
@@ -74,6 +75,17 @@
       "state": {
         "base": { "studioRestored": true },
         "narrative": { "activeBeatId": "story.beat.build_fire_pit" }
+      }
+    },
+    {
+      "id": "fixture-hero-role-ready",
+      "after": 14,
+      "state": {
+        "base": { "studioRestored": true },
+        "roster": {
+          "heroAssigned": true,
+          "heroRoleId": "role.crystal_bassline"
+        }
       }
     }
   ]

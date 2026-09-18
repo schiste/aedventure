@@ -126,10 +126,10 @@ boundary. This is the preferred bug-report artifact.
 - `scenarios/add/idle-base-first-cycle.json` starts a new run, advances the
   onboarding story, starts and completes Studio construction, and verifies
   story, resources, map, survival, recruitment, and save round-trip state.
-- `scenarios/add/offline-return.json` loads the committed Studio save, assigns
-  the hero to Crystal Bassline, applies one hour of offline catch-up, and
-  checks the returned clock, resource, story, map, survival, recruitment, and
-  save state.
+- `scenarios/add/offline-return.json` loads the committed Studio save with the
+  hero already assigned to Crystal Bassline, applies one hour of offline
+  catch-up, and checks the returned clock, resource, story, map, survival,
+  recruitment, and save state.
 - `scenarios/add/fixtures/saves/base-onboarding.json` is the generated
   `add-core` save used by the offline-return scenario.
 
@@ -140,8 +140,8 @@ scenario package test.
 ## Browser relationship
 
 The built ADD browser smoke loads `offline-return.json` and reuses its
-compatible runtime command prefix (`SetHeroRole`, then `RunOfflineCatchup`) in
-the existing save/import/offline-return flow. `SaveRoundTrip` remains
+compatible runtime command (`RunOfflineCatchup`) in the existing
+save/import/offline-return flow. `SaveRoundTrip` remains
 harness-only because the browser smoke already performs the equivalent
 export/import path and separately verifies the player-facing return review.
 

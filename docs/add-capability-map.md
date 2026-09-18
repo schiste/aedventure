@@ -105,9 +105,9 @@ player path, including:
 The headless gameplay path lives in `crates/add-scenario/` and
 `crates/add-scenario-runner/`. Run the committed idle and offline-return
 scenarios with the commands in the [scenario/replay harness guide](add-scenario-harness.md).
-The browser smoke reuses the offline scenario's `SetHeroRole` and
-`RunOfflineCatchup` command prefix; `SaveRoundTrip` remains a harness operation
-because the browser already exercises its equivalent through export/import.
+The browser smoke reuses the offline scenario's `RunOfflineCatchup` command;
+`SaveRoundTrip` remains a harness operation because the browser already
+exercises its equivalent through export/import.
 
 `npm run smoke:engine-sandbox` covers neutral square/hex coexistence. The
 office smoke and renderer QA belong to the separate office/shared-engine
