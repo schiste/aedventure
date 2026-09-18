@@ -747,6 +747,7 @@ function AddRpgApp() {
     if (!mapElement) return
     try {
       mapHost = new AddRpgPhaserMapHost(mapElement, {
+        showTravelActionMarkers: playerSettings().showTravelActionMarkers,
         onBeforeCharacterTravel: confirmFirstCharacterTravel,
         onCharacterTravel: (event) => {
           void handleCharacterTravel(event)
@@ -1276,6 +1277,24 @@ function AddRpgApp() {
               </div>
               <div class="settings-row">
                 <span>
+                  <strong>Travel markers</strong>
+                  <small>Show default Travel action icons on adjacent regions.</small>
+                </span>
+                <button
+                  id="settings-toggle-travel-markers"
+                  type="button"
+                  class="ghost-button"
+                  onClick=${() =>
+                    updatePlayerSettings({
+                      showTravelActionMarkers: !playerSettings().showTravelActionMarkers,
+                    })}
+                  aria-pressed=${() => playerSettings().showTravelActionMarkers}
+                >
+                  ${() => (playerSettings().showTravelActionMarkers ? "Shown" : "Hidden")}
+                </button>
+              </div>
+              <div class="settings-row">
+                <span>
                   <strong>Motion</strong>
                   <small>Reduce panel and map UI motion locally.</small>
                 </span>
@@ -1727,6 +1746,7 @@ function updatePlayerSettings(patch: Partial<AddSettings>): void {
   setPlayerSettings(next)
   saveSettings(next)
   applyDomSettings(next)
+  mapHost?.setShowTravelActionMarkers(next.showTravelActionMarkers)
   setReducedMotionMode(next.reducedMotion ? "reduced" : "system")
   window.dispatchEvent(new CustomEvent<AddSettings>("add-settings-changed", { detail: next }))
 }
@@ -3297,6 +3317,9 @@ function interfaceHierarchyState(): AddInterfaceHierarchyState {
         sfxVolume: playerSettings().sfxVolume,
         effectiveMusicVolume: effectiveMusicVolume(playerSettings()),
         effectiveSfxVolume: effectiveSfxVolume(playerSettings()),
+      },
+      map: {
+        showTravelActionMarkers: playerSettings().showTravelActionMarkers,
       },
     },
     advanced: {
@@ -8251,6 +8274,7 @@ function emptyMapInfo(): AddPhaserMapInfo {
         frontierHintCount: 0,
         pathTimePreviewVisible: false,
         actionMarkerCount: 0,
+        travelActionMarkersVisible: false,
         landmarkBeaconCount: 0,
         studioArrivalEmphasisVisible: false,
       },

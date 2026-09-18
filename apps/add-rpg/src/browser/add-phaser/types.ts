@@ -64,6 +64,7 @@ export interface AddTileActivationTelemetry {
 }
 
 export interface AddRpgPhaserMapHostOptions {
+  readonly showTravelActionMarkers?: boolean
   readonly onBeforeCharacterTravel?: (event: AddCharacterTravelEvent) => boolean | Promise<boolean>
   readonly onCharacterTravel?: (event: AddCharacterTravelEvent) => void
   /** Clicking a visible cell requests the app to run the best authorized tile action. */
@@ -89,6 +90,7 @@ export interface PhaserMapPresentationState {
     readonly frontierHintCount: number
     readonly pathTimePreviewVisible: boolean
     readonly actionMarkerCount: number
+    readonly travelActionMarkersVisible: boolean
     readonly landmarkBeaconCount: number
     readonly studioArrivalEmphasisVisible: boolean
   }

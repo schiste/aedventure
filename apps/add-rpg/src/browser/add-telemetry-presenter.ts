@@ -132,6 +132,9 @@ export interface AddInterfaceHierarchyState {
       readonly effectiveMusicVolume: number
       readonly effectiveSfxVolume: number
     }
+    readonly map: {
+      readonly showTravelActionMarkers: boolean
+    }
   }
   readonly advanced: {
     readonly label: "Tools"

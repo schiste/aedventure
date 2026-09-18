@@ -16,6 +16,8 @@ export interface AddSettings {
   reducedMotion: boolean
   /** Daltonization filter applied to the whole app. */
   colorBlindMode: ColorBlindMode
+  /** Show default on-map Travel action markers for adjacent regions. */
+  showTravelActionMarkers: boolean
   /** Root font scale 0.85..1.5 (drives rem-based sizing). */
   textScale: number
   /** UI language tag (consumed once i18n lands). */
@@ -33,6 +35,7 @@ export const DEFAULT_SETTINGS: AddSettings = {
   muted: false,
   reducedMotion: false,
   colorBlindMode: "none",
+  showTravelActionMarkers: false,
   textScale: 1,
   language: "en",
   keybinds: {},
@@ -69,6 +72,10 @@ export function normalizeSettings(raw: unknown): AddSettings {
         ? input.reducedMotion
         : DEFAULT_SETTINGS.reducedMotion,
     colorBlindMode,
+    showTravelActionMarkers:
+      typeof input.showTravelActionMarkers === "boolean"
+        ? input.showTravelActionMarkers
+        : DEFAULT_SETTINGS.showTravelActionMarkers,
     textScale: clamp(input.textScale as number, 0.85, 1.5, DEFAULT_SETTINGS.textScale),
     language: typeof input.language === "string" ? input.language : DEFAULT_SETTINGS.language,
     keybinds:
