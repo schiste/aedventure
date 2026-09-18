@@ -249,7 +249,7 @@ export function bubbleZones(
   catalog: CatalogSnapshot,
 ): readonly GameZone[] {
   const zones: GameZone[] = []
-  const baseCells = snapshot.hexes.filter((hex) => hex.distance === 0).map(hexCoord)
+  const baseCells = baseHexes(snapshot, catalog).map(hexCoord)
   const stabilizedCells = snapshot.hexes
     .filter((hex) => hex.state === "stabilized")
     .map(hexCoord)
@@ -437,6 +437,15 @@ function survivorCaveHexes(
     const tile = indexes.tilesById.get(hex.tileId)
     return tile?.feature === "survivor_cave"
   })
+}
+
+function baseHexes(
+  snapshot: SimulationSnapshot,
+  catalog: CatalogSnapshot,
+): readonly HexSnapshot[] {
+  const indexes = createAddCatalogIndexes(catalog)
+  const base = snapshot.hexes.filter((hex) => indexes.tilesById.get(hex.tileId)?.feature === "base")
+  return base.length > 0 ? base : snapshot.hexes.filter((hex) => hex.distance === 0)
 }
 
 function heroMapHex(snapshot: SimulationSnapshot): HexSnapshot | undefined {

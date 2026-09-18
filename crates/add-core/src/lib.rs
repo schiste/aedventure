@@ -993,7 +993,11 @@ mod tests {
         let mut simulation = Simulation::new();
         let initial_count = simulation.state().discovered_cells.len();
 
-        simulation.apply(GameCommand::MoveHeroTo { q: 0, r: 0 });
+        let base = HexCoordState::base();
+        simulation.apply(GameCommand::MoveHeroTo {
+            q: base.q,
+            r: base.r,
+        });
 
         assert_eq!(simulation.state().hero_map, HexCoordState::base());
         assert!(simulation.state().discovered_cells.len() > initial_count);
@@ -1269,7 +1273,11 @@ mod tests {
     #[test]
     fn reset_clears_discovery_to_initial_cells() {
         let mut simulation = Simulation::new();
-        simulation.apply(GameCommand::MoveHeroTo { q: 0, r: 0 });
+        let base = HexCoordState::base();
+        simulation.apply(GameCommand::MoveHeroTo {
+            q: base.q,
+            r: base.r,
+        });
         assert!(simulation.state().discovered_cells.len() > 2);
 
         simulation.apply(GameCommand::ResetRun);

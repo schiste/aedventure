@@ -2118,6 +2118,7 @@ function initialDiscoveryShapeReady(state) {
 function assertInitialDiscoveryAnchors(state) {
   const discovered = sortedCells(state.snapshot.discoveredCells)
   const cave = parseHexCoord(state.map.landmarks.survivorCave)
+  const base = parseHexCoord(state.map.landmarks.baseCenter)
   assert.ok(
     discovered.includes(state.map.landmarks.survivorCave),
     "Initial discovery should include the Survivor Cave.",
@@ -2134,6 +2135,19 @@ function assertInitialDiscoveryAnchors(state) {
       return hexDistance({ a: cave.q, b: cave.r }, { a: coord.q, b: coord.r }) <= 1
     }),
     "Initial discovery should be limited to the Survivor Cave radius.",
+  )
+  assert.equal(
+    hexDistance({ a: cave.q, b: cave.r }, { a: base.q, b: base.r }),
+    6,
+    "The Studio should be six hexes from the Survivor Cave.",
+  )
+  assert.ok(
+    state.map.landmarks.baseCenterWorld && state.map.landmarks.survivorCaveWorld,
+    "Studio and Survivor Cave should expose world positions.",
+  )
+  assert.ok(
+    Math.abs(state.map.landmarks.baseCenterWorld.y - state.map.landmarks.survivorCaveWorld.y) <= 1,
+    `The Studio and Survivor Cave should sit on a straight horizontal screen line. Studio y=${state.map.landmarks.baseCenterWorld.y}, cave y=${state.map.landmarks.survivorCaveWorld.y}.`,
   )
   assert.equal(state.map.landmarks.studioLabelVisible, true)
 }
@@ -3027,16 +3041,17 @@ async function exerciseStudioTileDetailLinks(page, consoleErrors) {
       page,
       (state) =>
         state.mapMode?.active === "overworld_hex" &&
-        state.map?.landmarks?.baseCenter === "0,0" &&
+        typeof state.map?.landmarks?.baseCenter === "string" &&
         state.map?.landmarks?.baseCenterViewport !== null,
       consoleErrors,
     )
+    const studioCell = `hex:${zoomed.map.landmarks.baseCenter}`
     const selectedStudio = await clickViewportPointUntilSelected(
       page,
       zoomed.map.landmarks.baseCenterViewport,
       (state) =>
         state.mapMode?.active === "overworld_hex" &&
-        state.discovery?.tileDetail?.cell === "hex:0,0" &&
+        state.discovery?.tileDetail?.cell === studioCell &&
         state.discovery.tileDetail.label === "The Studio" &&
         state.discovery.tileDetail.hasSubmap === true &&
         state.discovery.tileDetail.linkCount >= 2 &&

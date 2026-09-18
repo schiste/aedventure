@@ -20,6 +20,11 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   assigns the Hero through the recommended Base role so rate changes are
   visible, and exposes an enabled 1m "Let the base run" command tied to the
   wait forecast.
+- ADD Studio placement now uses an explicit base coordinate `(0,3)`, six hexes
+  from Survivor Cave `(6,0)` and on the same rendered horizontal band. The
+  neutral Rust topology no longer assumes the base is the origin, ADD terrain
+  regions stay anchored around the moved Studio to preserve early bubble timing,
+  and browser smoke asserts both six-hex distance and horizontal world alignment.
 - Verification: `npm --workspace @aedventure/add-rpg run build`, `npm run
   smoke:add-rpg`, local web-game client against `http://127.0.0.1:5177/app/`,
   and full `npm run check` passed. The in-app Browser plugin was unavailable in

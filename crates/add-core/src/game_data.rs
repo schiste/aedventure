@@ -2581,6 +2581,8 @@ pub fn balance_snapshot() -> BalanceSnapshot {
 /// ladder: river → mountain → ridge → scrub, over a plains default.
 pub const OVERWORLD_MAP: MapDefinition = MapDefinition {
     radius: crate::state::GRID_RADIUS,
+    base_q: crate::state::BASE_Q,
+    base_r: crate::state::BASE_R,
     base: MapCell {
         tile_id: TILE_BASE_CORE,
         terrain: TerrainSnapshot::Plains,
@@ -2599,13 +2601,15 @@ pub const OVERWORLD_MAP: MapDefinition = MapDefinition {
         },
     }],
     regions: &[
+        // Terrain regions are authored around the Studio/base anchor, so moving
+        // the Studio preserves early bubble costs and onboarding timing.
         // River shallows: the r == -2 band across the centre columns.
         TerrainRegion {
             bounds: AxialBounds {
-                q_min: -1,
-                q_max: 2,
-                r_min: -2,
-                r_max: -2,
+                q_min: crate::state::BASE_Q - 1,
+                q_max: crate::state::BASE_Q + 2,
+                r_min: crate::state::BASE_R - 2,
+                r_max: crate::state::BASE_R - 2,
             },
             cell: MapCell {
                 tile_id: TILE_RIVER_SHALLOWS,
@@ -2618,8 +2622,8 @@ pub const OVERWORLD_MAP: MapDefinition = MapDefinition {
         TerrainRegion {
             bounds: AxialBounds {
                 q_min: i8::MIN,
-                q_max: -3,
-                r_min: 1,
+                q_max: crate::state::BASE_Q - 3,
+                r_min: crate::state::BASE_R + 1,
                 r_max: i8::MAX,
             },
             cell: MapCell {
@@ -2632,9 +2636,9 @@ pub const OVERWORLD_MAP: MapDefinition = MapDefinition {
         // Ridge line: the southeast highland (q >= 2, r >= 2).
         TerrainRegion {
             bounds: AxialBounds {
-                q_min: 2,
+                q_min: crate::state::BASE_Q + 2,
                 q_max: i8::MAX,
-                r_min: 2,
+                r_min: crate::state::BASE_R + 2,
                 r_max: i8::MAX,
             },
             cell: MapCell {
@@ -2648,9 +2652,9 @@ pub const OVERWORLD_MAP: MapDefinition = MapDefinition {
         TerrainRegion {
             bounds: AxialBounds {
                 q_min: i8::MIN,
-                q_max: 0,
+                q_max: crate::state::BASE_Q,
                 r_min: i8::MIN,
-                r_max: -3,
+                r_max: crate::state::BASE_R - 3,
             },
             cell: MapCell {
                 tile_id: TILE_SCRUB_PATCH,
