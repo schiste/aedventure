@@ -1,0 +1,72 @@
+{
+  "fixtureSchemaVersion": 1,
+  "contentSchemaVersion": 1,
+  "catalogVersion": 1,
+  "saveSchemaVersion": 15,
+  "kind": "crew_roster",
+  "roster": {
+    "heroAssigned": true,
+    "heroRoleId": "role.crystal_bassline",
+    "totalCrew": 2,
+    "crewByRole": {
+      "role.construction": 0,
+      "role.crystal_bassline": 0,
+      "role.crystal_chorus": 0,
+      "role.crystal_harmonics": 0,
+      "role.fire_pit": 0,
+      "role.scavenge": 0,
+      "role.water": 0
+    }
+  },
+  "roles": [
+    {
+      "id": "role.crystal_bassline",
+      "slotPool": "crystal_circle",
+      "heroAllowed": true,
+      "crewAllowed": true,
+      "maxCrewSlots": null
+    },
+    {
+      "id": "role.crystal_chorus",
+      "slotPool": "crystal_circle",
+      "heroAllowed": true,
+      "crewAllowed": true,
+      "maxCrewSlots": null
+    },
+    {
+      "id": "role.crystal_harmonics",
+      "slotPool": "crystal_circle",
+      "heroAllowed": true,
+      "crewAllowed": true,
+      "maxCrewSlots": null
+    },
+    {
+      "id": "role.construction",
+      "slotPool": "base",
+      "heroAllowed": true,
+      "crewAllowed": true,
+      "maxCrewSlots": null
+    },
+    {
+      "id": "role.fire_pit",
+      "slotPool": "fire_pit",
+      "heroAllowed": true,
+      "crewAllowed": true,
+      "maxCrewSlots": 2
+    },
+    {
+      "id": "role.scavenge",
+      "slotPool": "base",
+      "heroAllowed": true,
+      "crewAllowed": true,
+      "maxCrewSlots": null
+    },
+    {
+      "id": "role.water",
+      "slotPool": "base",
+      "heroAllowed": true,
+      "crewAllowed": true,
+      "maxCrewSlots": null
+    }
+  ]
+}

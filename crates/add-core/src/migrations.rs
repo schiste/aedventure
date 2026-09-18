@@ -26,7 +26,7 @@ use serde_json::Value;
 /// Bump this whenever a change to the serialized state can't be satisfied by
 /// `#[serde(default)]` alone, and add the matching entry to [`MIGRATIONS`] plus
 /// a round-trip fixture test.
-pub const CURRENT_SCHEMA_VERSION: u16 = 15;
+pub const CURRENT_SCHEMA_VERSION: u16 = crate::game_data::CONTENT_SAVE_SCHEMA_VERSION;
 
 /// Current identity of the content catalog a save was authored against.
 ///
@@ -34,7 +34,7 @@ pub const CURRENT_SCHEMA_VERSION: u16 = 15;
 /// shape): this tracks the *content* build, so a future content migration can
 /// tell which catalog a save assumed. Bump when content changes in a way a save
 /// must be reconciled against.
-pub const CURRENT_CATALOG_VERSION: u16 = 1;
+pub const CURRENT_CATALOG_VERSION: u16 = crate::game_data::CONTENT_CATALOG_VERSION;
 
 /// serde default for [`GameState::catalog_version`](crate::state::GameState).
 /// Old saves (written before the field existed) load as the current catalog.

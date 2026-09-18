@@ -223,6 +223,46 @@ fn authoritative_state(state: &GameState, catalog: &game_data::CatalogSnapshot) 
                 .collect::<Vec<_>>(),
         ),
         (
+            "items",
+            catalog.items.iter().map(|item| item.id).collect::<Vec<_>>(),
+        ),
+        (
+            "perks",
+            catalog.perks.iter().map(|item| item.id).collect::<Vec<_>>(),
+        ),
+        (
+            "creatures",
+            catalog
+                .creatures
+                .iter()
+                .map(|item| item.id)
+                .collect::<Vec<_>>(),
+        ),
+        (
+            "flags",
+            catalog.flags.iter().map(|item| item.id).collect::<Vec<_>>(),
+        ),
+        (
+            "models",
+            catalog
+                .models
+                .iter()
+                .map(|item| item.id)
+                .collect::<Vec<_>>(),
+        ),
+        (
+            "flora",
+            catalog.flora.iter().map(|item| item.id).collect::<Vec<_>>(),
+        ),
+        (
+            "structures",
+            catalog
+                .structures
+                .iter()
+                .map(|item| item.id)
+                .collect::<Vec<_>>(),
+        ),
+        (
             "tiles",
             catalog.tiles.iter().map(|item| item.id).collect::<Vec<_>>(),
         ),
@@ -230,6 +270,14 @@ fn authoritative_state(state: &GameState, catalog: &game_data::CatalogSnapshot) 
             "entitySchemas",
             catalog
                 .entity_schemas
+                .iter()
+                .map(|item| item.id)
+                .collect::<Vec<_>>(),
+        ),
+        (
+            "uiElements",
+            catalog
+                .ui_elements
                 .iter()
                 .map(|item| item.id)
                 .collect::<Vec<_>>(),

@@ -1,0 +1,138 @@
+{
+  "fixtureSchemaVersion": 1,
+  "contentSchemaVersion": 1,
+  "catalogVersion": 1,
+  "saveSchemaVersion": 15,
+  "kind": "map",
+  "mapId": "add.rpg.hex-overworld",
+  "tiles": [
+    {
+      "id": "tile.base_core",
+      "coordinate": {
+        "q": -3,
+        "r": 0
+      },
+      "terrain": "plains",
+      "feature": "base",
+      "isBlocker": false,
+      "floraIds": [],
+      "structureIds": [
+        "structure.crystal_circle",
+        "structure.base"
+      ],
+      "dungeonIds": [],
+      "areaIds": [
+        "area.studio_grounds"
+      ]
+    },
+    {
+      "id": "tile.plains_open",
+      "coordinate": {
+        "q": -2,
+        "r": 0
+      },
+      "terrain": "plains",
+      "feature": "none",
+      "isBlocker": false,
+      "floraIds": [],
+      "structureIds": [],
+      "dungeonIds": [],
+      "areaIds": []
+    },
+    {
+      "id": "tile.river_shallows",
+      "coordinate": {
+        "q": -1,
+        "r": 0
+      },
+      "terrain": "river",
+      "feature": "none",
+      "isBlocker": false,
+      "floraIds": [
+        "flora.reeds"
+      ],
+      "structureIds": [],
+      "dungeonIds": [],
+      "areaIds": []
+    },
+    {
+      "id": "tile.scrub_patch",
+      "coordinate": {
+        "q": 0,
+        "r": 0
+      },
+      "terrain": "scrub",
+      "feature": "none",
+      "isBlocker": false,
+      "floraIds": [
+        "flora.scrub"
+      ],
+      "structureIds": [],
+      "dungeonIds": [],
+      "areaIds": []
+    },
+    {
+      "id": "tile.ridge_line",
+      "coordinate": {
+        "q": 1,
+        "r": 0
+      },
+      "terrain": "ridge",
+      "feature": "none",
+      "isBlocker": false,
+      "floraIds": [],
+      "structureIds": [],
+      "dungeonIds": [],
+      "areaIds": []
+    },
+    {
+      "id": "tile.mountain_wall",
+      "coordinate": {
+        "q": 2,
+        "r": 0
+      },
+      "terrain": "mountain",
+      "feature": "none",
+      "isBlocker": true,
+      "floraIds": [],
+      "structureIds": [],
+      "dungeonIds": [],
+      "areaIds": []
+    },
+    {
+      "id": "tile.survivor_cave",
+      "coordinate": {
+        "q": 3,
+        "r": 0
+      },
+      "terrain": "plains",
+      "feature": "survivor_cave",
+      "isBlocker": false,
+      "floraIds": [],
+      "structureIds": [
+        "structure.cave"
+      ],
+      "dungeonIds": [
+        "dungeon.survivor_cave"
+      ],
+      "areaIds": []
+    }
+  ],
+  "landmarks": [
+    {
+      "id": "area.studio_grounds",
+      "mapId": "add.rpg.area.studio-grounds",
+      "kind": "area"
+    },
+    {
+      "id": "dungeon.studio",
+      "mapId": "add.rpg.dungeon.studio",
+      "kind": "dungeon"
+    },
+    {
+      "id": "dungeon.survivor_cave",
+      "mapId": "add.rpg.dungeon.survivor-cave",
+      "kind": "dungeon"
+    }
+  ]
+}

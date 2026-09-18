@@ -542,6 +542,9 @@ function createCatalogFixture() {
         },
       },
     ],
+    items: [],
+    perks: [],
+    creatures: [],
     flags: [],
     models: [],
     flora: [

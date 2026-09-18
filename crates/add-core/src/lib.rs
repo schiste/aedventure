@@ -10,13 +10,14 @@ pub mod tuning;
 pub use command::GameCommand;
 pub use game_data::{
     AccessRuleDef, AccessRuleKind, BalanceSnapshot, BlockerDef, BlockerKind, BubbleBalance,
-    CapBehavior, CatalogSnapshot, ConstructionGroup, ConstructionOptionDef, CostDef,
+    CapBehavior, CatalogSnapshot, ConstructionGroup, ConstructionOptionDef, CostDef, CreatureDef,
     CrystalBalance, CrystalTrack, EffectDef, EntityKind, EntityPresentationDef, EntitySchemaDef,
     EntitySchemaSnapshot, EntityVisibilityDef, ExpeditionRewardDef, ExpeditionRiskDef,
     ExpeditionSupportDef, ExpeditionTargetDef, FirePitBalance, FloraDef, FloraKind, FlowCadence,
-    FlowDef, FlowDirection, HeroExposureDef, HeroTrack, ModelKind, ModelRefDef, OVERWORLD_MAP,
-    PersistenceDef, PersistenceScope, PowerBalance, PowerFallbackMode, PowerProfileDef,
-    PresentationDef, PresentationReveal, ProcessingRecipeDef, ProcessingTrack, ProgressionBalance,
+    FlowDef, FlowDirection, HeroExposureDef, HeroTrack, ItemDef, ItemEffectDef, ItemEffectKind,
+    ModelKind, ModelRefDef, OVERWORLD_MAP, PerkDef, PerkEffectDef, PerkStat, PersistenceDef,
+    PersistenceScope, PowerBalance, PowerFallbackMode, PowerProfileDef, PresentationDef,
+    PresentationReveal, ProcessingRecipeDef, ProcessingTrack, ProgressionBalance,
     RecruitmentBalance, RequirementDef, ResonanceEffectDef, ResonanceMaterialCostDef,
     ResonanceRecipeDef, ResonanceTuningTrackDef, ResourceCategory, ResourceDef, RoleDef,
     RoleSlotPool, ScavengeBalance, StationCategory, StationDef, StoryBeatDef, StoryChoiceDef,

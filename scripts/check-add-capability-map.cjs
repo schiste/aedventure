@@ -30,6 +30,7 @@ const capabilityMap = read("docs/add-capability-map.md")
 const scenarioHarness = read("docs/add-scenario-harness.md")
 const runtimeInspection = read("docs/add-runtime-inspection.md")
 const agentVerification = read("docs/add-agent-verification-loop.md")
+const contentAuthoring = read("docs/add-content-authoring.md")
 const taskBrief = read("docs/templates/add-task-brief.md")
 const parityAudit = read("docs/add-systems-parity-audit.md")
 const packageJson = JSON.parse(read("package.json"))
@@ -43,6 +44,7 @@ for (const fragment of [
   "docs/add-scenario-harness.md",
   "docs/add-runtime-inspection.md",
   "docs/add-agent-verification-loop.md",
+  "docs/add-content-authoring.md",
   "docs/templates/add-task-brief.md",
   "npm run agent:verify:add-ui",
 ]) {
@@ -64,6 +66,10 @@ requireHeading(agentVerification, "## Focused path selection", "ADD agent verifi
 requireHeading(agentVerification, "## Result contract and failure workflow", "ADD agent verification")
 requireHeading(agentVerification, "## Task brief completion evidence", "ADD agent verification")
 requireText(agentVerification, "artifacts/agent-verification/<run-id>/", "ADD agent verification")
+requireHeading(contentAuthoring, "## Where does this change belong?", "ADD content authoring")
+requireHeading(contentAuthoring, "## Authoring-to-runtime path", "ADD content authoring")
+requireHeading(contentAuthoring, "## Add one content item", "ADD content authoring")
+requireHeading(contentAuthoring, "## Version contract", "ADD content authoring")
 
 for (const heading of [
   "## First route: where does this change belong?",
@@ -105,6 +111,10 @@ for (const command of [
   "content:graph",
   "content:timeline",
   "content:explain",
+  "content:fixtures",
+  "content:fixtures:check",
+  "content:version:check",
+  "content:tools:test",
   "agent:verify:add-ui",
   "scenario:add",
   "agent:verify:types",

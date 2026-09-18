@@ -867,6 +867,33 @@ export interface ObjectiveDef {
   // conditions/rewards are sim-internal (serde-skip) and not surfaced here.
 }
 
+/** Runtime catalog identity for the generated combat/inventory catalogs. The
+ * detailed authoring definitions remain in `content/{items,perks,creatures}`;
+ * these fields make their stable IDs visible in snapshots and inspection. */
+export interface ItemDef {
+  id: string
+  label: string
+  stackable: boolean
+  maxStack: number
+  useEffect: { kind: string; amount: number } | null
+}
+
+export interface PerkDef {
+  id: string
+  label: string
+  requires: string[]
+  effects: { stat: string; multiplier: number }[]
+}
+
+export interface CreatureDef {
+  id: string
+  label: string
+  hp: number
+  attack: number
+  threat: number
+  xpReward: number
+}
+
 export interface CatalogSnapshot {
   resources: ResourceDef[]
   roles: RoleDef[]
@@ -878,6 +905,9 @@ export interface CatalogSnapshot {
   resonanceRecipes: ResonanceRecipeDef[]
   storyBeats: StoryBeatDef[]
   objectives: ObjectiveDef[]
+  items: ItemDef[]
+  perks: PerkDef[]
+  creatures: CreatureDef[]
   flags: FlagDef[]
   models: ModelDef[]
   flora: FloraDef[]

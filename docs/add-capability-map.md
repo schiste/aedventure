@@ -16,8 +16,8 @@ Run `npm run docs:check` after changing this map or the routing documents.
 | Change or player outcome | Authoritative layer | Start here | First focused verification |
 | --- | --- | --- | --- |
 | A gameplay rule, resource transition, timer, combat result, or save field | Rust simulation | `crates/add-core/src/` | `cargo test -p add-core` |
-| A new story beat, objective, role, recipe, station, item, creature, perk, or balance value | Authored ADD content | `packages/add-domain/src/content/` | `npm run content:check` |
-| A content graph, timeline, or content-ID investigation | Content inspection tools | `scripts/add-content-tools.cjs` | `npm run content:validate` |
+| A new story beat, objective, role, recipe, station, item, creature, perk, or balance value | Authored ADD content | `packages/add-domain/src/content/` and [content authoring map](add-content-authoring.md) | `npm run content:check` |
+| A content graph, reverse lookup, explainer, fixture, or content-ID investigation | Content inspection tools | `scripts/add-content-registry.cjs`, `scripts/add-content-tools.cjs`, `scripts/add-content-fixtures.cjs` | `npm run content:validate` |
 | Snapshot explanation, available-action projection, command mapping, or UI copy | ADD domain adapters | `packages/add-domain/src/adapters/` | `npm run agent:verify:add-ui` |
 | Agent-readable state, available commands, blocker reasons, or stable report IDs | ADD runtime inspection contract | `packages/add-domain/src/runtime/inspection.ts` and `crates/add-scenario/src/inspection.rs` | `npm --workspace @aedventure/add-domain test` and `cargo test -p add-scenario` |
 | Player-facing panels, input dispatch, map presentation, save plumbing, or browser lifecycle | Live ADD app | `apps/add-rpg/src/` | `npm run agent:verify:add-ui` |
@@ -38,9 +38,11 @@ the Rust runtime owns mutation and deterministic outcomes.
 | Machine-readable verification report | `npm run agent:report -- --format json` | Writes/emits the focused result contract with commit, duration, checks, artifacts, and failure hints |
 | Task brief readiness | `npm run agent:task -- --describe <task-id>` | Resolves a brief and rejects missing acceptance scenarios or completion evidence |
 | ADD content/code generation | `npm run content:check` | Authored content builds, validates, and matches generated Rust catalog output |
-| Content graph and IDs | `npm run content:graph` | Story/content dependencies are inspectable as stable text |
+| Content graph and IDs | `npm run content:graph` or `npm run content:graph -- --reverse <id>` | All content dependencies and reverse users are inspectable as stable text/JSON |
 | Story timeline | `npm run content:timeline` | Story arcs and sequence gates are inspectable |
-| One content ID | `npm run content:explain -- <id>` | A content ID can be traced to its authored definition and dependencies |
+| One content ID | `npm run content:explain -- <id>` | Resources, objectives, actions, structures, encounters, tiles, story beats, and every other registered ID expose their definition, source, references, and users |
+| Content fixtures | `npm run content:fixtures:check` | Small-base, crew-roster, map, and story-state authoring fixtures match current IDs |
+| Content/save versions | `npm run content:version:check` | Authored content/save versions agree with generated Rust and save migrations |
 | Rust rules/state | `cargo test -p add-core` | Simulation rules, save behavior, and deterministic calculations pass core tests |
 | Headless ADD scenario/replay | `npm run scenario:add -- scenarios/add/<id>.json` | A committed seed/save/command log runs without the browser and checks canonical state checkpoints |
 | Agent scenario artifact | `npm run agent:scenario -- scenarios/add/<id>.json` | Runs the same Rust scenario and records the report, normalized snapshot, replay log, and command output |
@@ -79,16 +81,17 @@ schema, artifact naming, task evidence rules, and failure workflow are in
 
 | Family | Authored source | Runtime authority or consumer | Current status |
 | --- | --- | --- | --- |
-| Resources, roles, stations, construction, processing, balance | `packages/add-domain/src/content/{resources,roles,stations,construction,processing,balance}.ts` | Generated catalog plus `crates/add-core` simulation | Implemented for the current idle/base slice |
-| Story arcs, choices, flags, objectives, world actions | `packages/add-domain/src/content/{story,flags,objectives,world-actions}.ts` | Generated catalog plus Rust narrative/objective state | Implemented for the current onboarding and base arc |
-| Terrain, tiles, flora, structures, entity schemas, UI elements | `packages/add-domain/src/content/{tiles,flora,structures,entity-schemas,ui-elements}.ts` | Generated catalog plus map/domain projections | Implemented for current overworld and presentation contracts |
+| Resources, roles, stations, construction, processing, balance | `packages/add-domain/src/content/{resources,roles,stations,construction,processing,balance}.ts` | [Authoring/codegen path](add-content-authoring.md#authoring-to-runtime-path); generated catalog plus `crates/add-core` simulation | Implemented for the current idle/base slice |
+| Story arcs, choices, flags, objectives, world actions | `packages/add-domain/src/content/{story,flags,objectives,world-actions}.ts` | [Authoring/codegen path](add-content-authoring.md#authoring-to-runtime-path); generated catalog plus Rust narrative/objective state | Implemented for the current onboarding and base arc |
+| Terrain, tiles, flora, structures, entity schemas, UI elements | `packages/add-domain/src/content/{tiles,flora,structures,entity-schemas,ui-elements}.ts` | [Authoring/codegen path](add-content-authoring.md#authoring-to-runtime-path); generated catalog plus map/domain projections | Implemented for current overworld and presentation contracts |
 | Expedition targets and resonance recipes | `crates/add-core/src/game_data/catalog/{expeditions,resonance}.rs` | `crates/add-core` expedition/resonance state and progression | Implemented for the current expedition/resonance slice; these are currently Rust-authored catalog entries |
-| Creatures, items, and perks | `packages/add-domain/src/content/{creatures,items,perks}.ts` | Rust combat, inventory, and perk state; domain selectors explain it | Implemented for the current combat/inventory slice |
-| Encounter and loot tables | `packages/add-domain/src/content/{encounter-tables,loot-tables}.ts` | Domain selectors resolve a deterministic location result; Rust receives the typed result and applies mutation | Intentionally split; selection is not a second Rust rules engine |
+| Creatures, items, and perks | `packages/add-domain/src/content/{creatures,items,perks}.ts` | [Authoring/codegen path](add-content-authoring.md#authoring-to-runtime-path); Rust combat, inventory, and perk state; domain selectors explain it | Implemented for the current combat/inventory slice |
+| Encounter and loot tables | `packages/add-domain/src/content/{encounter-tables,loot-tables}.ts` | [Authoring/codegen path](add-content-authoring.md#authoring-to-runtime-path); domain selectors resolve a deterministic location result; Rust receives the typed result and applies mutation | Intentionally split; selection is not a second Rust rules engine |
 | Dungeon and area definitions | `packages/add-domain/src/{dungeons,areas}/` | ADD map modes, dungeon objectives, and Phaser presentation | Current entry/objective foundation implemented; broader dungeon breadth remains |
 
-When adding a content ID, keep the authored ID stable, run the content check,
-and update the parity audit if its runtime status changes.
+When adding a content ID, follow [ADD Content Authoring and Codegen](add-content-authoring.md),
+keep the authored ID stable, run `npm run content:check`, inspect its reverse
+lookup, and update the parity audit if its runtime status changes.
 
 ## Runtime state
 
@@ -155,9 +158,9 @@ These are gaps, not reasons to create a second ADD app:
   future decision before richer procedural encounters;
 - the current dungeon layer proves entry, objectives, doors, locations, combat,
   inventory, and return flow, but not the full future dungeon/exploration game;
-- broader scenario coverage, generated fixture tooling, and a richer browser
-  command bridge remain follow-up work after the committed Phase 1/2 harness
-  and Phase 3 verification loop;
+- broader scenario coverage and a richer browser command bridge remain
+  follow-up work after the committed Phase 1/2 harness, Phase 3 verification
+  loop, and Phase 4 content tooling;
 - larger strategy/RPG systems and neutral engine extraction remain demand-led
   future work, with `apps/add-rpg` staying the first consumer.
 

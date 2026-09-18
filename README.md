@@ -54,7 +54,8 @@ For gameplay work, begin with the live ADD path:
 
 1. Put authoritative rules and state transitions in `crates/add-core/`.
 2. Author content in `packages/add-domain/src/content/` and run the content
-   validation/code-generation path.
+   validation/code-generation path documented in
+   [ADD Content Authoring and Codegen](docs/add-content-authoring.md).
 3. Put player-facing presentation and command dispatch in `apps/add-rpg/`.
 4. Add or generalize `packages/game-*` only when the current ADD app (or the
    office app) has a concrete consumer and an exercised test.
@@ -87,6 +88,10 @@ npm run agent:scenario -- scenarios/add/idle-base-first-cycle.json
 npm run agent:state -- --save scenarios/add/fixtures/saves/base-onboarding.json
 npm run scenario:add -- scenarios/add/idle-base-first-cycle.json
 npm run scenario:add -- scenarios/add/offline-return.json
+npm run content:check
+npm run content:graph -- --reverse resource.stone
+npm run content:explain -- objective.restore_studio
+npm run content:fixtures:check
 npm --workspace @aedventure/add-domain test
 npm run agent:verify:add-ui
 npm run agent:task -- --smoke
@@ -111,6 +116,7 @@ verification; see [AGENTS.md](AGENTS.md).
 - [ADD Deterministic Scenario and Replay Harness](docs/add-scenario-harness.md)
 - [ADD Agent-Readable Runtime Inspection](docs/add-runtime-inspection.md)
 - [ADD One-Command Agent Verification Loop](docs/add-agent-verification-loop.md)
+- [ADD Content Authoring and Codegen](docs/add-content-authoring.md)
 - [Story and Content Engine Contract](docs/story-content-engine.md)
 - [Domain-Neutral Engine Boundary](docs/engine-boundary.md)
 - [Global Product and Technical Specification](docs/customer-virtual-office-platform-spec.md)

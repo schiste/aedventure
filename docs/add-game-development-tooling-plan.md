@@ -238,21 +238,31 @@ Exit criteria:
 - Failed checks point to a scenario, source boundary, or missing fixture.
 - The normal granular loop does not require the full browser/renderer gate.
 
-### Phase 4 — Content and world authoring acceleration
+### Phase 4 — Content and world authoring acceleration (implemented)
 
 Goal: make new game content safe and fast to author without moving rules into
 the UI.
 
-Deliverables:
+Implemented deliverables:
 
-- Finish content validation for duplicate IDs, missing references, unreachable
-  story beats, invalid effects, impossible actions, and catalog drift.
-- Add explainers for resources, objectives, actions, structures, encounters,
-  map tiles, and story beats—not only story nodes.
-- Add a content dependency graph with reverse lookup: “what uses this ID?”
-- Add fixture generators for a small base, crew roster, map, and story state.
-- Document the authoring-to-Rust-codegen path beside each content family.
-- Add schema/version checks for content changes that affect saves.
+- `scripts/add-content-validator.cjs` validates duplicate IDs, missing
+  references, unreachable story beats, invalid effects, impossible actions,
+  encounter/loot ranges, and catalog-specific numeric contracts before codegen.
+- `scripts/add-content-registry.cjs` and `scripts/add-content-tools.cjs`
+  explain every registered family, including resources, objectives, actions,
+  structures, encounters, map tiles, and story beats. They support stable JSON
+  output and `--reverse <id>` lookup.
+- `scripts/add-content-fixtures.cjs` generates the small-base, crew-roster,
+  map, and story-state fixtures under `scenarios/add/fixtures/content/`.
+- [ADD Content Authoring and Codegen](add-content-authoring.md) documents each
+  family’s TypeScript source, validation boundary, Rust output, and consumer.
+- `content-version.ts` is code-generated to Rust and checked against save
+  migrations; `npm run content:check` rejects version or catalog drift.
+
+The complete pre-boot path is `npm run content:check`. The focused inspection
+commands are `npm run content:validate`, `npm run content:graph -- --reverse
+<id>`, `npm run content:explain -- <id>`, and
+`npm run content:fixtures:check`. None of these require the browser or UI.
 
 Exit criteria:
 

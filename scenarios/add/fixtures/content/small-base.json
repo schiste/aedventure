@@ -1,0 +1,140 @@
+{
+  "fixtureSchemaVersion": 1,
+  "contentSchemaVersion": 1,
+  "catalogVersion": 1,
+  "saveSchemaVersion": 15,
+  "kind": "small_base",
+  "ids": {
+    "resources": [
+      "resource.bassline",
+      "resource.chorus",
+      "resource.harmonics",
+      "resource.stone",
+      "resource.vibes",
+      "resource.water"
+    ],
+    "stations": [
+      "station.crystal_circle",
+      "station.fire_pit",
+      "station.mix_console",
+      "station.research_booth",
+      "station.resonance_chamber",
+      "station.workshop"
+    ],
+    "baseProjects": [
+      "project.build_fire_pit",
+      "project.build_mix_console",
+      "project.build_research_booth",
+      "project.build_resonance_chamber",
+      "project.build_workshop",
+      "project.expand_bunks",
+      "project.expedition_staging",
+      "project.prepare_loudspeakers",
+      "project.restore_studio",
+      "project.safe_water_systems"
+    ],
+    "tiles": [
+      "tile.base_core"
+    ],
+    "structures": [
+      "structure.base",
+      "structure.crystal_circle"
+    ]
+  },
+  "state": {
+    "flags": [
+      "base.fire_pit_built",
+      "base.mix_console_built",
+      "base.research_booth_built",
+      "base.resonance_chamber_built",
+      "base.studio_restore_unlocked",
+      "base.studio_restored",
+      "base.water_collection_unlocked",
+      "base.workshop_built"
+    ],
+    "resources": {
+      "resource.bassline": {
+        "value": 0,
+        "cap": 90
+      },
+      "resource.chorus": {
+        "value": 0,
+        "cap": 60
+      },
+      "resource.harmonics": {
+        "value": 0,
+        "cap": 40
+      },
+      "resource.stone": {
+        "value": 0,
+        "cap": 1000
+      },
+      "resource.water": {
+        "value": 0,
+        "cap": 5
+      },
+      "resource.vibes": {
+        "value": 0,
+        "cap": 100
+      }
+    },
+    "stations": [
+      {
+        "id": "station.crystal_circle",
+        "requested": true,
+        "requirements": []
+      },
+      {
+        "id": "station.fire_pit",
+        "requested": true,
+        "requirements": [
+          {
+            "kind": "flag_set",
+            "flag_id": "base.fire_pit_built"
+          }
+        ]
+      },
+      {
+        "id": "station.resonance_chamber",
+        "requested": true,
+        "requirements": [
+          {
+            "kind": "flag_set",
+            "flag_id": "base.resonance_chamber_built"
+          }
+        ]
+      },
+      {
+        "id": "station.mix_console",
+        "requested": true,
+        "requirements": [
+          {
+            "kind": "flag_set",
+            "flag_id": "base.mix_console_built"
+          }
+        ]
+      },
+      {
+        "id": "station.workshop",
+        "requested": true,
+        "requirements": [
+          {
+            "kind": "flag_set",
+            "flag_id": "base.workshop_built"
+          }
+        ]
+      },
+      {
+        "id": "station.research_booth",
+        "requested": true,
+        "requirements": [
+          {
+            "kind": "flag_set",
+            "flag_id": "base.research_booth_built"
+          }
+        ]
+      }
+    ],
+    "activeConstruction": null
+  }
+}

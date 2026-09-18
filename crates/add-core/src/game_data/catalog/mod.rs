@@ -14,6 +14,7 @@ mod stations;
 mod story_beats;
 mod tiles;
 mod ui_elements;
+mod version;
 
 pub(super) use actions::{CONSTRUCTION_OPTIONS, PROCESSING_RECIPES, WORLD_ACTIONS};
 pub(super) use balance::BALANCE;
@@ -31,3 +32,6 @@ pub(super) use stations::STATIONS;
 pub(super) use story_beats::STORY_BEATS;
 pub(super) use tiles::{FLORA, STRUCTURES, TILES};
 pub(super) use ui_elements::UI_ELEMENTS;
+pub(super) use version::{
+    CONTENT_CATALOG_VERSION, CONTENT_SAVE_SCHEMA_VERSION, CONTENT_SCHEMA_VERSION,
+};

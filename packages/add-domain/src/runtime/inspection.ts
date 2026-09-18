@@ -543,8 +543,16 @@ function catalogIdentity(snapshot: SimulationSnapshot, catalog: CatalogSnapshot)
     resonanceRecipes: catalog.resonanceRecipes ?? [],
     storyBeats: catalog.storyBeats ?? [],
     objectives: catalog.objectives ?? [],
+    items: catalog.items ?? [],
+    perks: catalog.perks ?? [],
+    creatures: catalog.creatures ?? [],
+    flags: catalog.flags ?? [],
+    models: catalog.models ?? [],
+    flora: catalog.flora ?? [],
+    structures: catalog.structures ?? [],
     tiles: catalog.tiles ?? [],
     entitySchemas: catalog.entitySchemas ?? [],
+    uiElements: catalog.uiElements ?? [],
   }
   return {
     schemaVersion: snapshot.schemaVersion,
