@@ -707,6 +707,37 @@ function installInteractionCapture(stamp: () => Record<string, unknown>): () => 
   }
 }
 
+// ── Build identity ──────────────────────────────────────────────────────────
+// The session header's git SHA is the baseline at dev-server start. HMR swaps
+// module source mid-session without a restart, so the SHA goes stale. Record each
+// hot update — the updated paths are the honest record of how the running code
+// diverged from that baseline (and reveal edits from a parallel session too).
+
+interface ViteHot {
+  on(event: string, cb: (payload: { updates?: { path: string }[] }) => void): void
+}
+
+let buildTracked = false
+
+/** Emit a dir:"build" line per HMR update, with a generation counter and paths. */
+function installBuildTracking(): void {
+  if (buildTracked) return // guard against a second install across HMR re-runs
+  const hot = (import.meta as unknown as { hot?: ViteHot }).hot
+  if (!hot) return
+  buildTracked = true
+  let gen = 0
+  hot.on("vite:afterUpdate", (payload) => {
+    gen += 1
+    enqueue({
+      t: performance.now(),
+      dir: "build",
+      kind: "hmr",
+      gen,
+      updates: (payload.updates ?? []).map((u) => u.path),
+    })
+  })
+}
+
 // ── Visibility ──────────────────────────────────────────────────────────────
 // Backgrounding explains most perf anomalies (multi-second frames, throttled
 // sampling, latency spikes). Track it explicitly so it's a filter, not a guess.
@@ -758,6 +789,8 @@ export function installTraceRecorder(getSnapshot: () => SimulationSnapshot | nul
 
   // Session header: env + the timeOrigin anchor that maps every `t` to wall-clock.
   recordSessionHeader()
+  // Build identity: record HMR updates so code drift from the header SHA is visible.
+  installBuildTracking()
 
   // Boundary tap: every command out + every worker event in, with latency + back-pressure.
   const onTrace = (entry: TraceEntry): void => {
