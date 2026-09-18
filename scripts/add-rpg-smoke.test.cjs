@@ -2863,8 +2863,8 @@ async function assertHeroStartsAtSurvivorCave(page, state) {
   await canvas.waitFor({ state: "visible" })
   assert.equal(
     await page.locator("#map-focus-cave").count(),
-    1,
-    "The Cave camera anchor should be visible while the Hero starts on the Survivor Cave.",
+    0,
+    "The map HUD should stay minimal and expose zoom controls only.",
   )
   const box = await canvas.boundingBox()
   assert.ok(box, "ADD RPG Phaser canvas should have a browser box")
@@ -3308,18 +3308,17 @@ async function exerciseMainCharacterMovement(page, consoleErrors) {
   assert.equal(draggedDialog.shell.popins.travelDialog.bounded, true)
   await assertClickableCenter(page, "#travel-dialog-cancel")
 
-  await page.locator(".travel-dialog-handle").focus()
-  await page.keyboard.press("Escape")
+  await page.evaluate(() => document.getElementById("objective-primary-action")?.focus())
+  await page.keyboard.press("Enter")
   await waitForTextState(
     page,
     (state) =>
       state.travel?.confirmation?.dialogOpen === true &&
-      state.travel.confirmation.dialogKind === "first_declined" &&
+      state.travel.confirmation.dialogKind === "second_warning" &&
       state.map?.character?.cell === before.map.character.cell,
     consoleErrors,
   )
-  await page.locator(".travel-dialog-handle").focus()
-  await page.keyboard.press("Enter")
+  await page.keyboard.press("Escape")
   await waitForTextState(
     page,
     (state) =>
@@ -3339,7 +3338,27 @@ async function exerciseMainCharacterMovement(page, consoleErrors) {
       state.map?.character?.cell === before.map.character.cell,
     consoleErrors,
   )
-  await page.locator(".travel-dialog-handle").focus()
+  await page.keyboard.press("Escape")
+  await waitForTextState(
+    page,
+    (state) =>
+      state.travel?.confirmation?.dialogOpen === false &&
+      state.travel.confirmation.dramaState === "declined_once" &&
+      state.map?.character?.cell === before.map.character.cell,
+    consoleErrors,
+  )
+
+  const afterRepriseCancel = await renderGameToText(page)
+  await clickVisibleCurrentAction(page, afterRepriseCancel)
+  await waitForTextState(
+    page,
+    (state) =>
+      state.travel?.confirmation?.dialogOpen === true &&
+      state.travel.confirmation.dialogKind === "dramatic_reprise" &&
+      state.map?.character?.cell === before.map.character.cell,
+    consoleErrors,
+  )
+  await page.evaluate(() => document.getElementById("objective-primary-action")?.focus())
   await page.keyboard.press("Enter")
   const minimumArrivalClockSeconds = before.snapshot.clockSeconds + 59
   const observedTravelClockTimes = new Set()
