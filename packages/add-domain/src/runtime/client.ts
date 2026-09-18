@@ -22,6 +22,8 @@ export interface TraceEntry {
   readonly request?: string
   /** Requests still waiting behind this one — worker back-pressure / throughput signal. */
   readonly queueDepth?: number
+  /** Monotonic id linking a command to the event(s) and state changes it produced. */
+  readonly seq?: number
   /** The full protocol payload (request or event). */
   readonly payload: WorkerRequest | WorkerEvent
 }
@@ -63,6 +65,10 @@ export class SimulationClient {
   // round-trip latency and name the command they completed.
   private inFlightSince = 0
   private inFlightRequest: WorkerRequest | null = null
+  // Monotonic command id; the in-flight value is echoed onto the completing event
+  // so a command can be linked to the events and state changes it produced.
+  private seq = 0
+  private inFlightSeq = 0
 
   constructor(options: SimulationClientOptions) {
     this.options = options
@@ -210,6 +216,7 @@ export class SimulationClient {
         latencyMs: this.inFlightSince ? monotonicNow() - this.inFlightSince : undefined,
         request: this.inFlightRequest?.type,
         queueDepth: this.queue.length,
+        seq: this.inFlightSeq,
         payload: message,
       })
     }
@@ -277,12 +284,14 @@ export class SimulationClient {
     this.inFlight = true
     this.inFlightRequest = next
     this.inFlightSince = monotonicNow()
+    this.inFlightSeq = ++this.seq
     if (this.options.onTrace) {
       this.options.onTrace({
         dir: 'command',
         at: this.inFlightSince,
         kind: next.type,
         queueDepth: this.queue.length,
+        seq: this.inFlightSeq,
         payload: next,
       })
     }
