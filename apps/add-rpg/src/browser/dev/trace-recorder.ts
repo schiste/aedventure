@@ -68,6 +68,11 @@ function trimPayload(payload: TraceEntry["payload"]): unknown {
   if (!KEEP_FULL_SNAPSHOTS && "snapshot" in payload && payload.snapshot) {
     return { type: payload.type, events: payload.snapshot.events }
   }
+  // Delta sections are surfaced compactly via the `changed` leaf map, so drop the
+  // bulky raw delta (e.g. the whole resources object on every tick).
+  if (!KEEP_FULL_SNAPSHOTS && payload.type === "snapshotDelta") {
+    return { type: "snapshotDelta" }
+  }
   // Save/import blobs dominate log volume (~70%) and add no debugging value;
   // keep only their size. Flip KEEP_FULL_SNAPSHOTS to retain everything.
   if (
@@ -78,6 +83,79 @@ function trimPayload(payload: TraceEntry["payload"]): unknown {
     return { type: payload.type, saveBytes: payload.payload.length }
   }
   return payload
+}
+
+// ── Changed-leaf capture ────────────────────────────────────────────────────
+// A compact flat map of primitive leaves that moved this frame (path -> new
+// value), so the trace never hides a live signal behind the curated ctx. Handles
+// Map-typed sections (stations, crewByRole, activeJobs) that JSON.stringify would
+// otherwise flatten to "{}".
+
+const MAX_CHANGED_LEAVES = 200
+
+let lastLeaves = new Map<string, unknown>()
+let leavesSeeded = false
+
+/** Flatten objects / arrays / Maps into primitive leaves keyed by dotted path. */
+function flattenInto(value: unknown, path: string, out: Map<string, unknown>): void {
+  if (value instanceof Map) {
+    for (const [k, v] of value) flattenInto(v, path ? `${path}.${String(k)}` : String(k), out)
+  } else if (Array.isArray(value)) {
+    value.forEach((v, i) => flattenInto(v, `${path}.${i}`, out))
+  } else if (value !== null && typeof value === "object") {
+    for (const [k, v] of Object.entries(value)) flattenInto(v, path ? `${path}.${k}` : k, out)
+  } else {
+    out.set(path, value)
+  }
+}
+
+/** Primitive leaves that changed since the last frame; undefined if nothing moved. */
+function changedLeaves(payload: TraceEntry["payload"]): Record<string, unknown> | undefined {
+  let sections: Record<string, unknown> | undefined
+  let isFull = false
+  if ("snapshot" in payload && payload.snapshot) {
+    sections = payload.snapshot as unknown as Record<string, unknown>
+    isFull = true
+  } else if (payload.type === "snapshotDelta") {
+    sections = payload.changed as unknown as Record<string, unknown>
+  }
+  if (!sections) return undefined
+
+  const next = new Map<string, unknown>()
+  for (const [key, value] of Object.entries(sections)) {
+    if (key === "events") continue // captured separately as dir:"game"
+    flattenInto(value, key, next)
+  }
+
+  // Seed silently on the first snapshot rather than reporting the whole state.
+  if (!leavesSeeded) {
+    lastLeaves = next
+    leavesSeeded = true
+    return undefined
+  }
+
+  const changed: Record<string, unknown> = {}
+  let count = 0
+  let overflow = 0
+  for (const [path, value] of next) {
+    if (lastLeaves.get(path) !== value) {
+      if (count < MAX_CHANGED_LEAVES) {
+        changed[path] = value
+        count += 1
+      } else {
+        overflow += 1
+      }
+    }
+    lastLeaves.set(path, value)
+  }
+  // A full snapshot is authoritative — forget leaves that no longer exist.
+  if (isFull) {
+    for (const path of [...lastLeaves.keys()]) {
+      if (!next.has(path)) lastLeaves.delete(path)
+    }
+  }
+  if (overflow) changed.__more = overflow
+  return count || overflow ? changed : undefined
 }
 
 // ── Performance sampling ────────────────────────────────────────────────────
@@ -457,6 +535,7 @@ export function installTraceRecorder(getSnapshot: () => SimulationSnapshot | nul
   // Boundary tap: every command out + every worker event in, with latency + back-pressure.
   const onTrace = (entry: TraceEntry): void => {
     if (entry.queueDepth !== undefined) lastQueueDepth = entry.queueDepth
+    const changed = entry.dir === "event" ? changedLeaves(entry.payload) : undefined
     enqueue({
       t: entry.at,
       dir: entry.dir,
@@ -465,6 +544,7 @@ export function installTraceRecorder(getSnapshot: () => SimulationSnapshot | nul
       ...(entry.request ? { request: entry.request } : {}),
       ...(entry.queueDepth !== undefined ? { queueDepth: entry.queueDepth } : {}),
       payload: trimPayload(entry.payload),
+      ...(changed ? { changed } : {}),
       ctx: stamp(),
     })
   }
