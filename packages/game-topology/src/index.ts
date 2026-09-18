@@ -236,14 +236,14 @@ export function hexCoordInRadius(coord: HexCoord, radius: number): boolean {
 
 export function hexToWorld(coord: HexCoord, radius: number): Vector2 {
   return {
-    x: radius * Math.sqrt(3) * (coord.q + coord.r / 2),
-    y: radius * 1.5 * coord.r,
+    x: radius * 1.5 * coord.q,
+    y: radius * Math.sqrt(3) * (coord.r + coord.q / 2),
   }
 }
 
 export function worldToHex(point: Vector2, radius: number): HexCoord {
-  const q = (Math.sqrt(3) / 3 * point.x - point.y / 3) / radius
-  const r = (2 / 3 * point.y) / radius
+  const q = (2 / 3 * point.x) / radius
+  const r = (-point.x / 3 + Math.sqrt(3) / 3 * point.y) / radius
   return roundAxial(q, r)
 }
 
