@@ -35,6 +35,7 @@ It is validated by the multi-app QA contract and consumed by the ADD smoke.
 | `add.boot` | Runtime boot | Rust/WASM readiness, snapshot/catalog delivery, map readiness, camera, hover/select | Full ADD app |
 | `add.idle` | Idle clock | auto-tick, stable presentation clock, current action | Full ADD app |
 | `add.map` | Map interaction | overworld hex mode, selected cell, camera, map affordance count | Full ADD app |
+| `add.canonical-idle-loop` | Canonical idle loop | the live travel endpoint, Studio arrival handoff, Base availability, completed Studio restoration | Full ADD app at the Studio handoff |
 | `add.story-choice` | Story-choice availability | active beat, awaiting-choice state, enabled `story-choice:` IDs, blocker explanation | Full ADD app with story browser open |
 | `add.save-load` | Save/export/import | save schema/catalog versions, payload, autosave and import readiness | Developer save surface in the app |
 | `add.offline-return` | Offline return | elapsed time, changed systems, blockers, next action, collapsed objective | Offline return panel |

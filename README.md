@@ -61,6 +61,16 @@ For gameplay work, begin with the live ADD path:
    office app) has a concrete consumer and an exercised test.
 5. Treat `legacy/add/` as reference material, not an implementation target.
 
+The protected first gameplay loop is
+`travel -> reach Studio -> unlock Base -> assign crew -> earn resources ->
+construct -> leave offline -> return`. Its headless contract is
+[`scenarios/add/idle-base-first-cycle.json`](scenarios/add/idle-base-first-cycle.json):
+the Rust runner checks ten ordered snapshot checkpoints and a save round-trip.
+The built browser smoke reads the same scenario for the Studio endpoint and
+offline command, and captures `add.canonical-idle-loop` evidence. Gameplay
+changes are not complete until the Rust scenario and the relevant browser
+smoke both pass.
+
 ## Where Does This Change Belong?
 
 Use the [ADD Repository Capability Map](docs/add-capability-map.md) when a task

@@ -98,6 +98,7 @@ function main() {
       "add.boot",
       "add.idle",
       "add.map",
+      "add.canonical-idle-loop",
       "add.story-choice",
       "add.save-load",
       "add.offline-return",

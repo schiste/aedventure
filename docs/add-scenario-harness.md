@@ -125,9 +125,14 @@ boundary. This is the preferred bug-report artifact.
 
 ## Committed scenarios
 
-- `scenarios/add/idle-base-first-cycle.json` starts a new run, advances the
-  onboarding story, starts and completes Studio construction, and verifies
-  story, resources, map, survival, recruitment, and save round-trip state.
+- `scenarios/add/idle-base-first-cycle.json` is the canonical idle gameplay
+  contract: it travels the six open hexes from the Survivor Cave `(6,0)` to
+  the Studio `(0,3)`, completes the authored arrival and Base onboarding
+  beats, assigns Scavenge and Construction Crew, earns Stone, starts and
+  completes Studio restoration, earns Bassline online, applies one hour of
+  offline catch-up, and verifies ten ordered snapshot checkpoints plus a save
+  round-trip. It deliberately does not use `CompletePreArrivalRoute`, which
+  remains a test-only shortcut for focused core tests.
 - `scenarios/add/offline-return.json` loads the committed Studio save with the
   hero already assigned to Crystal Bassline, applies one hour of offline
   catch-up, and checks the returned clock, resource, story, map, survival,
@@ -141,11 +146,15 @@ scenario package test.
 
 ## Browser relationship
 
-The built ADD browser smoke loads `offline-return.json` and reuses its
-compatible runtime command (`RunOfflineCatchup`) in the existing
-save/import/offline-return flow. `SaveRoundTrip` remains
-harness-only because the browser smoke already performs the equivalent
-export/import path and separately verifies the player-facing return review.
+The built ADD browser smoke reads the canonical idle scenario and uses it as a
+contract for the Studio endpoint, Base unlock, and the final one-hour
+`RunOfflineCatchup` command. It captures `add.canonical-idle-loop` at the
+player-facing Studio handoff, then reuses the same offline command in the
+return flow. The standalone `offline-return.json` remains a focused save
+fixture and must stay command-compatible with that browser action.
+`SaveRoundTrip` remains harness-only because the browser smoke already performs
+the equivalent export/import path and separately verifies the player-facing
+return review.
 
 When adding a browser-compatible command, extend the small command bridge in
 `scripts/add-rpg-smoke.test.cjs` and keep the command name/parameters sourced

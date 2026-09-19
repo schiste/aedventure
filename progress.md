@@ -3195,3 +3195,22 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
 - Added the machine-checked generated-file/write-capability manifest and
   documentation. Generated WASM is now explicitly ignored; checked-in Rust
   catalogs and ADD content fixtures retain their source/codegen contract.
+
+## Protected canonical idle loop — 2026-09-19
+
+- Replaced the committed ADD idle scenario's test-only
+  `CompletePreArrivalRoute` shortcut with the real six-hex route from Survivor
+  Cave `(6,0)` to Studio `(0,3)`.
+- Added ten ordered checkpoints covering Studio arrival, Base/story unlocks,
+  Scavenge and Construction Crew assignment, Stone production, Studio
+  construction, online Bassline production, offline return, and save
+  round-trip stability.
+- Added Rust integration assertions that lock the route command shape, reject
+  the shortcut, and verify the final map/resource/crew contract.
+- Added the `add.canonical-idle-loop` browser fixture. The browser smoke reads
+  the same scenario endpoint and `RunOfflineCatchup` command, and captures the
+  player-facing Studio/Base handoff with screenshot and state evidence.
+- Focused verification passed: `cargo test -p add-scenario`, `cargo test
+  -p add-core`, `node scripts/multi-app-qa-contracts.test.cjs`, the required
+  web-game Playwright client with no new console errors, and the full built ADD
+  browser smoke with all seven fixtures passing.

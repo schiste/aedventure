@@ -19,6 +19,9 @@ const SCREENSHOT_PATH = path.join(SMOKE_ARTIFACT_DIR, "add-rpg-smoke.png")
 const OFFLINE_RETURN_SCENARIO = JSON.parse(
   fs.readFileSync(path.join(ROOT_DIR, "scenarios/add/offline-return.json"), "utf8"),
 )
+const CANONICAL_IDLE_LOOP_SCENARIO = JSON.parse(
+  fs.readFileSync(path.join(ROOT_DIR, "scenarios/add/idle-base-first-cycle.json"), "utf8"),
+)
 const ADD_AUTOSAVE_STORAGE_KEY = "aedventure.add-rpg.autosave.v1"
 const ADD_SETTINGS_STORAGE_KEY = "add-rpg:settings:v1"
 const RESET_CLOCK_TOLERANCE_SECONDS = 60
@@ -51,6 +54,9 @@ async function main() {
   let phase5Failure = null
 
   try {
+    const canonicalIdleLoop = await runScenario("canonical idle loop contract", () =>
+      assertCanonicalIdleLoopScenario(CANONICAL_IDLE_LOOP_SCENARIO),
+    )
     browser = await chromium.launch()
     const page = await browser.newPage({ viewport: { width: 1180, height: 760 } })
     page.on("console", (message) => {
@@ -130,9 +136,11 @@ async function main() {
     )
     assertFirstPlayableComplete(firstPlayable)
 
-    await runScenario("Studio arrival unlocks Base navigation", () =>
-      unlockBaseNavigationByTravelingToStudio(page, consoleErrors),
+    const studioArrival = await runScenario("Studio arrival unlocks Base navigation", () =>
+      unlockBaseNavigationByTravelingToStudio(page, consoleErrors, canonicalIdleLoop),
     )
+    assertCanonicalIdleLoopBrowserEvidence(studioArrival, canonicalIdleLoop)
+    await capturePhase5Fixture(page, phase5Evidence, "add.canonical-idle-loop", studioArrival)
     await runScenario("Studio tile detail links", () =>
       exerciseStudioTileDetailLinks(page, consoleErrors),
     )
@@ -209,6 +217,83 @@ function browserScenarioCommands(scenario) {
     "The offline browser smoke must reuse the compatible runtime command prefix from the committed scenario.",
   )
   return commands
+}
+
+function assertCanonicalIdleLoopScenario(scenario) {
+  assert.equal(scenario.id, "idle-base-first-cycle")
+  assert.equal(scenario.seed, "fixture-seed")
+
+  const travelCommands = scenario.commands.filter((command) => command.type === "MoveHeroTo")
+  assert.deepEqual(
+    travelCommands,
+    [
+      { type: "MoveHeroTo", q: 5, r: 0 },
+      { type: "MoveHeroTo", q: 4, r: 1 },
+      { type: "MoveHeroTo", q: 3, r: 1 },
+      { type: "MoveHeroTo", q: 2, r: 2 },
+      { type: "MoveHeroTo", q: 1, r: 2 },
+      { type: "MoveHeroTo", q: 0, r: 3 },
+    ],
+    "the canonical idle loop must use the open Survivor Cave -> Studio route",
+  )
+  assert.ok(
+    !scenario.commands.some((command) => command.type === "CompletePreArrivalRoute"),
+    "the canonical idle loop must not bypass travel with the test-only intro shortcut",
+  )
+  assert.ok(
+    scenario.commands.some(
+      (command) => command.type === "SetRoleCrew" && command.roleId === "role.scavenge",
+    ),
+    "the canonical idle loop must explicitly assign Scavenge Crew",
+  )
+  assert.ok(
+    scenario.commands.some(
+      (command) => command.type === "SetRoleCrew" && command.roleId === "role.construction",
+    ),
+    "the canonical idle loop must explicitly assign Construction Crew",
+  )
+  const offlineCommand = scenario.commands.find((command) => command.type === "RunOfflineCatchup")
+  assert.deepEqual(
+    offlineCommand,
+    { type: "RunOfflineCatchup", seconds: 3600 },
+    "the canonical idle loop must end with the one-hour offline return contract",
+  )
+  assert.equal(
+    scenario.commands.at(-1)?.type,
+    "SaveRoundTrip",
+    "the canonical idle loop must prove its final save round-trip",
+  )
+  assert.deepEqual(
+    scenario.checkpoints.map((checkpoint) => checkpoint.id),
+    [
+      "travel-started",
+      "studio-reached",
+      "base-investigation-unlocked",
+      "base-explored-and-studio-unlocked",
+      "crew-earned-stone",
+      "studio-construction-started",
+      "studio-restored",
+      "online-resource-loop",
+      "offline-return-earned-resources",
+      "save-round-trip-stable",
+    ],
+    "the canonical idle loop checkpoint names are a stable browser/headless contract",
+  )
+
+  const studio = travelCommands.at(-1)
+  return {
+    studioCell: `hex:${studio.q},${studio.r}`,
+  }
+}
+
+function assertCanonicalIdleLoopBrowserEvidence(state, contract) {
+  assert.equal(state.mapMode?.active, "overworld_hex")
+  assert.equal(state.map?.character?.cell, contract.studioCell)
+  assert.equal(state.mapMode?.available?.includes("base_square"), true)
+  assert.equal(state.snapshot?.base?.studioRestoreUnlocked, true)
+  assert.equal(state.snapshot?.base?.studioRestored, true)
+  assert.equal(state.ui?.firstPlayable?.complete, true)
+  assert.equal(state.shell?.currentAction?.source, "discovery")
 }
 
 async function runBrowserScenarioCommand(page, command, consoleErrors) {
@@ -1004,11 +1089,16 @@ async function exerciseMapModeSwitching(page, consoleErrors) {
   )
 }
 
-async function unlockBaseNavigationByTravelingToStudio(page, consoleErrors) {
+async function unlockBaseNavigationByTravelingToStudio(page, consoleErrors, canonicalIdleLoop) {
   await returnToOverworld(page, consoleErrors)
   let state = await renderGameToText(page)
   const targetCell = `hex:${state.map?.landmarks?.baseCenter}`
   assert.ok(/^hex:-?\d+,-?\d+$/.test(targetCell), "Studio base center should be a hex cell.")
+  assert.equal(
+    targetCell,
+    canonicalIdleLoop.studioCell,
+    "browser Studio target must match the canonical Rust scenario endpoint",
+  )
   if (state.map?.character?.cell === targetCell) {
     assert.ok(
       state.mapMode?.available?.includes("base_square"),
@@ -2721,7 +2811,24 @@ async function exerciseSaveReloadOfflineAndReset(
     ["RunOfflineCatchup", "SaveRoundTrip"],
     "The browser smoke and headless harness must keep the offline scenario contract aligned.",
   )
-  const offlineTicked = await runBrowserScenarioCommand(page, offlineCommands[0], consoleErrors)
+  const canonicalOfflineCommand = CANONICAL_IDLE_LOOP_SCENARIO.commands.find(
+    (command) => command.type === "RunOfflineCatchup",
+  )
+  assert.deepEqual(
+    canonicalOfflineCommand,
+    { type: "RunOfflineCatchup", seconds: 3600 },
+    "The canonical idle loop must reuse the same one-hour browser catch-up control.",
+  )
+  assert.deepEqual(
+    canonicalOfflineCommand,
+    offlineCommands[0],
+    "The canonical idle loop and standalone offline fixture must share the browser command.",
+  )
+  const offlineTicked = await runBrowserScenarioCommand(
+    page,
+    canonicalOfflineCommand,
+    consoleErrors,
+  )
   assert.ok(offlineTicked.snapshot.clockSeconds > imported.snapshot.clockSeconds)
   assert.equal(offlineTicked.ui.firstPlayable.persistenceReady, true)
   assert.equal(offlineTicked.offlineReturn.source, "manual")

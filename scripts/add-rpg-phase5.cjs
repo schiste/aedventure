@@ -21,7 +21,7 @@ function validateAddBrowserQaManifest(manifest) {
   assert.equal(manifest.contract_version, "add-browser-qa-v1")
   assert.ok(manifest.selectors && typeof manifest.selectors === "object")
   assert.ok(manifest.action_ids && typeof manifest.action_ids === "object")
-  assert.ok(Array.isArray(manifest.fixtures) && manifest.fixtures.length === 6)
+  assert.ok(Array.isArray(manifest.fixtures) && manifest.fixtures.length === 7)
 
   const ids = new Set()
   for (const fixture of manifest.fixtures) {
@@ -46,6 +46,7 @@ function validateAddBrowserQaManifest(manifest) {
     "add.boot",
     "add.idle",
     "add.map",
+    "add.canonical-idle-loop",
     "add.story-choice",
     "add.save-load",
     "add.offline-return",

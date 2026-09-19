@@ -120,6 +120,34 @@
       "screenshot": "map.png"
     },
     {
+      "id": "add.canonical-idle-loop",
+      "flow": "canonical-idle-loop",
+      "smoke_scenario": "Studio arrival unlocks Base navigation",
+      "surface": "app",
+      "selectors": ["app", "map_stage", "status", "objective"],
+      "assertions": [
+        { "path": "mapMode.active", "equals": "overworld_hex" },
+        { "path": "map.character.cell", "equals": "hex:0,3" },
+        { "path": "mapMode.available", "containsPrefix": "base_square" },
+        { "path": "snapshot.base.studioRestoreUnlocked", "equals": true },
+        { "path": "snapshot.base.studioRestored", "equals": true },
+        { "path": "ui.firstPlayable.complete", "equals": true },
+        { "path": "shell.currentAction.source", "equals": "discovery" }
+      ],
+      "state_paths": [
+        "mapMode.active",
+        "mapMode.available",
+        "map.character.cell",
+        "snapshot.heroMap",
+        "snapshot.base.studioRestoreUnlocked",
+        "snapshot.base.studioRestored",
+        "ui.firstPlayable.complete",
+        "shell.currentAction.source",
+        "shell.currentAction.kind"
+      ],
+      "screenshot": "canonical-idle-loop.png"
+    },
+    {
       "id": "add.story-choice",
       "flow": "story-choice-availability",
       "smoke_scenario": "boot and render text contract",
