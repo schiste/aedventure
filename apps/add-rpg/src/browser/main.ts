@@ -26,7 +26,6 @@ import {
   ROLE_SCAVENGE,
   ROLE_WATER,
   ADD_DISCOVERY_OPEN_BASE_ACTION_ID,
-  SimulationClient,
   addCommandForGameInteraction,
   selectAddAvailableCommands,
   selectAddBaseManagementState,
@@ -53,6 +52,8 @@ import {
   STUDIO_GROUNDS_AREA_MAP_ID,
   addMapModeLabel,
   createAddWorldForMapMode,
+  renderAddAgentRuntimeText,
+  serializeAddAgentRuntimeReport,
   selectAddStoryMoment,
   selectAddStoryContentBrowserState,
   selectPreferredTileAction,
@@ -81,13 +82,14 @@ import type { CellCoord } from "@aedventure/game-topology"
 import type { GameInteraction, GameWorld } from "@aedventure/game-world"
 
 import type { VisibilityMap } from "@aedventure/game-visibility"
-import {
-  AddRpgPhaserMapHost,
-  type AddCharacterMoveDirection,
-  type AddCharacterTravelEvent,
-  type AddTileActivationEvent,
-  type AddPhaserMapInfo,
+import type {
+  AddCharacterMoveDirection,
+  AddCharacterTravelEvent,
+  AddTileActivationEvent,
+  AddPhaserMapInfo,
 } from "./phaser-add-map"
+import { AddMapController } from "./add-map-controller"
+import { AddRuntimeBridge } from "./add-runtime-bridge"
 import { emptyMapInfo } from "./add-phaser/add-map-telemetry"
 import {
   createAddRuntimeTextState,
@@ -126,6 +128,12 @@ import {
   loadSettings,
   saveSettings,
 } from "./settings/settings-state"
+import {
+  ADD_BROWSER_QA_CONTRACT_VERSION,
+  ADD_QA_ACTION_IDS,
+  ADD_QA_SELECTORS,
+  addQaMapModeActionId,
+} from "./qa-contract"
 import { installTraceRecorder } from "./dev/trace-recorder"
 import "./styles.css"
 
@@ -259,18 +267,13 @@ declare global {
   interface Window {
     addSettings?: () => AddSettings
     render_game_to_text?: () => string
+    render_add_runtime_text?: () => string
+    render_add_runtime_json?: () => string
     advanceTime?: (milliseconds?: number) => Promise<string>
   }
 }
 
-let snapshotVersion = 0
-let snapshotWaiters: Array<{ afterVersion: number; resolve: () => void }> = []
-let requestInFlight = false
-let saveVersion = 0
-let saveWaiters: Array<{ afterVersion: number; resolve: (payload: string | null) => void }> = []
-let saveRequestInFlight = false
 let pendingSaveSource: AddSaveSource = "autosave"
-let lastSavePayload: string | null = null
 let autosaveRestoreAttempted = false
 let queuedOfflineCatchupSeconds = 0
 let lastAutosaveRequestMs = 0
@@ -378,7 +381,7 @@ createModuleEffect(() => {
   })
 })
 
-let mapHost: AddRpgPhaserMapHost | null = null
+const mapController = new AddMapController()
 let travelClearTimer: number | undefined
 let clockAnimationFrameId: number | undefined
 let baseViewTransitionTimer: number | undefined
@@ -411,25 +414,18 @@ let floatingPanelDrag:
 // snapshot context via the `snapshot` accessor declared above.
 const traceRecorder = installTraceRecorder(() => snapshot())
 
-const client = new SimulationClient({
-  createWorker: () =>
-    new Worker(new URL("../workers/add-runtime.worker.ts", import.meta.url), {
-      type: "module",
-    }),
+const runtimeBridge = new AddRuntimeBridge({
   onTrace: traceRecorder.onTrace,
   onReady(nextSnapshot, nextCatalog) {
-    snapshotVersion += 1
     setReady(true)
     setSnapshot(nextSnapshot)
     setDisplayClockSeconds(nextSnapshot.clockSeconds)
     setCatalog(nextCatalog)
     setLastEvent("ready")
     setLastError(null)
-    resolveSnapshotWaiters()
     maybeRestoreAutosaveOnBoot(nextSnapshot)
   },
   onSnapshot(nextSnapshot) {
-    snapshotVersion += 1
     setSnapshot(nextSnapshot)
     if (travelExperience()?.phase === "traveling") {
       // A travel reveal owns the presentation clock; let it run to arrival.
@@ -443,24 +439,16 @@ const client = new SimulationClient({
     setLastEvent("snapshot")
     setLastError(null)
     maybeFinalizeOfflineReturnSummary(nextSnapshot)
-    resolveSnapshotWaiters()
     const catchupStarted = maybeRunQueuedOfflineCatchup()
     if (!catchupStarted) maybeRequestAutosave()
   },
   onSave(payload) {
-    saveVersion += 1
-    lastSavePayload = payload
-    saveRequestInFlight = false
     setLastEvent("save")
     persistSavePayload(payload, pendingSaveSource)
-    resolveSaveWaiters(payload)
   },
   onError(message) {
     setLastEvent("error")
     setLastError(message)
-    saveRequestInFlight = false
-    resolveSaveWaiters(null)
-    resolveSnapshotWaiters()
   },
   onEvents(events) {
     // Fan per-frame sim events onto the window bus that music-event-bridge and
@@ -687,15 +675,17 @@ createModuleEffect(() => {
   }
 
   setWorld(nextWorld)
-  mapHost?.renderWorld(nextWorld)
+  mapController.renderWorld(nextWorld)
   refreshMapInfo()
 })
 
 window.render_game_to_text = () => JSON.stringify(toTextState())
+window.render_add_runtime_text = () => renderAddAgentRuntimeText(toTextState().agentRuntime)
+window.render_add_runtime_json = () => serializeAddAgentRuntimeReport(toTextState().agentRuntime)
 window.advanceTime = async (milliseconds = 1000) => {
   const seconds = milliseconds / 1000
   await tickRuntime(seconds, { queue: true, commandLabel: `advance:${seconds.toFixed(1)}s` })
-  mapHost?.advanceTime(milliseconds)
+  mapController.advanceTime(milliseconds)
   refreshMapInfo()
   return JSON.stringify(toTextState())
 }
@@ -728,15 +718,15 @@ async function setDevLiveTuningDashboardVisible(visible: boolean): Promise<void>
 function handleLiveTuningOverride(event: Event): void {
   const detail = (event as CustomEvent<{ readonly path?: unknown; readonly value?: unknown }>).detail
   if (typeof detail?.path !== "string" || typeof detail.value !== "number") return
-  client.setBalanceOverride(detail.path, detail.value)
+  sendWorkerRequest({ type: "setBalanceOverride", path: detail.path, value: detail.value })
 }
 
 function handleLiveTuningReset(): void {
-  client.resetBalanceOverrides()
+  sendWorkerRequest({ type: "resetBalanceOverrides" })
 }
 
 render(() => html`<${AddRpgApp} />`, requiredElement("app"))
-client.init()
+sendWorkerRequest({ type: "init" })
 
 function AddRpgApp() {
   let mapElement: HTMLDivElement | undefined
@@ -747,7 +737,7 @@ function AddRpgApp() {
   onMount(() => {
     if (!mapElement) return
     try {
-      mapHost = new AddRpgPhaserMapHost(mapElement, {
+      mapController.mount(mapElement, {
         showTravelActionMarkers: playerSettings().showTravelActionMarkers,
         onBeforeCharacterTravel: confirmFirstCharacterTravel,
         onCharacterTravel: (event) => {
@@ -771,7 +761,7 @@ function AddRpgApp() {
     }
     const currentWorld = world()
     if (currentWorld) {
-      mapHost.renderWorld(currentWorld)
+      mapController.renderWorld(currentWorld)
       refreshMapInfo()
     }
     window.requestAnimationFrame(() => {
@@ -805,8 +795,8 @@ function AddRpgApp() {
     if (liveTuningDashboardVisible()) {
       void setDevLiveTuningDashboardVisible(false)
     }
-    mapHost?.destroy()
-    client.dispose()
+    mapController.destroy()
+    runtimeBridge.dispose()
   })
 
   // Ambient clock: one fixed 1-second runtime step per fire, fired every
@@ -846,6 +836,8 @@ function AddRpgApp() {
           .filter(Boolean)
           .join(" ")}
       data-interface-hierarchy="map-decision-status-admin"
+      data-qa=${ADD_QA_SELECTORS.app}
+      data-qa-contract=${ADD_BROWSER_QA_CONTRACT_VERSION}
       onFocusIn=${handleShellFocusIn}
       onKeyDown=${handleShellKeyDown}
     >
@@ -856,6 +848,7 @@ function AddRpgApp() {
           class="add-world"
           data-interface-tier="primary"
           data-visual-surface="map-stage"
+          data-qa=${ADD_QA_SELECTORS.mapStage}
           ref=${(node: HTMLDivElement) => (mapElement = node)}
         >
           <div
@@ -902,6 +895,7 @@ function AddRpgApp() {
             class="map-topbar"
             data-interface-tier="tertiary"
             data-visual-surface="status"
+            data-qa=${ADD_QA_SELECTORS.status}
             aria-label="ADD map navigation and status"
           >
             <div class="map-mode-switcher" role="tablist" aria-label="ADD map mode">
@@ -926,6 +920,7 @@ function AddRpgApp() {
               <button
                 id="time-speed-control"
                 type="button"
+                data-action-id=${ADD_QA_ACTION_IDS.timeToggleSpeed}
                 class=${() => (autoTick() ? "time-speed-button" : "time-speed-button paused")}
                 onClick=${() => cycleTimeSpeed()}
                 disabled=${() => !ready()}
@@ -968,6 +963,7 @@ function AddRpgApp() {
                     <button
                       id="open-settings"
                       type="button"
+                      data-action-id=${ADD_QA_ACTION_IDS.menuOpenSettings}
                       class="ghost-button shell-menu-action settings-menu-action"
                       role="menuitem"
                       onClick=${openSettingsView}
@@ -986,6 +982,7 @@ function AddRpgApp() {
                     <button
                       id="open-admin"
                       type="button"
+                      data-action-id=${ADD_QA_ACTION_IDS.menuOpenAdmin}
                       class="ghost-button shell-menu-action admin-menu-action"
                       role="menuitem"
                       onClick=${openAdminView}
@@ -1001,6 +998,7 @@ function AddRpgApp() {
                     <button
                       id="open-dev-menu"
                       type="button"
+                      data-action-id=${ADD_QA_ACTION_IDS.menuOpenDeveloper}
                       class="ghost-button shell-menu-action dev-menu-action"
                       role="menuitem"
                       onClick=${openDevView}
@@ -1037,6 +1035,7 @@ function AddRpgApp() {
             data-last-action=${() => lastQuestPanelAction()}
             data-complete=${() => firstPlayableArcComplete()}
             data-visual-surface="objective"
+            data-qa=${ADD_QA_SELECTORS.objective}
             aria-labelledby="first-playable-title"
             aria-describedby="first-playable-keyboard-help"
           >
@@ -1087,6 +1086,7 @@ function AddRpgApp() {
             class="map-hud"
             data-interface-tier="tertiary"
             data-visual-surface="map-controls"
+            data-qa=${ADD_QA_SELECTORS.mapControls}
             aria-label="ADD map controls"
           >
             <div class="map-camera-controls" aria-label="Map camera controls">
@@ -1094,6 +1094,7 @@ function AddRpgApp() {
                 <button
                   id="map-zoom-out"
                   type="button"
+                  data-action-id=${ADD_QA_ACTION_IDS.mapZoomOut}
                   class="map-button map-button-icon"
                   onClick=${() => zoomMap(0.9)}
                   disabled=${() => !mapInfo().ready}
@@ -1105,6 +1106,7 @@ function AddRpgApp() {
                 <button
                   id="map-zoom-in"
                   type="button"
+                  data-action-id=${ADD_QA_ACTION_IDS.mapZoomIn}
                   class="map-button map-button-icon"
                   onClick=${() => zoomMap(1.1)}
                   disabled=${() => !mapInfo().ready}
@@ -1394,7 +1396,7 @@ function AddRpgApp() {
         <nav class="drawer-section-map admin-section-map" aria-label="Admin sections">
           <a href="#admin-run-status">Run</a>
           <a href="#admin-resources">Resources</a>
-          <a href="#admin-story-browser">Story</a>
+          <a href="#admin-story-browser" data-action-id=${ADD_QA_ACTION_IDS.storyOpenContext}>Story</a>
           <a href="#admin-recovery">Recovery</a>
           <a href="#admin-world-actions">Actions</a>
         </nav>
@@ -1674,6 +1676,7 @@ function AddRpgApp() {
             id="dev-save-tools"
             class="panel run-panel keyboard-section"
             tabindex="0"
+            data-qa=${ADD_QA_SELECTORS.saveTools}
             aria-label="Developer raw save section"
           >
             <div class="panel-heading">
@@ -1707,21 +1710,40 @@ function AddRpgApp() {
               aria-label="ADD save payload"
             />
             <div class="run-grid">
-              <button id="export-save" type="button" onClick=${() => void exportSaveNow()} disabled=${() => !ready()}>
+              <button
+                id="export-save"
+                type="button"
+                data-action-id=${ADD_QA_ACTION_IDS.saveExport}
+                onClick=${() => void exportSaveNow()}
+                disabled=${() => !ready()}
+              >
                 Save now
               </button>
               <button
                 id="load-autosave"
                 type="button"
+                data-action-id=${ADD_QA_ACTION_IDS.saveLoadAutosave}
                 onClick=${() => void loadAutosave()}
                 disabled=${() => !ready() || !autosaveRecord()}
               >
                 Load autosave
               </button>
-              <button id="import-save" type="button" onClick=${() => void importSaveText()} disabled=${() => !ready()}>
+              <button
+                id="import-save"
+                type="button"
+                data-action-id=${ADD_QA_ACTION_IDS.saveImport}
+                onClick=${() => void importSaveText()}
+                disabled=${() => !ready()}
+              >
                 Import text
               </button>
-              <button id="offline-catchup" type="button" onClick=${() => void runOfflineCatchup(3600)} disabled=${() => !ready()}>
+              <button
+                id="offline-catchup"
+                type="button"
+                data-action-id=${ADD_QA_ACTION_IDS.offlineCatchupOneHour}
+                onClick=${() => void runOfflineCatchup(3600)}
+                disabled=${() => !ready()}
+              >
                 Offline 1h
               </button>
               <button id="clear-autosave" type="button" class="ghost-button" onClick=${clearBrowserAutosave}>
@@ -1749,7 +1771,7 @@ function updatePlayerSettings(patch: Partial<AddSettings>): void {
   setPlayerSettings(next)
   saveSettings(next)
   applyDomSettings(next)
-  mapHost?.setShowTravelActionMarkers(next.showTravelActionMarkers)
+  mapController.setShowTravelActionMarkers(next.showTravelActionMarkers)
   setReducedMotionMode(next.reducedMotion ? "reduced" : "system")
   window.dispatchEvent(new CustomEvent<AddSettings>("add-settings-changed", { detail: next }))
 }
@@ -2412,6 +2434,8 @@ function adminStoryBrowserPanel(): unknown {
         id="admin-story-browser"
         class="panel admin-story-panel keyboard-section"
         tabindex="0"
+        data-qa=${ADD_QA_SELECTORS.storyBrowser}
+        data-action-id=${ADD_QA_ACTION_IDS.storyOpenContext}
         aria-label="Admin story content section"
       >
         <div class="panel-heading">
@@ -2427,6 +2451,8 @@ function adminStoryBrowserPanel(): unknown {
       id="admin-story-browser"
       class="panel admin-story-panel keyboard-section"
       tabindex="0"
+      data-qa=${ADD_QA_SELECTORS.storyBrowser}
+      data-action-id=${ADD_QA_ACTION_IDS.storyOpenContext}
       aria-label="Admin story content section"
     >
       <div class="panel-heading">
@@ -2497,7 +2523,7 @@ function adminStoryBrowserPanel(): unknown {
           : html`<p class="story-browser-empty">No narrative qualities are set.</p>`}
       </details>
 
-      <details class="story-browser-fold">
+      <details class="story-browser-fold" data-qa=${ADD_QA_SELECTORS.storyCommands}>
         <summary>Available commands</summary>
         <ul class="story-browser-list">${state.availableCommands.map(storyBrowserCommandRow)}</ul>
       </details>
@@ -2547,7 +2573,10 @@ function storyBrowserQualityRow(quality: AddStoryContentBrowserState["qualities"
 
 function storyBrowserCommandRow(command: AddStoryContentBrowserState["availableCommands"][number]): unknown {
   return html`
-    <li class=${command.enabled ? "story-browser-enabled" : "story-browser-disabled"}>
+    <li
+      class=${command.enabled ? "story-browser-enabled" : "story-browser-disabled"}
+      data-action-id=${command.id}
+    >
       <span>
         <strong>${command.label}</strong>
         <small>${command.disabledReason ?? `${command.workerType} · ${command.kind}`}</small>
@@ -3155,7 +3184,11 @@ function storyMomentBlock(): unknown {
   // the surface blank for the 7 no-choice spine beats.)
   if (!moment) return null
   return html`
-    <details id="story-context-section" class="context-detail-section story-context-section">
+    <details
+      id="story-context-section"
+      class="context-detail-section story-context-section"
+      data-action-id=${ADD_QA_ACTION_IDS.storyOpenContext}
+    >
       <summary>
         <span>Story context</span>
         <small>${moment.label}</small>
@@ -3187,6 +3220,7 @@ function storyMomentBlock(): unknown {
                           type="button"
                           class="story-moment-choice"
                           data-choice-id=${choice.id}
+                          data-action-id=${`story-choice:${moment.beatId}:${choice.id}`}
                           onClick=${() => void chooseStoryOption(moment.beatId, choice.id)}
                         >
                           ${choice.label}
@@ -3208,6 +3242,7 @@ function currentActionSurface(): unknown {
     <article
       id="current-action-surface"
       class="current-action-surface keyboard-section"
+      data-qa=${ADD_QA_SELECTORS.currentAction}
       data-source=${() => currentActionState().source}
       data-kind=${() => currentActionState().kind}
       data-enabled=${() => (currentActionState().enabled ? "true" : "false")}
@@ -3269,6 +3304,7 @@ function currentActionSurface(): unknown {
               <button
                 id="current-action-primary"
                 type="button"
+                data-action-id=${() => currentActionState().actionId ?? ""}
                 class="primary-action"
                 data-key-action="confirm"
                 aria-keyshortcuts="Enter"
@@ -5244,7 +5280,7 @@ function tileActionDuplicatesCurrentPrimary(action: AddTileAction): boolean {
 }
 
 function selectDiscoveryChoice(cell: string): void {
-  const selected = mapHost?.selectCell(cell) ?? false
+  const selected = mapController.selectCell(cell)
   if (selected) refreshMapInfo()
   openContextDetailSection("selected-tile-section")
 }
@@ -5324,7 +5360,7 @@ async function runSelectedTileTravelAction(detail: AddTileDetailSummary): Promis
   if (!detail.travel.canTravelNow || detail.travel.standingHere) return
   const direction = directionBetweenAddCells(mapInfo().character.cell, detail.cell)
   if (!direction) return
-  await mapHost?.moveMainCharacter(direction)
+  await mapController.moveMainCharacter(direction)
   refreshMapInfo()
 }
 
@@ -5632,6 +5668,7 @@ function objectivePanelPrimaryButton(
     <button
       id=${id}
       type="button"
+      data-action-id=${() => action.actionId ?? ""}
       class="objective-primary-action"
       data-key-action="confirm"
       aria-keyshortcuts="Enter"
@@ -5881,6 +5918,7 @@ function mapModeButtons(): readonly unknown[] {
       <button
         id=${`map-mode-${option.id}`}
         type="button"
+        data-action-id=${addQaMapModeActionId(option.id)}
         class=${() => (mapMode() === option.id ? "map-mode-button active" : "map-mode-button")}
         role="tab"
         aria-selected=${() => mapMode() === option.id}
@@ -6265,6 +6303,7 @@ function travelDialogView(): unknown {
         aria-modal="true"
         aria-labelledby="travel-dialog-title"
         aria-keyshortcuts="Enter Escape"
+        data-qa=${ADD_QA_SELECTORS.travelDialog}
         data-kind=${dialog.kind}
         data-dragging=${() => floatingPanelDraggingId() === "travel_dialog"}
         data-last-action=${() => floatingPanelLastActions().travel_dialog}
@@ -6314,6 +6353,7 @@ function offlineReturnPanel(): unknown {
       data-dragging=${() => floatingPanelDraggingId() === "offline_return"}
       data-last-action=${() => floatingPanelLastActions().offline_return}
       data-visual-surface="context"
+      data-qa=${ADD_QA_SELECTORS.offlineReturn}
       role="region"
       aria-labelledby="offline-return-title"
       aria-live="polite"
@@ -6341,6 +6381,7 @@ function offlineReturnPanel(): unknown {
           id="dismiss-offline-return"
           type="button"
           class="ghost-button offline-return-dismiss"
+          data-action-id=${ADD_QA_ACTION_IDS.offlineDismiss}
           data-key-action="cancel"
           aria-keyshortcuts="Escape"
           onClick=${dismissOfflineReturnSummary}
@@ -6379,6 +6420,7 @@ function offlineReturnPanel(): unknown {
           id="dismiss-offline-return-primary"
           type="button"
           class="primary-action"
+          data-action-id=${ADD_QA_ACTION_IDS.offlineDismiss}
           data-key-action="confirm"
           aria-keyshortcuts="Enter"
           onClick=${dismissOfflineReturnSummary}
@@ -6594,6 +6636,7 @@ function travelDialogActions(kind: TravelDialogKind): readonly unknown[] {
           id="travel-dialog-dismiss"
           type="button"
           class="primary-action"
+          data-action-id=${ADD_QA_ACTION_IDS.travelDismissWarning}
           data-key-action="confirm"
           aria-keyshortcuts="Enter Escape"
           onClick=${() => answerTravelDialog(true)}
@@ -6611,6 +6654,7 @@ function travelDialogActions(kind: TravelDialogKind): readonly unknown[] {
           id="travel-dialog-cancel"
           type="button"
           class="ghost-button"
+          data-action-id=${ADD_QA_ACTION_IDS.travelCancel}
           data-key-action="cancel"
           aria-keyshortcuts="Escape"
           onClick=${() => answerTravelDialog(false)}
@@ -6623,6 +6667,7 @@ function travelDialogActions(kind: TravelDialogKind): readonly unknown[] {
           id="travel-dialog-venture"
           type="button"
           class="primary-action"
+          data-action-id=${ADD_QA_ACTION_IDS.travelConfirm}
           data-key-action="confirm"
           aria-keyshortcuts="Enter"
           onClick=${() => answerTravelDialog(true)}
@@ -6639,6 +6684,7 @@ function travelDialogActions(kind: TravelDialogKind): readonly unknown[] {
         id="travel-dialog-cancel"
         type="button"
         class="ghost-button"
+        data-action-id=${ADD_QA_ACTION_IDS.travelCancel}
         data-key-action="cancel"
         aria-keyshortcuts="Escape"
         onClick=${() => answerTravelDialog(false)}
@@ -6651,6 +6697,7 @@ function travelDialogActions(kind: TravelDialogKind): readonly unknown[] {
         id="travel-dialog-confirm"
         type="button"
         class="primary-action"
+        data-action-id=${ADD_QA_ACTION_IDS.travelConfirm}
         data-key-action="confirm"
         aria-keyshortcuts="Enter"
         onClick=${() => answerTravelDialog(true)}
@@ -6795,7 +6842,7 @@ function enterDungeonLink(link: AddPhaserMapInfo["character"]["dungeonLinksAtCel
 
 function handleTileActivation(event: AddTileActivationEvent): void {
   if (Date.now() - lastTileActionAtMs < 120) return
-  const selected = mapHost?.selectCell(event.cell) ?? false
+  const selected = mapController.selectCell(event.cell)
   if (selected) refreshMapInfo()
   const detail = discoveryState()?.tileDetail
   if (!detail || detail.cell !== event.cell) return
@@ -6886,12 +6933,11 @@ function runTileDetailAction(detail: AddTileDetailSummary, action: AddTileAction
 }
 
 function refreshMapInfo(): void {
-  const info = mapHost?.getInfo()
-  if (info) setMapInfo(info)
+  setMapInfo(mapController.getInfo())
 }
 
 function zoomMap(factor: number): void {
-  mapHost?.zoomBy(factor)
+  mapController.zoomBy(factor)
   refreshMapInfo()
 }
 
@@ -6901,12 +6947,12 @@ function mapZoomReadout(): string {
 }
 
 function resetMapCamera(): void {
-  mapHost?.resetCamera()
+  mapController.resetCamera()
   refreshMapInfo()
 }
 
 function focusMap(target: "hero" | "base" | "cave"): void {
-  mapHost?.focusOn(target)
+  mapController.focusOn(target)
   refreshMapInfo()
 }
 
@@ -6948,7 +6994,7 @@ function maybeRestoreAutosaveOnBoot(_initialSnapshot: SimulationSnapshot): void 
       ? `Loading autosave +${formatDuration(queuedOfflineCatchupSeconds)}`
       : "Loading autosave",
   )
-  client.importSave(record.payload)
+  sendWorkerRequest({ type: "importSave", payload: record.payload })
 }
 
 function maybeRunQueuedOfflineCatchup(): boolean {
@@ -6960,7 +7006,7 @@ function maybeRunQueuedOfflineCatchup(): boolean {
   setLastOfflineCatchupSeconds(seconds)
   setLastCommand(`offline:${formatDuration(seconds)}`)
   setSaveStatus(`Catching up ${formatDuration(seconds)}`)
-  client.runOfflineCatchup(seconds)
+  sendWorkerRequest({ type: "offlineCatchup", elapsedSeconds: seconds })
   return true
 }
 
@@ -6998,7 +7044,7 @@ function maybeFinalizeOfflineReturnSummary(after: SimulationSnapshot): void {
 }
 
 function maybeRequestAutosave(): void {
-  if (!ready() || !autosaveEnabled() || saveRequestInFlight) return
+  if (!ready() || !autosaveEnabled()) return
   const now = Date.now()
   if (now - lastAutosaveRequestMs < 3000) return
   lastAutosaveRequestMs = now
@@ -7028,7 +7074,7 @@ async function loadAutosave(): Promise<void> {
         ? `Loading autosave +${formatDuration(queuedOfflineCatchupSeconds)}`
         : "Loading autosave",
     )
-    client.importSave(record.payload)
+    sendWorkerRequest({ type: "importSave", payload: record.payload })
   })
 }
 
@@ -7053,7 +7099,7 @@ async function importSaveText(): Promise<void> {
   await sendAndWaitForSnapshot(() => {
     setLastCommand("import_save")
     setStorageError(null)
-    client.importSave(payload)
+    sendWorkerRequest({ type: "importSave", payload })
   })
 
   if (!lastError()) {
@@ -7068,7 +7114,7 @@ async function runOfflineCatchup(seconds: number): Promise<void> {
     setLastOfflineCatchupSeconds(seconds)
     setLastCommand(`offline:${formatDuration(seconds)}`)
     setSaveStatus(`Catching up ${formatDuration(seconds)}`)
-    client.runOfflineCatchup(seconds)
+    sendWorkerRequest({ type: "offlineCatchup", elapsedSeconds: seconds })
   })
   if (!lastError()) void requestSave("offline_catchup")
 }
@@ -7086,15 +7132,9 @@ function clearBrowserAutosave(): void {
 }
 
 async function requestSave(source: AddSaveSource): Promise<string | null> {
-  if (!ready() || saveRequestInFlight) return lastSavePayload
-  saveRequestInFlight = true
+  if (!ready()) return runtimeBridge.latestSavePayload
   pendingSaveSource = source
-  const afterVersion = saveVersion
-  const waiter = waitForSaveAfter(afterVersion)
-  client.exportSave()
-  const payload = await waiter
-  if (saveVersion <= afterVersion) saveRequestInFlight = false
-  return payload
+  return runtimeBridge.requestSave()
 }
 
 function persistSavePayload(payload: string, source: AddSaveSource): void {
@@ -7135,7 +7175,7 @@ async function handleDoorToggle(coord: CellCoord): Promise<void> {
   const dungeonId = addDungeonByMapId(dungeonTarget())?.id ?? dungeonTarget()
   const key = dungeonDoorKey(dungeonId, coord)
   await sendAndWaitForSnapshot(() => {
-    client.openDoor(key)
+    sendWorkerRequest({ type: "openDoor", key })
   })
 }
 
@@ -7150,7 +7190,7 @@ async function handleClearLocation(
   const key = dungeonLocationKey(dungeonId, coord)
   const drop = lootTable ? lootDropForLocation(lootTable, key) : undefined
   await sendAndWaitForSnapshot(() => {
-    client.clearLocation(key, drop?.itemId, drop?.qty ?? 0)
+    sendWorkerRequest({ type: "clearLocation", key, lootItem: drop?.itemId, lootQty: drop?.qty ?? 0 })
   })
 }
 
@@ -7158,25 +7198,25 @@ async function handlePickUp(coord: CellCoord): Promise<void> {
   const dungeonId = addDungeonByMapId(dungeonTarget())?.id ?? dungeonTarget()
   const key = dungeonLocationKey(dungeonId, coord)
   await sendAndWaitForSnapshot(() => {
-    client.pickUpLocation(key)
+    sendWorkerRequest({ type: "pickUpLocation", key })
   })
 }
 
 async function handleUseItem(itemId: string): Promise<void> {
   await sendAndWaitForSnapshot(() => {
     setLastCommand(`use:${itemId}`)
-    client.useItem(itemId)
+    sendWorkerRequest({ type: "useItem", itemId })
   })
 }
 
 async function handleDropItem(itemId: string): Promise<void> {
   // Drop one of the item onto the Hero's current dungeon cell.
-  const coord = mapHost?.getRendererState().controlledEntity.coord
+  const coord = mapController.getRendererState().controlledEntity.coord
   if (!coord) return
   const dungeonId = addDungeonByMapId(dungeonTarget())?.id ?? dungeonTarget()
   const key = dungeonLocationKey(dungeonId, coord)
   await sendAndWaitForSnapshot(() => {
-    client.dropItem(key, itemId, 1)
+    sendWorkerRequest({ type: "dropItem", key, itemId, qty: 1 })
   })
 }
 
@@ -7212,7 +7252,7 @@ async function handleCharacterTravel(event: AddCharacterTravelEvent): Promise<vo
   })
   animatePresentationClockTo(toClockSeconds, "tile_travel")
 
-  mapHost?.setTravelLocked(true)
+  mapController.setTravelLocked(true)
   try {
     await Promise.all([
       tickRuntime(travelTiming.runtimeSeconds, {
@@ -7222,7 +7262,7 @@ async function handleCharacterTravel(event: AddCharacterTravelEvent): Promise<vo
       waitForTravelPresentation(startedAtMs, travelTiming.durationMs),
     ])
   } finally {
-    mapHost?.setTravelLocked(false)
+    mapController.setTravelLocked(false)
     // Settle the presentation clock to the authoritative clock at arrival so the
     // tile-hour lands exactly; ambient ticking resumes from here.
     cancelClockAnimation()
@@ -7275,7 +7315,7 @@ async function revealHeroDestination(event: AddCharacterTravelEvent): Promise<vo
   if (toCoord.kind !== "hex") return
   await sendAndWaitForSnapshot(() => {
     setLastCommand(`hero_move:${toCoord.q},${toCoord.r}`)
-    client.moveHeroTo(toCoord.q, toCoord.r)
+    sendWorkerRequest({ type: "moveHeroTo", q: toCoord.q, r: toCoord.r })
   })
 }
 
@@ -7284,10 +7324,10 @@ async function tickRuntime(
   options: { readonly queue?: boolean; readonly commandLabel?: string } = {},
 ): Promise<void> {
   if (!ready()) return
-  if (requestInFlight && !options.queue) return
+  if (runtimeBridge.commandInFlight && !options.queue) return
   await sendAndWaitForSnapshot(() => {
     setLastCommand(options.commandLabel ?? `tick:${seconds.toFixed(1)}s`)
-    client.tick(seconds)
+    sendWorkerRequest({ type: "tick", seconds })
   })
 }
 
@@ -7297,14 +7337,14 @@ async function toggleHero(): Promise<void> {
   await sendAndWaitForSnapshot(() => {
     const assigned = !currentSnapshot.roster.heroAssigned
     setLastCommand(assigned ? "assign_hero" : "unassign_hero")
-    client.assignHero(assigned)
+    sendWorkerRequest({ type: "assignHero", assigned })
   })
 }
 
 async function chooseStoryOption(beatId: string, optionId: string): Promise<void> {
   await sendAndWaitForSnapshot(() => {
     setLastCommand("choose_story_option")
-    client.chooseStoryOption(beatId, optionId)
+    sendWorkerRequest({ type: "chooseStoryOption", beatId, optionId })
   })
 }
 
@@ -7410,9 +7450,9 @@ async function waitForBaseRateChange(
       ? changes.some((change) => change.id === resourceId)
       : changes.length > 0
     if (changed) return
-    const beforeVersion = snapshotVersion
+    const beforeVersion = runtimeBridge.currentSnapshotVersion
     await waitForSnapshotAfter(beforeVersion)
-    if (snapshotVersion === beforeVersion) {
+    if (runtimeBridge.currentSnapshotVersion === beforeVersion) {
       await new Promise((resolve) => window.setTimeout(resolve, 120))
     }
   }
@@ -7425,9 +7465,9 @@ function roleLabelForRateChange(roleId: string): string {
 async function waitForHeroRole(roleId: string): Promise<void> {
   const deadline = Date.now() + 4000
   while (Date.now() < deadline && snapshot()?.roster.heroRoleId !== roleId && !lastError()) {
-    const beforeVersion = snapshotVersion
+    const beforeVersion = runtimeBridge.currentSnapshotVersion
     await waitForSnapshotAfter(beforeVersion)
-    if (snapshotVersion === beforeVersion) return
+    if (runtimeBridge.currentSnapshotVersion === beforeVersion) return
   }
 }
 
@@ -7438,9 +7478,9 @@ async function waitForRoleCrew(roleId: string, crew: number): Promise<void> {
     baseManagementState()?.roles.find((role) => role.id === roleId)?.crewAssigned !== crew &&
     !lastError()
   ) {
-    const beforeVersion = snapshotVersion
+    const beforeVersion = runtimeBridge.currentSnapshotVersion
     await waitForSnapshotAfter(beforeVersion)
-    if (snapshotVersion === beforeVersion) return
+    if (runtimeBridge.currentSnapshotVersion === beforeVersion) return
   }
 }
 
@@ -7451,7 +7491,7 @@ async function setHeroRole(
   const before = options.trackRateChange === false ? [] : captureBaseRateSnapshot()
   await sendAndWaitForSnapshot(() => {
     setLastCommand(`hero_role:${roleId}`)
-    client.setHeroRole(roleId)
+    sendWorkerRequest({ type: "setHeroRole", roleId })
   })
   await waitForHeroRole(roleId)
   if (options.trackRateChange !== false) {
@@ -7468,7 +7508,7 @@ async function setRoleCrew(
   const before = options.trackRateChange === false ? [] : captureBaseRateSnapshot()
   await sendAndWaitForSnapshot(() => {
     setLastCommand(`crew:${roleId}:${crew}`)
-    client.setRoleCrew(roleId, crew)
+    sendWorkerRequest({ type: "setRoleCrew", roleId, crew })
   })
   await waitForRoleCrew(roleId, crew)
   if (options.trackRateChange !== false) {
@@ -7511,28 +7551,28 @@ async function applyStaffingPreset(
 async function startConstruction(optionId: string): Promise<void> {
   await sendAndWaitForSnapshot(() => {
     setLastCommand(`construction:${optionId}`)
-    client.startConstruction(optionId)
+    sendWorkerRequest({ type: "startConstruction", optionId })
   })
 }
 
 async function setStationEnabled(stationId: string, enabled: boolean): Promise<void> {
   await sendAndWaitForSnapshot(() => {
     setLastCommand(`station:${stationId}:${enabled ? "on" : "off"}`)
-    client.setStationEnabled(stationId, enabled)
+    sendWorkerRequest({ type: "setStationEnabled", stationId, enabled })
   })
 }
 
 async function startProcessing(recipeId: string): Promise<void> {
   await sendAndWaitForSnapshot(() => {
     setLastCommand(`processing:${recipeId}`)
-    client.startProcessing(recipeId)
+    sendWorkerRequest({ type: "startProcessing", recipeId })
   })
 }
 
 async function startResonanceRecipe(recipeId: string): Promise<void> {
   await sendAndWaitForSnapshot(() => {
     setLastCommand(`resonance:${recipeId}`)
-    client.startResonanceRecipe(recipeId)
+    sendWorkerRequest({ type: "startResonanceRecipe", recipeId })
   })
 }
 
@@ -7542,28 +7582,28 @@ async function setStationSpecialization(
 ): Promise<void> {
   await sendAndWaitForSnapshot(() => {
     setLastCommand(`specialization:${stationId}:${path}`)
-    client.setStationSpecialization(stationId, path)
+    sendWorkerRequest({ type: "setStationSpecialization", stationId, path })
   })
 }
 
 async function startExpedition(targetId: string, assignedCrew: number): Promise<void> {
   await sendAndWaitForSnapshot(() => {
     setLastCommand(`expedition:${targetId}:${assignedCrew}`)
-    client.startExpedition(targetId, assignedCrew)
+    sendWorkerRequest({ type: "startExpedition", targetId, assignedCrew })
   })
 }
 
 async function clearExpeditionReports(): Promise<void> {
   await sendAndWaitForSnapshot(() => {
     setLastCommand("expedition_reports:clear")
-    client.clearExpeditionReports()
+    sendWorkerRequest({ type: "clearExpeditionReports" })
   })
 }
 
 async function recruitFromSurvivorCave(): Promise<void> {
   await sendAndWaitForSnapshot(() => {
     setLastCommand("recruit_from_survivor_cave")
-    client.recruitFromSurvivorCave()
+    sendWorkerRequest({ type: "recruitFromSurvivorCave" })
   })
 }
 
@@ -7659,7 +7699,7 @@ async function runCurrentAction(): Promise<void> {
 async function acquirePerk(perkId: string): Promise<void> {
   await sendAndWaitForSnapshot(() => {
     setLastCommand(`perk:${perkId}`)
-    client.acquirePerk(perkId)
+    sendWorkerRequest({ type: "acquirePerk", perkId })
   })
 }
 
@@ -7673,7 +7713,7 @@ async function resetRuntime(): Promise<void> {
     pendingOfflineReturnSummary = null
     setOfflineReturnSummary(null)
     setLastDiscoveryMovement(null)
-    client.reset()
+    sendWorkerRequest({ type: "reset" })
   })
   if (!lastError()) await requestSave("reset")
 }
@@ -7695,7 +7735,7 @@ function currentFirstPlayableExecutableAction(): AddFirstPlayableAction | null {
 async function completePreArrivalRoute(): Promise<void> {
   await sendAndWaitForSnapshot(() => {
     setLastCommand("complete_pre_arrival_route")
-    client.completePreArrivalRoute()
+    sendWorkerRequest({ type: "completePreArrivalRoute" })
   })
 }
 
@@ -7727,7 +7767,7 @@ async function runAddAction(action: AddFirstPlayableAction): Promise<void> {
     case "assign_hero":
       await sendAndWaitForSnapshot(() => {
         setLastCommand(action.assigned ? "assign_hero" : "unassign_hero")
-        client.assignHero(action.assigned)
+        sendWorkerRequest({ type: "assignHero", assigned: action.assigned })
       })
       return
     case "set_hero_role":
@@ -7739,7 +7779,7 @@ async function runAddAction(action: AddFirstPlayableAction): Promise<void> {
     case "start_world_action":
       await sendAndWaitForSnapshot(() => {
         setLastCommand(`world_action:${action.actionId}`)
-        client.startWorldAction(action.actionId)
+        sendWorkerRequest({ type: "startWorldAction", actionId: action.actionId })
       })
       return
     case "start_construction":
@@ -7751,7 +7791,7 @@ async function runAddAction(action: AddFirstPlayableAction): Promise<void> {
     case "recruit_from_survivor_cave":
       await sendAndWaitForSnapshot(() => {
         setLastCommand("recruit_from_survivor_cave")
-        client.recruitFromSurvivorCave()
+        sendWorkerRequest({ type: "recruitFromSurvivorCave" })
       })
   }
 }
@@ -7768,103 +7808,23 @@ async function runInteraction(interaction: GameInteraction | undefined): Promise
 }
 
 function sendWorkerRequest(request: WorkerRequest): void {
-  switch (request.type) {
-    case "tick":
-      client.tick(request.seconds)
-      return
-    case "offlineCatchup":
-      client.runOfflineCatchup(request.elapsedSeconds)
-      return
-    case "reset":
-      client.reset()
-      return
-    case "importSave":
-      client.importSave(request.payload)
-      return
-    case "exportSave":
-      client.exportSave()
-      return
-    case "assignHero":
-      client.assignHero(request.assigned)
-      return
-    case "startWorldAction":
-      client.startWorldAction(request.actionId)
-      return
-    case "chooseStoryOption":
-      client.chooseStoryOption(request.beatId, request.optionId)
-      return
-    case "completePreArrivalRoute":
-      client.completePreArrivalRoute()
-      return
-    case "recruitFromSurvivorCave":
-      client.recruitFromSurvivorCave()
-      return
-    case "moveHeroTo":
-      client.moveHeroTo(request.q, request.r)
-      return
-    default:
-      setLastError(`Command ${request.type} is not exposed by this shell yet.`)
-  }
+  if (runtimeBridge.dispatch(request)) return
+  setLastError(`Command ${request.type} is not exposed by this shell yet.`)
 }
 
 async function sendAndWaitForSnapshot(send: () => void): Promise<void> {
-  while (requestInFlight) {
-    await waitForSnapshotAfter(snapshotVersion)
-  }
-  requestInFlight = true
-  const waiter = waitForSnapshotAfter(snapshotVersion)
-  send()
-  await waiter
-  requestInFlight = false
+  await runtimeBridge.sendAndWaitForSnapshot(send)
 }
 
 async function waitForSnapshotAfter(afterVersion: number): Promise<void> {
-  if (snapshotVersion > afterVersion || lastError()) return
-
-  await new Promise<void>((resolve) => {
-    snapshotWaiters.push({ afterVersion, resolve })
-    window.setTimeout(resolve, 4000)
-  })
-}
-
-function resolveSnapshotWaiters(): void {
-  const pending: typeof snapshotWaiters = []
-  snapshotWaiters.forEach((waiter) => {
-    if (snapshotVersion > waiter.afterVersion || lastError()) {
-      waiter.resolve()
-      return
-    }
-    pending.push(waiter)
-  })
-  snapshotWaiters = pending
-}
-
-async function waitForSaveAfter(afterVersion: number): Promise<string | null> {
-  if (saveVersion > afterVersion || lastError()) return lastSavePayload
-
-  return new Promise<string | null>((resolve) => {
-    saveWaiters.push({ afterVersion, resolve })
-    window.setTimeout(() => resolve(lastSavePayload), 4000)
-  })
-}
-
-function resolveSaveWaiters(payload: string | null): void {
-  const pending: typeof saveWaiters = []
-  saveWaiters.forEach((waiter) => {
-    if (saveVersion > waiter.afterVersion || lastError()) {
-      waiter.resolve(payload)
-      return
-    }
-    pending.push(waiter)
-  })
-  saveWaiters = pending
+  await runtimeBridge.waitForSnapshotAfter(afterVersion)
 }
 
 function toTextState(): RuntimeTextState {
   const currentSnapshot = snapshot()
   const currentCatalog = catalog()
   const currentUi = uiState()
-  const currentMapInfo = mapHost?.getInfo() ?? mapInfo()
+  const currentMapInfo = mapController.getInfo()
   const activeTile = activeTileForMapInfo(currentMapInfo)
   const currentDiscovery =
     currentSnapshot && currentCatalog

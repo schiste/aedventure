@@ -1,6 +1,6 @@
 # Aedventure
 
-Aedventure is the canonical repository for the ADD idle/RPG game. The playable
+Aedventure is the canonical repository for the live ADD idle/RPG game. The playable
 game already exists and is the primary active product lane: the current slice
 includes an idle-game loop, Rust-authoritative simulation, a Web Worker/WASM
 boundary, Solid UI, Phaser presentation, authored content, saves, offline
@@ -21,8 +21,9 @@ still needs to be built from scratch. They remain in the repository because
 the shared engine and the office application are maintained alongside the
 game.
 
-This repository contains the hard-fork plan and implementation workspace for
-the Aedventure Customer Virtual Office App.
+The repository also retains the hard-fork plan and implementation workspace for
+the separate Aedventure Customer Virtual Office App. That office/platform work
+is not a prerequisite for the live ADD game.
 
 SkyOffice is not the product architecture. SkyOffice is a temporary legacy
 source reference that must be reduced, replaced, and rebuilt into a clean
@@ -53,29 +54,78 @@ For gameplay work, begin with the live ADD path:
 
 1. Put authoritative rules and state transitions in `crates/add-core/`.
 2. Author content in `packages/add-domain/src/content/` and run the content
-   validation/code-generation path.
+   validation/code-generation path documented in
+   [ADD Content Authoring and Codegen](docs/add-content-authoring.md).
 3. Put player-facing presentation and command dispatch in `apps/add-rpg/`.
 4. Add or generalize `packages/game-*` only when the current ADD app (or the
    office app) has a concrete consumer and an exercised test.
 5. Treat `legacy/add/` as reference material, not an implementation target.
 
+## Where Does This Change Belong?
+
+Use the [ADD Repository Capability Map](docs/add-capability-map.md) when a task
+crosses a boundary. The short routing rule is:
+
+| If the change affects... | Put it in... | First check |
+| --- | --- | --- |
+| Gameplay rules, state, progression, combat, or saves | `crates/add-core/` | `cargo test -p add-core` |
+| Authored IDs, story, objectives, recipes, creatures, items, perks, or balance | `packages/add-domain/src/content/` | `npm run content:check` |
+| Snapshot projections, available actions, or command mapping | `packages/add-domain/src/adapters/` | `npm run agent:verify:add-ui` |
+| Agent-readable runtime state, action availability, blockers, or stable report IDs | `packages/add-domain/src/runtime/` plus `crates/add-scenario/src/inspection.rs` | `npm --workspace @aedventure/add-domain test` and `cargo test -p add-scenario` |
+| Player-facing ADD UI, input, map presentation, or browser lifecycle | `apps/add-rpg/` | `npm run agent:verify:add-ui` |
+| Neutral topology/renderer behavior with a real consumer | `packages/game-*` or `apps/engine-sandbox/` | `npm run agent:verify:types` plus the relevant smoke |
+
+The standard brief is [ADD Task Brief](docs/templates/add-task-brief.md). It
+records the player outcome, authority, affected content IDs, acceptance
+scenarios, focused verification, and likely follow-up before implementation.
+
 Useful focused checks:
 
 ```sh
+npm run agent:task
+npm run agent:report -- --format json
+npm run agent:scenario -- scenarios/add/idle-base-first-cycle.json
+npm run agent:state -- --save scenarios/add/fixtures/saves/base-onboarding.json
+npm run scenario:add -- scenarios/add/idle-base-first-cycle.json
+npm run scenario:add -- scenarios/add/offline-return.json
+npm run content:check
+npm run content:graph -- --reverse resource.stone
+npm run content:explain -- objective.restore_studio
+npm run content:fixtures:check
+npm --workspace @aedventure/add-domain test
 npm run agent:verify:add-ui
-npm run smoke:add-rpg
+npm run agent:task -- --smoke
+npm run qa:add-rpg:phase5
+npm run qa:add-rpg:visual -- --artifact-dir tmp
+npm run qa:add-rpg:trace:fixture
+npm run qa:add-rpg:size:built
+npm run qa:add-rpg:performance
+npm run generated:check
 npm --workspace @aedventure/add-rpg run dev:browser
 ```
 
-The full gate is reserved for phase boundaries, broad engine changes, and
-pre-push verification; see [AGENTS.md](AGENTS.md).
+The focused loop writes machine-readable evidence under
+`artifacts/agent-verification/<run-id>/` and does not launch the browser or
+renderer gate by default. Use `npm run agent:task -- --smoke` when the
+player-facing ADD surface needs explicit browser verification. The full gate
+is reserved for phase boundaries, broad engine changes, and pre-push
+verification; see [AGENTS.md](AGENTS.md).
 
 ## Canonical Documentation
 
 - [ADD Canonical Architecture and Code Audit](docs/add-canonical-architecture.md)
+- [ADD Repository Capability Map](docs/add-capability-map.md)
+- [ADD Task Brief Template](docs/templates/add-task-brief.md)
 - [ADD Migration and Runtime Boundary](docs/add-migration-plan.md)
 - [ADD Systems Parity Audit](docs/add-systems-parity-audit.md)
 - [ADD Game Development Tooling Plan](docs/add-game-development-tooling-plan.md)
+- [ADD Deterministic Scenario and Replay Harness](docs/add-scenario-harness.md)
+- [ADD Agent-Readable Runtime Inspection](docs/add-runtime-inspection.md)
+- [ADD One-Command Agent Verification Loop](docs/add-agent-verification-loop.md)
+- [ADD Player-Facing Visual and Interaction QA](docs/add-player-facing-qa.md)
+- [ADD Browser Runtime Seams](docs/add-browser-runtime-seams.md)
+- [ADD Generated Files and Write-Capable Checks](docs/add-generated-files.md)
+- [ADD Content Authoring and Codegen](docs/add-content-authoring.md)
 - [Story and Content Engine Contract](docs/story-content-engine.md)
 - [Domain-Neutral Engine Boundary](docs/engine-boundary.md)
 - [Global Product and Technical Specification](docs/customer-virtual-office-platform-spec.md)
@@ -86,6 +136,10 @@ pre-push verification; see [AGENTS.md](AGENTS.md).
 - [Initial License Audit](docs/license-audit.md)
 
 ## Source Layout
+
+The entries below the ADD lane are office/platform or legacy/reference scope.
+Their use of words such as “future” describes that separate lane and never the
+status of `apps/add-rpg`.
 
 - `apps/add-rpg/` - canonical ADD browser app and presentation shell.
 - `crates/add-core/` - authoritative ADD simulation, saves, migrations, and
@@ -128,6 +182,10 @@ strategy/RPG layers. A generic abstraction without a current consumer stays
 out of the critical path.
 
 ## Office/Platform Lane
+
+> Scope note: this section documents the separate customer virtual-office and
+> platform lane. It is not the ADD game roadmap, and its future app/server
+> entries do not describe `apps/add-rpg`.
 
 The following sections document the separate customer virtual-office track.
 They are retained for the shared repository and should not be read as the ADD

@@ -4,10 +4,21 @@ const path = require("node:path")
 const { chromium } = require("playwright")
 const { assertNonBlankImageBuffer } = require("./app-qa-contracts.cjs")
 const { startStaticAppServer } = require("./app-qa-server.cjs")
+const {
+  captureAddBrowserFixture,
+  loadAddBrowserQaManifest,
+  writeAddBrowserQaReport,
+} = require("./add-rpg-phase5.cjs")
 
 const ROOT_DIR = path.resolve(__dirname, "..")
 const DIST_DIR = path.join(ROOT_DIR, "apps/add-rpg/dist-app")
-const SCREENSHOT_PATH = path.join(ROOT_DIR, "tmp/add-rpg-smoke.png")
+const SMOKE_ARTIFACT_DIR = process.env.AGENT_ARTIFACT_DIR
+  ? path.join(process.env.AGENT_ARTIFACT_DIR, "screenshots")
+  : path.join(ROOT_DIR, "tmp")
+const SCREENSHOT_PATH = path.join(SMOKE_ARTIFACT_DIR, "add-rpg-smoke.png")
+const OFFLINE_RETURN_SCENARIO = JSON.parse(
+  fs.readFileSync(path.join(ROOT_DIR, "scenarios/add/offline-return.json"), "utf8"),
+)
 const ADD_AUTOSAVE_STORAGE_KEY = "aedventure.add-rpg.autosave.v1"
 const ADD_SETTINGS_STORAGE_KEY = "add-rpg:settings:v1"
 const RESET_CLOCK_TOLERANCE_SECONDS = 60
@@ -21,6 +32,7 @@ const V1_INTERFACE_DESKTOP_PANELS = [
   "dungeon-context-panel",
   "offline-return-panel",
 ]
+const ADD_BROWSER_QA_MANIFEST = loadAddBrowserQaManifest()
 
 const v1InterfaceGate = {
   contexts: new Set(),
@@ -35,6 +47,8 @@ async function main() {
   })
   let browser
   const consoleErrors = []
+  const phase5Evidence = []
+  let phase5Failure = null
 
   try {
     browser = await chromium.launch()
@@ -56,13 +70,23 @@ async function main() {
     const initial = await runScenario("boot and render text contract", () =>
       assertBootAndRenderTextContract(page, consoleErrors),
     )
+    await capturePhase5Fixture(page, phase5Evidence, "add.boot", initial)
     await runScenario("admin and developer tools separation", () =>
       assertAdminDeveloperSeparation(page, consoleErrors),
     )
+    const storyFixtureState = await openAdmin(page, consoleErrors)
+    await page.locator('a[href="#admin-story-browser"]').click()
+    await page.waitForTimeout(100)
+    await page.locator('[data-qa="story-commands"]').evaluate((element) => {
+      if (element instanceof HTMLDetailsElement) element.open = true
+    })
+    await capturePhase5Fixture(page, phase5Evidence, "add.story-choice", storyFixtureState)
+    await closeAdmin(page, consoleErrors)
     await runScenario("initial visibility and known facts", () =>
       assertInitialVisibilityContract(initial),
     )
-    await runScenario("ambient clock", () => assertIdleAmbientClockAdvances(page))
+    const idle = await runScenario("ambient clock", () => assertIdleAmbientClockAdvances(page))
+    await capturePhase5Fixture(page, phase5Evidence, "add.idle", idle)
     await runScenario("hero spawn placement", () => assertHeroStartsAtSurvivorCave(page, initial))
     await runScenario("Studio objective marker is label-only", () =>
       assertStudioObjectiveMarkerIsLabelOnly(page, consoleErrors),
@@ -93,6 +117,7 @@ async function main() {
     )
     assert.ok(interacted.map.interaction.selectedHex)
     assert.ok(interacted.map.interaction.selectedLabel)
+    await capturePhase5Fixture(page, phase5Evidence, "add.map", interacted)
 
     const switched = await runScenario("map mode switching", () =>
       exerciseMapModeSwitching(page, consoleErrors),
@@ -116,7 +141,12 @@ async function main() {
     )
 
     const exported = await runScenario("persistence, offline catchup, and reset", () =>
-      exerciseSaveReloadOfflineAndReset(page, firstPlayable, consoleErrors),
+      exerciseSaveReloadOfflineAndReset(
+        page,
+        firstPlayable,
+        consoleErrors,
+        async (fixtureId, state) => capturePhase5Fixture(page, phase5Evidence, fixtureId, state),
+      ),
     )
     assert.ok(exported.payload.length > 200)
     await closeAdmin(page, consoleErrors)
@@ -127,10 +157,36 @@ async function main() {
     })
     await runScenario("V1 interface gate", () => assertV1InterfaceGateComplete())
     await runScenario("console cleanliness", () => assert.deepEqual(consoleErrors, []))
+  } catch (error) {
+    phase5Failure = error instanceof Error ? error.message : String(error)
+    throw error
   } finally {
-    if (browser) await browser.close()
-    await new Promise((resolve) => server.close(resolve))
+    try {
+      writeAddBrowserQaReport({
+        artifactDir: SMOKE_ARTIFACT_DIR,
+        manifest: ADD_BROWSER_QA_MANIFEST,
+        fixtures: phase5Evidence,
+        status: phase5Failure ? "failed" : "passed",
+        failure: phase5Failure,
+      })
+    } finally {
+      if (browser) await browser.close()
+      await new Promise((resolve) => server.close(resolve))
+    }
   }
+}
+
+async function capturePhase5Fixture(page, evidence, fixtureId, state) {
+  evidence.push(
+    await captureAddBrowserFixture({
+      page,
+      manifest: ADD_BROWSER_QA_MANIFEST,
+      fixtureId,
+      state,
+      artifactDir: SMOKE_ARTIFACT_DIR,
+      assertNonBlankImageBuffer,
+    }),
+  )
 }
 
 async function runScenario(name, scenario) {
@@ -142,6 +198,41 @@ async function runScenario(name, scenario) {
     const wrapped = new Error(`Scenario "${name}" failed: ${cause.message}`)
     wrapped.stack = cause.stack ? `${wrapped.message}\nCaused by: ${cause.stack}` : wrapped.stack
     throw wrapped
+  }
+}
+
+function browserScenarioCommands(scenario) {
+  const commands = scenario.commands.filter((command) => command.type !== "SaveRoundTrip")
+  assert.deepEqual(
+    commands.map((command) => command.type),
+    ["RunOfflineCatchup"],
+    "The offline browser smoke must reuse the compatible runtime command prefix from the committed scenario.",
+  )
+  return commands
+}
+
+async function runBrowserScenarioCommand(page, command, consoleErrors) {
+  switch (command.type) {
+    case "RunOfflineCatchup": {
+      assert.equal(
+        command.seconds,
+        3600,
+        "The browser smoke maps the committed offline scenario's one-hour catch-up control.",
+      )
+      const before = await renderGameToText(page)
+      await page.locator("#offline-catchup").click()
+      return waitForTextState(
+        page,
+        (nextState) =>
+          nextState.persistence?.lastOfflineCatchupSeconds >= command.seconds &&
+          nextState.snapshot?.clockSeconds >= before.snapshot.clockSeconds + command.seconds - 100 &&
+          nextState.ui?.firstPlayable?.persistenceReady === true &&
+          nextState.offlineReturn?.elapsedSeconds >= command.seconds,
+        consoleErrors,
+      )
+    }
+    default:
+      throw new Error(`Unsupported browser scenario command: ${command.type}`)
   }
 }
 
@@ -271,7 +362,7 @@ async function assertBootAndRenderTextContract(page, consoleErrors) {
       state.storyAgent?.activeArc === "pre_arrival" &&
       state.storyAgent?.currentBlocker?.kind === "first_playable" &&
       state.storyAgent?.availableCommands?.length > 0 &&
-      state.storyAgent?.commandAuthority?.availability === "typescript_projection_pending_rust_explain" &&
+      state.storyAgent?.commandAuthority?.availability === "domain_state_projection" &&
       state.storyAgent?.commandAuthority?.runtimeExecution === "rust_runtime" &&
       state.storyAgent?.commandIds?.length === state.storyAgent.availableCommands.length &&
       state.storyAgent?.nextBeatCandidates?.length > 0 &&
@@ -280,6 +371,18 @@ async function assertBootAndRenderTextContract(page, consoleErrors) {
       state.storyAgent.answer.whatShouldIDoNext.length > 0 &&
       typeof state.storyAgent?.answer?.why === "string" &&
       state.storyAgent.answer.why.length > 0 &&
+      state.agentRuntime?.contract === "agent_runtime_v1" &&
+      state.agentRuntime?.schemaVersion === 1 &&
+      state.agentRuntime?.runtime?.ready === true &&
+      state.agentRuntime?.runtime?.source === "rust-wasm" &&
+      state.agentRuntime?.authoritative?.currentTime?.seconds === state.snapshot.clockSeconds &&
+      state.agentRuntime?.authoritative?.catalog?.catalogVersion === state.snapshot.catalogVersion &&
+      state.agentRuntime?.derived?.availableCommands?.length === state.storyAgent.availableCommands.length &&
+      state.agentRuntime?.derived?.availableCommands?.every((command) =>
+        Object.prototype.hasOwnProperty.call(command, "whyUnavailable"),
+      ) &&
+      Array.isArray(state.agentRuntime?.derived?.blockers) &&
+      state.agentRuntime?.diagnostics?.layerAuthority?.authoritative === "rust-wasm-snapshot" &&
       state.catalog?.resourceCount > 0 &&
       state.catalog?.tileCount > 0,
     consoleErrors,
@@ -304,6 +407,31 @@ async function assertBootAndRenderTextContract(page, consoleErrors) {
   assert.equal(initial.storyAgent.primaryAction.source, "first_playable")
   assert.equal(initial.storyAgent.primaryAction.stepId, "reach-base")
   assert.equal(initial.storyAgent.primaryAction.commandId, null)
+  assert.equal(initial.agentRuntime.contract, "agent_runtime_v1")
+  assert.equal(initial.agentRuntime.authoritative.story.activeBeatId, "story.beat.road_to_base")
+  assert.equal(initial.agentRuntime.derived.map.mode, "overworld_hex")
+  assert.ok(
+    initial.agentRuntime.derived.blockers.some(
+      (blocker) => blocker.kind === "command_unavailable" && blocker.reason.length > 0,
+    ),
+    "Agent runtime report should explain unavailable commands from domain state.",
+  )
+  const compactAgentReport = await page.evaluate(() => {
+    if (typeof window.render_add_runtime_text !== "function") {
+      throw new Error("render_add_runtime_text is not installed")
+    }
+    return window.render_add_runtime_text()
+  })
+  assert.match(compactAgentReport, /runtime ready source=rust-wasm/)
+  const jsonAgentReport = await page.evaluate(() => {
+    if (typeof window.render_add_runtime_json !== "function") {
+      throw new Error("render_add_runtime_json is not installed")
+    }
+    return JSON.parse(window.render_add_runtime_json())
+  })
+  assert.equal(jsonAgentReport.contract, "agent_runtime_v1")
+  assert.equal(jsonAgentReport.authoritative.currentTime.seconds, initial.snapshot.clockSeconds)
+  assert.deepEqual(jsonAgentReport.derived.enabledCommandIds, initial.agentRuntime.derived.enabledCommandIds)
   assert.ok(
     initial.storyAgent.commandIds.includes(
       "story-choice:story.beat.road_to_base:story.choice.road.follow_signal",
@@ -2498,7 +2626,12 @@ function firstPlayableProgressDigestObject(state) {
   }
 }
 
-async function exerciseSaveReloadOfflineAndReset(page, advanced, consoleErrors) {
+async function exerciseSaveReloadOfflineAndReset(
+  page,
+  advanced,
+  consoleErrors,
+  captureFixture = null,
+) {
   await openDeveloperTools(page, consoleErrors)
   const saved = await clickUntilTextState(
     page,
@@ -2521,6 +2654,7 @@ async function exerciseSaveReloadOfflineAndReset(page, advanced, consoleErrors) 
   assert.ok(Array.isArray(parsedPayload.discoveredCells))
   assert.equal(parsedPayload.discoveredCells.length, exportedDiscoveryCount)
   assert.deepEqual(parsedPayload.heroMap, parseHexCoord(exportedHeroMap))
+  await captureFixture?.("add.save-load", saved)
 
   await page.evaluate(
     ({ key }) => {
@@ -2581,22 +2715,20 @@ async function exerciseSaveReloadOfflineAndReset(page, advanced, consoleErrors) 
   )
   assert.ok(imported.persistence.lastImportAtMs)
 
-  await page.locator("#offline-catchup").click()
-  const offlineTicked = await waitForTextState(
-    page,
-    (state) =>
-      state.persistence?.lastOfflineCatchupSeconds >= 3600 &&
-      state.snapshot?.clockSeconds >= imported.snapshot.clockSeconds + 3500 &&
-      state.ui?.firstPlayable?.persistenceReady === true &&
-      state.offlineReturn?.elapsedSeconds >= 3600,
-    consoleErrors,
+  const offlineCommands = browserScenarioCommands(OFFLINE_RETURN_SCENARIO)
+  assert.deepEqual(
+    OFFLINE_RETURN_SCENARIO.commands.map((command) => command.type),
+    ["RunOfflineCatchup", "SaveRoundTrip"],
+    "The browser smoke and headless harness must keep the offline scenario contract aligned.",
   )
+  const offlineTicked = await runBrowserScenarioCommand(page, offlineCommands[0], consoleErrors)
   assert.ok(offlineTicked.snapshot.clockSeconds > imported.snapshot.clockSeconds)
   assert.equal(offlineTicked.ui.firstPlayable.persistenceReady, true)
   assert.equal(offlineTicked.offlineReturn.source, "manual")
   await closeDeveloperTools(page, consoleErrors)
   await page.locator("#offline-return-panel").waitFor({ state: "visible" })
   const offlineReview = await renderGameToText(page)
+  await captureFixture?.("add.offline-return", offlineReview)
   assertV1InterfaceContext(offlineReview, "return", { source: "offline_return" })
   assert.equal(
     offlineReview.shell?.questPanel?.collapsed,
@@ -4108,7 +4240,7 @@ function collectTravelAnimationObservation(
 
 async function assertNonBlankNamedMapScreenshot(page, filename, label) {
   fs.mkdirSync(path.dirname(SCREENSHOT_PATH), { recursive: true })
-  const mapPath = path.join(ROOT_DIR, "tmp", filename)
+  const mapPath = path.join(SMOKE_ARTIFACT_DIR, filename)
   await page.locator("#add-world canvas").screenshot({ path: mapPath })
   assertNonBlankImageBuffer(
     fs.readFileSync(mapPath),
@@ -4477,7 +4609,7 @@ async function assertNonBlankAppScreenshot(page) {
 
 async function assertNonBlankNamedAppScreenshot(page, filename, label) {
   fs.mkdirSync(path.dirname(SCREENSHOT_PATH), { recursive: true })
-  const screenshotPath = path.join(ROOT_DIR, "tmp", filename)
+  const screenshotPath = path.join(SMOKE_ARTIFACT_DIR, filename)
   await page.locator("#app").screenshot({ path: screenshotPath })
   assertNonBlankImageBuffer(
     fs.readFileSync(screenshotPath),

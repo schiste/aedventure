@@ -1,0 +1,148 @@
+{
+  "fixtureSchemaVersion": 1,
+  "contentSchemaVersion": 1,
+  "catalogVersion": 1,
+  "saveSchemaVersion": 15,
+  "kind": "story_state",
+  "entryBeatId": "story.beat.road_to_base",
+  "activeBeatId": "story.beat.road_to_base",
+  "completedBeatIds": [],
+  "choiceByBeat": {},
+  "reachableBeatIds": [
+    "story.beat.await_survivor_arrival",
+    "story.beat.build_fire_pit",
+    "story.beat.enter_the_bubble",
+    "story.beat.explore_base",
+    "story.beat.first_glimpse",
+    "story.beat.first_recruit",
+    "story.beat.hero_exposed",
+    "story.beat.investigate_base",
+    "story.beat.reach_survivor_cave",
+    "story.beat.restore_studio",
+    "story.beat.road_to_base",
+    "story.beat.stabilize_base"
+  ],
+  "unreachableBeatIds": [],
+  "beats": [
+    {
+      "id": "story.beat.road_to_base",
+      "arc": "pre_arrival",
+      "sequence": 10,
+      "relatedIds": [
+        "tile.base_core",
+        "structure.base"
+      ]
+    },
+    {
+      "id": "story.beat.first_glimpse",
+      "arc": "pre_arrival",
+      "sequence": 20,
+      "relatedIds": [
+        "tile.ridge_line",
+        "tile.base_core",
+        "structure.crystal_circle"
+      ]
+    },
+    {
+      "id": "story.beat.enter_the_bubble",
+      "arc": "pre_arrival",
+      "sequence": 30,
+      "relatedIds": [
+        "resource.bassline",
+        "station.crystal_circle",
+        "tile.base_core"
+      ]
+    },
+    {
+      "id": "story.beat.investigate_base",
+      "arc": "base_onboarding",
+      "sequence": 40,
+      "relatedIds": [
+        "world_action.investigate_base",
+        "story.beat.explore_base",
+        "structure.base"
+      ]
+    },
+    {
+      "id": "story.beat.explore_base",
+      "arc": "base_onboarding",
+      "sequence": 50,
+      "relatedIds": [
+        "world_action.explore_base",
+        "project.restore_studio",
+        "construction.removing_moss",
+        "resource.water"
+      ]
+    },
+    {
+      "id": "story.beat.restore_studio",
+      "arc": "base_onboarding",
+      "sequence": 60,
+      "relatedIds": [
+        "project.restore_studio",
+        "resource.chorus",
+        "project.build_fire_pit"
+      ]
+    },
+    {
+      "id": "story.beat.build_fire_pit",
+      "arc": "base_onboarding",
+      "sequence": 70,
+      "relatedIds": [
+        "project.build_fire_pit",
+        "station.fire_pit",
+        "story.beat.reach_survivor_cave",
+        "ui.action.recruit"
+      ]
+    },
+    {
+      "id": "story.beat.reach_survivor_cave",
+      "arc": "base_onboarding",
+      "sequence": 75,
+      "relatedIds": [
+        "tile.survivor_cave",
+        "ui.map.cave_gate",
+        "story.beat.first_recruit"
+      ]
+    },
+    {
+      "id": "story.beat.first_recruit",
+      "arc": "base_onboarding",
+      "sequence": 80,
+      "relatedIds": [
+        "ui.action.recruit",
+        "tile.survivor_cave",
+        "ui.status.base.recruits",
+        "story.beat.await_survivor_arrival"
+      ]
+    },
+    {
+      "id": "story.beat.await_survivor_arrival",
+      "arc": "base_onboarding",
+      "sequence": 85,
+      "relatedIds": [
+        "ui.status.base.recruits",
+        "story.beat.stabilize_base"
+      ]
+    },
+    {
+      "id": "story.beat.stabilize_base",
+      "arc": "base_onboarding",
+      "sequence": 90,
+      "relatedIds": [
+        "resource.chorus",
+        "resource.harmonics",
+        "ui.panel.power",
+        "ui.panel.base"
+      ]
+    },
+    {
+      "id": "story.beat.hero_exposed",
+      "arc": "ambient",
+      "sequence": 1000,
+      "relatedIds": [
+        "story.beat.explore_base"
+      ]
+    }
+  ]
+}

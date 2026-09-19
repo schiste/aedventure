@@ -1,5 +1,9 @@
 # Customer Virtual Office Platform - Global Product and Technical Specification
 
+> Scope note: this is the customer virtual-office/platform product
+> specification. It is separate from the live ADD game and does not redefine
+> the ownership or roadmap of `apps/add-rpg`.
+
 ## 1. Document Purpose
 
 This document defines the global product and technical specification for the

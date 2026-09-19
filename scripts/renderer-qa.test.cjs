@@ -10,6 +10,7 @@ const {
 } = require("./app-qa-contracts.cjs")
 const { startStaticAppServer } = require("./app-qa-server.cjs")
 const { startDevelopmentServer } = require("./dev-http-host.cjs")
+const { assertAddRendererPhase5Contract } = require("./add-rpg-phase5.cjs")
 
 const ARTIFACT_DIR =
   process.env.RENDERER_QA_ARTIFACT_DIR ?? join(tmpdir(), "aedventure-renderer-qa")
@@ -83,6 +84,7 @@ async function main() {
       audio: undefined,
       engineSandboxFixtures: [],
       topologyChecks: [],
+      addPlayerFacing: [],
     }
 
     await verifyRendererRuntime(browser, url, report)
@@ -1065,6 +1067,19 @@ async function verifyAddRendererTopologyFixtures(browser, report) {
         state.map.interaction.visibilitySamples.visible.knownInfoLevel === "full_current",
       16000,
     )
+    report.addPlayerFacing.push(
+      assertAddRendererPhase5Contract(hexState, "ADD hex player-facing renderer"),
+    )
+    assert.equal(
+      await page.locator('[data-qa="map-stage"]').count(),
+      1,
+      "ADD renderer QA requires the stable map-stage selector.",
+    )
+    assert.equal(
+      await page.locator('[data-qa="map-controls"]').count(),
+      1,
+      "ADD renderer QA requires the stable map-controls selector.",
+    )
     await page.locator("#toggle-first-playable-panel").click({ timeout: 2500 })
     await page.waitForTimeout(180)
     report.topologyChecks.push(
@@ -1097,6 +1112,9 @@ async function verifyAddRendererTopologyFixtures(browser, report) {
         state.map?.cells?.blocked > 0 &&
         state.map?.landmarks?.renderedCount > 0,
       12000,
+    )
+    report.addPlayerFacing.push(
+      assertAddRendererPhase5Contract(squareState, "ADD square player-facing renderer"),
     )
     report.topologyChecks.push(
       await captureAddTopologyCanvas(

@@ -3,6 +3,7 @@ node_modules/
 dist/
 build/
 dist-app/
+apps/add-rpg/src/generated/wasm/
 .env
 .env.*
 !.env.example
@@ -14,6 +15,7 @@ coverage/
 tmp/
 temp/
 target/
+artifacts/agent-verification/
 
 # Local-mode verbose trace logs
 logs/

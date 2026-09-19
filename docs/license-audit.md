@@ -1,5 +1,9 @@
 # Initial License Audit
 
+> Scope note: this audit primarily covers the imported SkyOffice and customer
+> virtual-office/platform lane. It quarantines legacy material; it does not
+> make legacy assets a dependency of the live ADD game.
+
 ## 1. Purpose
 
 This document records the initial licensing findings from the imported

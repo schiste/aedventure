@@ -9,6 +9,16 @@ This document defines the target structure and migration rules for moving ADD
 into `aedventure` as a first-class RPG/idle app while upgrading the shared Phaser
 engine to support both square and hex maps.
 
+## Where does this change belong?
+
+Migration work must preserve the current product boundary: ADD gameplay stays
+in `crates/add-core/`, authored ADD data stays in `packages/add-domain/`, and
+the player-facing application stays in `apps/add-rpg/`. Shared `packages/game-*`
+work is allowed only when the live ADD app or an exercised neutral fixture has
+a concrete consumer. Office changes stay in the office/platform lane, and
+`legacy/` remains reference-only. Use the [ADD Repository Capability
+Map](add-capability-map.md) for the first verification command.
+
 ## Phase 0 Baseline
 
 Phase 0 was established before code movement.

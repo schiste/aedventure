@@ -1,5 +1,9 @@
 # Hard-Fork Target Architecture
 
+> Scope note: this target architecture is for the customer virtual-office and
+> platform lane. The live ADD game remains in `apps/add-rpg` with its own Rust
+> authoritative runtime and ADD architecture contract.
+
 ## 1. Target Runtime
 
 The target architecture is a Unified TypeScript Product Layer over best-fit

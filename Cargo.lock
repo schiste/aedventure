@@ -11,6 +11,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "add-scenario"
+version = "0.1.0"
+dependencies = [
+ "add-core",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "add-scenario-runner"
+version = "0.1.0"
+dependencies = [
+ "add-scenario",
+]
+
+[[package]]
 name = "add-web-bindings"
 version = "0.1.0"
 dependencies = [

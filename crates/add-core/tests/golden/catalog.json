@@ -1823,6 +1823,108 @@
       "sequence": 4
     }
   ],
+  "items": [
+    {
+      "id": "item.scrap_metal",
+      "label": "Scrap Metal",
+      "stackable": true,
+      "maxStack": 99,
+      "useEffect": null
+    },
+    {
+      "id": "item.ration",
+      "label": "Ration",
+      "stackable": true,
+      "maxStack": 20,
+      "useEffect": {
+        "kind": "restore_survival",
+        "amount": 0.3
+      }
+    },
+    {
+      "id": "item.echo_shard",
+      "label": "Echo Shard",
+      "stackable": true,
+      "maxStack": 50,
+      "useEffect": null
+    },
+    {
+      "id": "item.field_kit",
+      "label": "Field Kit",
+      "stackable": false,
+      "maxStack": 1,
+      "useEffect": {
+        "kind": "restore_survival",
+        "amount": 0.6
+      }
+    }
+  ],
+  "perks": [
+    {
+      "id": "perk.scavenger",
+      "label": "Scavenger",
+      "requires": [],
+      "effects": [
+        {
+          "stat": "scavenge_yield",
+          "multiplier": 1.25
+        }
+      ]
+    },
+    {
+      "id": "perk.steady_hands",
+      "label": "Steady Hands",
+      "requires": [],
+      "effects": [
+        {
+          "stat": "construction_speed",
+          "multiplier": 1.15
+        }
+      ]
+    },
+    {
+      "id": "perk.crystal_attuned",
+      "label": "Crystal Attuned",
+      "requires": [
+        "perk.steady_hands"
+      ],
+      "effects": [
+        {
+          "stat": "crystal_output",
+          "multiplier": 1.15
+        }
+      ]
+    },
+    {
+      "id": "perk.field_medic",
+      "label": "Field Medic",
+      "requires": [],
+      "effects": [
+        {
+          "stat": "hero_recovery",
+          "multiplier": 1.3
+        }
+      ]
+    }
+  ],
+  "creatures": [
+    {
+      "id": "rat",
+      "label": "Rat",
+      "hp": 8.0,
+      "attack": 1.2,
+      "threat": 0.15,
+      "xpReward": 6.0
+    },
+    {
+      "id": "giant_rat",
+      "label": "Giant Rat",
+      "hp": 20.0,
+      "attack": 3.0,
+      "threat": 0.4,
+      "xpReward": 16.0
+    }
+  ],
   "flags": [
     {
       "id": "base.studio_restore_unlocked",

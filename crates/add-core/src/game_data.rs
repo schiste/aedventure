@@ -4,10 +4,18 @@ use crate::topology::{AxialBounds, Landmark, MapCell, MapDefinition, TerrainRegi
 
 mod catalog;
 use catalog::{
-    BALANCE, CONSTRUCTION_OPTIONS, CREATURES, ENTITY_SCHEMAS, EXPEDITION_TARGETS, FLAGS, FLORA,
-    ITEMS, OBJECTIVES, PERKS, PROCESSING_RECIPES, RESONANCE_RECIPES, RESOURCES, ROLES, STATIONS,
-    STORY_BEATS, STRUCTURES, TILES, UI_ELEMENTS, WORLD_ACTIONS,
+    BALANCE, CONSTRUCTION_OPTIONS, CONTENT_CATALOG_VERSION as GENERATED_CONTENT_CATALOG_VERSION,
+    CONTENT_SAVE_SCHEMA_VERSION as GENERATED_CONTENT_SAVE_SCHEMA_VERSION,
+    CONTENT_SCHEMA_VERSION as GENERATED_CONTENT_SCHEMA_VERSION, CREATURES, ENTITY_SCHEMAS,
+    EXPEDITION_TARGETS, FLAGS, FLORA, ITEMS, OBJECTIVES, PERKS, PROCESSING_RECIPES,
+    RESONANCE_RECIPES, RESOURCES, ROLES, STATIONS, STORY_BEATS, STRUCTURES, TILES, UI_ELEMENTS,
+    WORLD_ACTIONS,
 };
+
+/// Authored content contract mirrored from `content-version.ts` by codegen.
+pub const CONTENT_SCHEMA_VERSION: u16 = GENERATED_CONTENT_SCHEMA_VERSION;
+pub const CONTENT_CATALOG_VERSION: u16 = GENERATED_CONTENT_CATALOG_VERSION;
+pub const CONTENT_SAVE_SCHEMA_VERSION: u16 = GENERATED_CONTENT_SAVE_SCHEMA_VERSION;
 
 pub const RESOURCE_BASSLINE: &str = "resource.bassline";
 pub const RESOURCE_CHORUS: &str = "resource.chorus";
@@ -1062,6 +1070,9 @@ pub struct CatalogSnapshot {
     pub resonance_recipes: Vec<ResonanceRecipeDef>,
     pub story_beats: Vec<StoryBeatDef>,
     pub objectives: Vec<ObjectiveDef>,
+    pub items: Vec<ItemDef>,
+    pub perks: Vec<PerkDef>,
+    pub creatures: Vec<CreatureDef>,
     pub flags: Vec<FlagDef>,
     pub models: Vec<ModelDef>,
     pub flora: Vec<FloraDef>,
@@ -2393,6 +2404,9 @@ pub fn catalog_snapshot() -> CatalogSnapshot {
         resonance_recipes: RESONANCE_RECIPES.to_vec(),
         story_beats: STORY_BEATS.to_vec(),
         objectives: OBJECTIVES.to_vec(),
+        items: ITEMS.to_vec(),
+        perks: PERKS.to_vec(),
+        creatures: CREATURES.to_vec(),
         flags: FLAGS.to_vec(),
         models: model_snapshot(),
         flora: FLORA.to_vec(),

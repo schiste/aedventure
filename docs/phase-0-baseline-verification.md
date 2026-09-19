@@ -1,5 +1,9 @@
 # Phase 0 Baseline Verification
 
+> Scope note: this baseline records the imported SkyOffice/customer
+> virtual-office lane before refactoring. It is a legacy-reference check, not
+> the verification baseline for the live ADD game.
+
 ## 1. Purpose
 
 This document records the initial verification state of the imported SkyOffice

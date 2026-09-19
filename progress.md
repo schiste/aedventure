@@ -3161,3 +3161,37 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   verification passed, the web-game screenshot loop rendered cleanly, and
   targeted Playwright probes confirmed Settings and travel-dialog text sections
   are tabbable and loop inside their pop-ins.
+
+## Phase 5 player-facing QA — 2026-09-19
+
+- Baseline `npm run smoke:add-rpg` passed from the Phase 4 integration tip.
+- Added the versioned `scenarios/add/browser-fixtures.json` contract for boot,
+  idle, map interaction, story-choice availability, save/load, and offline
+  return. The ADD smoke now emits a structured `phase5-report.json` with
+  selected state evidence, DOM selector/action-ID evidence, screenshot hashes,
+  and failure context.
+- Added stable `data-qa` surfaces and semantic `data-action-id` hooks in the
+  live ADD app, plus renderer checks for map readiness, camera, topology,
+  interaction, and affordance telemetry.
+- Added the controlled visual baseline policy and `npm run qa:add-rpg:visual`;
+  baseline promotion requires a fixture, a reason, and the captured state
+  digest. Baselines begin explicitly unbaselined so the first visual review is
+  deliberate rather than silently checked in.
+
+## Phase 6 performance and maintainability feedback — 2026-09-19
+
+- Added the versioned `add-trace-v1` NDJSON contract and
+  `performance/add-budgets.json` budgets for startup, Rust/runtime work,
+  offline catch-up, worker messaging, snapshots, map builds, Phaser updates,
+  frame cadence, and loop lag. The trace recorder now stamps schema/format,
+  startup readiness, runtime timing, and Phaser/map probe samples.
+- Added deterministic trace and bundle/WASM size report scripts with JSON and
+  Markdown output, strict budget mode, stable report IDs, regression hints,
+  committed fixtures, and focused package commands.
+- Split browser orchestration around the actual seams first: `AddRuntimeBridge`
+  owns worker lifecycle/dispatch/save waits, and `AddMapController` owns the
+  Phaser map host. `main.ts` remains the UI/panel coordinator while Rust stays
+  authoritative.
+- Added the machine-checked generated-file/write-capability manifest and
+  documentation. Generated WASM is now explicitly ignored; checked-in Rust
+  catalogs and ADD content fixtures retain their source/codegen contract.

@@ -1,5 +1,9 @@
 # Phaser Renderer Performance Budget
 
+> Scope note: these budgets cover the shared Phaser renderer as exercised by
+> the customer virtual-office/platform lane and its tenant-space scenarios.
+> ADD-specific player-flow budgets belong with the ADD smoke and parity docs.
+
 Phase 10 prepares the browser renderer for real tenant spaces where maps are
 larger than a demo room and users switch between spaces repeatedly.
 

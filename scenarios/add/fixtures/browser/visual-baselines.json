@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "policy": {
+    "require_reason_on_update": true,
+    "require_scenario_evidence": true,
+    "baseline_directory": "scenarios/add/fixtures/browser/visual-baselines",
+    "unbaselined_is": "review-required"
+  },
+  "baselines": {}
+}

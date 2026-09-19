@@ -1,5 +1,9 @@
 # AI-Generated Map Readiness
 
+> Scope note: this document covers AI-generated maps for the customer
+> virtual-office/platform lane and shared renderer contracts. It is not an ADD
+> gameplay roadmap or a requirement to build a second ADD app.
+
 Phase 11 keeps AI-generated rooms safe by separating the map pipeline into
 three explicit contracts.
 

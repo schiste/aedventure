@@ -1,6 +1,8 @@
 # ADD Game Development Tooling Plan
 
-Status: proposed execution plan for accelerating the live ADD game.
+Status: active execution plan for accelerating the live ADD game. Phases 0, 1,
+2, and 3 are implemented and checked by their focused contracts plus
+`npm run docs:check`.
 
 ## Purpose
 
@@ -26,10 +28,15 @@ The repository already has meaningful pieces of the desired environment:
 | Authoritative deterministic simulation | `crates/add-core/` | Commands, progression, resources, offline catch-up, saves, migrations, and Rust tests |
 | Browser runtime boundary | `crates/add-web-bindings/`, `apps/add-rpg/src/workers/` | WASM runtime behind a typed worker protocol |
 | Authored content and code generation | `packages/add-domain/src/content/`, `scripts/build-add-content.cjs` | TypeScript authoring with generated Rust catalogs |
+| Deterministic scenarios and replay | `crates/add-scenario/`, `crates/add-scenario-runner/`, `scenarios/add/` | Headless command logs, canonical snapshots, checkpoints, save round-trips, and committed idle/offline fixtures |
+| Agent-readable runtime inspection | `packages/add-domain/src/runtime/inspection.ts`, `crates/add-scenario/src/inspection.rs`, `apps/add-rpg/src/browser/` | Versioned authoritative/derived/diagnostic reports, stable IDs, blocker explanations, and text/JSON accessors |
 | Domain projections | `packages/add-domain/src/adapters/` | Snapshot selectors, command mapping, map/world adapters, and explanations |
 | Player-facing app | `apps/add-rpg/src/browser/` | Solid UI, Phaser map, saves, settings, telemetry, and development tools |
 | Content inspection | `npm run content:validate`, `content:graph`, `content:timeline`, `content:explain` | Deterministic text output for humans and agents |
+| Repository capability map | `docs/add-capability-map.md` | Owning layers, content families, runtime state, smoke flows, and known gaps |
+| Standard task brief | `docs/templates/add-task-brief.md` | Player outcome, authority, content IDs, scenarios, verification, and follow-up |
 | Focused verification | `npm run agent:verify:add-ui` | Cheap ADD-focused build/type/content checks |
+| One-command agent loop | `scripts/agent-task.cjs`, `scripts/agent-scenario.cjs`, `scripts/agent-state.cjs` | Changed-path checks, headless state/scenario reports, and ignored evidence artifacts |
 | Product smoke | `npm run smoke:add-rpg` | Browser build and ADD flow verification |
 | Shared-engine fixtures | `apps/engine-sandbox/`, `packages/game-*` | Neutral topology/rendering proof where it is useful |
 | Brokered parallel work | Aethyme sessions/worktrees | Isolated agent changes and reviewed integration |
@@ -77,7 +84,7 @@ available actions, expected invariants, and verification commands explicit.
 
 ## Workstreams and staged deliverables
 
-### Phase 0 — Make the map of the system executable
+### Phase 0 — Make the map of the system executable (implemented)
 
 Goal: eliminate orientation time for every contributor and agent.
 
@@ -86,8 +93,9 @@ Deliverables:
 - Keep the root README as the product compass: live ADD game first, office
   lane separate, legacy reference only.
 - Add a short “where does this change belong?” section to the ADD architecture
-  docs whenever a new boundary appears.
-- Maintain a generated or checked-in repository capability map covering commands,
+  docs whenever a new boundary appears; the current sections live in the ADD
+  architecture, migration, engine-boundary, and story-content contracts.
+- Maintain the checked-in repository capability map covering commands,
   content families, runtime state, smoke flows, and known gaps.
 - Standardize task briefs with: player outcome, authoritative layer, affected
   content IDs, acceptance scenarios, focused verification, and likely follow-up.
@@ -98,10 +106,11 @@ Exit criteria:
 
 - An agent can identify the owning layer and first verification command from
   the README and architecture docs.
-- No document calls `apps/add-rpg` a future or placeholder application.
+- Documentation consistently describes `apps/add-rpg` as the existing playable
+  ADD application, not a future or placeholder product.
 - Office/platform documents carry an explicit scope note.
 
-### Phase 1 — Deterministic scenario and replay harness
+### Phase 1 — Deterministic scenario and replay harness (implemented)
 
 Goal: test gameplay without booting the browser and make bugs reproducible.
 
@@ -122,16 +131,25 @@ Planned scenario shape:
 }
 ```
 
-Deliverables:
+Implemented deliverables:
 
-- A headless runner around `crates/add-core` that accepts a seed, save, and
-  command sequence.
-- Canonical snapshot normalization and stable JSON output.
-- Checkpoint assertions for resources, jobs, story, recruitment, survival,
-  map state, and save round-trips.
-- Failure output that includes the first divergent checkpoint and a replayable
-  command log.
-- One scenario for the current idle loop and one offline-return scenario.
+- `add-scenario-runner` runs a scenario file against `crates/add-core`; the
+  scenario owns its human-readable seed, optional relative initial save, and
+  typed command sequence.
+- Canonical snapshots remove transient events, normalize derived save-boundary
+  state, sort JSON objects, and round floating-point noise for stable output.
+- Checkpoints support exact values, partial objects, and `equals`, `atLeast`,
+  `atMost`, and `contains` predicates. Committed scenarios cover resources,
+  construction jobs, story, recruitment, survival, map state, offline return,
+  and save round-trips.
+- Failures print the first divergent checkpoint/path plus a replayable command
+  prefix. `--write-final-save` supports fixture generation and investigation.
+- `scenarios/add/idle-base-first-cycle.json` covers the current idle/base loop;
+  `scenarios/add/offline-return.json` covers a one-hour offline return from a
+  committed save fixture.
+- The built ADD browser smoke consumes the offline scenario's compatible
+  `RunOfflineCatchup` command so browser and headless checks share the command
+  ID and parameter.
 
 Exit criteria:
 
@@ -140,11 +158,14 @@ Exit criteria:
 - Rust tests and scenario tests agree on the same command/state contract.
 - The ADD browser smoke can reuse at least one scenario command sequence.
 
-### Phase 2 — Agent-readable runtime inspection
+See [ADD Deterministic Scenario and Replay Harness](add-scenario-harness.md)
+for the file contract, commands, failure format, and extension rules.
+
+### Phase 2 — Agent-readable runtime inspection (implemented)
 
 Goal: let an agent understand what the game is doing and what it can do next.
 
-Deliverables:
+Implemented deliverables:
 
 - A versioned structured state report containing runtime readiness, current
   time, resources, jobs, crew/hero state, active story, map mode, available
@@ -155,6 +176,14 @@ Deliverables:
 - A compact text renderer for logs and a JSON renderer for automation.
 - A distinction between authoritative state, derived presentation, and
   diagnostics.
+- `agent_runtime_v1` is emitted by both the headless scenario runner and the
+  live ADD browser. The headless report reads `GameState`; the browser report
+  reads the WASM snapshot and domain command projection.
+- `window.render_add_runtime_json()` and
+  `window.render_add_runtime_text()` expose the browser report without DOM
+  scraping, while `render_game_to_text()` includes it at `agentRuntime`.
+- Scenario output includes stable checkpoint IDs, `agentRuntime`, and
+  `agentRuntimeText`; the committed idle/offline tests assert the contract.
 
 Exit criteria:
 
@@ -163,11 +192,15 @@ Exit criteria:
 - `apps/add-rpg` exposes the same report used by headless checks wherever
   possible.
 
-### Phase 3 — One-command agent verification loop
+See [ADD Agent-Readable Runtime Inspection](add-runtime-inspection.md) for the
+field contract, ownership rules, stable IDs, browser accessors, and focused
+verification.
+
+### Phase 3 — One-command agent verification loop (implemented)
 
 Goal: reduce every small task to a predictable inspect/change/check cycle.
 
-Planned command family (names are proposals until implemented):
+Implemented command family:
 
 ```sh
 npm run agent:task -- --describe <task-id>
@@ -177,15 +210,27 @@ npm run agent:verify:add-ui
 npm run agent:report -- --format json
 ```
 
-Deliverables:
+Implemented deliverables:
 
-- A focused runner that chooses the cheapest relevant checks from changed
-  paths, with an explicit override for browser smoke.
-- Machine-readable result files containing command, commit, duration, status,
-  artifacts, and failure hints.
-- Artifact conventions for snapshots, replay logs, screenshots, and traces.
-- A clean distinction between focused checks and the expensive phase gate.
-- A task template that requires acceptance evidence before a task is complete.
+- `scripts/agent-task.cjs` classifies staged, unstaged, untracked, and
+  integration-relative changed paths and chooses the cheapest relevant
+  existing checks. `--smoke` explicitly adds the ADD browser build and smoke;
+  `--gate` is reserved for the expensive target-stack gate.
+- Every run writes a versioned JSON result with command, commit, duration,
+  status, selected source boundaries, artifacts, and failure hints under the
+  ignored `artifacts/agent-verification/<run-id>/` directory.
+- `agent:scenario` records canonical scenario output, snapshots, replay
+  commands, and the Rust command log; child tools receive a common artifact
+  directory for screenshots and traces.
+- `agent:state` loads a save through the existing Rust scenario boundary and
+  exposes the same `agent_runtime_v1` report as headless checks.
+- The task brief now requires acceptance evidence for replay/state artifacts,
+  focused command results, player-facing evidence when applicable, and
+  explicit remaining risk.
+
+See [ADD One-Command Agent Verification Loop](add-agent-verification-loop.md)
+for the result contract, path-selection table, artifact conventions, and
+failure workflow.
 
 Exit criteria:
 
@@ -193,21 +238,31 @@ Exit criteria:
 - Failed checks point to a scenario, source boundary, or missing fixture.
 - The normal granular loop does not require the full browser/renderer gate.
 
-### Phase 4 — Content and world authoring acceleration
+### Phase 4 — Content and world authoring acceleration (implemented)
 
 Goal: make new game content safe and fast to author without moving rules into
 the UI.
 
-Deliverables:
+Implemented deliverables:
 
-- Finish content validation for duplicate IDs, missing references, unreachable
-  story beats, invalid effects, impossible actions, and catalog drift.
-- Add explainers for resources, objectives, actions, structures, encounters,
-  map tiles, and story beats—not only story nodes.
-- Add a content dependency graph with reverse lookup: “what uses this ID?”
-- Add fixture generators for a small base, crew roster, map, and story state.
-- Document the authoring-to-Rust-codegen path beside each content family.
-- Add schema/version checks for content changes that affect saves.
+- `scripts/add-content-validator.cjs` validates duplicate IDs, missing
+  references, unreachable story beats, invalid effects, impossible actions,
+  encounter/loot ranges, and catalog-specific numeric contracts before codegen.
+- `scripts/add-content-registry.cjs` and `scripts/add-content-tools.cjs`
+  explain every registered family, including resources, objectives, actions,
+  structures, encounters, map tiles, and story beats. They support stable JSON
+  output and `--reverse <id>` lookup.
+- `scripts/add-content-fixtures.cjs` generates the small-base, crew-roster,
+  map, and story-state fixtures under `scenarios/add/fixtures/content/`.
+- [ADD Content Authoring and Codegen](add-content-authoring.md) documents each
+  family’s TypeScript source, validation boundary, Rust output, and consumer.
+- `content-version.ts` is code-generated to Rust and checked against save
+  migrations; `npm run content:check` rejects version or catalog drift.
+
+The complete pre-boot path is `npm run content:check`. The focused inspection
+commands are `npm run content:validate`, `npm run content:graph -- --reverse
+<id>`, `npm run content:explain -- <id>`, and
+`npm run content:fixtures:check`. None of these require the browser or UI.
 
 Exit criteria:
 
@@ -217,7 +272,7 @@ Exit criteria:
 - The same IDs are visible in authored TS, generated Rust, snapshots, and
   telemetry.
 
-### Phase 5 — Player-facing visual and interaction QA
+### Phase 5 — Player-facing visual and interaction QA (implemented)
 
 Goal: verify the game that players see without making screenshots the only
 source of truth.
@@ -241,7 +296,17 @@ Exit criteria:
 - The existing ADD smoke remains the product check; engine-sandbox remains the
   cheap neutral renderer check.
 
-### Phase 6 — Performance and maintainability feedback
+The delivered contract is [`scenarios/add/browser-fixtures.json`](../scenarios/add/browser-fixtures.json), backed by
+`scripts/add-rpg-phase5.cjs`, `scripts/add-rpg-smoke.test.cjs`, and the
+versioned `data-qa`/`data-action-id` hooks in `apps/add-rpg`. Run
+`npm run qa:add-rpg:phase5` for the build-and-browser loop or
+`npm run qa:add-rpg:phase5:built` when the app is already built. Visual image
+comparison is deliberately separate: `npm run qa:add-rpg:visual --
+--artifact-dir tmp` preserves state evidence and reports missing baselines as
+`review-required`; a baseline update requires `--update`, a fixture scenario,
+and a human-readable reason.
+
+### Phase 6 — Performance and maintainability feedback (implemented)
 
 Goal: keep the fast development loop fast as the game grows.
 
@@ -254,6 +319,18 @@ Deliverables:
 - A decomposition plan for `apps/add-rpg/src/browser/main.ts` based on actual
   runtime seams: lifecycle, panels, command dispatch, map mode, and dev tools.
 - Documentation for generated files and which checks may write them.
+
+Delivered in `performance/add-budgets.json`, `scripts/add-rpg-trace-report.cjs`,
+`scripts/add-rpg-size-report.cjs`, and the `AddRuntimeBridge`/
+`AddMapController` seams under `apps/add-rpg/src/browser/`. The seam ownership
+and incremental extraction order are documented in
+[`ADD Browser Runtime Seams`](add-browser-runtime-seams.md). The committed
+`scenarios/add/fixtures/performance/trace-v1.ndjson` fixture exercises the
+report contract without booting the browser. Run
+`npm run qa:add-rpg:performance` for the build-and-size phase check, or
+`npm run qa:add-rpg:trace -- --trace <path>` for a captured trace. Generated
+outputs and write-capable checks are documented in
+[`ADD Generated Files and Write-Capable Checks`](add-generated-files.md).
 
 Exit criteria:
 
@@ -306,7 +383,8 @@ Exit criteria:
 
 ### P2 — Scale and future expansion
 
-- Add performance budgets and trace regression reports.
+- Maintain performance budgets and trace regression reports as the live ADD
+  bundle, WASM, renderer, and runtime evolve.
 - Extract shared engine packages from proven ADD use cases.
 - Add strategy/RPG-specific command families, world state, and scenarios.
 - Add richer visual/content authoring tools only after deterministic contracts

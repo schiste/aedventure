@@ -16,6 +16,20 @@ This contract is consumed by the live `apps/add-rpg` game. It describes how to
 extend the existing product safely; it is not a proposal for a separate story
 demo or a replacement for the current playable loop.
 
+## Where does this change belong?
+
+| Change | Owner | First verification |
+| --- | --- | --- |
+| Story beat, choice, condition, effect, flag, objective, or authored copy | `packages/add-domain/src/content/` | `npm run content:check` |
+| Authoritative evaluation or mutation of a story effect | `crates/add-core/` | `cargo test -p add-core` |
+| Story progression projection, available action, or explanation | `packages/add-domain/src/adapters/` | `npm run agent:verify:add-ui` |
+| Player-facing journal, panel, or moment presentation | `apps/add-rpg/` | `npm run smoke:add-rpg:built` |
+
+Keep the content ID and its conditions in the authored catalog. Do not copy
+story gates into DOM event handlers or create a second story state in the
+browser. See the [ADD Task Brief Template](templates/add-task-brief.md) when a
+story change crosses more than one row.
+
 ## Current Architecture
 
 The live story/content path is:

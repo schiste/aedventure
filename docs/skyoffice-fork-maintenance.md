@@ -1,5 +1,9 @@
 # SkyOffice Fork Maintenance
 
+> Scope note: this document governs the quarantined SkyOffice reference and
+> customer virtual-office/platform maintenance only. It is not a dependency or
+> roadmap for the live ADD game.
+
 ## 1. Import Strategy
 
 SkyOffice is imported as a non-squashed Git subtree and then moved to:

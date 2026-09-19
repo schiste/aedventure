@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "id": "add-generated-files-v1",
+  "scope": "live-add",
+  "entries": [
+    {
+      "id": "add-rust-catalog",
+      "path": "crates/add-core/src/game_data/catalog/*.rs",
+      "source": "packages/add-domain/src/content/*.ts",
+      "producer": "npm run content:build",
+      "check": "npm run content:check",
+      "tracked": true,
+      "writes_source": true
+    },
+    {
+      "id": "add-content-fixtures",
+      "path": "scenarios/add/fixtures/content/*.json",
+      "source": "packages/add-domain/src/content/*.ts",
+      "producer": "npm run content:fixtures",
+      "check": "npm run content:fixtures:check",
+      "tracked": true,
+      "writes_source": true
+    },
+    {
+      "id": "add-wasm-bindings",
+      "path": "apps/add-rpg/src/generated/wasm/add-web-bindings/",
+      "source": "crates/add-web-bindings/",
+      "producer": "npm run wasm:build:add",
+      "check": "npm run agent:verify:add-ui",
+      "tracked": false,
+      "writes_source": false
+    },
+    {
+      "id": "add-browser-build",
+      "path": "apps/add-rpg/dist-app/",
+      "source": "apps/add-rpg/src/",
+      "producer": "npm --workspace @aedventure/add-rpg run build:browser",
+      "check": "npm run qa:add-rpg:size:built",
+      "tracked": false,
+      "writes_source": false
+    },
+    {
+      "id": "typescript-package-build-output",
+      "path": "packages/*/dist/",
+      "source": "packages/*/src/",
+      "producer": "tsc -b",
+      "check": "npm run agent:verify:types",
+      "tracked": false,
+      "writes_source": false
+    },
+    {
+      "id": "typescript-app-build-output",
+      "path": "apps/*/dist/",
+      "source": "apps/*/src/",
+      "producer": "tsc -b",
+      "check": "npm run agent:verify:types",
+      "tracked": false,
+      "writes_source": false
+    },
+    {
+      "id": "rust-build-output",
+      "path": "target/",
+      "source": "crates/",
+      "producer": "cargo build",
+      "check": "cargo test -p add-core",
+      "tracked": false,
+      "writes_source": false
+    },
+    {
+      "id": "agent-evidence",
+      "path": "artifacts/agent-verification/<run-id>/",
+      "source": "agent task, scenario, state, trace, and size commands",
+      "producer": "npm run agent:task",
+      "check": "npm run agent:report -- --format json",
+      "tracked": false,
+      "writes_source": false
+    }
+  ]
+}
