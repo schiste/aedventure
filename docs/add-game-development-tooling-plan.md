@@ -272,7 +272,7 @@ Exit criteria:
 - The same IDs are visible in authored TS, generated Rust, snapshots, and
   telemetry.
 
-### Phase 5 — Player-facing visual and interaction QA
+### Phase 5 — Player-facing visual and interaction QA (implemented)
 
 Goal: verify the game that players see without making screenshots the only
 source of truth.
@@ -295,6 +295,16 @@ Exit criteria:
 - Visual failures identify the scenario and state that produced the image.
 - The existing ADD smoke remains the product check; engine-sandbox remains the
   cheap neutral renderer check.
+
+The delivered contract is [`scenarios/add/browser-fixtures.json`](../scenarios/add/browser-fixtures.json), backed by
+`scripts/add-rpg-phase5.cjs`, `scripts/add-rpg-smoke.test.cjs`, and the
+versioned `data-qa`/`data-action-id` hooks in `apps/add-rpg`. Run
+`npm run qa:add-rpg:phase5` for the build-and-browser loop or
+`npm run qa:add-rpg:phase5:built` when the app is already built. Visual image
+comparison is deliberately separate: `npm run qa:add-rpg:visual --
+--artifact-dir tmp` preserves state evidence and reports missing baselines as
+`review-required`; a baseline update requires `--update`, a fixture scenario,
+and a human-readable reason.
 
 ### Phase 6 — Performance and maintainability feedback
 

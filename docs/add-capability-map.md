@@ -21,6 +21,7 @@ Run `npm run docs:check` after changing this map or the routing documents.
 | Snapshot explanation, available-action projection, command mapping, or UI copy | ADD domain adapters | `packages/add-domain/src/adapters/` | `npm run agent:verify:add-ui` |
 | Agent-readable state, available commands, blocker reasons, or stable report IDs | ADD runtime inspection contract | `packages/add-domain/src/runtime/inspection.ts` and `crates/add-scenario/src/inspection.rs` | `npm --workspace @aedventure/add-domain test` and `cargo test -p add-scenario` |
 | Player-facing panels, input dispatch, map presentation, save plumbing, or browser lifecycle | Live ADD app | `apps/add-rpg/src/` | `npm run agent:verify:add-ui` |
+| Browser fixture, semantic selector/action ID, screenshot evidence, or renderer-affordance check | ADD player-facing QA contract | `scenarios/add/browser-fixtures.json`, `scripts/add-rpg-phase5.cjs`, and `apps/add-rpg/src/browser/qa-contract.ts` | `npm run qa:add-rpg:phase5:built` |
 | Neutral square/hex topology, world, input, protocol, or renderer behavior | Shared engine | `packages/game-*` and `apps/engine-sandbox/` | `npm run agent:verify:types` then the relevant engine smoke |
 | Office auth, rooms, media, tenant maps, or server policy | Office/platform lane | `apps/web/`, `apps/api/`, `apps/world-server/`, `apps/media-gateway/` | `npm run smoke:office` |
 | Historical ADD or SkyOffice comparison | Legacy reference | `legacy/add/` or `legacy/skyoffice-original/` | `npm run check:legacy` when SkyOffice is involved |
@@ -51,6 +52,8 @@ the Rust runtime owns mutation and deterministic outcomes.
 | ADD type/content/WASM boundary | `npm run agent:verify:add-ui` | Diff checks, content generation, WASM build, ADD types, and smoke syntax pass |
 | Built ADD browser flow | `npm run smoke:add-rpg:built` | The already-built ADD app passes browser/player-flow assertions |
 | Build-and-smoke ADD flow | `npm run smoke:add-rpg` | ADD browser build and Playwright flow both run |
+| Player-facing Phase 5 fixtures | `npm run qa:add-rpg:phase5` or `npm run qa:add-rpg:phase5:built` | Boot, idle, map, story choice, save/load, and offline-return state, DOM, action-ID, renderer, and screenshot evidence pass together |
+| Controlled ADD visual diff | `npm run qa:add-rpg:visual -- --artifact-dir tmp` | Screenshot baselines are compared with scenario/state evidence; missing baselines require deliberate review |
 | Shared package types | `npm run agent:verify:types` | Root TypeScript project references compile after neutral-package changes |
 | Neutral renderer/topology fixture | `npm run smoke:engine-sandbox` | Square and hex engine paths work without office or ADD domain imports |
 | Office app flow | `npm run smoke:office` | The separate customer virtual-office lane passes its browser flow |
@@ -158,9 +161,9 @@ These are gaps, not reasons to create a second ADD app:
   future decision before richer procedural encounters;
 - the current dungeon layer proves entry, objectives, doors, locations, combat,
   inventory, and return flow, but not the full future dungeon/exploration game;
-- broader scenario coverage and a richer browser command bridge remain
-  follow-up work after the committed Phase 1/2 harness, Phase 3 verification
-  loop, and Phase 4 content tooling;
+- the Phase 5 browser contract covers the critical player-facing flows, while
+  broader scenario breadth, richer browser command coverage, and reviewed
+  image baselines remain follow-up work;
 - larger strategy/RPG systems and neutral engine extraction remain demand-led
   future work, with `apps/add-rpg` staying the first consumer.
 

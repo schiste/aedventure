@@ -3161,3 +3161,19 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   verification passed, the web-game screenshot loop rendered cleanly, and
   targeted Playwright probes confirmed Settings and travel-dialog text sections
   are tabbable and loop inside their pop-ins.
+
+## Phase 5 player-facing QA — 2026-09-19
+
+- Baseline `npm run smoke:add-rpg` passed from the Phase 4 integration tip.
+- Added the versioned `scenarios/add/browser-fixtures.json` contract for boot,
+  idle, map interaction, story-choice availability, save/load, and offline
+  return. The ADD smoke now emits a structured `phase5-report.json` with
+  selected state evidence, DOM selector/action-ID evidence, screenshot hashes,
+  and failure context.
+- Added stable `data-qa` surfaces and semantic `data-action-id` hooks in the
+  live ADD app, plus renderer checks for map readiness, camera, topology,
+  interaction, and affordance telemetry.
+- Added the controlled visual baseline policy and `npm run qa:add-rpg:visual`;
+  baseline promotion requires a fixture, a reason, and the captured state
+  digest. Baselines begin explicitly unbaselined so the first visual review is
+  deliberate rather than silently checked in.

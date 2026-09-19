@@ -4,6 +4,11 @@ const path = require("node:path")
 const { chromium } = require("playwright")
 const { assertNonBlankImageBuffer } = require("./app-qa-contracts.cjs")
 const { startStaticAppServer } = require("./app-qa-server.cjs")
+const {
+  captureAddBrowserFixture,
+  loadAddBrowserQaManifest,
+  writeAddBrowserQaReport,
+} = require("./add-rpg-phase5.cjs")
 
 const ROOT_DIR = path.resolve(__dirname, "..")
 const DIST_DIR = path.join(ROOT_DIR, "apps/add-rpg/dist-app")
@@ -27,6 +32,7 @@ const V1_INTERFACE_DESKTOP_PANELS = [
   "dungeon-context-panel",
   "offline-return-panel",
 ]
+const ADD_BROWSER_QA_MANIFEST = loadAddBrowserQaManifest()
 
 const v1InterfaceGate = {
   contexts: new Set(),
@@ -41,6 +47,8 @@ async function main() {
   })
   let browser
   const consoleErrors = []
+  const phase5Evidence = []
+  let phase5Failure = null
 
   try {
     browser = await chromium.launch()
@@ -62,13 +70,23 @@ async function main() {
     const initial = await runScenario("boot and render text contract", () =>
       assertBootAndRenderTextContract(page, consoleErrors),
     )
+    await capturePhase5Fixture(page, phase5Evidence, "add.boot", initial)
     await runScenario("admin and developer tools separation", () =>
       assertAdminDeveloperSeparation(page, consoleErrors),
     )
+    const storyFixtureState = await openAdmin(page, consoleErrors)
+    await page.locator('a[href="#admin-story-browser"]').click()
+    await page.waitForTimeout(100)
+    await page.locator('[data-qa="story-commands"]').evaluate((element) => {
+      if (element instanceof HTMLDetailsElement) element.open = true
+    })
+    await capturePhase5Fixture(page, phase5Evidence, "add.story-choice", storyFixtureState)
+    await closeAdmin(page, consoleErrors)
     await runScenario("initial visibility and known facts", () =>
       assertInitialVisibilityContract(initial),
     )
-    await runScenario("ambient clock", () => assertIdleAmbientClockAdvances(page))
+    const idle = await runScenario("ambient clock", () => assertIdleAmbientClockAdvances(page))
+    await capturePhase5Fixture(page, phase5Evidence, "add.idle", idle)
     await runScenario("hero spawn placement", () => assertHeroStartsAtSurvivorCave(page, initial))
     await runScenario("Studio objective marker is label-only", () =>
       assertStudioObjectiveMarkerIsLabelOnly(page, consoleErrors),
@@ -99,6 +117,7 @@ async function main() {
     )
     assert.ok(interacted.map.interaction.selectedHex)
     assert.ok(interacted.map.interaction.selectedLabel)
+    await capturePhase5Fixture(page, phase5Evidence, "add.map", interacted)
 
     const switched = await runScenario("map mode switching", () =>
       exerciseMapModeSwitching(page, consoleErrors),
@@ -122,7 +141,12 @@ async function main() {
     )
 
     const exported = await runScenario("persistence, offline catchup, and reset", () =>
-      exerciseSaveReloadOfflineAndReset(page, firstPlayable, consoleErrors),
+      exerciseSaveReloadOfflineAndReset(
+        page,
+        firstPlayable,
+        consoleErrors,
+        async (fixtureId, state) => capturePhase5Fixture(page, phase5Evidence, fixtureId, state),
+      ),
     )
     assert.ok(exported.payload.length > 200)
     await closeAdmin(page, consoleErrors)
@@ -133,10 +157,36 @@ async function main() {
     })
     await runScenario("V1 interface gate", () => assertV1InterfaceGateComplete())
     await runScenario("console cleanliness", () => assert.deepEqual(consoleErrors, []))
+  } catch (error) {
+    phase5Failure = error instanceof Error ? error.message : String(error)
+    throw error
   } finally {
-    if (browser) await browser.close()
-    await new Promise((resolve) => server.close(resolve))
+    try {
+      writeAddBrowserQaReport({
+        artifactDir: SMOKE_ARTIFACT_DIR,
+        manifest: ADD_BROWSER_QA_MANIFEST,
+        fixtures: phase5Evidence,
+        status: phase5Failure ? "failed" : "passed",
+        failure: phase5Failure,
+      })
+    } finally {
+      if (browser) await browser.close()
+      await new Promise((resolve) => server.close(resolve))
+    }
   }
+}
+
+async function capturePhase5Fixture(page, evidence, fixtureId, state) {
+  evidence.push(
+    await captureAddBrowserFixture({
+      page,
+      manifest: ADD_BROWSER_QA_MANIFEST,
+      fixtureId,
+      state,
+      artifactDir: SMOKE_ARTIFACT_DIR,
+      assertNonBlankImageBuffer,
+    }),
+  )
 }
 
 async function runScenario(name, scenario) {
@@ -2576,7 +2626,12 @@ function firstPlayableProgressDigestObject(state) {
   }
 }
 
-async function exerciseSaveReloadOfflineAndReset(page, advanced, consoleErrors) {
+async function exerciseSaveReloadOfflineAndReset(
+  page,
+  advanced,
+  consoleErrors,
+  captureFixture = null,
+) {
   await openDeveloperTools(page, consoleErrors)
   const saved = await clickUntilTextState(
     page,
@@ -2599,6 +2654,7 @@ async function exerciseSaveReloadOfflineAndReset(page, advanced, consoleErrors) 
   assert.ok(Array.isArray(parsedPayload.discoveredCells))
   assert.equal(parsedPayload.discoveredCells.length, exportedDiscoveryCount)
   assert.deepEqual(parsedPayload.heroMap, parseHexCoord(exportedHeroMap))
+  await captureFixture?.("add.save-load", saved)
 
   await page.evaluate(
     ({ key }) => {
@@ -2672,6 +2728,7 @@ async function exerciseSaveReloadOfflineAndReset(page, advanced, consoleErrors) 
   await closeDeveloperTools(page, consoleErrors)
   await page.locator("#offline-return-panel").waitFor({ state: "visible" })
   const offlineReview = await renderGameToText(page)
+  await captureFixture?.("add.offline-return", offlineReview)
   assertV1InterfaceContext(offlineReview, "return", { source: "offline_return" })
   assert.equal(
     offlineReview.shell?.questPanel?.collapsed,

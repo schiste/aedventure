@@ -31,6 +31,7 @@ const scenarioHarness = read("docs/add-scenario-harness.md")
 const runtimeInspection = read("docs/add-runtime-inspection.md")
 const agentVerification = read("docs/add-agent-verification-loop.md")
 const contentAuthoring = read("docs/add-content-authoring.md")
+const playerFacingQa = read("docs/add-player-facing-qa.md")
 const taskBrief = read("docs/templates/add-task-brief.md")
 const parityAudit = read("docs/add-systems-parity-audit.md")
 const packageJson = JSON.parse(read("package.json"))
@@ -45,6 +46,7 @@ for (const fragment of [
   "docs/add-runtime-inspection.md",
   "docs/add-agent-verification-loop.md",
   "docs/add-content-authoring.md",
+  "docs/add-player-facing-qa.md",
   "docs/templates/add-task-brief.md",
   "npm run agent:verify:add-ui",
 ]) {
@@ -70,6 +72,10 @@ requireHeading(contentAuthoring, "## Where does this change belong?", "ADD conte
 requireHeading(contentAuthoring, "## Authoring-to-runtime path", "ADD content authoring")
 requireHeading(contentAuthoring, "## Add one content item", "ADD content authoring")
 requireHeading(contentAuthoring, "## Version contract", "ADD content authoring")
+requireHeading(playerFacingQa, "## Where does this change belong?", "ADD player-facing QA")
+requireHeading(playerFacingQa, "## Fixture contract", "ADD player-facing QA")
+requireHeading(playerFacingQa, "## Visual-diff policy", "ADD player-facing QA")
+requireText(playerFacingQa, "qa:add-rpg:phase5", "ADD player-facing QA")
 
 for (const heading of [
   "## First route: where does this change belong?",
@@ -121,6 +127,9 @@ for (const command of [
   "agent:verify:gate",
   "smoke:add-rpg",
   "smoke:add-rpg:built",
+  "qa:add-rpg:phase5",
+  "qa:add-rpg:phase5:built",
+  "qa:add-rpg:visual",
   "smoke:engine-sandbox",
   "smoke:office",
   "check:legacy",

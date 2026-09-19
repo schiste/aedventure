@@ -1,6 +1,7 @@
 const assert = require("node:assert")
 const fs = require("node:fs")
 const path = require("node:path")
+const { loadAddBrowserQaManifest } = require("./add-rpg-phase5.cjs")
 
 const ROOT_DIR = path.resolve(__dirname, "..")
 const RETIRED_RPG_DEMO_FRAGMENTS = [
@@ -17,6 +18,7 @@ function main() {
   const verifyTargetStack = readText("scripts/verify-target-stack.sh")
   const agentVerify = readText("scripts/agent-verify.sh")
   const agentGuide = readText("AGENTS.md")
+  const addMain = readText("apps/add-rpg/src/browser/main.ts")
 
   assert.equal(
     packageJson.scripts.check,
@@ -32,6 +34,9 @@ function main() {
   assertScript(packageJson, "smoke:apps", "smoke:add-rpg")
   assertScript(packageJson, "smoke:apps", "smoke:engine-sandbox")
   assertScript(packageJson, "qa:renderer", "scripts/renderer-qa.test.cjs")
+  assertScript(packageJson, "qa:add-rpg:phase5", "scripts/add-rpg-smoke.test.cjs")
+  assertScript(packageJson, "qa:add-rpg:phase5:built", "scripts/add-rpg-smoke.test.cjs")
+  assertScript(packageJson, "qa:add-rpg:visual", "scripts/add-rpg-visual-diff.cjs")
   assertScript(packageJson, "qa:multi-app", "scripts/multi-app-qa-contracts.test.cjs")
   assertScript(packageJson, "agent:verify", "scripts/agent-task.cjs")
   assertScript(packageJson, "agent:verify:add-ui", "scripts/agent-verify.sh add-ui")
@@ -69,7 +74,12 @@ function main() {
     "add-rpg-dungeon-map-smoke.png",
     "mapMode?.topology === \"square\"",
     "mapMode?.topology === \"hex\"",
+    "captureAddBrowserFixture",
+    "writeAddBrowserQaReport",
   ])
+  ;["data-qa", "data-action-id", "ADD_BROWSER_QA_CONTRACT_VERSION"].forEach((fragment) => {
+    assert.ok(addMain.includes(fragment), `Expected ADD browser source to include ${fragment}.`)
+  })
   assertScreenshotContract("scripts/renderer-qa.test.cjs", [
     "topologyChecks",
     "add-rpg-hex-renderer-fixture-canvas.png",
@@ -80,6 +90,19 @@ function main() {
   assertRetiredPathMissing("apps/rpg-idle-demo")
   assertRetiredPathMissing("packages/rpg-domain")
   assertRetiredPathMissing("scripts/rpg-idle-demo-smoke.test.cjs")
+
+  const browserQaManifest = loadAddBrowserQaManifest()
+  assert.deepEqual(
+    browserQaManifest.fixtures.map((fixture) => fixture.id),
+    [
+      "add.boot",
+      "add.idle",
+      "add.map",
+      "add.story-choice",
+      "add.save-load",
+      "add.offline-return",
+    ],
+  )
 
   console.log("Multi-app QA contract checks passed.")
 }

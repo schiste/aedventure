@@ -128,6 +128,12 @@ import {
   loadSettings,
   saveSettings,
 } from "./settings/settings-state"
+import {
+  ADD_BROWSER_QA_CONTRACT_VERSION,
+  ADD_QA_ACTION_IDS,
+  ADD_QA_SELECTORS,
+  addQaMapModeActionId,
+} from "./qa-contract"
 import { installTraceRecorder } from "./dev/trace-recorder"
 import "./styles.css"
 
@@ -852,6 +858,8 @@ function AddRpgApp() {
           .filter(Boolean)
           .join(" ")}
       data-interface-hierarchy="map-decision-status-admin"
+      data-qa=${ADD_QA_SELECTORS.app}
+      data-qa-contract=${ADD_BROWSER_QA_CONTRACT_VERSION}
       onFocusIn=${handleShellFocusIn}
       onKeyDown=${handleShellKeyDown}
     >
@@ -862,6 +870,7 @@ function AddRpgApp() {
           class="add-world"
           data-interface-tier="primary"
           data-visual-surface="map-stage"
+          data-qa=${ADD_QA_SELECTORS.mapStage}
           ref=${(node: HTMLDivElement) => (mapElement = node)}
         >
           <div
@@ -908,6 +917,7 @@ function AddRpgApp() {
             class="map-topbar"
             data-interface-tier="tertiary"
             data-visual-surface="status"
+            data-qa=${ADD_QA_SELECTORS.status}
             aria-label="ADD map navigation and status"
           >
             <div class="map-mode-switcher" role="tablist" aria-label="ADD map mode">
@@ -932,6 +942,7 @@ function AddRpgApp() {
               <button
                 id="time-speed-control"
                 type="button"
+                data-action-id=${ADD_QA_ACTION_IDS.timeToggleSpeed}
                 class=${() => (autoTick() ? "time-speed-button" : "time-speed-button paused")}
                 onClick=${() => cycleTimeSpeed()}
                 disabled=${() => !ready()}
@@ -974,6 +985,7 @@ function AddRpgApp() {
                     <button
                       id="open-settings"
                       type="button"
+                      data-action-id=${ADD_QA_ACTION_IDS.menuOpenSettings}
                       class="ghost-button shell-menu-action settings-menu-action"
                       role="menuitem"
                       onClick=${openSettingsView}
@@ -992,6 +1004,7 @@ function AddRpgApp() {
                     <button
                       id="open-admin"
                       type="button"
+                      data-action-id=${ADD_QA_ACTION_IDS.menuOpenAdmin}
                       class="ghost-button shell-menu-action admin-menu-action"
                       role="menuitem"
                       onClick=${openAdminView}
@@ -1007,6 +1020,7 @@ function AddRpgApp() {
                     <button
                       id="open-dev-menu"
                       type="button"
+                      data-action-id=${ADD_QA_ACTION_IDS.menuOpenDeveloper}
                       class="ghost-button shell-menu-action dev-menu-action"
                       role="menuitem"
                       onClick=${openDevView}
@@ -1043,6 +1057,7 @@ function AddRpgApp() {
             data-last-action=${() => lastQuestPanelAction()}
             data-complete=${() => firstPlayableArcComplete()}
             data-visual-surface="objective"
+            data-qa=${ADD_QA_SELECTORS.objective}
             aria-labelledby="first-playable-title"
             aria-describedby="first-playable-keyboard-help"
           >
@@ -1093,6 +1108,7 @@ function AddRpgApp() {
             class="map-hud"
             data-interface-tier="tertiary"
             data-visual-surface="map-controls"
+            data-qa=${ADD_QA_SELECTORS.mapControls}
             aria-label="ADD map controls"
           >
             <div class="map-camera-controls" aria-label="Map camera controls">
@@ -1100,6 +1116,7 @@ function AddRpgApp() {
                 <button
                   id="map-zoom-out"
                   type="button"
+                  data-action-id=${ADD_QA_ACTION_IDS.mapZoomOut}
                   class="map-button map-button-icon"
                   onClick=${() => zoomMap(0.9)}
                   disabled=${() => !mapInfo().ready}
@@ -1111,6 +1128,7 @@ function AddRpgApp() {
                 <button
                   id="map-zoom-in"
                   type="button"
+                  data-action-id=${ADD_QA_ACTION_IDS.mapZoomIn}
                   class="map-button map-button-icon"
                   onClick=${() => zoomMap(1.1)}
                   disabled=${() => !mapInfo().ready}
@@ -1400,7 +1418,7 @@ function AddRpgApp() {
         <nav class="drawer-section-map admin-section-map" aria-label="Admin sections">
           <a href="#admin-run-status">Run</a>
           <a href="#admin-resources">Resources</a>
-          <a href="#admin-story-browser">Story</a>
+          <a href="#admin-story-browser" data-action-id=${ADD_QA_ACTION_IDS.storyOpenContext}>Story</a>
           <a href="#admin-recovery">Recovery</a>
           <a href="#admin-world-actions">Actions</a>
         </nav>
@@ -1680,6 +1698,7 @@ function AddRpgApp() {
             id="dev-save-tools"
             class="panel run-panel keyboard-section"
             tabindex="0"
+            data-qa=${ADD_QA_SELECTORS.saveTools}
             aria-label="Developer raw save section"
           >
             <div class="panel-heading">
@@ -1713,21 +1732,40 @@ function AddRpgApp() {
               aria-label="ADD save payload"
             />
             <div class="run-grid">
-              <button id="export-save" type="button" onClick=${() => void exportSaveNow()} disabled=${() => !ready()}>
+              <button
+                id="export-save"
+                type="button"
+                data-action-id=${ADD_QA_ACTION_IDS.saveExport}
+                onClick=${() => void exportSaveNow()}
+                disabled=${() => !ready()}
+              >
                 Save now
               </button>
               <button
                 id="load-autosave"
                 type="button"
+                data-action-id=${ADD_QA_ACTION_IDS.saveLoadAutosave}
                 onClick=${() => void loadAutosave()}
                 disabled=${() => !ready() || !autosaveRecord()}
               >
                 Load autosave
               </button>
-              <button id="import-save" type="button" onClick=${() => void importSaveText()} disabled=${() => !ready()}>
+              <button
+                id="import-save"
+                type="button"
+                data-action-id=${ADD_QA_ACTION_IDS.saveImport}
+                onClick=${() => void importSaveText()}
+                disabled=${() => !ready()}
+              >
                 Import text
               </button>
-              <button id="offline-catchup" type="button" onClick=${() => void runOfflineCatchup(3600)} disabled=${() => !ready()}>
+              <button
+                id="offline-catchup"
+                type="button"
+                data-action-id=${ADD_QA_ACTION_IDS.offlineCatchupOneHour}
+                onClick=${() => void runOfflineCatchup(3600)}
+                disabled=${() => !ready()}
+              >
                 Offline 1h
               </button>
               <button id="clear-autosave" type="button" class="ghost-button" onClick=${clearBrowserAutosave}>
@@ -2418,6 +2456,8 @@ function adminStoryBrowserPanel(): unknown {
         id="admin-story-browser"
         class="panel admin-story-panel keyboard-section"
         tabindex="0"
+        data-qa=${ADD_QA_SELECTORS.storyBrowser}
+        data-action-id=${ADD_QA_ACTION_IDS.storyOpenContext}
         aria-label="Admin story content section"
       >
         <div class="panel-heading">
@@ -2433,6 +2473,8 @@ function adminStoryBrowserPanel(): unknown {
       id="admin-story-browser"
       class="panel admin-story-panel keyboard-section"
       tabindex="0"
+      data-qa=${ADD_QA_SELECTORS.storyBrowser}
+      data-action-id=${ADD_QA_ACTION_IDS.storyOpenContext}
       aria-label="Admin story content section"
     >
       <div class="panel-heading">
@@ -2503,7 +2545,7 @@ function adminStoryBrowserPanel(): unknown {
           : html`<p class="story-browser-empty">No narrative qualities are set.</p>`}
       </details>
 
-      <details class="story-browser-fold">
+      <details class="story-browser-fold" data-qa=${ADD_QA_SELECTORS.storyCommands}>
         <summary>Available commands</summary>
         <ul class="story-browser-list">${state.availableCommands.map(storyBrowserCommandRow)}</ul>
       </details>
@@ -2553,7 +2595,10 @@ function storyBrowserQualityRow(quality: AddStoryContentBrowserState["qualities"
 
 function storyBrowserCommandRow(command: AddStoryContentBrowserState["availableCommands"][number]): unknown {
   return html`
-    <li class=${command.enabled ? "story-browser-enabled" : "story-browser-disabled"}>
+    <li
+      class=${command.enabled ? "story-browser-enabled" : "story-browser-disabled"}
+      data-action-id=${command.id}
+    >
       <span>
         <strong>${command.label}</strong>
         <small>${command.disabledReason ?? `${command.workerType} · ${command.kind}`}</small>
@@ -3161,7 +3206,11 @@ function storyMomentBlock(): unknown {
   // the surface blank for the 7 no-choice spine beats.)
   if (!moment) return null
   return html`
-    <details id="story-context-section" class="context-detail-section story-context-section">
+    <details
+      id="story-context-section"
+      class="context-detail-section story-context-section"
+      data-action-id=${ADD_QA_ACTION_IDS.storyOpenContext}
+    >
       <summary>
         <span>Story context</span>
         <small>${moment.label}</small>
@@ -3193,6 +3242,7 @@ function storyMomentBlock(): unknown {
                           type="button"
                           class="story-moment-choice"
                           data-choice-id=${choice.id}
+                          data-action-id=${`story-choice:${moment.beatId}:${choice.id}`}
                           onClick=${() => void chooseStoryOption(moment.beatId, choice.id)}
                         >
                           ${choice.label}
@@ -3214,6 +3264,7 @@ function currentActionSurface(): unknown {
     <article
       id="current-action-surface"
       class="current-action-surface keyboard-section"
+      data-qa=${ADD_QA_SELECTORS.currentAction}
       data-source=${() => currentActionState().source}
       data-kind=${() => currentActionState().kind}
       data-enabled=${() => (currentActionState().enabled ? "true" : "false")}
@@ -3275,6 +3326,7 @@ function currentActionSurface(): unknown {
               <button
                 id="current-action-primary"
                 type="button"
+                data-action-id=${() => currentActionState().actionId ?? ""}
                 class="primary-action"
                 data-key-action="confirm"
                 aria-keyshortcuts="Enter"
@@ -5638,6 +5690,7 @@ function objectivePanelPrimaryButton(
     <button
       id=${id}
       type="button"
+      data-action-id=${() => action.actionId ?? ""}
       class="objective-primary-action"
       data-key-action="confirm"
       aria-keyshortcuts="Enter"
@@ -5887,6 +5940,7 @@ function mapModeButtons(): readonly unknown[] {
       <button
         id=${`map-mode-${option.id}`}
         type="button"
+        data-action-id=${addQaMapModeActionId(option.id)}
         class=${() => (mapMode() === option.id ? "map-mode-button active" : "map-mode-button")}
         role="tab"
         aria-selected=${() => mapMode() === option.id}
@@ -6271,6 +6325,7 @@ function travelDialogView(): unknown {
         aria-modal="true"
         aria-labelledby="travel-dialog-title"
         aria-keyshortcuts="Enter Escape"
+        data-qa=${ADD_QA_SELECTORS.travelDialog}
         data-kind=${dialog.kind}
         data-dragging=${() => floatingPanelDraggingId() === "travel_dialog"}
         data-last-action=${() => floatingPanelLastActions().travel_dialog}
@@ -6320,6 +6375,7 @@ function offlineReturnPanel(): unknown {
       data-dragging=${() => floatingPanelDraggingId() === "offline_return"}
       data-last-action=${() => floatingPanelLastActions().offline_return}
       data-visual-surface="context"
+      data-qa=${ADD_QA_SELECTORS.offlineReturn}
       role="region"
       aria-labelledby="offline-return-title"
       aria-live="polite"
@@ -6347,6 +6403,7 @@ function offlineReturnPanel(): unknown {
           id="dismiss-offline-return"
           type="button"
           class="ghost-button offline-return-dismiss"
+          data-action-id=${ADD_QA_ACTION_IDS.offlineDismiss}
           data-key-action="cancel"
           aria-keyshortcuts="Escape"
           onClick=${dismissOfflineReturnSummary}
@@ -6385,6 +6442,7 @@ function offlineReturnPanel(): unknown {
           id="dismiss-offline-return-primary"
           type="button"
           class="primary-action"
+          data-action-id=${ADD_QA_ACTION_IDS.offlineDismiss}
           data-key-action="confirm"
           aria-keyshortcuts="Enter"
           onClick=${dismissOfflineReturnSummary}
@@ -6600,6 +6658,7 @@ function travelDialogActions(kind: TravelDialogKind): readonly unknown[] {
           id="travel-dialog-dismiss"
           type="button"
           class="primary-action"
+          data-action-id=${ADD_QA_ACTION_IDS.travelDismissWarning}
           data-key-action="confirm"
           aria-keyshortcuts="Enter Escape"
           onClick=${() => answerTravelDialog(true)}
@@ -6617,6 +6676,7 @@ function travelDialogActions(kind: TravelDialogKind): readonly unknown[] {
           id="travel-dialog-cancel"
           type="button"
           class="ghost-button"
+          data-action-id=${ADD_QA_ACTION_IDS.travelCancel}
           data-key-action="cancel"
           aria-keyshortcuts="Escape"
           onClick=${() => answerTravelDialog(false)}
@@ -6629,6 +6689,7 @@ function travelDialogActions(kind: TravelDialogKind): readonly unknown[] {
           id="travel-dialog-venture"
           type="button"
           class="primary-action"
+          data-action-id=${ADD_QA_ACTION_IDS.travelConfirm}
           data-key-action="confirm"
           aria-keyshortcuts="Enter"
           onClick=${() => answerTravelDialog(true)}
@@ -6645,6 +6706,7 @@ function travelDialogActions(kind: TravelDialogKind): readonly unknown[] {
         id="travel-dialog-cancel"
         type="button"
         class="ghost-button"
+        data-action-id=${ADD_QA_ACTION_IDS.travelCancel}
         data-key-action="cancel"
         aria-keyshortcuts="Escape"
         onClick=${() => answerTravelDialog(false)}
@@ -6657,6 +6719,7 @@ function travelDialogActions(kind: TravelDialogKind): readonly unknown[] {
         id="travel-dialog-confirm"
         type="button"
         class="primary-action"
+        data-action-id=${ADD_QA_ACTION_IDS.travelConfirm}
         data-key-action="confirm"
         aria-keyshortcuts="Enter"
         onClick=${() => answerTravelDialog(true)}

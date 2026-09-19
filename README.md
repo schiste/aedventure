@@ -95,6 +95,8 @@ npm run content:fixtures:check
 npm --workspace @aedventure/add-domain test
 npm run agent:verify:add-ui
 npm run agent:task -- --smoke
+npm run qa:add-rpg:phase5
+npm run qa:add-rpg:visual -- --artifact-dir tmp
 npm --workspace @aedventure/add-rpg run dev:browser
 ```
 
@@ -116,6 +118,7 @@ verification; see [AGENTS.md](AGENTS.md).
 - [ADD Deterministic Scenario and Replay Harness](docs/add-scenario-harness.md)
 - [ADD Agent-Readable Runtime Inspection](docs/add-runtime-inspection.md)
 - [ADD One-Command Agent Verification Loop](docs/add-agent-verification-loop.md)
+- [ADD Player-Facing Visual and Interaction QA](docs/add-player-facing-qa.md)
 - [ADD Content Authoring and Codegen](docs/add-content-authoring.md)
 - [Story and Content Engine Contract](docs/story-content-engine.md)
 - [Domain-Neutral Engine Boundary](docs/engine-boundary.md)

@@ -1,0 +1,201 @@
+{
+  "schema_version": 1,
+  "id": "add-player-facing-qa-v1",
+  "app": "add-rpg",
+  "contract_version": "add-browser-qa-v1",
+  "artifact": {
+    "report": "phase5-report.json",
+    "screenshot_directory": "phase5"
+  },
+  "selectors": {
+    "app": "[data-qa=add-app]",
+    "map_stage": "[data-qa=map-stage]",
+    "status": "[data-qa=status-bar]",
+    "objective": "[data-qa=objective-tracker]",
+    "current_action": "[data-qa=current-action]",
+    "map_controls": "[data-qa=map-controls]",
+    "story_browser": "[data-qa=story-browser]",
+    "story_commands": "[data-qa=story-commands]",
+    "save_tools": "[data-qa=save-tools]",
+    "offline_return": "[data-qa=offline-return]"
+  },
+  "action_ids": {
+    "time_toggle_speed": "time.toggle-speed",
+    "map_zoom_in": "map.zoom.in",
+    "map_zoom_out": "map.zoom.out",
+    "save_export": "save.export",
+    "save_load_autosave": "save.load-autosave",
+    "save_import": "save.import",
+    "offline_catchup": "offline.catchup.1h",
+    "offline_dismiss": "offline-return.dismiss",
+    "story_open_context": "story.open-context"
+  },
+  "fixtures": [
+    {
+      "id": "add.boot",
+      "flow": "boot",
+      "smoke_scenario": "boot and render text contract",
+      "surface": "app",
+      "selectors": ["app", "map_stage", "status", "objective"],
+      "required_action_ids": ["time_toggle_speed", "map_zoom_in", "map_zoom_out"],
+      "assertions": [
+        { "path": "app", "equals": "add-rpg" },
+        { "path": "runtime.ready", "equals": true },
+        { "path": "runtime.snapshotReceived", "equals": true },
+        { "path": "runtime.catalogReceived", "equals": true },
+        { "path": "map.ready", "equals": true },
+        { "path": "map.camera.mode", "equals": "interactive_pan_zoom" },
+        { "path": "map.interaction.hoverEnabled", "equals": true },
+        { "path": "map.interaction.selectEnabled", "equals": true }
+      ],
+      "state_paths": [
+        "app",
+        "runtime.ready",
+        "runtime.snapshotReceived",
+        "runtime.catalogReceived",
+        "map.mapId",
+        "map.topology.kind",
+        "map.camera.mode",
+        "map.camera.zoom",
+        "map.interaction.hoverEnabled",
+        "map.interaction.selectEnabled"
+      ],
+      "screenshot": "boot.png"
+    },
+    {
+      "id": "add.idle",
+      "flow": "idle-progression",
+      "smoke_scenario": "ambient clock",
+      "surface": "app",
+      "selectors": ["app", "map_stage", "status"],
+      "required_action_ids": ["time_toggle_speed"],
+      "assertions": [
+        { "path": "runtime.ready", "equals": true },
+        { "path": "runtime.autoTick", "equals": true },
+        { "path": "snapshot.clockSeconds", "type": "number" },
+        { "path": "ui.worldTime.animating", "equals": false },
+        { "path": "shell.currentAction.actionId", "type": "string" }
+      ],
+      "state_paths": [
+        "runtime.ready",
+        "runtime.autoTick",
+        "runtime.timeSpeed",
+        "snapshot.clockSeconds",
+        "ui.worldTime.animating",
+        "shell.currentAction.actionId",
+        "shell.currentAction.primaryEnabled"
+      ],
+      "screenshot": "idle.png"
+    },
+    {
+      "id": "add.map",
+      "flow": "map-interaction",
+      "smoke_scenario": "map interaction and camera",
+      "surface": "app",
+      "selectors": ["app", "map_stage", "status", "map_controls"],
+      "required_action_ids": ["map_zoom_in", "map_zoom_out"],
+      "assertions": [
+        { "path": "mapMode.active", "equals": "overworld_hex" },
+        { "path": "mapMode.topology", "equals": "hex" },
+        { "path": "map.ready", "equals": true },
+        { "path": "map.camera.mode", "equals": "interactive_pan_zoom" },
+        { "path": "map.camera.zoom", "gte": 0.1 },
+        { "path": "map.interaction.selectedHex", "type": "string" },
+        { "path": "map.presentation.mapPrimaryAffordances.actionMarkerCount", "type": "number" }
+      ],
+      "state_paths": [
+        "mapMode.active",
+        "mapMode.topology",
+        "map.mapId",
+        "map.ready",
+        "map.camera.mode",
+        "map.camera.zoom",
+        "map.camera.scrollX",
+        "map.camera.scrollY",
+        "map.interaction.selectedHex",
+        "map.interaction.selectedLabel",
+        "map.interaction.lastInput",
+        "map.presentation.mapPrimaryAffordances.actionMarkerCount"
+      ],
+      "screenshot": "map.png"
+    },
+    {
+      "id": "add.story-choice",
+      "flow": "story-choice-availability",
+      "smoke_scenario": "boot and render text contract",
+      "surface": "app",
+      "selectors": ["app", "map_stage", "status", "story_browser", "story_commands"],
+      "required_action_ids": ["story_open_context"],
+      "required_action_prefixes": ["story-choice:"],
+      "assertions": [
+        { "path": "storyAgent.contract", "equals": "agent_story_v1" },
+        { "path": "storyAgent.activeBeat.awaitingChoice", "equals": true },
+        { "path": "storyAgent.activeBeat.id", "equals": "story.beat.road_to_base" },
+        { "path": "storyAgent.enabledCommandIds", "containsPrefix": "story-choice:" },
+        { "path": "ui.storyProgression.awaitingChoice", "equals": true }
+      ],
+      "state_paths": [
+        "storyAgent.contract",
+        "storyAgent.activeBeat.id",
+        "storyAgent.activeBeat.awaitingChoice",
+        "storyAgent.enabledCommandIds",
+        "storyAgent.currentBlocker",
+        "ui.storyProgression.activeBeatId",
+        "ui.storyProgression.awaitingChoice"
+      ],
+      "screenshot": "story-choice.png"
+    },
+    {
+      "id": "add.save-load",
+      "flow": "save-load",
+      "smoke_scenario": "persistence, offline catchup, and reset",
+      "surface": "app",
+      "selectors": ["app", "map_stage", "save_tools"],
+      "required_action_ids": ["save_export", "save_load_autosave", "save_import"],
+      "assertions": [
+        { "path": "runtime.ready", "equals": true },
+        { "path": "persistence.autosaveAvailable", "equals": true },
+        { "path": "persistence.lastManualExportAtMs", "type": "number" },
+        { "path": "persistence.savePayloadLength", "gte": 200 },
+        { "path": "snapshot.schemaVersion", "type": "number" },
+        { "path": "snapshot.catalogVersion", "type": "number" }
+      ],
+      "state_paths": [
+        "runtime.ready",
+        "persistence.autosaveAvailable",
+        "persistence.lastManualExportAtMs",
+        "persistence.savePayloadLength",
+        "snapshot.schemaVersion",
+        "snapshot.catalogVersion",
+        "snapshot.heroMap",
+        "snapshot.discoveredCellCount"
+      ],
+      "screenshot": "save-load.png"
+    },
+    {
+      "id": "add.offline-return",
+      "flow": "offline-return",
+      "smoke_scenario": "persistence, offline catchup, and reset",
+      "surface": "offline_return",
+      "selectors": ["app", "map_stage", "offline_return", "objective"],
+      "required_action_ids": ["offline_catchup", "offline_dismiss"],
+      "assertions": [
+        { "path": "offlineReturn.source", "equals": "manual" },
+        { "path": "offlineReturn.elapsedSeconds", "gte": 3600 },
+        { "path": "offlineReturn.review.changedCount", "gte": 0 },
+        { "path": "offlineReturn.nextAction.label", "type": "string" },
+        { "path": "shell.currentAction.source", "equals": "offline_return" }
+      ],
+      "state_paths": [
+        "offlineReturn.source",
+        "offlineReturn.elapsedSeconds",
+        "offlineReturn.headline",
+        "offlineReturn.review",
+        "offlineReturn.nextAction.actionId",
+        "shell.currentAction.source",
+        "shell.questPanel.collapsed"
+      ],
+      "screenshot": "offline-return.png"
+    }
+  ]
+}
