@@ -1,0 +1,10 @@
+{"schema_version":1,"format":"add-trace-v1","t":0,"dir":"session","kind":"header","session":"fixture","sha":"fixture","traceFormat":"add-trace-v1","budgets":"add-performance-budgets-v1"}
+{"schema_version":1,"format":"add-trace-v1","t":5,"dir":"perf","kind":"startup","domInteractiveMs":210,"firstContentfulPaintMs":430}
+{"schema_version":1,"format":"add-trace-v1","t":32,"dir":"command","kind":"init","seq":1,"queueDepth":0}
+{"schema_version":1,"format":"add-trace-v1","t":118,"dir":"event","kind":"ready","request":"init","seq":1,"latencyMs":86,"workerMs":65,"runtimeMs":28,"snapshotMs":4,"diffMs":0,"toWorkerMs":1,"fromWorkerMs":2,"queueDepth":0}
+{"schema_version":1,"format":"add-trace-v1","t":119,"dir":"perf","kind":"startup-ready","readyMs":87}
+{"schema_version":1,"format":"add-trace-v1","t":220,"dir":"command","kind":"tick","seq":2,"queueDepth":0}
+{"schema_version":1,"format":"add-trace-v1","t":226,"dir":"event","kind":"snapshotDelta","request":"tick","seq":2,"latencyMs":7,"workerMs":5,"runtimeMs":1,"snapshotMs":1,"diffMs":1,"toWorkerMs":1,"fromWorkerMs":1,"queueDepth":0}
+{"schema_version":1,"format":"add-trace-v1","t":320,"dir":"command","kind":"offlineCatchup","seq":3,"queueDepth":0}
+{"schema_version":1,"format":"add-trace-v1","t":335,"dir":"event","kind":"snapshotDelta","request":"offlineCatchup","seq":3,"latencyMs":16,"workerMs":14,"runtimeMs":9,"snapshotMs":2,"diffMs":1,"toWorkerMs":1,"fromWorkerMs":1,"queueDepth":0}
+{"schema_version":1,"format":"add-trace-v1","t":1000,"dir":"perf","kind":"sample","fps":60,"frameMsP95":17.5,"frameMsMax":24,"phaserUpdateP95Ms":4.2,"loopLagMaxMs":3,"mapBuildMs":22,"phaserObjects":80,"phaserTweens":1,"hidden":false}

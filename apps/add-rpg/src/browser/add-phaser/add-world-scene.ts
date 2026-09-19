@@ -179,6 +179,9 @@ export class AddRpgHexScene extends Phaser.Scene {
   private pendingCharacterMoveTimer: number | null = null
   private lastRendererState: PhaserMapRendererState = emptyRendererState()
   private lastInfo: AddPhaserMapInfo = emptyMapInfo()
+  private lastMapBuildDurationMs = 0
+  private mapBuildCount = 0
+  private phaserUpdateDurationsMs: number[] = []
 
   constructor(options: AddRpgPhaserMapHostOptions) {
     super("add-rpg-hex-map")
@@ -232,6 +235,7 @@ export class AddRpgHexScene extends Phaser.Scene {
 
   update(_time: number, delta: number): void {
     if (!this.ready || !this.context) return
+    const updateStartedAt = performance.now()
     this.frameCount += Math.max(1, Math.round(delta / 16))
     if (this.transitionState === "entering") {
       this.transitionProgress = clamp(this.transitionProgress + delta / 520, 0, 1)
@@ -244,6 +248,8 @@ export class AddRpgHexScene extends Phaser.Scene {
     this.updateMobileEdgeCullObjects()
     this.drawOverlay()
     this.refreshInfo()
+    this.phaserUpdateDurationsMs.push(performance.now() - updateStartedAt)
+    if (this.phaserUpdateDurationsMs.length > 240) this.phaserUpdateDurationsMs.shift()
   }
 
   renderWorld(world: GameWorld): void {
@@ -490,8 +496,30 @@ export class AddRpgHexScene extends Phaser.Scene {
     return this.lastRendererState
   }
 
+  /** Consume the current Phaser/map timing window for the dev trace recorder. */
+  getPerformanceProbe(): Record<string, number> {
+    const samples = this.phaserUpdateDurationsMs.splice(0)
+    const sorted = [...samples].sort((a, b) => a - b)
+    const p95 = sorted.length
+      ? sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95))]
+      : 0
+    const average = samples.length
+      ? samples.reduce((total, value) => total + value, 0) / samples.length
+      : 0
+    return {
+      mapBuildMs: Math.round(this.lastMapBuildDurationMs * 10) / 10,
+      mapBuildCount: this.mapBuildCount,
+      phaserUpdateSamples: samples.length,
+      phaserUpdateAvgMs: Math.round(average * 10) / 10,
+      phaserUpdateP95Ms: Math.round(p95 * 10) / 10,
+      phaserUpdateMaxMs: Math.round((samples.length ? Math.max(...samples) : 0) * 10) / 10,
+    }
+  }
+
   private renderPendingWorld(forceCameraFit: boolean): void {
     if (!this.ready || !this.pendingWorld) return
+
+    const buildStartedAt = performance.now()
 
     const world = this.pendingWorld
     const validation = validateGameWorld(world)
@@ -512,6 +540,8 @@ export class AddRpgHexScene extends Phaser.Scene {
         context: null,
         worldInteractionPolicy: this.worldInteractionPolicy,
       })
+      this.lastMapBuildDurationMs = performance.now() - buildStartedAt
+      this.mapBuildCount += 1
       return
     }
 
@@ -552,6 +582,8 @@ export class AddRpgHexScene extends Phaser.Scene {
     }
 
     this.refreshInfo(validation.summary, validation.valid)
+    this.lastMapBuildDurationMs = performance.now() - buildStartedAt
+    this.mapBuildCount += 1
   }
 
   private drawTerrain(context: RenderContext): void {

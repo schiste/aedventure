@@ -3,6 +3,7 @@ node_modules/
 dist/
 build/
 dist-app/
+apps/add-rpg/src/generated/wasm/
 .env
 .env.*
 !.env.example

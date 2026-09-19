@@ -306,7 +306,7 @@ comparison is deliberately separate: `npm run qa:add-rpg:visual --
 `review-required`; a baseline update requires `--update`, a fixture scenario,
 and a human-readable reason.
 
-### Phase 6 — Performance and maintainability feedback
+### Phase 6 — Performance and maintainability feedback (implemented)
 
 Goal: keep the fast development loop fast as the game grows.
 
@@ -319,6 +319,18 @@ Deliverables:
 - A decomposition plan for `apps/add-rpg/src/browser/main.ts` based on actual
   runtime seams: lifecycle, panels, command dispatch, map mode, and dev tools.
 - Documentation for generated files and which checks may write them.
+
+Delivered in `performance/add-budgets.json`, `scripts/add-rpg-trace-report.cjs`,
+`scripts/add-rpg-size-report.cjs`, and the `AddRuntimeBridge`/
+`AddMapController` seams under `apps/add-rpg/src/browser/`. The seam ownership
+and incremental extraction order are documented in
+[`ADD Browser Runtime Seams`](add-browser-runtime-seams.md). The committed
+`scenarios/add/fixtures/performance/trace-v1.ndjson` fixture exercises the
+report contract without booting the browser. Run
+`npm run qa:add-rpg:performance` for the build-and-size phase check, or
+`npm run qa:add-rpg:trace -- --trace <path>` for a captured trace. Generated
+outputs and write-capable checks are documented in
+[`ADD Generated Files and Write-Capable Checks`](add-generated-files.md).
 
 Exit criteria:
 
@@ -371,7 +383,8 @@ Exit criteria:
 
 ### P2 — Scale and future expansion
 
-- Add performance budgets and trace regression reports.
+- Maintain performance budgets and trace regression reports as the live ADD
+  bundle, WASM, renderer, and runtime evolve.
 - Extract shared engine packages from proven ADD use cases.
 - Add strategy/RPG-specific command families, world state, and scenarios.
 - Add richer visual/content authoring tools only after deterministic contracts

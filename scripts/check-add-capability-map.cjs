@@ -32,6 +32,8 @@ const runtimeInspection = read("docs/add-runtime-inspection.md")
 const agentVerification = read("docs/add-agent-verification-loop.md")
 const contentAuthoring = read("docs/add-content-authoring.md")
 const playerFacingQa = read("docs/add-player-facing-qa.md")
+const generatedFiles = read("docs/add-generated-files.md")
+const browserRuntimeSeams = read("docs/add-browser-runtime-seams.md")
 const taskBrief = read("docs/templates/add-task-brief.md")
 const parityAudit = read("docs/add-systems-parity-audit.md")
 const packageJson = JSON.parse(read("package.json"))
@@ -47,6 +49,8 @@ for (const fragment of [
   "docs/add-agent-verification-loop.md",
   "docs/add-content-authoring.md",
   "docs/add-player-facing-qa.md",
+  "docs/add-generated-files.md",
+  "docs/add-browser-runtime-seams.md",
   "docs/templates/add-task-brief.md",
   "npm run agent:verify:add-ui",
 ]) {
@@ -76,6 +80,15 @@ requireHeading(playerFacingQa, "## Where does this change belong?", "ADD player-
 requireHeading(playerFacingQa, "## Fixture contract", "ADD player-facing QA")
 requireHeading(playerFacingQa, "## Visual-diff policy", "ADD player-facing QA")
 requireText(playerFacingQa, "qa:add-rpg:phase5", "ADD player-facing QA")
+requireHeading(generatedFiles, "## Where does this change belong?", "ADD generated files")
+requireHeading(generatedFiles, "## Generated outputs", "ADD generated files")
+requireHeading(generatedFiles, "## Write-capable checks", "ADD generated files")
+requireHeading(generatedFiles, "## Performance evidence policy", "ADD generated files")
+requireText(generatedFiles, "performance/generated-files.json", "ADD generated files")
+requireHeading(browserRuntimeSeams, "## Where does this change belong?", "ADD browser runtime seams")
+requireHeading(browserRuntimeSeams, "## Current dependency direction", "ADD browser runtime seams")
+requireHeading(browserRuntimeSeams, "## Incremental extraction order", "ADD browser runtime seams")
+requireText(browserRuntimeSeams, "AddRuntimeBridge.dispatch", "ADD browser runtime seams")
 
 for (const heading of [
   "## First route: where does this change belong?",
@@ -108,6 +121,7 @@ requireText(
 
 for (const command of [
   "docs:check",
+  "generated:check",
   "agent:task",
   "agent:scenario",
   "agent:state",
@@ -130,6 +144,13 @@ for (const command of [
   "qa:add-rpg:phase5",
   "qa:add-rpg:phase5:built",
   "qa:add-rpg:visual",
+  "qa:add-rpg:trace",
+  "qa:add-rpg:trace:fixture",
+  "qa:add-rpg:trace:test",
+  "qa:add-rpg:size",
+  "qa:add-rpg:size:built",
+  "qa:add-rpg:size:test",
+  "qa:add-rpg:performance",
   "smoke:engine-sandbox",
   "smoke:office",
   "check:legacy",

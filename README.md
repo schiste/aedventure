@@ -97,6 +97,10 @@ npm run agent:verify:add-ui
 npm run agent:task -- --smoke
 npm run qa:add-rpg:phase5
 npm run qa:add-rpg:visual -- --artifact-dir tmp
+npm run qa:add-rpg:trace:fixture
+npm run qa:add-rpg:size:built
+npm run qa:add-rpg:performance
+npm run generated:check
 npm --workspace @aedventure/add-rpg run dev:browser
 ```
 
@@ -119,6 +123,8 @@ verification; see [AGENTS.md](AGENTS.md).
 - [ADD Agent-Readable Runtime Inspection](docs/add-runtime-inspection.md)
 - [ADD One-Command Agent Verification Loop](docs/add-agent-verification-loop.md)
 - [ADD Player-Facing Visual and Interaction QA](docs/add-player-facing-qa.md)
+- [ADD Browser Runtime Seams](docs/add-browser-runtime-seams.md)
+- [ADD Generated Files and Write-Capable Checks](docs/add-generated-files.md)
 - [ADD Content Authoring and Codegen](docs/add-content-authoring.md)
 - [Story and Content Engine Contract](docs/story-content-engine.md)
 - [Domain-Neutral Engine Boundary](docs/engine-boundary.md)

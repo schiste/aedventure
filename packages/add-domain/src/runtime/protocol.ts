@@ -1117,6 +1117,8 @@ export type SnapshotDelta = Partial<SimulationSnapshot>
 export interface WorkerEventTiming {
   /** Total time spent in the worker handling the request (ms). */
   workerMs?: number
+  /** Time spent invoking the Rust/WASM runtime, excluding snapshot/diff work. */
+  runtimeMs?: number
   /** Of which: time building the snapshot — the Rust→JS serialization (ms). */
   snapshotMs?: number
   /** Of which: time diffing the snapshot for the delta channel (ms). */

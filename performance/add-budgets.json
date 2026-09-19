@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "id": "add-performance-budgets-v1",
+  "trace_format": "add-trace-v1",
+  "units": "milliseconds",
+  "policy": {
+    "missing_samples": "review-required",
+    "hidden_frame_samples": "excluded",
+    "size_compression": "gzip"
+  },
+  "trace": {
+    "startup": {
+      "domInteractiveMs": { "p95": 1500, "max": 3000 },
+      "firstContentfulPaintMs": { "p95": 1800, "max": 3500 },
+      "readyMs": { "p95": 2500, "max": 5000 }
+    },
+    "rust_tick": {
+      "runtimeMs": { "p95": 12, "max": 50 },
+      "workerMs": { "p95": 20, "max": 75 }
+    },
+    "offline_catchup": {
+      "runtimeMs": { "p95": 80, "max": 400 },
+      "workerMs": { "p95": 100, "max": 500 }
+    },
+    "worker_messaging": {
+      "latencyMs": { "p95": 40, "max": 150 },
+      "toWorkerMs": { "p95": 8, "max": 40 },
+      "fromWorkerMs": { "p95": 8, "max": 40 },
+      "queueDepth": { "max": 4 }
+    },
+    "snapshots": {
+      "snapshotMs": { "p95": 8, "max": 40 },
+      "diffMs": { "p95": 5, "max": 25 }
+    },
+    "map_build": {
+      "mapBuildMs": { "p95": 100, "max": 350 }
+    },
+    "phaser": {
+      "frameMsP95": { "p95": 22.2, "max": 45 },
+      "frameMsMax": { "p95": 100, "max": 250 },
+      "phaserUpdateP95Ms": { "p95": 12, "max": 35 },
+      "loopLagMaxMs": { "p95": 50, "max": 250 }
+    }
+  },
+  "size": {
+    "browserJsBytes": { "max": 2050000 },
+    "browserJsGzipBytes": { "max": 600000 },
+    "browserCssBytes": { "max": 250000 },
+    "browserCssGzipBytes": { "max": 80000 },
+    "wasmBytes": { "max": 1200000 },
+    "wasmGzipBytes": { "max": 500000 },
+    "totalAssetBytes": { "max": 4000000 },
+    "totalAssetGzipBytes": { "max": 1400000 }
+  }
+}

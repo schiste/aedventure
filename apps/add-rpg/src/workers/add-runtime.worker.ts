@@ -16,6 +16,8 @@ let msgStart = 0
 let msgRecvAbs = 0
 let snapshotMs = 0
 let diffMs = 0
+let runtimeMs = 0
+let runtimeStart = 0
 
 /** Absolute wall-clock ms, comparable across worker/main contexts on one machine. */
 const absNow = (): number => performance.timeOrigin + performance.now()
@@ -36,9 +38,12 @@ async function handleMessage(message: WorkerRequest) {
   msgRecvAbs = absNow()
   snapshotMs = 0
   diffMs = 0
+  runtimeMs = 0
+  runtimeStart = 0
   try {
     await ensureRuntime()
 
+    runtimeStart = performance.now()
     switch (message.type) {
       case 'init':
         runtime = new WebRuntime()
@@ -187,12 +192,14 @@ async function ensureRuntime() {
 // Send the full snapshot and reset the delta baseline. Used for ready/reset/
 // import where the whole state is replaced.
 function postReady() {
+  finishRuntimeTiming()
   const next = snapshot()
   lastSnapshot = next
   postWorkerEvent({ type: 'ready', snapshot: next, catalog: catalog() })
 }
 
 function postFullSnapshot() {
+  finishRuntimeTiming()
   const next = snapshot()
   lastSnapshot = next
   postWorkerEvent({ type: 'snapshot', snapshot: next })
@@ -201,6 +208,7 @@ function postFullSnapshot() {
 // Send only the top-level sections that changed since the last send. Falls back
 // to a full snapshot if we have no baseline yet.
 function postSnapshotUpdate() {
+  finishRuntimeTiming()
   const next = snapshot()
   if (lastSnapshot === null) {
     lastSnapshot = next
@@ -234,14 +242,22 @@ function runtimeTuningApi(): Required<OptionalTuningRuntime> {
 }
 
 function postWorkerEvent(message: WorkerEvent) {
+  finishRuntimeTiming()
   const workerMs = msgStart ? round1(performance.now() - msgStart) : undefined
   postMessage({
     ...message,
     ...(workerMs !== undefined ? { workerMs } : {}),
+    ...(runtimeMs ? { runtimeMs: round1(runtimeMs) } : {}),
     ...(snapshotMs ? { snapshotMs: round1(snapshotMs) } : {}),
     ...(diffMs ? { diffMs: round1(diffMs) } : {}),
     ...(msgRecvAbs ? { workerRecvAt: msgRecvAbs, workerPostAt: absNow() } : {}),
   })
+}
+
+function finishRuntimeTiming(): void {
+  if (!runtimeStart) return
+  runtimeMs += performance.now() - runtimeStart
+  runtimeStart = 0
 }
 
 export {}

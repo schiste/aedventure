@@ -32,13 +32,14 @@ export class AddRpgPhaserMapHost {
     this.publishMemoryProbe()
   }
 
-  /** Dev-only: expose Phaser accumulator counts for the trace recorder's perf
-   *  samples, via a window hook (so prod never imports the dev recorder). */
+  /** Dev-only: expose Phaser/map timing and accumulator counts for trace samples. */
   private publishMemoryProbe(): void {
     if (!TRACE_DEV || typeof window === "undefined") return
-    ;(window as unknown as { __ADD_MEM_PROBE?: () => Record<string, number> }).__ADD_MEM_PROBE =
+    ;(window as unknown as { __ADD_PERF_PROBE?: () => Record<string, number> }).__ADD_PERF_PROBE =
       () => {
-        const counts: Record<string, number> = {}
+        const counts: Record<string, number> = {
+          ...this.scene.getPerformanceProbe(),
+        }
         try {
           counts.phaserObjects = this.scene.children.length
         } catch {
@@ -100,7 +101,7 @@ export class AddRpgPhaserMapHost {
 
   destroy(): void {
     if (TRACE_DEV && typeof window !== "undefined") {
-      delete (window as unknown as { __ADD_MEM_PROBE?: unknown }).__ADD_MEM_PROBE
+      delete (window as unknown as { __ADD_PERF_PROBE?: unknown }).__ADD_PERF_PROBE
     }
     this.game.destroy(true)
   }

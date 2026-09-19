@@ -54,6 +54,10 @@ the Rust runtime owns mutation and deterministic outcomes.
 | Build-and-smoke ADD flow | `npm run smoke:add-rpg` | ADD browser build and Playwright flow both run |
 | Player-facing Phase 5 fixtures | `npm run qa:add-rpg:phase5` or `npm run qa:add-rpg:phase5:built` | Boot, idle, map, story choice, save/load, and offline-return state, DOM, action-ID, renderer, and screenshot evidence pass together |
 | Controlled ADD visual diff | `npm run qa:add-rpg:visual -- --artifact-dir tmp` | Screenshot baselines are compared with scenario/state evidence; missing baselines require deliberate review |
+| ADD trace budget/regression report | `npm run qa:add-rpg:trace -- --trace <path>` or `npm run qa:add-rpg:trace:fixture` | Versioned `add-trace-v1` NDJSON is normalized against Rust, worker, snapshot, map, Phaser, and startup budgets |
+| ADD bundle/WASM size report | `npm run qa:add-rpg:size:built` or `npm run qa:add-rpg:size` | Browser JavaScript/CSS, WASM, compressed, and total asset sizes are checked against `performance/add-budgets.json` |
+| ADD browser runtime seams | [`ADD Browser Runtime Seams`](add-browser-runtime-seams.md) | Worker lifecycle/dispatch and Phaser lifecycle have explicit owners and extraction rules |
+| Generated-file/write-capability contract | `npm run generated:check` | Generated sources, producers, ignored outputs, and write-capable checks stay documented and machine-readable |
 | Shared package types | `npm run agent:verify:types` | Root TypeScript project references compile after neutral-package changes |
 | Neutral renderer/topology fixture | `npm run smoke:engine-sandbox` | Square and hex engine paths work without office or ADD domain imports |
 | Office app flow | `npm run smoke:office` | The separate customer virtual-office lane passes its browser flow |
@@ -164,6 +168,9 @@ These are gaps, not reasons to create a second ADD app:
 - the Phase 5 browser contract covers the critical player-facing flows, while
   broader scenario breadth, richer browser command coverage, and reviewed
   image baselines remain follow-up work;
+- Phase 6 reports have a committed format, budget contract, and fixture, but
+  long-lived device/browser baselines still need to be captured and reviewed
+  as the live app grows;
 - larger strategy/RPG systems and neutral engine extraction remain demand-led
   future work, with `apps/add-rpg` staying the first consumer.
 

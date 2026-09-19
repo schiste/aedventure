@@ -1,5 +1,11 @@
 import type { AddGameEvent, SimulationSnapshot, TraceEntry } from "@aedventure/add-domain"
 
+import {
+  ADD_TRACE_BUDGETS_ID,
+  ADD_TRACE_FORMAT,
+  ADD_TRACE_SCHEMA_VERSION,
+} from "./trace-format"
+
 /**
  * Local-mode verbose tracing.
  *
@@ -36,8 +42,14 @@ let warnedSinkDown = false
 /** Set while the recorder logs its own diagnostics, so console capture skips them (no recursion). */
 let suppressCapture = false
 
-function enqueue(record: unknown): void {
-  buffer.push(JSON.stringify(record))
+function enqueue(record: Record<string, unknown>): void {
+  buffer.push(
+    JSON.stringify({
+      schema_version: ADD_TRACE_SCHEMA_VERSION,
+      format: ADD_TRACE_FORMAT,
+      ...record,
+    }),
+  )
   if (buffer.length >= MAX_BATCH) flush()
   else if (!flushTimer) flushTimer = setTimeout(flush, FLUSH_MS)
 }
@@ -195,6 +207,8 @@ function recordSessionHeader(): void {
   const env = {
     dir: "session",
     kind: "header",
+    traceFormat: ADD_TRACE_FORMAT,
+    budgets: ADD_TRACE_BUDGETS_ID,
     session: SESSION,
     timeOrigin: Math.round(performance.timeOrigin),
     startedAt: new Date(performance.timeOrigin).toISOString(),
@@ -322,8 +336,11 @@ function startPerfSampling(): () => void {
 
     // App-supplied accumulator counts (e.g. Phaser display list / tweens). The
     // renderer publishes this dev-only window hook; absent in prod.
-    const appProbe = (window as unknown as { __ADD_MEM_PROBE?: () => Record<string, number> })
-      .__ADD_MEM_PROBE
+    const probes = window as unknown as {
+      __ADD_PERF_PROBE?: () => Record<string, number>
+      __ADD_MEM_PROBE?: () => Record<string, number>
+    }
+    const appProbe = probes.__ADD_PERF_PROBE ?? probes.__ADD_MEM_PROBE
     let probed: Record<string, number> = {}
     if (appProbe) {
       try {
@@ -779,6 +796,8 @@ export function installTraceRecorder(getSnapshot: () => SimulationSnapshot | nul
     const snap = getSnapshot()
     return snap ? frameContext(snap) : {}
   }
+  const traceStartedAt = performance.now()
+  let readyRecorded = false
 
   // Capture diagnostics first, so errors thrown during the rest of setup are seen.
   const stopConsole = installConsoleCapture(stamp)
@@ -804,6 +823,7 @@ export function installTraceRecorder(getSnapshot: () => SimulationSnapshot | nul
       ...(entry.seq !== undefined ? { seq: entry.seq } : {}),
       ...(entry.latencyMs !== undefined ? { latencyMs: Math.round(entry.latencyMs) } : {}),
       ...(entry.workerMs !== undefined ? { workerMs: entry.workerMs } : {}),
+      ...(entry.runtimeMs !== undefined ? { runtimeMs: entry.runtimeMs } : {}),
       ...(entry.snapshotMs !== undefined ? { snapshotMs: entry.snapshotMs } : {}),
       ...(entry.diffMs !== undefined ? { diffMs: entry.diffMs } : {}),
       ...(entry.toWorkerMs !== undefined ? { toWorkerMs: entry.toWorkerMs } : {}),
@@ -814,6 +834,15 @@ export function installTraceRecorder(getSnapshot: () => SimulationSnapshot | nul
       ...(changed ? { changed } : {}),
       ctx: stamp(),
     })
+    if (entry.dir === "event" && entry.kind === "ready" && !readyRecorded) {
+      readyRecorded = true
+      enqueue({
+        t: performance.now(),
+        dir: "perf",
+        kind: "startup-ready",
+        readyMs: Math.round((entry.at - traceStartedAt) * 10) / 10,
+      })
+    }
   }
 
   // Semantic tap: the same add-game-event stream music-event-bridge listens to.

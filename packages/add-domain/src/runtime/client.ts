@@ -26,6 +26,8 @@ export interface TraceEntry {
   readonly seq?: number
   /** Worker-reported handling time (ms), and its snapshot-build / diff components. */
   readonly workerMs?: number
+  /** Time spent inside the Rust/WASM runtime call, excluding snapshot/diff work. */
+  readonly runtimeMs?: number
   readonly snapshotMs?: number
   readonly diffMs?: number
   /** Transport split (ms): send→worker-receive, and worker-post→client-receive. */
@@ -237,6 +239,7 @@ export class SimulationClient {
         queueDepth: this.queue.length,
         seq: this.inFlightSeq,
         workerMs: message.workerMs,
+        runtimeMs: message.runtimeMs,
         snapshotMs: message.snapshotMs,
         diffMs: message.diffMs,
         toWorkerMs: hasWorkerStamps ? clampPos(message.workerRecvAt! - this.inFlightSentAbs) : undefined,
