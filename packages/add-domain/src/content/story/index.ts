@@ -1,4 +1,4 @@
-import type { StoryBeatDef } from "../../runtime/protocol"
+import type { StoryBeatDef } from "@aedventure/add-protocol"
 import { AMBIENT_STORY_BEATS } from "./arcs/ambient"
 import { BASE_ONBOARDING_STORY_BEATS } from "./arcs/base-onboarding"
 import { PRE_ARRIVAL_STORY_BEATS } from "./arcs/pre-arrival"

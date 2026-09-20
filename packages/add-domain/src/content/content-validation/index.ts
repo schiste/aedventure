@@ -1,4 +1,4 @@
-import type { StoryBeatDef } from "../../runtime/protocol"
+import type { StoryBeatDef } from "@aedventure/add-protocol"
 
 export const ADD_CONTENT_VALIDATION_VERSION = "content_authoring_model_v1"
 

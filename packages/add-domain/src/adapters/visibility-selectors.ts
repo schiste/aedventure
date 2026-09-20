@@ -21,7 +21,7 @@ import type {
   HexSnapshot,
   SimulationSnapshot,
   TileDef,
-} from "../runtime/protocol"
+} from "@aedventure/add-protocol"
 import { createAddCatalogIndexes } from "./catalog-selectors"
 
 export const ADD_HERO_VISION_RADIUS = 1

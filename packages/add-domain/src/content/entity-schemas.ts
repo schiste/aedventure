@@ -1,4 +1,4 @@
-import type { EntitySchemaDef } from "../runtime/protocol"
+import type { EntitySchemaDef } from "@aedventure/add-protocol"
 
 // Bootstrapped from the catalog snapshot, then owned here as the source of truth.
 // `content:build` codegens the Rust catalog from this module.

@@ -29,6 +29,9 @@
       "path": "packages/game-content"
     },
     {
+      "path": "packages/add-protocol"
+    },
+    {
       "path": "packages/add-domain"
     },
     {

@@ -1,4 +1,4 @@
-import type { RoleDef } from "../runtime/protocol"
+import type { RoleDef } from "@aedventure/add-protocol"
 
 // Authored content: the role catalog (source of truth). `content:build` codegens
 // the Rust `const ROLES` from this module.

@@ -1,4 +1,4 @@
-import type { SimulationSnapshot } from "../runtime/protocol"
+import type { SimulationSnapshot } from "@aedventure/add-protocol"
 import { PERKS } from "../content/perks"
 
 // Presents perk progression for the UI: which perks are acquired, which can be

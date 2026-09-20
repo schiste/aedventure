@@ -1,4 +1,4 @@
-import type { StructureDef } from "../runtime/protocol"
+import type { StructureDef } from "@aedventure/add-protocol"
 
 // Authored content: the structure catalog (source of truth). codegen -> Rust `const STRUCTURES`.
 export const STRUCTURES: readonly StructureDef[] = [

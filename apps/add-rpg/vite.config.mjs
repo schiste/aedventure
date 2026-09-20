@@ -26,6 +26,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@aedventure/add-domain": packageSource("add-domain"),
+      "@aedventure/add-protocol": packageSource("add-protocol"),
       "@aedventure/game-animation": packageSource("game-animation"),
       "@aedventure/game-content": packageSource("game-content"),
       "@aedventure/game-assets": packageSource("game-assets"),

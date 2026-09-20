@@ -52,6 +52,7 @@ function sourceFiles(relativeDir, extensions) {
 const LORE_PATH = /["'`(]\s*\.{0,2}\/?lore\//
 
 const engineDirs = [
+  "packages/add-protocol/src",
   "crates/add-core/src",
   "crates/add-web-bindings/src",
   "crates/add-scenario/src",
@@ -85,6 +86,24 @@ for (const file of sourceFiles("packages/add-domain/src", [".ts"])) {
     fs.readFileSync(file, "utf8"),
     LORE_PATH,
     `Content brick may cite lore only from content/lore-refs.ts: ${path.relative(repoRoot, file)}`,
+  )
+}
+
+// The protocol package is the boundary contract: types only, no dependencies,
+// so anything may depend on it and it depends on nothing. A dependency here
+// would let content or presentation leak across the boundary it describes.
+const protocolManifest = require("../../add-protocol/package.json")
+assert.equal(
+  protocolManifest.dependencies,
+  undefined,
+  "@aedventure/add-protocol must stay dependency-free; it is the boundary contract.",
+)
+
+for (const file of sourceFiles("packages/add-protocol/src", [".ts"])) {
+  assert.doesNotMatch(
+    fs.readFileSync(file, "utf8"),
+    /@aedventure\//,
+    `Protocol package must not import workspace packages: ${path.relative(repoRoot, file)}`,
   )
 }
 

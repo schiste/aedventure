@@ -1,4 +1,4 @@
-import type { SimulationSnapshot, SnapshotDelta } from './protocol'
+import type { SimulationSnapshot, SnapshotDelta } from '@aedventure/add-protocol'
 
 /**
  * Compute the top-level sections of `next` that differ from `prev`.

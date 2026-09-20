@@ -1,4 +1,4 @@
-import type { SimulationSnapshot } from "../runtime/protocol"
+import type { SimulationSnapshot } from "@aedventure/add-protocol"
 import { ITEMS } from "../content/items"
 
 // Projects the Hero inventory for the UI: held items (quantity > 0) with their

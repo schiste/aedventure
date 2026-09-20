@@ -8,7 +8,7 @@ import type {
   SimulationSnapshot,
   StoryBeatDef,
   WorldActionDef,
-} from "../runtime/protocol"
+} from "@aedventure/add-protocol"
 import {
   PROJECT_BUILD_FIRE_PIT,
   PROJECT_RESTORE_STUDIO,

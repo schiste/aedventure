@@ -1,4 +1,4 @@
-import type { ConstructionOptionDef } from "../runtime/protocol"
+import type { ConstructionOptionDef } from "@aedventure/add-protocol"
 
 // Authored content: construction options (source of truth). codegen -> Rust `const CONSTRUCTION_OPTIONS`.
 export const CONSTRUCTION_OPTIONS: readonly ConstructionOptionDef[] = [

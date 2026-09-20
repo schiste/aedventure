@@ -18,7 +18,7 @@ import type {
   StructureDef,
   TileDef,
   WorldActionDef,
-} from "../runtime/protocol"
+} from "@aedventure/add-protocol"
 import { createAddCatalogIndexes } from "./catalog-selectors"
 import {
   addVisibilityAllowsDungeonLinks,

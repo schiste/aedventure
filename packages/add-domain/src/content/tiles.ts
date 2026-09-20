@@ -1,4 +1,4 @@
-import type { TileDef } from "../runtime/protocol"
+import type { TileDef } from "@aedventure/add-protocol"
 
 // Authored content: the tile catalog (source of truth). codegen -> Rust `const TILES`.
 // Impedance values match the TERRAIN_*_IMPEDANCE constants in the crate.

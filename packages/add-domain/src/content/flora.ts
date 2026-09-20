@@ -1,4 +1,4 @@
-import type { FloraDef } from "../runtime/protocol"
+import type { FloraDef } from "@aedventure/add-protocol"
 
 // Authored content: the flora catalog (source of truth). codegen -> Rust `const FLORA`.
 export const FLORA: readonly FloraDef[] = [

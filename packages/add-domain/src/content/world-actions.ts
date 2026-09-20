@@ -1,4 +1,4 @@
-import type { WorldActionDef } from "../runtime/protocol"
+import type { WorldActionDef } from "@aedventure/add-protocol"
 
 // Authored content: world actions (source of truth). codegen -> Rust `const WORLD_ACTIONS`.
 export const WORLD_ACTIONS: readonly WorldActionDef[] = [

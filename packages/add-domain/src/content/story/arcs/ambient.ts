@@ -1,4 +1,4 @@
-import type { StoryBeatDef } from "../../../runtime/protocol"
+import type { StoryBeatDef } from "@aedventure/add-protocol"
 import { allOf, beatDone, NONE, STORY_ARC_AMBIENT, storyCondition } from "../helpers"
 
 export const AMBIENT_STORY_BEATS: readonly StoryBeatDef[] = [

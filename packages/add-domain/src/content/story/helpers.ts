@@ -4,7 +4,7 @@ import type {
   StoryBeatDef,
   StoryPrimaryActionDef,
   UnlockDef,
-} from "../../runtime/protocol"
+} from "@aedventure/add-protocol"
 
 export const STORY_ARC_PRE_ARRIVAL = "pre_arrival"
 export const STORY_ARC_BASE_ONBOARDING = "base_onboarding"

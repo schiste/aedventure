@@ -1,4 +1,4 @@
-import type { StoryBeatDef } from "../../../runtime/protocol"
+import type { StoryBeatDef } from "@aedventure/add-protocol"
 import {
   beatDone,
   firstPlayableProgression,

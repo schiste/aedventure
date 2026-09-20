@@ -1,4 +1,4 @@
-import type { CatalogSnapshot, ResourceSnapshot, SimulationSnapshot } from "../runtime/protocol"
+import type { CatalogSnapshot, ResourceSnapshot, SimulationSnapshot } from "@aedventure/add-protocol"
 import {
   RESOURCE_BASSLINE,
   RESOURCE_STONE,

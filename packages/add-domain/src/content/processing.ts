@@ -1,4 +1,4 @@
-import type { ProcessingRecipeDef } from "../runtime/protocol"
+import type { ProcessingRecipeDef } from "@aedventure/add-protocol"
 
 // Authored content: processing recipes (source of truth). codegen -> Rust `const PROCESSING_RECIPES`.
 const fixed = (seconds: number) => ({ kind: "fixed" as const, seconds })

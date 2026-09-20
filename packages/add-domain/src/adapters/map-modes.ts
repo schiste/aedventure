@@ -11,7 +11,7 @@ import type {
   GameZone,
 } from "@aedventure/game-world"
 
-import type { CatalogSnapshot, SimulationSnapshot } from "../runtime/protocol"
+import type { CatalogSnapshot, SimulationSnapshot } from "@aedventure/add-protocol"
 import { addSnapshotToGameWorld } from "./snapshot-to-world"
 import {
   addDungeonByMapId,

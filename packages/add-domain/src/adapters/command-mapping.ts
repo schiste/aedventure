@@ -1,6 +1,6 @@
 import type { GameInteraction } from "@aedventure/game-world"
 
-import type { StationSpecializationPath, WorkerRequest } from "../runtime/protocol"
+import type { StationSpecializationPath, WorkerRequest } from "@aedventure/add-protocol"
 
 export type AddDomainCommand =
   | { readonly kind: "tick"; readonly seconds: number }

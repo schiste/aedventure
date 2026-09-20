@@ -1,4 +1,4 @@
-import type { CatalogSnapshot, SimulationSnapshot } from "../runtime/protocol"
+import type { CatalogSnapshot, SimulationSnapshot } from "@aedventure/add-protocol"
 import { selectAddStoryProgressionState } from "./story-progression-selectors"
 
 export type {

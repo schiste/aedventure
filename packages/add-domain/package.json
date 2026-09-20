@@ -9,8 +9,9 @@
     "test": "node test/content.test.js && node test/architecture.test.js && node test/adapters.test.js"
   },
   "dependencies": {
-    "@aedventure/game-dungeon": "0.1.0",
+    "@aedventure/add-protocol": "0.1.0",
     "@aedventure/game-content": "0.1.0",
+    "@aedventure/game-dungeon": "0.1.0",
     "@aedventure/game-topology": "0.1.0",
     "@aedventure/game-visibility": "0.1.0",
     "@aedventure/game-world": "0.1.0"

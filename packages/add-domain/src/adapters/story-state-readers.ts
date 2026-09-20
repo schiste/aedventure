@@ -1,4 +1,4 @@
-import type { SimulationSnapshot } from "../runtime/protocol"
+import type { SimulationSnapshot } from "@aedventure/add-protocol"
 
 export function selectedStoryChoiceId(
   snapshot: SimulationSnapshot,

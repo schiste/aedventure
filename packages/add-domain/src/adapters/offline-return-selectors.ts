@@ -1,4 +1,4 @@
-import type { CatalogSnapshot, ResourceDef, SimulationSnapshot } from "../runtime/protocol"
+import type { CatalogSnapshot, ResourceDef, SimulationSnapshot } from "@aedventure/add-protocol"
 
 export interface AddOfflineReturnResourceDelta {
   readonly id: string

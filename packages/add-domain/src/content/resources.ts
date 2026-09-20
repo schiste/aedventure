@@ -1,4 +1,4 @@
-import type { ResourceDef } from "../runtime/protocol"
+import type { ResourceDef } from "@aedventure/add-protocol"
 
 // Authored content: the resource catalog. This TS module is the single source of
 // truth; `npm run content:build` codegens the Rust `const RESOURCES` from it.

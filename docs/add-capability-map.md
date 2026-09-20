@@ -18,6 +18,7 @@ Run `npm run docs:check` after changing this map or the routing documents.
 | A gameplay rule, resource transition, timer, combat result, or save field | Rust simulation | `crates/add-core/src/` | `cargo test -p add-core` |
 | A new story beat, objective, role, recipe, station, item, creature, perk, or balance value | Authored ADD content | `packages/add-domain/src/content/` and [content authoring map](add-content-authoring.md) | `npm run content:check` |
 | A content graph, reverse lookup, explainer, fixture, or content-ID investigation | Content inspection tools | `scripts/add-content-registry.cjs`, `scripts/add-content-tools.cjs`, `scripts/add-content-fixtures.cjs` | `npm run content:validate` |
+| The typed shape of anything crossing the Rust/WASM boundary: snapshot, catalog, worker request or event | ADD protocol contract | `packages/add-protocol/src/index.ts` | `npm --workspace @aedventure/add-domain test` |
 | Snapshot explanation, available-action projection, command mapping, or UI copy | ADD domain adapters | `packages/add-domain/src/adapters/` | `npm run agent:verify:add-ui` |
 | Agent-readable state, available commands, blocker reasons, or stable report IDs | ADD runtime inspection contract | `packages/add-domain/src/runtime/inspection.ts` and `crates/add-scenario/src/inspection.rs` | `npm --workspace @aedventure/add-domain test` and `cargo test -p add-scenario` |
 | Player-facing panels, input dispatch, map presentation, save plumbing, or browser lifecycle | Live ADD app | `apps/add-rpg/src/` | `npm run agent:verify:add-ui` |
@@ -40,6 +41,7 @@ the Rust runtime owns mutation and deterministic outcomes.
 | --- | --- | --- |
 | Lore/content link integrity | `npm run lore:refs:check` | Every lore link resolves to a page and anchor; unlinked content and unimplemented lore subjects are reported |
 | Lore/content link report | `npm run lore:refs` or `node scripts/lore-refs.cjs --json` | The `lore_refs_v1` report: linked IDs, coverage gaps, and the unimplemented-lore backlog |
+| Protocol contract isolation | `npm --workspace @aedventure/add-domain test` | `@aedventure/add-protocol` stays dependency-free and imports no workspace package |
 | Brick dependency direction | `npm --workspace @aedventure/add-domain test` | The engine cites no lore, and content cites lore only from `content/lore-refs.ts` |
 | Documentation contract | `npm run docs:check` | Required maps, task brief fields, routing sections, commands, and office scope notes exist |
 | Changed-path agent loop | `npm run agent:verify` | Chooses the cheapest focused checks from changed paths and writes an actionable result artifact |

@@ -7,6 +7,9 @@
   },
   "references": [
     {
+      "path": "../add-protocol"
+    },
+    {
       "path": "../game-topology"
     },
     {

@@ -4,7 +4,7 @@ import type {
   SimulationSnapshot,
   StoryBeatDef,
   WorkerRequest,
-} from "../runtime/protocol"
+} from "@aedventure/add-protocol"
 import {
   RESOURCE_BASSLINE,
   RESOURCE_CHORUS,

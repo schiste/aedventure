@@ -8,7 +8,7 @@ import type {
   StoryBeatDef,
   StoryPrimaryActionDef,
   UnlockDef,
-} from "../runtime/protocol"
+} from "@aedventure/add-protocol"
 import type { AddDomainCommand } from "./command-mapping"
 import { RESOURCE_BASSLINE, ROLE_CRYSTAL_BASSLINE } from "./add-ids"
 import {

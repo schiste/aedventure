@@ -24,7 +24,7 @@ the lore/content seam and would drift immediately without a written rule.
 | --- | --- | --- | --- | --- |
 | **Lore** | What is true in this world? | `lore/` | Markdown wiki + `lore/data/*.json` | `npm run lore:check` |
 | **Engine** | What can happen, and what happens next? | `crates/add-core/`, `crates/add-web-bindings/`, `crates/add-scenario*/`, `packages/game-*` | Rust and neutral TypeScript | `cargo test -p add-core` |
-| **Content** | What exists in this particular game, and what does it say? | `packages/add-domain/`, `scenarios/` | TypeScript content modules, JSON fixtures, `.ink` scripts | `npm run content:check` |
+| **Content** | What exists in this particular game, and what does it say? | `packages/add-domain/`, `packages/add-protocol/`, `scenarios/` | TypeScript content modules, JSON fixtures, `.ink` scripts | `npm run content:check` |
 
 ### Lore owns canon, not behavior
 
@@ -73,6 +73,9 @@ brick that is allowed to know about both of the others.
 Content owns:
 
 - Authored catalogs in `packages/add-domain/src/content/`.
+- The typed boundary contract in `packages/add-protocol/`: the shape of
+  everything crossing between the Rust simulation and the browser. Types
+  only, dependency-free, so anything may depend on it.
 - Player-facing copy and, once the narrative system lands, `.ink` prose.
 - Derived presentation and explanations in `packages/add-domain/src/adapters/`.
 - Committed scenarios and fixtures in `scenarios/`.

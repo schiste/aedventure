@@ -5,7 +5,7 @@ import type {
 import type { AddDomainCommand } from "../adapters/command-mapping"
 import { ADD_CONTENT_VALIDATION_VERSION } from "../content/content-validation"
 import type { AddUiState } from "../adapters/ui-selectors"
-import type { CatalogSnapshot, SimulationSnapshot } from "./protocol"
+import type { CatalogSnapshot, SimulationSnapshot } from "@aedventure/add-protocol"
 
 /** The versioned contract consumed by agents, scenario tooling, and app smoke checks. */
 export const ADD_AGENT_RUNTIME_REPORT_VERSION = 1 as const

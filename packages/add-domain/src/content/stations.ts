@@ -1,4 +1,4 @@
-import type { StationDef } from "../runtime/protocol"
+import type { StationDef } from "@aedventure/add-protocol"
 
 // Authored content: the station catalog (source of truth). codegen -> Rust `const STATIONS`.
 export const STATIONS: readonly StationDef[] = [

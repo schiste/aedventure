@@ -7,7 +7,7 @@ import type {
   TileDef,
   UiElementDef,
   WorldActionDef,
-} from "../runtime/protocol"
+} from "@aedventure/add-protocol"
 
 export interface AddCatalogIndexes {
   readonly resourcesById: ReadonlyMap<string, ResourceDef>

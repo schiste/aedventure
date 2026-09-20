@@ -1,4 +1,4 @@
-import type { FlagDef } from "../runtime/protocol"
+import type { FlagDef } from "@aedventure/add-protocol"
 
 // Authored content: the flag catalog (source of truth). `id` is the raw flag key
 // (the Rust id-const is FLAG_<UPPER_SNAKE> of it). codegen -> Rust `const FLAGS`.

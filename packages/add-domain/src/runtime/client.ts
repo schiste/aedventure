@@ -5,7 +5,7 @@ import type {
   StationSpecializationPath,
   WorkerEvent,
   WorkerRequest,
-} from './protocol'
+} from '@aedventure/add-protocol'
 import { mergeSnapshotDelta } from './snapshot-delta'
 
 /** A single observation at the worker boundary: a command going out, or an event coming back. */

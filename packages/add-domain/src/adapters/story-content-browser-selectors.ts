@@ -3,7 +3,7 @@ import type {
   ConditionDef,
   SimulationSnapshot,
   StoryBeatDef,
-} from "../runtime/protocol"
+} from "@aedventure/add-protocol"
 import { ADD_CONTENT_VALIDATION_VERSION } from "../content/content-validation"
 import {
   type AddAvailableCommand,

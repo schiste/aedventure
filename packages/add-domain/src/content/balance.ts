@@ -1,4 +1,4 @@
-import type { BalanceSnapshot } from "../runtime/protocol"
+import type { BalanceSnapshot } from "@aedventure/add-protocol"
 
 // Bootstrapped from the catalog snapshot, then owned here as the source of truth.
 // `content:build` codegens the Rust catalog from this module.
