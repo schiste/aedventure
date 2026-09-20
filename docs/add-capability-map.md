@@ -40,6 +40,8 @@ the Rust runtime owns mutation and deterministic outcomes.
 
 | Capability | Command | What it proves |
 | --- | --- | --- |
+| Narrative fuzz and coverage | `npm run narr:fuzz` or `npm run narr:fuzz:gate` | Policy-driven playthroughs find refused choices and dead ends, and name content nothing reaches |
+| Narrative vocabulary for agents | `npm run narr:schema` | Beats, choices, ink knots and commands as one JSON contract |
 | Ink beat runs headlessly | `npm run scenario:add -- scenarios/add/narrative/ink-first-glimpse.json` | The ink scene renders and its choice applies the authored effects without a browser |
 | Lore/content link integrity | `npm run lore:refs:check` | Every lore link resolves to a page and anchor; unlinked content and unimplemented lore subjects are reported |
 | Lore/content link report | `npm run lore:refs` or `node scripts/lore-refs.cjs --json` | The `lore_refs_v1` report: linked IDs, coverage gaps, and the unimplemented-lore backlog |

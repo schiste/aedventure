@@ -350,6 +350,14 @@ too, because the scenario harness already does half the job.
 *Accepted when:* 10,000 fuzz runs finish with no error and no dead end, and a
 replay reproduces byte-identical output.
 
+**Status: done.** 10,000 runs in 39 s, zero failures, and replay proven
+byte-identical. Two notes. The fuzzer reads refusals from P1.3's
+`CommandOutcome` rather than inferring them, which made it catch its own
+mismodelling of world-action beats on first run. And coverage is honestly
+thin — 5 of 12 beats — because the later arc is gated on gameplay the fuzzer
+does not yet drive; the report names exactly what it cannot reach. See
+[the runtime contract](add-narrative-runtime.md).
+
 ### N3 — Standing, acts, and values
 
 *Player outcome:* helping or harming a named survivor changes what they and

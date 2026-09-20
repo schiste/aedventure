@@ -104,6 +104,41 @@ arithmetic stays defined. Ink's own `RANDOM` and shuffles derive from
 `SEED_RANDOM`, which authored content calls with that variable when it needs
 them. There is still exactly one seed, owned by `GameState`.
 
+## Tools (N2)
+
+Tools before content: the story can be grown without growing the number of ways
+it can silently break.
+
+| Command | What it does |
+| --- | --- |
+| `npm run narr:fuzz` | 1,000 policy-driven playthroughs with a coverage report |
+| `npm run narr:fuzz:gate` | 10,000 runs; belongs with the phase gate, not the focused loop |
+| `npm run narr:schema` | One JSON export of the narrative vocabulary, as agent context |
+| `npm run narr:lint` | Cross-references `.ink` against the story catalog (also inside `content:check`) |
+
+**Policies.** Uniform random under-explores: it takes the first choice as often
+as the last and never persists with either. Runs rotate through `uniform`,
+`first`, `last` and `novelty` (prefer the least-taken choice), so
+ordering-sensitive content is reached. The specification's axis-seeking
+policies — maximise one axis, maximise secrecy — arrive with N3, since there
+are no axes yet.
+
+**What counts as a fault.** A presented choice the runtime refuses (read from
+P1.3's `CommandOutcome`, not inferred), and a beat that stays active while its
+choices change nothing. Both report the run's full command log, so a failure
+ships as a replayable sequence rather than a description.
+
+**Determinism.** A run is reproducible from its seed and policy alone, and
+`a_recorded_run_replays_byte_identically` asserts two replays of a log produce
+identical saves. The fuzzer's generator is deliberately separate from the
+simulation's: it picks which choice to take, never what the game does.
+
+**Lint.** `narrative-lint.cjs` fails when a knot names no story beat, when a
+choice records no `chosen`, when it records an id that is not a choice of that
+beat, or when ink never offers an authored choice — which would leave effects
+in the catalog the player can never trigger. The runtime invariants that need
+the runtime to prove stay as Rust tests.
+
 ## Focused verification
 
 | Check | Command |
@@ -116,6 +151,15 @@ them. There is still exactly one seed, owned by `GameState`.
 
 ## Known gaps
 
+- **Fuzz coverage reaches 5 of 12 beats.** 10,000 runs finish clean, but every
+  run ends at the step budget rather than exhausting the story, because the
+  later arc is gated on gameplay — travel, construction, crew — that the
+  fuzzer does not drive. It explores story choices, world actions and time.
+  `beatsNeverSeen` names the seven it cannot reach, and
+  `story.choice.exposed.steady` is the one authored choice nothing takes. The
+  concrete next step is seeding runs from a committed scenario prefix such as
+  `idle-base-first-cycle`, which needs the replay vocabulary widened past the
+  four commands it knows today.
 - One beat is ink-backed. The other eleven render from the catalog `body`.
 - The ink response line is transient: taking a choice completes the beat and
   the selector advances, so the player-facing response still comes from the

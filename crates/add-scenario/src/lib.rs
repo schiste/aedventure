@@ -4,6 +4,8 @@
 //! rules and state transitions, while this crate owns the test/replay format,
 //! canonical comparison, and diagnostics around those transitions.
 
+pub mod fuzz;
+
 use add_core::{GameCommand, GameState, Simulation, StationSpecializationPathState};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Number, Value};
@@ -925,4 +927,40 @@ mod tests {
         assert!(text.contains("path: $.clockSeconds"));
         assert!(text.contains("\"type\": \"Tick\""));
     }
+}
+
+
+/// One JSON export of the narrative vocabulary an agent needs before it writes
+/// content: which beats exist, what each one's choices are, which are
+/// ink-backed, and which knots the compiled story declares. This is the
+/// context that stops generated content inventing near-duplicate ids.
+pub fn narrative_schema() -> serde_json::Value {
+    use serde_json::json;
+    let beats: Vec<_> = add_core::story_beats()
+        .iter()
+        .map(|beat| {
+            json!({
+                "id": beat.id,
+                "label": beat.label,
+                "arc": beat.arc,
+                "sequence": beat.sequence,
+                "worldActionId": beat.world_action_id,
+                "inkBacked": add_core::narrative::beat_has_knot(beat.id),
+                "knot": add_core::narrative::knot_for_beat(beat.id),
+                "choices": beat
+                    .choices
+                    .iter()
+                    .map(|choice| json!({ "id": choice.id, "label": choice.label }))
+                    .collect::<Vec<_>>(),
+            })
+        })
+        .collect();
+
+    json!({
+        "contract": "add_narrative_schema_v1",
+        "beats": beats,
+        "inkKnots": add_core::narrative::all_knots(),
+        "fuzzPolicies": fuzz::Policy::ALL.iter().map(|p| p.as_str()).collect::<Vec<_>>(),
+        "commands": ["ChooseStoryOption", "ChooseInkChoice", "StartWorldAction", "Tick"],
+    })
 }
