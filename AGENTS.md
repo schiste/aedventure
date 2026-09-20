@@ -13,46 +13,49 @@ Keep gameplay mutation in `crates/add-core/`, authored IDs in
 `apps/add-rpg/` application. Run `npm run docs:check` when changing the
 routing documentation or task template.
 
-## Default Verification
+## Verification ladder
 
-Use the one-command focused agent verifier before ordinary granular commits:
+Use one of these three levels, from the smallest relevant loop to the full
+target-stack gate:
 
-```sh
-npm run agent:task
-```
-
-The runner classifies changed paths, records the exact checks and durations,
-and writes evidence under `artifacts/agent-verification/<run-id>/`. Emit the
-same contract as JSON with:
+Focused checks for ordinary granular work:
 
 ```sh
-npm run agent:report -- --format json
+npm run agent:verify
 ```
 
-For ADD app/UI-only work, the runner selects the explicit ADD profile:
+For ADD gameplay, content, Rust, or ADD UI changes, use the explicit profile:
 
 ```sh
-npm run agent:task
+npm run agent:verify:add-ui
 ```
 
-The focused loop does not launch browser or renderer QA by default. If a real
-browser smoke is needed for the current UI change, opt in explicitly:
+The ADD profile checks changed-code whitespace, authoritative Rust tests,
+content/code generation, WASM, ADD types, and smoke syntax. It does not launch
+the browser by default; set `AGENT_VERIFY_SMOKE=1` when browser smoke is
+needed.
+
+Gameplay verification before a commit or handoff:
 
 ```sh
-npm run agent:task -- --smoke
+npm run verify
 ```
 
-## Full Gate
+This runs the WASM build, root TypeScript build, content checks, ADD core Rust
+tests, and package tests.
 
-Run the full gate only at phase gates, clean stopping points, before push, or
-after broad cross-app/shared-engine changes:
+The full gate is reserved for phase gates, clean stopping points, before push,
+or broad cross-app/shared-engine changes:
 
 ```sh
-npm run agent:task -- --gate
+npm run check
 ```
 
-This delegates to `npm run check` and may build WASM, build browser bundles,
-launch Playwright smoke tests, and run renderer QA.
+`npm run check` is a superset of `npm run verify`: it runs gameplay
+verification first, then the target-stack, browser, renderer, and
+infrastructure checks. The compatibility aliases `agent:verify:types`,
+`agent:verify:gate`, and `verify:full` remain available, but the three levels
+above are the documented ladder.
 
 ## Commit Discipline
 
@@ -67,12 +70,14 @@ launch Playwright smoke tests, and run renderer QA.
 ## Useful Profiles
 
 ```sh
-npm run agent:task             # adaptive focused default with a result artifact
+npm run agent:verify          # adaptive focused checks
+npm run agent:verify:add-ui   # ADD gameplay-focused checks
+npm run verify                # gameplay verification
+npm run check                 # gameplay plus full target-stack gate
+npm run agent:task             # focused result artifact/task tooling
 npm run agent:report -- --format json
 npm run agent:scenario -- scenarios/add/<id>.json
 npm run agent:state -- --save <path>
-npm run agent:verify            # alias for agent:task
-npm run agent:verify:add-ui   # ADD UI-focused checks
-npm run agent:verify:types    # root TypeScript build
-npm run agent:verify:gate     # full expensive target-stack gate
+npm run agent:verify:types    # narrow TypeScript compatibility profile
+npm run agent:verify:gate     # gate compatibility profile
 ```

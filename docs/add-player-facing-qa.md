@@ -96,8 +96,8 @@ npm run qa:renderer:built
 ```
 
 The normal agent loop remains focused by default. Use
-`npm run agent:task -- --smoke` when a changed ADD surface needs the browser,
-and reserve `npm run agent:task -- --gate` for the expensive phase gate.
+`AGENT_VERIFY_SMOKE=1 npm run agent:verify:add-ui` when a changed ADD surface
+needs the browser, and reserve `npm run check` for the expensive phase gate.
 
 ## Visual-diff policy
 

@@ -92,19 +92,21 @@ scenarios, focused verification, and likely follow-up before implementation.
 Useful focused checks:
 
 ```sh
-npm run agent:task
+npm run agent:verify
 npm run agent:report -- --format json
 npm run agent:scenario -- scenarios/idle-base-first-cycle.json
 npm run agent:state -- --save scenarios/add/fixtures/saves/base-onboarding.json
 npm run scenario:add -- scenarios/idle-base-first-cycle.json
 npm run scenario:add -- scenarios/offline-return.json
+npm run verify
+npm run check
 npm run content:check
 npm run content:graph -- --reverse resource.stone
 npm run content:explain -- objective.restore_studio
 npm run content:fixtures:check
 npm --workspace @aedventure/add-domain test
 npm run agent:verify:add-ui
-npm run agent:task -- --smoke
+AGENT_VERIFY_SMOKE=1 npm run agent:verify:add-ui
 npm run qa:add-rpg:phase5
 npm run qa:add-rpg:visual -- --artifact-dir tmp
 npm run qa:add-rpg:trace:fixture
@@ -116,10 +118,11 @@ npm --workspace @aedventure/add-rpg run dev:browser
 
 The focused loop writes machine-readable evidence under
 `artifacts/agent-verification/<run-id>/` and does not launch the browser or
-renderer gate by default. Use `npm run agent:task -- --smoke` when the
-player-facing ADD surface needs explicit browser verification. The full gate
-is reserved for phase boundaries, broad engine changes, and pre-push
-verification; see [AGENTS.md](AGENTS.md).
+renderer gate by default. Use `AGENT_VERIFY_SMOKE=1 npm run
+agent:verify:add-ui` when the player-facing ADD surface needs explicit browser
+verification. The gameplay ladder is `npm run verify`; the full gate is
+`npm run check`, which runs gameplay verification first. See
+[AGENTS.md](AGENTS.md).
 
 ## Canonical Documentation
 

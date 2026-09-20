@@ -3,6 +3,9 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+echo "Running gameplay verification..."
+npm run verify
+
 if [[ -x "$ROOT_DIR/node_modules/.bin/tsc" ]]; then
   TSC="$ROOT_DIR/node_modules/.bin/tsc"
 elif [[ -x "$ROOT_DIR/legacy/skyoffice-original/node_modules/.bin/tsc" ]]; then

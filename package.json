@@ -29,7 +29,7 @@
     "lore:render": "python3 tools/lore_render.py --write",
     "test:packages": "npm run test --workspaces --if-present",
     "verify": "npm run wasm:build:add && tsc -b && npm run content:check && cargo test -p add-core && npm run test:packages",
-    "verify:full": "npm run verify && npm run smoke:add-rpg",
+    "verify:full": "npm run check",
     "setup:hooks": "git config core.hooksPath .githooks",
     "prepare": "git config core.hooksPath .githooks 2>/dev/null || true",
     "agent:task": "node scripts/agent-task.cjs",

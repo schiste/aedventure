@@ -442,7 +442,7 @@ smaller tooling bill than the specification implies, and it keeps one set of
 commands for contributors to learn.
 
 **Fuzzer and CI.** `narr fuzz` is expensive, so it belongs with the phase gate
-(`npm run agent:verify:gate`), not the focused loop. `narr lint` and a small
+(`npm run check`), not the focused loop. `narr lint` and a small
 smoke corpus belong in `npm run verify`, which is the pre-commit hook.
 
 ## 6. Documentation plan

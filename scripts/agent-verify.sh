@@ -10,7 +10,7 @@ Usage: scripts/agent-verify.sh [focused|add-ui|types|gate|help]
 
 Profiles:
   focused  Cheap default for granular commits. Auto-detects touched files.
-  add-ui   ADD UI-focused checks: typecheck + smoke syntax, optional built smoke.
+  add-ui   ADD gameplay-focused checks: Rust/content/WASM/types, optional smoke.
   types    Root TypeScript build only.
   gate     Full target-stack gate. Expensive; use at phase gates or before push.
 
@@ -36,6 +36,17 @@ changed_files() {
   } | sort -u
 }
 
+changed_code_paths() {
+  while IFS= read -r path; do
+    case "$path" in
+      *.cjs|*.css|*.h|*.hpp|*.html|*.js|*.json|*.mjs|*.rs|*.sh|*.sql|*.toml|*.ts|*.tsx|*.yaml|*.yml|\
+      Cargo.lock|Cargo.toml|package-lock.json|package.json|tsconfig.json|tsconfig.*.json)
+        printf '%s\n' "$path"
+        ;;
+    esac
+  done < <(changed_files)
+}
+
 has_changed_match() {
   local pattern="$1"
   changed_files | grep -E "$pattern" >/dev/null
@@ -51,12 +62,23 @@ tsc_bin() {
 }
 
 diff_check() {
-  run git -C "$ROOT_DIR" diff --check
-  run git -C "$ROOT_DIR" diff --cached --check
+  local -a paths=()
+  local path
+  while IFS= read -r path; do
+    [[ -n "$path" ]] && paths+=("$path")
+  done < <(changed_code_paths)
+  if (( ${#paths[@]} == 0 )); then
+    echo "No changed code paths; skipping whitespace check."
+    return
+  fi
+  run git -C "$ROOT_DIR" diff --check -- "${paths[@]}"
+  run git -C "$ROOT_DIR" diff --cached --check -- "${paths[@]}"
 }
 
 add_ui_checks() {
   diff_check
+  run cargo test -p add-core
+  run npm run content:check
   run npm run wasm:build:add
   run npm --workspace @aedventure/add-rpg run build:types
   run node --check "$ROOT_DIR/scripts/add-rpg-smoke.test.cjs"
@@ -75,10 +97,8 @@ types_check() {
 }
 
 focused_checks() {
-  diff_check
-
   if has_changed_match '^(apps/add-rpg/|packages/add-domain/|scripts/add-rpg-smoke\.test\.cjs|crates/add-|package\.json|package-lock\.json|tsconfig\.json)'; then
-    echo "Detected ADD/app-layer changes; running ADD UI focused checks."
+    echo "Detected ADD/app-layer changes; running ADD gameplay-focused checks."
     add_ui_checks
     return
   fi
@@ -89,6 +109,7 @@ focused_checks() {
     return
   fi
 
+  diff_check
   echo "No TypeScript/app changes detected; focused verification complete."
 }
 

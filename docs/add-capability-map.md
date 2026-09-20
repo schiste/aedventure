@@ -38,7 +38,7 @@ the Rust runtime owns mutation and deterministic outcomes.
 | Capability | Command | What it proves |
 | --- | --- | --- |
 | Documentation contract | `npm run docs:check` | Required maps, task brief fields, routing sections, commands, and office scope notes exist |
-| Changed-path agent loop | `npm run agent:task` | Chooses the cheapest focused checks from changed paths and writes an actionable result artifact |
+| Changed-path agent loop | `npm run agent:verify` | Chooses the cheapest focused checks from changed paths and writes an actionable result artifact |
 | Machine-readable verification report | `npm run agent:report -- --format json` | Writes/emits the focused result contract with commit, duration, checks, artifacts, and failure hints |
 | Task brief readiness | `npm run agent:task -- --describe <task-id>` | Resolves a brief and rejects missing acceptance scenarios or completion evidence |
 | ADD content/code generation | `npm run content:check` | Authored content builds, validates, and matches generated Rust catalog output |
@@ -48,6 +48,7 @@ the Rust runtime owns mutation and deterministic outcomes.
 | Content fixtures | `npm run content:fixtures:check` | Small-base, crew-roster, map, and story-state authoring fixtures match current IDs |
 | Content/save versions | `npm run content:version:check` | Authored content/save versions agree with generated Rust and save migrations |
 | Rust rules/state | `cargo test -p add-core` | Simulation rules, save behavior, and deterministic calculations pass core tests |
+| Gameplay verification | `npm run verify` | WASM, TypeScript, content/code generation, ADD core Rust tests, and package tests pass |
 | Headless ADD scenario/replay | `npm run scenario:add -- scenarios/add/<id>.json` | A committed seed/save/command log runs without the browser and checks canonical state checkpoints |
 | Agent scenario artifact | `npm run agent:scenario -- scenarios/add/<id>.json` | Runs the same Rust scenario and records the report, normalized snapshot, replay log, and command output |
 | Agent save inspection | `npm run agent:state -- --save <path>` | Reads a save through Rust and returns the versioned `agent_runtime_v1` report |
@@ -64,7 +65,7 @@ the Rust runtime owns mutation and deterministic outcomes.
 | Shared package types | `npm run agent:verify:types` | Root TypeScript project references compile after neutral-package changes |
 | Neutral renderer/topology fixture | `npm run smoke:engine-sandbox` | Square and hex engine paths work without office or ADD domain imports |
 | Office app flow | `npm run smoke:office` | The separate customer virtual-office lane passes its browser flow |
-| Full target gate | `npm run agent:verify:gate` | The expensive cross-app, renderer, infrastructure, and smoke gate passes |
+| Full target gate | `npm run check` | Gameplay verification plus the expensive cross-app, renderer, infrastructure, and smoke gate passes |
 
 Use the cheapest command that exercises the changed authority first. Run the
 full gate at phase boundaries, before publication, or after broad shared-engine
@@ -78,11 +79,12 @@ explicitly requested:
 
 | Mode | Command | Scope |
 | --- | --- | --- |
-| Focused | `npm run agent:task` | Cheapest relevant checks for the current diff |
-| Browser override | `npm run agent:task -- --smoke` | Focused checks plus ADD browser build and smoke |
-| Phase gate | `npm run agent:task -- --gate` | Full target-stack gate; expensive and explicit |
+| Focused | `npm run agent:verify` | Cheapest relevant checks for the current diff |
+| Gameplay | `npm run verify` | Complete non-browser gameplay/build verification |
+| Gate | `npm run check` | Gameplay verification plus the full target-stack, browser, renderer, and infrastructure gate |
 
-Results and child logs live under the ignored
+Use `AGENT_VERIFY_SMOKE=1 npm run agent:verify:add-ui` when browser evidence is
+needed for a player-facing ADD change. Results and child logs live under the ignored
 `artifacts/agent-verification/<run-id>/` directory. The detailed result
 schema, artifact naming, task evidence rules, and failure workflow are in
 [ADD One-Command Agent Verification Loop](add-agent-verification-loop.md).

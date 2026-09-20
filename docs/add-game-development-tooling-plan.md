@@ -204,19 +204,23 @@ Goal: reduce every small task to a predictable inspect/change/check cycle.
 Implemented command family:
 
 ```sh
+npm run agent:verify
 npm run agent:task -- --describe <task-id>
 npm run agent:scenario -- scenarios/add/<scenario>.json
 npm run agent:state -- --save <path>
 npm run agent:verify:add-ui
+npm run verify
+npm run check
 npm run agent:report -- --format json
 ```
 
 Implemented deliverables:
 
-- `scripts/agent-task.cjs` classifies staged, unstaged, untracked, and
-  integration-relative changed paths and chooses the cheapest relevant
-  existing checks. `--smoke` explicitly adds the ADD browser build and smoke;
-  `--gate` is reserved for the expensive target-stack gate.
+- `scripts/agent-task.cjs` backs the focused `npm run agent:verify` command:
+  it classifies staged, unstaged, untracked, and integration-relative changed
+  paths and chooses the cheapest relevant existing checks. Use
+  `AGENT_VERIFY_SMOKE=1 npm run agent:verify:add-ui` for browser evidence and
+  `npm run check` for the full target-stack gate.
 - Every run writes a versioned JSON result with command, commit, duration,
   status, selected source boundaries, artifacts, and failure hints under the
   ignored `artifacts/agent-verification/<run-id>/` directory.
@@ -237,7 +241,9 @@ Exit criteria:
 
 - A new agent can run one documented command and receive actionable output.
 - Failed checks point to a scenario, source boundary, or missing fixture.
-- The normal granular loop does not require the full browser/renderer gate.
+- The normal granular loop does not require the full browser/renderer gate;
+  `npm run verify` is the gameplay/build verification level and `npm run check`
+  runs it before the full target-stack gate.
 
 ### Phase 4 — Content and world authoring acceleration (implemented)
 

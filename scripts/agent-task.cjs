@@ -20,15 +20,16 @@ const {
 
 function usage() {
   console.log(`Usage:
-  npm run agent:task
-  npm run agent:task -- --describe <task-id>
-  npm run agent:task -- --smoke
-  npm run agent:task -- --gate
+  npm run agent:verify
+  npm run agent:verify -- --describe <task-id>
+  AGENT_VERIFY_SMOKE=1 npm run agent:verify:add-ui
+  npm run check
   npm run agent:report -- --format json
 
-Focused mode selects the cheapest checks from changed paths. --smoke adds the
-ADD browser build and smoke explicitly. --gate runs the expensive target-stack
-gate instead of the focused plan. --base <ref> changes the comparison base.`)
+Focused mode selects the cheapest checks from changed paths. The --smoke and
+--gate flags remain supported for compatibility; the documented browser and
+gate commands are AGENT_VERIFY_SMOKE=1 npm run agent:verify:add-ui and npm run
+check. --base <ref> changes the comparison base.`)
 }
 
 function parseArguments(argumentsList) {
@@ -180,7 +181,7 @@ function runVerification(options, argumentsList) {
     checks = [
       runCommand(run, {
         id: "full-target-stack-gate",
-        command: ["npm", "run", "agent:verify:gate"],
+        command: ["npm", "run", "check"],
         sourceBoundary: "repository target-stack gate",
         reason: "Explicit phase gate requested; this is intentionally expensive.",
       }),
@@ -207,7 +208,7 @@ function runVerification(options, argumentsList) {
       ? "failed"
       : "passed"
   if (status === "passed" && classified.recommendsGate && !options.gate) {
-    notes.push("Focused checks passed; run npm run agent:task -- --gate before publication or a phase handoff.")
+    notes.push("Focused checks passed; run npm run check before publication or a phase handoff.")
   }
 
   const result = finalizeRun(run, {

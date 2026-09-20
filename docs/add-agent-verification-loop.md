@@ -15,12 +15,12 @@ read the brief and runtime report
         ↓
 make a focused change
         ↓
-npm run agent:task
+        npm run agent:verify
         ↓
 replay the recorded scenario or inspect the result artifact
 ```
 
-`agent:task` chooses checks from changed paths. It calls existing Cargo and
+`agent:verify` chooses checks from changed paths. It calls existing Cargo and
 npm contracts; it does not implement gameplay rules or create a second
 simulation. Rust remains authoritative for ADD state, the content package
 remains authoritative for authored IDs, and `apps/add-rpg` remains the live
@@ -40,24 +40,37 @@ npm run agent:scenario -- scenarios/add/<scenario>.json
 # Inspect a save through the headless agent_runtime_v1 report.
 npm run agent:state -- --save scenarios/add/fixtures/saves/base-onboarding.json
 
-# Run the focused changed-path loop. This is the ordinary granular command.
-npm run agent:task
+# Run the focused changed-path loop.
+npm run agent:verify
+
+# Run the ADD gameplay-focused profile, including Rust and content checks.
+npm run agent:verify:add-ui
+
+# Run gameplay verification across the non-browser build/test surfaces.
+npm run verify
+
+# Run gameplay verification followed by the full target-stack gate.
+npm run check
 
 # Emit the same focused result as machine-readable JSON on stdout.
 npm run agent:report -- --format json
 
-# Explicitly add the ADD browser build and smoke when the player surface matters.
-npm run agent:task -- --smoke
-
-# Run the expensive target-stack gate at a phase boundary or before publication.
-npm run agent:task -- --gate
+# Explicitly add the ADD browser smoke when the player surface matters.
+AGENT_VERIFY_SMOKE=1 npm run agent:verify:add-ui
 ```
 
-`npm run agent:verify` is an alias for the focused runner. The lower-level
-profiles remain available for direct use: `agent:verify:add-ui` performs the
-ADD WASM/type/smoke-syntax checks, `agent:verify:types` compiles the root
-TypeScript references, and `agent:verify:gate` delegates to the expensive
-target-stack gate.
+The documented verification ladder has three levels:
+
+- `npm run agent:verify` is the focused, changed-path-aware loop.
+- `npm run verify` is gameplay verification: WASM, TypeScript, content,
+  `cargo test -p add-core`, and package tests.
+- `npm run check` runs `npm run verify` first, then the full target-stack,
+  browser, renderer, and infrastructure checks.
+
+`agent:verify:types` and `agent:verify:gate` remain compatibility profiles
+for callers that need those names. `agent:task` remains available for task
+brief resolution and focused result/artifact tooling; it is not a fourth
+verification level.
 
 `--base <git-ref>` changes the comparison base. By default the runner uses
 `aethyme/integration` when that ref exists, and also includes staged, unstaged,
@@ -77,7 +90,7 @@ checks owned by changed boundaries:
 | `crates/add-core/` | `cargo test -p add-core` | Full browser/renderer gate |
 | `crates/add-scenario/`, `scenarios/add/` | Scenario crate tests and changed scenario replay | Full browser smoke |
 | `packages/add-domain/` | ADD domain tests; content checks for authored content | Full renderer QA |
-| `apps/add-rpg/`, ADD WASM/browser bridge | `npm run agent:verify:add-ui` | Browser build/smoke unless `--smoke` |
+| `apps/add-rpg/`, ADD WASM/browser bridge | `npm run agent:verify:add-ui` | Browser smoke unless `AGENT_VERIFY_SMOKE=1` |
 | `packages/game-*`, `apps/engine-sandbox/` | Type checks and the smallest relevant engine fixture smoke | Full cross-app gate |
 | Office/platform paths | Root type checks only | ADD gameplay checks |
 | `README.md`, `docs/`, task briefs | `npm run docs:check` | Product/browser checks |
@@ -157,7 +170,7 @@ npm run agent:report -- --format json
 npm run docs:check
 ```
 
-Run `npm run agent:task -- --smoke` when a change affects the player-facing ADD
-surface. Reserve `npm run agent:task -- --gate` for phase boundaries, broad
-shared-engine changes, and publication; the normal granular loop does not
-require the full browser/renderer gate.
+Run `AGENT_VERIFY_SMOKE=1 npm run agent:verify:add-ui` when a change affects
+the player-facing ADD surface and needs browser verification. Run `npm run
+check` for phase boundaries, broad shared-engine changes, and publication;
+the normal granular loop does not require the full browser/renderer gate.
