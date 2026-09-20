@@ -1,5 +1,8 @@
 pub mod command;
 pub mod game_data;
+#[rustfmt::skip]
+mod generated_ink;
+pub mod narrative;
 pub mod migrations;
 pub mod save;
 pub mod simulation;
@@ -31,6 +34,7 @@ pub use game_data::{
     story_beat_def, story_beats, structure_def, structures, terrain_profile_for, tile_def,
     tile_id_for, world_action_def, world_actions,
 };
+pub use narrative::{InkChoice, InkLine, InkScene, NarrativeStory, beat_has_knot};
 pub use migrations::{CURRENT_CATALOG_VERSION, CURRENT_SCHEMA_VERSION, MigrationError};
 pub use save::{SaveError, export_save, import_save};
 pub use simulation::Simulation;

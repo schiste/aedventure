@@ -74,6 +74,7 @@ import {
   type AddBaseManagementTabId,
   type AddAreaEntrySide,
   type CatalogSnapshot,
+  type InkSceneSnapshot,
   type SimulationSnapshot,
   type StationSpecializationPath,
   type WorkerRequest,
@@ -3176,6 +3177,18 @@ function copyDisclosure(
 // The narrative moment stays inside the unified decision surface. The primary
 // CTA below owns the recommended action; alternate choices are secondary so the
 // player does not see several competing "next actions" at once.
+/**
+ * The ink scene for the beat on screen, or null when this beat renders from
+ * the authored catalog `body`. Keyed on the beat id so a scene left over from
+ * a previous beat is never shown against the wrong one.
+ */
+function activeInkScene(): InkSceneSnapshot | null {
+  const narrative = snapshot()?.narrative
+  const scene = narrative?.inkScene ?? null
+  if (!scene || !narrative?.activeBeatId) return null
+  return scene.beatId === narrative.activeBeatId ? scene : null
+}
+
 function storyMomentBlock(): unknown {
   const moment = storyMoment()
   // Show the active beat as the always-on narrative driver: the body for every
@@ -3201,7 +3214,26 @@ function storyMomentBlock(): unknown {
           aria-label=${`Story moment: ${moment.label}`}
         >
           <div class="story-moment-kicker">${moment.label}</div>
-          <p class="story-moment-body" title=${moment.body}>${leadUiCopy(moment.body, 88)}</p>
+          ${activeInkScene()
+            ? html`
+                <div class="story-moment-ink" data-source="ink">
+                  ${activeInkScene()!.lines.map(
+                    (line) => html`
+                      <p
+                        class="story-moment-body"
+                        data-speaker=${line.tags.find((tag) => tag.startsWith("speaker:"))?.slice(8) ?? ""}
+                        data-mood=${line.tags.find((tag) => tag.startsWith("mood:"))?.slice(5) ?? ""}
+                        title=${line.text}
+                      >
+                        ${line.text}
+                      </p>
+                    `,
+                  )}
+                </div>
+              `
+            : html`<p class="story-moment-body" title=${moment.body}>
+                ${leadUiCopy(moment.body, 88)}
+              </p>`}
           ${copyDisclosure(
             `story-moment-detail-${safeElementId(moment.beatId)}`,
             "Read more",
@@ -3209,7 +3241,29 @@ function storyMomentBlock(): unknown {
             leadUiCopy(moment.body, 88),
             "story-moment-detail",
           )}
-          ${moment.choices.length > 0
+          ${activeInkScene() && activeInkScene()!.choices.length > 0
+            ? html`
+                <details class="story-moment-options" open>
+                  <summary>Story choices</summary>
+                  <div class="story-moment-choices" data-source="ink">
+                    ${activeInkScene()!.choices.map(
+                      (choice) => html`
+                        <button
+                          type="button"
+                          class="story-moment-choice"
+                          data-choice-id=${choice.choiceId ?? `ink:${choice.index}`}
+                          data-ink-index=${String(choice.index)}
+                          data-action-id=${`story-choice:${activeInkScene()!.beatId}:${choice.choiceId ?? `ink-${choice.index}`}`}
+                          onClick=${() => void chooseInkChoice(activeInkScene()!.beatId, choice.index)}
+                        >
+                          ${choice.text}
+                        </button>
+                      `,
+                    )}
+                  </div>
+                </details>
+              `
+            : moment.choices.length > 0
             ? html`
                 <details class="story-moment-options">
                   <summary>Story choices</summary>
@@ -7345,6 +7399,13 @@ async function chooseStoryOption(beatId: string, optionId: string): Promise<void
   await sendAndWaitForSnapshot(() => {
     setLastCommand("choose_story_option")
     sendWorkerRequest({ type: "chooseStoryOption", beatId, optionId })
+  })
+}
+
+async function chooseInkChoice(beatId: string, index: number): Promise<void> {
+  await sendAndWaitForSnapshot(() => {
+    setLastCommand("choose_ink_choice")
+    sendWorkerRequest({ type: "chooseInkChoice", beatId, index })
   })
 }
 

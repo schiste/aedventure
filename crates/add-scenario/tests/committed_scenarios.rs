@@ -103,3 +103,32 @@ fn committed_offline_return_scenario_matches_the_core_contract() {
     assert_eq!(run.final_agent_runtime["reportVersion"], 1);
     assert!(run.final_agent_runtime["derived"]["blockers"].is_array());
 }
+
+/// The ink-backed beat runs headlessly: the scene is rendered from the
+/// compiled `.ink`, and taking a presented choice applies the authored
+/// effects, so a narrative bug reproduces without a browser.
+#[test]
+fn ink_first_glimpse_runs_headlessly() {
+    let run = run_scenario_file(&repo_path("scenarios/add/narrative/ink-first-glimpse.json"))
+        .expect("committed ink scenario should pass");
+    assert_eq!(run.scenario_id, "ink-first-glimpse");
+    assert_eq!(run.command_count, 2);
+    assert_eq!(run.checkpoints_passed, 2);
+
+    let narrative = &run.final_snapshot["narrative"];
+    assert_eq!(
+        narrative["choiceByBeat"]["story.beat.first_glimpse"],
+        "story.choice.glimpse.watch_lights",
+        "the ink choice applied its authored choice id",
+    );
+    assert!(
+        narrative["completedBeatIds"]
+            .as_array()
+            .expect("completed beats")
+            .iter()
+            .any(|id| id == "story.beat.first_glimpse"),
+        "the ink-backed beat completed",
+    );
+    // Ink state never reaches the save; the scene is rebuilt by replay.
+    assert!(!run.final_save.contains("currentFlowName"));
+}

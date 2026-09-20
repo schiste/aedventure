@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "crates/add-core",
+    "crates/add-ink-compiler",
     "crates/add-scenario",
     "crates/add-scenario-runner",
     "crates/add-web-bindings",

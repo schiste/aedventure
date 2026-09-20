@@ -50,6 +50,12 @@ pub enum ScenarioCommand {
         #[serde(rename = "optionId", alias = "option_id")]
         option_id: String,
     },
+    /// Take a choice the ink scene presented, by its index.
+    ChooseInkChoice {
+        #[serde(rename = "beatId", alias = "beat_id")]
+        beat_id: String,
+        index: u16,
+    },
     CompletePreArrivalRoute,
     SetHeroAssigned {
         assigned: bool,
@@ -167,6 +173,9 @@ impl ScenarioCommand {
         Some(match self {
             Self::ChooseStoryOption { beat_id, option_id } => {
                 GameCommand::ChooseStoryOption { beat_id, option_id }
+            }
+            Self::ChooseInkChoice { beat_id, index } => {
+                GameCommand::ChooseInkChoice { beat_id, index }
             }
             Self::CompletePreArrivalRoute => GameCommand::CompletePreArrivalRoute,
             Self::SetHeroAssigned { assigned } => GameCommand::SetHeroAssigned { assigned },

@@ -1,0 +1,28 @@
+{
+  "id": "ink-first-glimpse",
+  "seed": "fixture-seed",
+  "commands": [
+    {
+      "type": "ChooseStoryOption",
+      "beatId": "story.beat.road_to_base",
+      "optionId": "story.choice.road.follow_signal"
+    },
+    { "type": "ChooseInkChoice", "beatId": "story.beat.first_glimpse", "index": 0 }
+  ],
+  "checkpoints": [
+    {
+      "id": "ink-beat-active",
+      "after": 1,
+      "state": {
+        "narrative": { "activeBeatId": "story.beat.first_glimpse" }
+      }
+    },
+    {
+      "id": "ink-choice-applied",
+      "after": 2,
+      "state": {
+        "narrative": { "activeBeatId": "story.beat.enter_the_bubble" }
+      }
+    }
+  ]
+}

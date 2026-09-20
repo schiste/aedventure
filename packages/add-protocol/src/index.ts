@@ -63,12 +63,39 @@ export interface HeroSurvivalSnapshot {
   forcedReturn: ForcedReturnSnapshot | null
 }
 
+/** One line of ink dialogue with the presentation tags authored beside it. */
+export interface InkLineSnapshot {
+  text: string
+  /** Raw `key:value` tags: `speaker`, `mood`, `sfx`, `camera`. */
+  tags: string[]
+}
+
+/** One presented ink choice. `index` is what the command sends back. */
+export interface InkChoiceSnapshot {
+  index: number
+  text: string
+  /** The authored choice id whose effects apply, when the beat declares one. */
+  choiceId: string | null
+}
+
+/**
+ * The ink scene for the active beat, when that beat has a knot. Beats without
+ * one render from the catalog's `body`, so ink adoption is beat by beat.
+ */
+export interface InkSceneSnapshot {
+  beatId: string
+  lines: InkLineSnapshot[]
+  choices: InkChoiceSnapshot[]
+}
+
 export interface NarrativeSnapshot {
   activeBeatId: string | null
   completedBeatIds: string[]
   choiceByBeat: Record<string, string>
   /** Arbitrary author-defined story variables. Rust owns writes; TS may explain them. */
   qualities?: Record<string, number>
+  /** Present only while the active beat is rendered by ink. */
+  inkScene?: InkSceneSnapshot | null
 }
 
 export interface CrystalCircleSnapshot {
@@ -1090,6 +1117,7 @@ export type WorkerRequest =
   | { type: 'tick'; seconds: number }
   | { type: 'offlineCatchup'; elapsedSeconds: number }
   | { type: 'chooseStoryOption'; beatId: string; optionId: string }
+  | { type: 'chooseInkChoice'; beatId: string; index: number }
   | { type: 'completePreArrivalRoute' }
   | { type: 'assignHero'; assigned: boolean }
   | { type: 'setHeroRole'; roleId: string }

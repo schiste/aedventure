@@ -73,6 +73,14 @@ impl WebRuntime {
         )
     }
 
+    #[wasm_bindgen(js_name = chooseInkChoice)]
+    pub fn choose_ink_choice(&mut self, beat_id: &str, index: u16) {
+        self.simulation.apply(GameCommand::ChooseInkChoice {
+            beat_id: beat_id.to_string(),
+            index,
+        });
+    }
+
     #[wasm_bindgen(js_name = completePreArrivalRoute)]
     pub fn complete_pre_arrival_route(&mut self) -> Result<JsValue, JsValue> {
         apply_command(&mut self.simulation, GameCommand::CompletePreArrivalRoute)

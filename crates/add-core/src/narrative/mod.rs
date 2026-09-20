@@ -1,0 +1,149 @@
+//! The ink narrative layer.
+//!
+//! Ink declares, Rust computes. A knot owns a beat's prose, its choice
+//! presentation and its scene flow; it owns no world state. Choosing an option
+//! applies the authored effects the Rust catalog already holds for that choice
+//! id, which the `# choice:<id>` tag names.
+//!
+//! This module owns the `bladeink::Story` and nothing else. It has no save of
+//! its own, no random generator of its own and no clock: ink state is a field
+//! on [`GameState`](crate::state::GameState), randomness comes from the
+//! simulation's seed through ink's `SEED_RANDOM`, and time never enters here.
+//! See `docs/add-narrative-system-plan.md` §2.1.
+
+pub mod story;
+
+pub use story::{InkChoice, InkLine, InkScene, NarrativeStory, beat_has_knot};
+
+/// The ink knot that renders a story beat, by convention `story.beat.x` ->
+/// `story_beat_x`. A beat with no knot renders from its authored `body`.
+pub fn knot_for_beat(beat_id: &str) -> String {
+    beat_id.replace(['.', '-'], "_")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::knot_for_beat;
+    use crate::{GameCommand, GameState, Simulation, export_save, import_save};
+
+    const BEAT: &str = "story.beat.first_glimpse";
+    const WATCH: &str = "story.choice.glimpse.watch_lights";
+
+    #[test]
+    fn knot_names_derive_from_beat_ids() {
+        assert_eq!(knot_for_beat("story.beat.first_glimpse"), "story_beat_first_glimpse");
+    }
+
+    /// Drive the run to the ink-backed beat the way a player does.
+    fn at_first_glimpse() -> Simulation {
+        let mut simulation = Simulation::from_state(GameState::new());
+        simulation.apply(GameCommand::ChooseStoryOption {
+            beat_id: "story.beat.road_to_base".to_string(),
+            option_id: "story.choice.road.follow_signal".to_string(),
+        });
+        simulation
+    }
+
+    #[test]
+    fn an_ink_backed_beat_arrives_with_its_scene_rendered() {
+        let simulation = at_first_glimpse();
+        assert_eq!(simulation.state().narrative.active_beat_id.as_deref(), Some(BEAT));
+
+        let scene = simulation
+            .state()
+            .narrative
+            .ink_scene
+            .as_ref()
+            .expect("ink beat renders a scene");
+        assert_eq!(scene.beat_id, BEAT);
+        assert!(scene.lines[0].text.starts_with("From the ridge"));
+        assert!(scene.lines[0].tags.contains(&"speaker:narrator".to_string()));
+        assert_eq!(scene.choices.len(), 2);
+        assert_eq!(scene.choices[0].choice_id.as_deref(), Some(WATCH));
+    }
+
+    #[test]
+    fn taking_an_ink_choice_applies_the_authored_effects() {
+        let mut simulation = at_first_glimpse();
+        simulation.apply(GameCommand::ChooseInkChoice {
+            beat_id: BEAT.to_string(),
+            index: 0,
+        });
+
+        // Ink resolved the id; the catalog applied the effects, so the beat is
+        // recorded exactly as the non-ink path would record it.
+        assert_eq!(
+            simulation.state().narrative.choice_by_beat.get(BEAT).map(String::as_str),
+            Some(WATCH),
+        );
+        assert!(
+            simulation
+                .state()
+                .narrative
+                .completed_beat_ids
+                .iter()
+                .any(|id| id == BEAT)
+        );
+
+        // The response line ink produced is transient: taking the choice
+        // completes the beat, and the selector immediately advances to
+        // `enter_the_bubble`, which has no knot. The player-facing response
+        // keeps coming from the authored `StoryChoiceDef.response`, so ink
+        // changed how the beat is presented and nothing about what it does.
+        assert_eq!(
+            simulation.state().narrative.active_beat_id.as_deref(),
+            Some("story.beat.enter_the_bubble"),
+        );
+        assert!(simulation.state().narrative.ink_scene.is_none());
+    }
+
+    #[test]
+    fn the_ink_and_catalog_paths_reach_the_same_state() {
+        // The whole point of ink declaring and Rust computing: presentation
+        // changed, outcomes did not.
+        let mut via_ink = at_first_glimpse();
+        via_ink.apply(GameCommand::ChooseInkChoice { beat_id: BEAT.to_string(), index: 0 });
+
+        let mut via_catalog = at_first_glimpse();
+        via_catalog.apply(GameCommand::ChooseStoryOption {
+            beat_id: BEAT.to_string(),
+            option_id: WATCH.to_string(),
+        });
+
+        assert_eq!(
+            via_ink.state().narrative.choice_by_beat,
+            via_catalog.state().narrative.choice_by_beat,
+        );
+        assert_eq!(via_ink.state().narrative.qualities, via_catalog.state().narrative.qualities);
+        assert_eq!(
+            via_ink.state().narrative.completed_beat_ids,
+            via_catalog.state().narrative.completed_beat_ids,
+        );
+    }
+
+    #[test]
+    fn a_choice_the_ink_scene_does_not_present_is_refused() {
+        let mut simulation = at_first_glimpse();
+        simulation.apply(GameCommand::ChooseInkChoice { beat_id: BEAT.to_string(), index: 7 });
+        assert!(simulation.state().narrative.choice_by_beat.get(BEAT).is_none());
+    }
+
+    #[test]
+    fn the_scene_survives_save_and_reload() {
+        let mut simulation = at_first_glimpse();
+        simulation.apply(GameCommand::ChooseInkChoice { beat_id: BEAT.to_string(), index: 1 });
+        let before = simulation.state().narrative.ink_scene.clone();
+
+        let raw = export_save(simulation.state()).expect("save");
+        let reloaded = Simulation::from_state(import_save(&raw).expect("load"));
+
+        assert_eq!(reloaded.state().narrative.ink_scene, before);
+        assert_eq!(
+            reloaded.state().narrative.choice_by_beat.get(BEAT).map(String::as_str),
+            Some("story.choice.glimpse.scan_ruins"),
+        );
+        // Ink's own serialized state is absent from the save on purpose; the
+        // scene is rebuilt from the beat and the recorded choice.
+        assert!(!raw.contains("currentFlowName"));
+    }
+}

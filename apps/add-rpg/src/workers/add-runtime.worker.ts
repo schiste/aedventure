@@ -61,6 +61,10 @@ async function handleMessage(message: WorkerRequest) {
         runtime?.chooseStoryOption(message.beatId, message.optionId)
         postSnapshotUpdate()
         break
+      case 'chooseInkChoice':
+        runtime?.chooseInkChoice(message.beatId, message.index)
+        postSnapshotUpdate()
+        break
       case 'completePreArrivalRoute':
         runtime?.completePreArrivalRoute()
         postSnapshotUpdate()

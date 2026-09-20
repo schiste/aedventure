@@ -21,6 +21,12 @@ pub enum GameCommand {
         beat_id: String,
         option_id: String,
     },
+    /// Take a choice presented by the ink scene for `beat_id`. Ink resolves
+    /// which authored choice id that was; its effects come from the catalog.
+    ChooseInkChoice {
+        beat_id: String,
+        index: u16,
+    },
     CompletePreArrivalRoute,
     SetHeroAssigned {
         assigned: bool,

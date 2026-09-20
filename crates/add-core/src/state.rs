@@ -549,6 +549,16 @@ pub struct NarrativeState {
     /// the next time it triggers.
     #[serde(default)]
     pub activated_beat_ids: BTreeSet<String>,
+    /// The ink scene the browser renders: lines, tags and presented choices.
+    ///
+    /// Derived, never a source of truth. Ink's own serialized state is
+    /// deliberately *not* persisted: bladeink's `save_state` is not stable
+    /// across a save/reload boundary (its thread counters diverge), which would
+    /// break `command_log_replay_is_deterministic_across_save_reload`. The
+    /// scene is fully determined by the active beat and `choice_by_beat`, so
+    /// the runtime rebuilds it by replaying instead of storing it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ink_scene: Option<crate::narrative::InkScene>,
 }
 
 impl NarrativeState {
@@ -559,6 +569,7 @@ impl NarrativeState {
             choice_by_beat: BTreeMap::new(),
             qualities: BTreeMap::new(),
             activated_beat_ids: BTreeSet::new(),
+            ink_scene: None,
         }
     }
 }

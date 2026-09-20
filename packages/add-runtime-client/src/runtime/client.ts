@@ -104,6 +104,11 @@ export class SimulationClient {
     this.post({ type: 'chooseStoryOption', beatId, optionId })
   }
 
+  /** Take a choice the ink scene presented, by index. */
+  chooseInkChoice(beatId: string, index: number) {
+    this.post({ type: 'chooseInkChoice', beatId, index })
+  }
+
   completePreArrivalRoute() {
     this.post({ type: 'completePreArrivalRoute' })
   }

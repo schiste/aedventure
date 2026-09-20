@@ -322,6 +322,16 @@ the real app, with the same choices and the same effects.
 *Accepted when:* the beat plays in `apps/add-rpg`, survives save/load, and a
 committed scenario reproduces it headlessly.
 
+**Status: done.** `story.beat.first_glimpse` is ink-backed. The boundary is
+documented in [the narrative runtime contract](add-narrative-runtime.md).
+Three findings changed the design from what this plan assumed: ink state is
+**not** serialized into `GameState` (bladeink's `save_state` is unstable across
+a reload and would break replay determinism, so the scene is rebuilt by
+replay); choice binding uses an ink variable rather than a tag (bladeink 2.0.0
+does not populate `Choice::tags`); and the WASM landed at 1,242,850 bytes
+against N0's 1,207,423 estimate, so `wasmBytes` moved to 1,300,000 — now 95.6%
+used, with gzip at 88.2%.
+
 ### N2 — Tools before content
 
 *Player outcome:* none; this is the safety net for everything after it.

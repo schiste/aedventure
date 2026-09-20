@@ -23,6 +23,7 @@ Run `npm run docs:check` after changing this map or the routing documents.
 | Agent-readable state, available commands, blocker reasons, or stable report IDs | ADD runtime inspection contract | `packages/add-runtime-client/src/runtime/inspection.ts` and `crates/add-scenario/src/inspection.rs` | `npm --workspace @aedventure/add-runtime-client test` and `cargo test -p add-scenario` |
 | Player-facing panels, input dispatch, map presentation, save plumbing, or browser lifecycle | Live ADD app | `apps/add-rpg/src/` | `npm run agent:verify:add-ui` |
 | Browser fixture, semantic selector/action ID, screenshot evidence, or renderer-affordance check | ADD player-facing QA contract | `scenarios/add/browser-fixtures.json`, `scripts/add-rpg-phase5.cjs`, and `apps/add-rpg/src/browser/qa-contract.ts` | `npm run qa:add-rpg:phase5:built` |
+| A beat's prose, choice wording, or scene flow | Authored ink | `packages/add-content/narrative/story/*.ink` and the [narrative runtime contract](add-narrative-runtime.md) | `npm run content:check` |
 | A world fact, character history, place, faction, name, or canon status | Lore brick | `lore/` and the [three-brick contract](lore-engine-content-bricks.md) | `npm run lore:check` |
 | The lore link tying a content ID to the canon subject it implements | Content brick | `packages/add-content/src/content/lore-refs.ts` | `npm run lore:refs:check` |
 | Narrative standing, acts, knowledge, rumor, sifting, or storylet casting | Rust simulation | `crates/add-core/src/narrative/` and the [narrative plan](add-narrative-system-plan.md) | `cargo test -p add-core` (planned) |
@@ -39,6 +40,7 @@ the Rust runtime owns mutation and deterministic outcomes.
 
 | Capability | Command | What it proves |
 | --- | --- | --- |
+| Ink beat runs headlessly | `npm run scenario:add -- scenarios/add/narrative/ink-first-glimpse.json` | The ink scene renders and its choice applies the authored effects without a browser |
 | Lore/content link integrity | `npm run lore:refs:check` | Every lore link resolves to a page and anchor; unlinked content and unimplemented lore subjects are reported |
 | Lore/content link report | `npm run lore:refs` or `node scripts/lore-refs.cjs --json` | The `lore_refs_v1` report: linked IDs, coverage gaps, and the unimplemented-lore backlog |
 | Protocol contract isolation | `npm --workspace @aedventure/add-runtime-client test` | `@aedventure/add-protocol` stays dependency-free and imports no workspace package |

@@ -4,29 +4,11 @@
   "scope": "live-add",
   "entries": [
     {
-      "id": "add-rust-catalog",
-      "path": "crates/add-core/src/game_data/catalog/*.rs",
-      "source": "packages/add-runtime-client/src/content/*.ts",
-      "producer": "npm run content:build",
-      "check": "npm run content:check",
-      "tracked": true,
-      "writes_source": true
-    },
-    {
-      "id": "add-content-fixtures",
-      "path": "scenarios/add/fixtures/content/*.json",
-      "source": "packages/add-runtime-client/src/content/*.ts",
-      "producer": "npm run content:fixtures",
-      "check": "npm run content:fixtures:check",
-      "tracked": true,
-      "writes_source": true
-    },
-    {
-      "id": "add-wasm-bindings",
-      "path": "apps/add-rpg/src/generated/wasm/add-web-bindings/",
-      "source": "crates/add-web-bindings/",
-      "producer": "npm run wasm:build:add",
-      "check": "npm run agent:verify:add-ui",
+      "id": "typescript-app-build-output",
+      "path": "apps/*/dist/",
+      "source": "apps/*/src/",
+      "producer": "tsc -b",
+      "check": "npm run agent:verify:types",
       "tracked": false,
       "writes_source": false
     },
@@ -40,29 +22,11 @@
       "writes_source": false
     },
     {
-      "id": "typescript-package-build-output",
-      "path": "packages/*/dist/",
-      "source": "packages/*/src/",
-      "producer": "tsc -b",
-      "check": "npm run agent:verify:types",
-      "tracked": false,
-      "writes_source": false
-    },
-    {
-      "id": "typescript-app-build-output",
-      "path": "apps/*/dist/",
-      "source": "apps/*/src/",
-      "producer": "tsc -b",
-      "check": "npm run agent:verify:types",
-      "tracked": false,
-      "writes_source": false
-    },
-    {
-      "id": "rust-build-output",
-      "path": "target/",
-      "source": "crates/",
-      "producer": "cargo build",
-      "check": "cargo test -p add-core",
+      "id": "add-wasm-bindings",
+      "path": "apps/add-rpg/src/generated/wasm/add-web-bindings/",
+      "source": "crates/add-web-bindings/",
+      "producer": "npm run wasm:build:add",
+      "check": "npm run agent:verify:add-ui",
       "tracked": false,
       "writes_source": false
     },
@@ -72,6 +36,51 @@
       "source": "agent task, scenario, state, trace, and size commands",
       "producer": "npm run agent:task",
       "check": "npm run agent:report -- --format json",
+      "tracked": false,
+      "writes_source": false
+    },
+    {
+      "id": "add-rust-catalog",
+      "path": "crates/add-core/src/game_data/catalog/*.rs",
+      "source": "packages/add-runtime-client/src/content/*.ts",
+      "producer": "npm run content:build",
+      "check": "npm run content:check",
+      "tracked": true,
+      "writes_source": true
+    },
+    {
+      "id": "add-ink-story",
+      "path": "crates/add-core/src/generated_ink.rs",
+      "source": "packages/add-content/narrative/story/*.ink",
+      "producer": "npm run content:build",
+      "check": "npm run content:check",
+      "tracked": true,
+      "writes_source": true
+    },
+    {
+      "id": "typescript-package-build-output",
+      "path": "packages/*/dist/",
+      "source": "packages/*/src/",
+      "producer": "tsc -b",
+      "check": "npm run agent:verify:types",
+      "tracked": false,
+      "writes_source": false
+    },
+    {
+      "id": "add-content-fixtures",
+      "path": "scenarios/add/fixtures/content/*.json",
+      "source": "packages/add-runtime-client/src/content/*.ts",
+      "producer": "npm run content:fixtures",
+      "check": "npm run content:fixtures:check",
+      "tracked": true,
+      "writes_source": true
+    },
+    {
+      "id": "rust-build-output",
+      "path": "target/",
+      "source": "crates/",
+      "producer": "cargo build",
+      "check": "cargo test -p add-core",
       "tracked": false,
       "writes_source": false
     }

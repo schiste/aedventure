@@ -16,6 +16,39 @@ const { execFileSync } = require("node:child_process")
 
 const ROOT = path.resolve(__dirname, "..")
 const CHECK = process.argv.includes("--check")
+
+// Authored .ink compiles to a generated Rust constant through a host-only
+// crate, so bladeink-compiler never reaches the browser WASM. Same --check
+// contract as the catalogs below: drift is an error, not a silent rebuild.
+function buildInk() {
+  const out = "crates/add-core/src/generated_ink.rs"
+  const sources = fs
+    .readdirSync(path.join(ROOT, "packages/add-content/narrative/story"))
+    .filter((name) => name.endsWith(".ink"))
+    .map((name) => `packages/add-content/narrative/story/${name}`)
+    .sort()
+  const args = [...(CHECK ? ["--check"] : []), out, ...sources]
+  const result = require("node:child_process").spawnSync(
+    resolveCargo(),
+    ["run", "--quiet", "-p", "add-ink-compiler", "--", ...args],
+    { cwd: ROOT, stdio: "inherit" },
+  )
+  if (result.status !== 0) process.exit(result.status ?? 1)
+}
+
+function resolveCargo() {
+  const os = require("node:os")
+  for (const candidate of [
+    process.env.REAL_CARGO,
+    path.join(os.homedir(), ".rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo"),
+    path.join(os.homedir(), ".cargo/bin/cargo"),
+  ]) {
+    if (candidate && fs.existsSync(candidate)) return candidate
+  }
+  return "cargo"
+}
+
+buildInk()
 const PREAMBLE = "use crate::game_data::*;"
 const RUST_EDITION = "2024"
 

@@ -1,0 +1,11 @@
+[package]
+name = "add-ink-compiler"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+# Host-only. This compiles authored .ink into ink JSON at build time so the
+# compiler never ships in the browser WASM; only the runtime does.
+
+[dependencies]
+bladeink-compiler = "2.0.0"

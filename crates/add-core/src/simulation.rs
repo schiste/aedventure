@@ -159,6 +159,9 @@ impl Simulation {
             GameCommand::ChooseStoryOption { beat_id, option_id } => {
                 self.choose_story_option(&beat_id, &option_id)
             }
+            GameCommand::ChooseInkChoice { beat_id, index } => {
+                self.choose_ink_choice(&beat_id, index as usize)
+            }
             GameCommand::CompletePreArrivalRoute => self.complete_pre_arrival_route(),
             GameCommand::SetHeroAssigned { assigned } => self.set_hero_assigned(assigned),
             GameCommand::SetHeroRole { role_id } => self.set_hero_role(&role_id),
@@ -2670,9 +2673,86 @@ impl Simulation {
                     beat_id: beat_id.clone(),
                 });
             }
+            self.enter_ink_beat(&beat_id);
             self.state.narrative.active_beat_id = Some(beat_id);
             return;
         }
+    }
+
+    /// Build the ink runtime from the current save. Constructed on demand
+    /// rather than held on `Simulation`, which derives `Clone` and `Debug` that
+    /// `bladeink::Story` cannot. Beat changes and choices are rare compared to
+    /// ticks, so this stays off the hot path; cache it here if the story grows.
+    fn narrative_story(&self, beat_id: &str) -> Option<crate::narrative::NarrativeStory> {
+        let mut story = crate::narrative::NarrativeStory::new(self.state.rng_seed).ok()?;
+        story.enter_beat(beat_id).ok()?;
+        // Replay a choice already recorded for this beat, so a rebuilt story
+        // stands exactly where the saved run left it.
+        if let Some(made) = self.state.narrative.choice_by_beat.get(beat_id) {
+            let index = story_beat_def(beat_id)?
+                .choices
+                .iter()
+                .position(|choice| choice.id == made.as_str())?;
+            story.choose(beat_id, index).ok()?;
+        }
+        Some(story)
+    }
+
+    /// Render a newly active beat through ink, when it has a knot. Beats
+    /// without one keep rendering from their authored `body`, so adoption is
+    /// beat by beat.
+    fn enter_ink_beat(&mut self, beat_id: &str) {
+        if !crate::narrative::beat_has_knot(beat_id) {
+            self.state.narrative.ink_scene = None;
+            return;
+        }
+        let mut story = match crate::narrative::NarrativeStory::new(self.state.rng_seed) {
+            Ok(story) => story,
+            Err(error) => {
+                self.push_note(format!("The narrative runtime could not start: {error}"));
+                return;
+            }
+        };
+        match story.enter_beat(beat_id) {
+            Ok(scene) => self.state.narrative.ink_scene = Some(scene),
+            Err(error) => {
+                self.state.narrative.ink_scene = None;
+                self.push_note(format!("Scene {beat_id} could not be rendered: {error}"));
+            }
+        }
+    }
+
+    /// Take a presented ink choice. Ink decides which authored choice id was
+    /// taken; the existing catalog path applies its effects, so there is one
+    /// source of truth for what a choice does.
+    fn choose_ink_choice(&mut self, beat_id: &str, index: usize) {
+        let active = self.state.narrative.active_beat_id.clone();
+        if active.as_deref() != Some(beat_id) {
+            self.push_note("Finish the current story beat before making another choice.");
+            self.reject(BlockerKind::Busy);
+            return;
+        }
+        if !crate::narrative::beat_has_knot(beat_id) {
+            self.push_note(format!("{beat_id} is not rendered by ink."));
+            self.reject(BlockerKind::Inaccessible);
+            return;
+        }
+        let Some(mut story) = self.narrative_story(beat_id) else {
+            self.push_note("The narrative runtime could not start for this scene.");
+            self.reject(BlockerKind::MissingRequirement);
+            return;
+        };
+        let (scene, chosen) = match story.choose(beat_id, index) {
+            Ok(result) => result,
+            Err(error) => {
+                self.push_note(format!("That choice is not available: {error}"));
+                self.reject(BlockerKind::Inaccessible);
+                return;
+            }
+        };
+        self.state.narrative.ink_scene = Some(scene);
+        // Effects come from the authored catalog, never from ink.
+        self.choose_story_option(beat_id, &chosen);
     }
 
     /// The most salient storylet that can be active now: highest `priority`, then

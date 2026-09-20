@@ -29,6 +29,7 @@ result.
 | Output | Source of truth | Producer | No-drift or focused check | Tracked? |
 | --- | --- | --- | --- | --- |
 | `crates/add-core/src/game_data/catalog/*.rs` | `packages/add-content/src/content/*.ts` | `npm run content:build` | `npm run content:check` | Yes |
+| `crates/add-core/src/generated_ink.rs` | `packages/add-content/narrative/story/*.ink` | `npm run content:build` | `npm run content:check` | Yes |
 | `scenarios/add/fixtures/content/*.json` | ADD authored content and registry | `npm run content:fixtures` | `npm run content:fixtures:check` | Yes |
 | `apps/add-rpg/src/generated/wasm/add-web-bindings/` | `crates/add-web-bindings/` | `npm run wasm:build:add` | `npm run agent:verify:add-ui` | No; ignored build output |
 | `apps/add-rpg/dist-app/` | `apps/add-rpg/src/` and generated WASM | `npm --workspace @aedventure/add-rpg run build:browser` | `npm run qa:add-rpg:size:built` | No; ignored build output |
