@@ -136,6 +136,9 @@ verification; see [AGENTS.md](AGENTS.md).
 - [ADD Browser Runtime Seams](docs/add-browser-runtime-seams.md)
 - [ADD Generated Files and Write-Capable Checks](docs/add-generated-files.md)
 - [ADD Content Authoring and Codegen](docs/add-content-authoring.md)
+- [Lore, Engine, and Content: The Three Bricks](docs/lore-engine-content-bricks.md)
+- [Narrative System Specification](docs/narrative-system-specification.md)
+- [ADD Narrative System Implementation Plan](docs/add-narrative-system-plan.md)
 - [Story and Content Engine Contract](docs/story-content-engine.md)
 - [Domain-Neutral Engine Boundary](docs/engine-boundary.md)
 - [Global Product and Technical Specification](docs/customer-virtual-office-platform-spec.md)
@@ -151,13 +154,22 @@ The entries below the ADD lane are office/platform or legacy/reference scope.
 Their use of words such as “future” describes that separate lane and never the
 status of `apps/add-rpg`.
 
+The ADD lane is built from three bricks - lore, engine, and content - whose
+ownership and dependency direction are fixed by the
+[three-brick contract](docs/lore-engine-content-bricks.md).
+
+- `lore/` - canonical world bible: history, factions, characters, places, and
+  shared canon data. Owns what is true; owns nothing that runs.
 - `apps/add-rpg/` - canonical ADD browser app and presentation shell.
 - `crates/add-core/` - authoritative ADD simulation, saves, migrations, and
   gameplay rules.
 - `crates/add-web-bindings/` - browser-facing Rust/WASM bindings.
+- `crates/add-scenario/`, `crates/add-scenario-runner/` - headless scenario,
+  replay, and runtime-inspection harness.
 - `packages/add-domain/` - authored ADD content and snapshot/map/UI adapters.
 - `packages/game-*` - reusable topology, world, renderer, content, input, and
   protocol primitives.
+- `scenarios/` - committed deterministic scenarios, saves, and fixtures.
 - `legacy/add/` - imported ADD source/history; not a live application.
 - `legacy/skyoffice-original/` - SkyOffice fork imported with upstream Git
   history preserved as a subtree. This is reference code, not the target app.

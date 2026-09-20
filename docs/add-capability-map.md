@@ -22,6 +22,9 @@ Run `npm run docs:check` after changing this map or the routing documents.
 | Agent-readable state, available commands, blocker reasons, or stable report IDs | ADD runtime inspection contract | `packages/add-domain/src/runtime/inspection.ts` and `crates/add-scenario/src/inspection.rs` | `npm --workspace @aedventure/add-domain test` and `cargo test -p add-scenario` |
 | Player-facing panels, input dispatch, map presentation, save plumbing, or browser lifecycle | Live ADD app | `apps/add-rpg/src/` | `npm run agent:verify:add-ui` |
 | Browser fixture, semantic selector/action ID, screenshot evidence, or renderer-affordance check | ADD player-facing QA contract | `scenarios/add/browser-fixtures.json`, `scripts/add-rpg-phase5.cjs`, and `apps/add-rpg/src/browser/qa-contract.ts` | `npm run qa:add-rpg:phase5:built` |
+| A world fact, character history, place, faction, name, or canon status | Lore brick | `lore/` and the [three-brick contract](lore-engine-content-bricks.md) | `npm run lore:check` |
+| Narrative standing, acts, knowledge, rumor, sifting, or storylet casting | Rust simulation | `crates/add-core/src/narrative/` and the [narrative plan](add-narrative-system-plan.md) | `cargo test -p add-core` (planned) |
+| A narrative entity, act, relationship state, sifting pattern, storylet sidecar, or `.ink` scene | Authored ADD content | `packages/add-domain/src/content/narrative/` and `packages/add-domain/narrative/story/` | `npm run content:check` (planned) |
 | Neutral square/hex topology, world, input, protocol, or renderer behavior | Shared engine | `packages/game-*` and `apps/engine-sandbox/` | `npm run agent:verify:types` then the relevant engine smoke |
 | Office auth, rooms, media, tenant maps, or server policy | Office/platform lane | `apps/web/`, `apps/api/`, `apps/world-server/`, `apps/media-gateway/` | `npm run smoke:office` |
 | Historical ADD or SkyOffice comparison | Legacy reference | `legacy/add/` or `legacy/skyoffice-original/` | `npm run check:legacy` when SkyOffice is involved |
@@ -172,7 +175,16 @@ These are gaps, not reasons to create a second ADD app:
   long-lived device/browser baselines still need to be captured and reviewed
   as the live app grows;
 - larger strategy/RPG systems and neutral engine extraction remain demand-led
-  future work, with `apps/add-rpg` staying the first consumer.
+  future work, with `apps/add-rpg` staying the first consumer;
+- the lore brick has no machine-checked link to authored content: no content
+  definition names a lore subject and no lore page names a content ID, so the
+  `loreRef` field and `lore:refs:check` described in the
+  [three-brick contract](lore-engine-content-bricks.md) are still planned;
+- the narrative system (standing, acts, values, knowledge, rumor, sifting,
+  storylet casting, ink) is specified and planned but not implemented; there is
+  no persistent event log and no named-NPC entity graph today. See the
+  [narrative plan](add-narrative-system-plan.md) for the milestone order and
+  its two runtime prerequisites.
 
 The factual implemented-versus-not-yet inventory remains
 [ADD Systems Parity Audit](add-systems-parity-audit.md). This map tells an

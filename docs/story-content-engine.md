@@ -16,6 +16,16 @@ This contract is consumed by the live `apps/add-rpg` game. It describes how to
 extend the existing product safely; it is not a proposal for a separate story
 demo or a replacement for the current playable loop.
 
+The narrative system described in the
+[Narrative System Specification](narrative-system-specification.md) is the
+deep-consequence extension of this same content graph: acts, standing, and
+knowledge are further projections of authored content, evaluated by the same
+Rust authority. It does not introduce a second story system. Its ownership
+split and milestone order are in the
+[ADD Narrative System Implementation Plan](add-narrative-system-plan.md), and
+the lore/engine/content boundary it sits on is fixed by the
+[three-brick contract](lore-engine-content-bricks.md).
+
 ## Where does this change belong?
 
 | Change | Owner | First verification |

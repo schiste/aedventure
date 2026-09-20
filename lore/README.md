@@ -2,6 +2,12 @@
 
 > Canonical lore for Aedventure. This directory is a linked wiki of focused Markdown subjects, not a public player manual.
 
+Lore is one of the game's three bricks. It owns what is true in the world and
+owns nothing that runs: no balance numbers, no IDs the engine resolves, no
+conditions and no effects. Authored content cites lore; lore never cites
+content. See the [three-brick contract](../docs/lore-engine-content-bricks.md)
+for the boundary and its verification commands.
+
 ## Navigation
 
 - [The Truth](the-truth.md) : Internal canon and hidden causal structure.
