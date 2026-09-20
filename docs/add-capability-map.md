@@ -23,6 +23,7 @@ Run `npm run docs:check` after changing this map or the routing documents.
 | Player-facing panels, input dispatch, map presentation, save plumbing, or browser lifecycle | Live ADD app | `apps/add-rpg/src/` | `npm run agent:verify:add-ui` |
 | Browser fixture, semantic selector/action ID, screenshot evidence, or renderer-affordance check | ADD player-facing QA contract | `scenarios/add/browser-fixtures.json`, `scripts/add-rpg-phase5.cjs`, and `apps/add-rpg/src/browser/qa-contract.ts` | `npm run qa:add-rpg:phase5:built` |
 | A world fact, character history, place, faction, name, or canon status | Lore brick | `lore/` and the [three-brick contract](lore-engine-content-bricks.md) | `npm run lore:check` |
+| The lore link tying a content ID to the canon subject it implements | Content brick | `packages/add-domain/src/content/lore-refs.ts` | `npm run lore:refs:check` |
 | Narrative standing, acts, knowledge, rumor, sifting, or storylet casting | Rust simulation | `crates/add-core/src/narrative/` and the [narrative plan](add-narrative-system-plan.md) | `cargo test -p add-core` (planned) |
 | A narrative entity, act, relationship state, sifting pattern, storylet sidecar, or `.ink` scene | Authored ADD content | `packages/add-domain/src/content/narrative/` and `packages/add-domain/narrative/story/` | `npm run content:check` (planned) |
 | Neutral square/hex topology, world, input, protocol, or renderer behavior | Shared engine | `packages/game-*` and `apps/engine-sandbox/` | `npm run agent:verify:types` then the relevant engine smoke |
@@ -37,6 +38,9 @@ the Rust runtime owns mutation and deterministic outcomes.
 
 | Capability | Command | What it proves |
 | --- | --- | --- |
+| Lore/content link integrity | `npm run lore:refs:check` | Every lore link resolves to a page and anchor; unlinked content and unimplemented lore subjects are reported |
+| Lore/content link report | `npm run lore:refs` or `node scripts/lore-refs.cjs --json` | The `lore_refs_v1` report: linked IDs, coverage gaps, and the unimplemented-lore backlog |
+| Brick dependency direction | `npm --workspace @aedventure/add-domain test` | The engine cites no lore, and content cites lore only from `content/lore-refs.ts` |
 | Documentation contract | `npm run docs:check` | Required maps, task brief fields, routing sections, commands, and office scope notes exist |
 | Changed-path agent loop | `npm run agent:verify` | Chooses the cheapest focused checks from changed paths and writes an actionable result artifact |
 | Machine-readable verification report | `npm run agent:report -- --format json` | Writes/emits the focused result contract with commit, duration, checks, artifacts, and failure hints |
@@ -178,10 +182,11 @@ These are gaps, not reasons to create a second ADD app:
   as the live app grows;
 - larger strategy/RPG systems and neutral engine extraction remain demand-led
   future work, with `apps/add-rpg` staying the first consumer;
-- the lore brick has no machine-checked link to authored content: no content
-  definition names a lore subject and no lore page names a content ID, so the
-  `loreRef` field and `lore:refs:check` described in the
-  [three-brick contract](lore-engine-content-bricks.md) are still planned;
+- the lore and content bricks are linked and machine-checked in one direction
+  only: `lore:refs:check` resolves every link and reports both coverage gaps,
+  but the generated lore-side back-index is not built, 5 content IDs are linked
+  against 38 unlinked in lore-linked families, and 344 lore subjects have no
+  implementing content;
 - the narrative system (standing, acts, values, knowledge, rumor, sifting,
   storylet casting, ink) is specified and planned but not implemented; there is
   no persistent event log and no named-NPC entity graph today. See the

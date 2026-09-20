@@ -25,7 +25,7 @@ decision below follows from it.
 | ink runtime binding, external functions, tag parsing | `crates/add-core/src/narrative/story.rs` | `cargo test -p add-core` |
 | Entities, acts, values, relationship states, patterns, storylet sidecars, reactions, tuning | `packages/add-domain/src/content/narrative/` | `npm run content:check` |
 | `.ink` prose, choices, scene flow | `packages/add-domain/narrative/story/` | `npm run content:check` |
-| Which canon subject a narrative entity implements | `loreRef` on the content definition | `npm run lore:refs:check` (planned) |
+| Which canon subject a narrative entity implements | `packages/add-domain/src/content/lore-refs.ts` | `npm run lore:refs:check` |
 | Standing explanation, storylet presentation, dialogue rendering | `packages/add-domain/src/adapters/` | `npm run agent:verify:add-ui` |
 | Dialogue panel, choice list, speaker and mood presentation | `apps/add-rpg/src/browser/` | `npm run smoke:add-rpg:built` |
 | Narrative scenarios, fuzz corpora, replay fixtures | `scenarios/add/narrative/` | `npm run scenario:add -- scenarios/add/narrative/<id>.json` |
@@ -528,7 +528,7 @@ driven through `SimulationClient`. No channel layer is needed.
 | One narrative ID | `npm run content:explain -- <id>` |
 | Headless narrative scenario | `npm run scenario:add -- scenarios/add/narrative/<id>.json` |
 | Agent-readable narrative state | `npm run agent:state -- --save <path>` |
-| Lore-to-content links | `npm run lore:refs:check` (planned) |
+| Lore-to-content links | `npm run lore:refs:check` |
 | Dialogue in the real app | `npm run smoke:add-rpg:built` |
 | Coverage and reachability | `narr fuzz -n 10000`, `narr reach` (planned, phase gate only) |
 
@@ -549,9 +549,9 @@ driven through `SimulationClient`. No channel layer is needed.
 
 - The N0 spike has not run, so the ink layer's feasibility and its WASM cost
   are both unmeasured. Every milestone after N1 is conditional on it.
-- The entity graph has no content yet, and the lore it should bind to is
-  written as prose with no machine-readable subject ids. The brick contract
-  proposes per-page front matter; that decision is not made.
+- The entity graph has no content yet. The lore it binds to is addressed by
+  path rather than by a front-matter id; that decision is now made and recorded
+  in the brick contract.
 - The specification's calibration targets (§5A) assume content to fuzz. Until
   N3 produces some, the tier and modifier tables are unvalidated defaults.
 - Offline catch-up over a long gap must produce the same rumor spread as

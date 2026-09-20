@@ -76,7 +76,8 @@ Content owns:
 - Player-facing copy and, once the narrative system lands, `.ink` prose.
 - Derived presentation and explanations in `packages/add-domain/src/adapters/`.
 - Committed scenarios and fixtures in `scenarios/`.
-- The `lore_ref` back-links that tie a content ID to the canon it implements.
+- The lore links in `content/lore-refs.ts` that tie a content ID to the canon
+  it implements.
 
 ## Dependency direction
 
@@ -93,9 +94,9 @@ flowchart LR
 
 Read it as four rules:
 
-1. **Content may cite lore.** A content definition carries a `lore_ref` naming
-   the canon subject it implements. This is a string, resolved by tooling, not
-   an import.
+1. **Content may cite lore.** `packages/add-domain/src/content/lore-refs.ts`
+   maps a content ID to the canon subject it implements. This is a string,
+   resolved by tooling, not an import.
 2. **Content compiles into the engine.** Authored TypeScript is code-generated
    into Rust catalogs by `scripts/build-add-content.cjs`. The engine never
    imports content; content is *placed into* it by the generator.
@@ -104,10 +105,11 @@ Read it as four rules:
    If a rule needs to name a specific entity to work, the rule is in the wrong
    brick.
 4. **Lore never authors a link to content.** The navigation from a lore page to
-   its implementation is *generated* from the content brick's `lore_ref` fields
+   its implementation is *generated* from the content brick's link registry
    into a `<!-- lore:generated -->` block, exactly like `lore/data/canon.json`
    is transcluded today. This keeps the authored dependency one-way while
-   giving humans both directions of navigation.
+   giving humans both directions of navigation. The registry and its checker
+   exist; the generated back-index block does not yet.
 
 The back-edge in the diagram is dotted because it is generated output, never
 authored input.
@@ -126,7 +128,7 @@ authored input.
 | Player-facing copy, dialogue, `.ink` prose | Content | `packages/add-domain/` | `npm run content:check` |
 | Snapshot explanation, available-action projection, blocker copy | Content | `packages/add-domain/src/adapters/` | `npm run agent:verify:add-ui` |
 | A committed scenario, fixture, or replay | Content | `scenarios/` | `npm run scenario:add -- scenarios/add/<id>.json` |
-| The `lore_ref` linking a content ID to its canon subject | Content | `packages/add-domain/src/content/` | `npm run lore:refs:check` (planned) |
+| The lore link tying a content ID to its canon subject | Content | `packages/add-domain/src/content/lore-refs.ts` | `npm run lore:refs:check` |
 
 When a change seems to belong in two bricks, it is usually one engine change
 plus one content change, and they should be separable. If they are not, the
@@ -144,7 +146,7 @@ reorganization.
 | Engine is free of authored material | Yes | Every `crates/add-core/src/game_data/catalog/*.rs` is `@generated`; hand-written rules live in `simulation.rs` and `game_data.rs` |
 | Content compiles into the engine | Yes | `scripts/build-add-content.cjs` with a `--check` drift mode and a golden catalog snapshot |
 | Content does not reimplement engine rules | Mostly | `packages/add-domain/test/architecture.test.js` enforces the renderer boundary; availability evaluation is still a TypeScript projection, self-labelled `typescript_projection_pending_rust_explain` |
-| Lore links to content | **No** | No content definition names a lore subject; no lore page names a content ID. The two bricks are unconnected |
+| Lore links to content | Yes, one-way | `content/lore-refs.ts` cites lore by path; `npm run lore:refs:check` resolves every link and reports both coverage gaps |
 | Boundary is machine-checked | **Partial** | Renderer direction and content drift are checked; brick direction is not |
 
 So the work is not a migration. It is: add the missing lore-to-content link,
@@ -159,38 +161,70 @@ the Rust catalogs and fails if the checked-in output drifted from the authored
 TypeScript. `cargo test -p add-core` additionally holds a golden snapshot of
 the whole catalog, so a data change is always visible in review.
 
-**2. Import direction (exists, needs extending).**
-`packages/add-domain/test/architecture.test.js` already asserts that the domain
-package does not depend on the renderer. Extend it with two assertions:
+**2. Import direction (exists).**
+`packages/add-domain/test/architecture.test.js` asserts that the domain package
+does not depend on the renderer, and additionally that:
 
-- no file under `crates/` or `packages/game-*` reads from `lore/`;
-- no file under `packages/add-domain/src/` imports lore prose (only
-  `lore/data/*.json`, and only through the registry).
+- no file under `crates/add-*/src` or `packages/game-*/src` cites `lore/`;
+- no file under `packages/add-domain/src/` cites `lore/` except
+  `content/lore-refs.ts`.
 
-**3. Lore reference integrity (new).** A `lore:refs:check` command that:
+Both are negative-tested: planting a lore path in an engine source file fails
+the suite with the offending path named.
 
-- resolves every `lore_ref` in the content catalogs to a lore page and anchor,
-  and fails on a dangling reference;
-- reports content IDs with no `lore_ref`, so the unbound surface is visible;
-- reports lore subjects that no content implements, which is a genuinely useful
-  backlog — it is the list of things the world knows about that the game cannot
-  yet show;
-- regenerates the `<!-- lore:generated -->` back-index blocks, with a `--check`
-  mode for CI, mirroring `build-add-content.cjs`.
+**3. Lore reference integrity (exists).** `npm run lore:refs:check`:
 
-`lore_ref` is a plain string on a content definition, for example:
+- resolves every reference to a lore page and, when one is given, to a heading
+  anchor on that page, and **fails** on a dangling path, an unknown anchor, a
+  reference to an unknown content ID, a reference outside `lore/`, or a
+  duplicate;
+- **reports** content IDs in a lore-linked family with no reference, so the
+  unbound surface is visible;
+- **reports** lore subjects no content implements — the list of things the
+  world knows about that the game cannot yet show. This backlog is large on
+  purpose: 344 subjects today.
+
+Correctness is fatal; coverage is informational. Demanding canon for every ID
+would manufacture busywork, so `LORE_LINKED_FAMILIES` narrows coverage
+reporting to the families the world has an opinion about: area, creature,
+dungeon, item, resource, station, story beat, structure, tile.
+
+### How a link is written
+
+Links live in one sidecar registry,
+`packages/add-domain/src/content/lore-refs.ts`, keyed by content ID:
 
 ```ts
-{
-  id: "faction.ashfield_keepers",
-  label: "The Keepers",
-  loreRef: "lore/factions/ashfield_keepers.md",
-  // ...
-}
+export const LORE_REFS: readonly LoreRef[] = [
+  {
+    contentId: "structure.base",
+    loreRef: "lore/locations/touraine/studio_echo.md",
+    note: "Studio Echo is the Hero's Base settlement.",
+  },
+  {
+    contentId: "structure.crystal_circle",
+    loreRef: "lore/locations/touraine/studio_echo.md#the-crystal",
+  },
+]
 ```
 
-The generator interns it away, so it costs nothing at runtime. It is authoring
-metadata and inspection material, not gameplay state.
+Two decisions are recorded here, both deliberate.
+
+**A sidecar, not a field on each definition.** The engine must run without
+knowing lore exists, so a lore link must never reach generated Rust. Keeping
+links out of the content definitions makes that structural rather than a rule
+the generator has to remember, gives one place to audit the whole edge, and
+needs no change to the content types or the code generator. When the narrative
+system adds entities — where a lore subject *is* the thing being defined — an
+inline `loreRef` becomes natural, and the checker can then read both.
+
+**A path, not a front-matter id.** Lore pages carry no front matter, and adding
+it to 388 files to invent a second identifier would be churn for no gain: the
+path is already unique and stable, and `npm run lore:check` already validates
+1,275 markdown links, so lore renames are an existing, maintained discipline. A
+reference is therefore `lore/<path>.md` with an optional `#heading-anchor`,
+slugged GitHub-style. Front matter stays available if pages ever need to move
+freely.
 
 ## How the narrative system uses the bricks
 
@@ -234,18 +268,22 @@ argued in the plan's "One content pipeline, not two" section.
 | Content | `npm run content:explain -- <id>` | A content ID exposes its definition, source, references and users |
 | Content | `npm run scenario:add -- scenarios/add/<id>.json` | Authored content behaves deterministically against the engine |
 | Boundary | `npm --workspace @aedventure/add-domain test` | Import direction assertions hold |
-| Boundary | `npm run lore:refs:check` (planned) | Every `lore_ref` resolves; unbound lore and content are reported |
+| Boundary | `npm run lore:refs:check` | Every lore link resolves; unbound content and unimplemented lore are reported |
 
 ## Known gaps
 
-- `lore_ref` and `lore:refs:check` do not exist yet. Until they do, the lore
-  and content bricks are connected only by the judgement of whoever authored
-  the content.
-- The import-direction assertions cover the renderer boundary only.
+- Coverage is thin on purpose to start: 5 content IDs are linked and 38 remain
+  unlinked in lore-linked families. The links that exist are ones that are
+  actually true; the rest are reported rather than invented.
+- The generated `<!-- lore:generated -->` back-index does not exist yet, so
+  navigation runs content-to-lore only. `lore:refs:check` already computes the
+  reverse mapping it would need.
+- 344 lore subjects have no implementing content. That number is the backlog,
+  not a defect, but nothing yet distinguishes "not built yet" from "never
+  intended to be game content".
 - Availability and blocker evaluation is still projected in TypeScript rather
   than answered by the engine, so one rule currently has two implementations.
-  This is tracked in the narrative plan as a prerequisite, because the
-  narrative system would otherwise inherit and enlarge it.
-- `lore/` has no machine-readable subject index, so `lore:refs:check` must
-  either parse headings or require a small front-matter id per page. The plan
-  proposes front matter.
+  This is tracked in the narrative plan, because the narrative system would
+  otherwise inherit and enlarge it.
+- The lore-path assertions are textual. They catch a path mention in engine or
+  content source; they would not catch lore loaded through a computed path.

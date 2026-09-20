@@ -5,8 +5,11 @@
 Lore is one of the game's three bricks. It owns what is true in the world and
 owns nothing that runs: no balance numbers, no IDs the engine resolves, no
 conditions and no effects. Authored content cites lore; lore never cites
-content. See the [three-brick contract](../docs/lore-engine-content-bricks.md)
-for the boundary and its verification commands.
+content: the link lives in `packages/add-domain/src/content/lore-refs.ts` and
+is verified by `npm run lore:refs:check`, which also lists the lore subjects
+the game cannot yet show. See the
+[three-brick contract](../docs/lore-engine-content-bricks.md) for the
+boundary and its verification commands.
 
 ## Navigation
 

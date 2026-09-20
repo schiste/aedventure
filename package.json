@@ -26,6 +26,8 @@
     "docs:check": "node scripts/check-add-capability-map.cjs",
     "generated:check": "node scripts/check-generated-files.cjs",
     "lore:check": "python3 tools/lore_check.py",
+    "lore:refs": "npm --workspace @aedventure/add-domain run build && node scripts/lore-refs.cjs",
+    "lore:refs:check": "npm --workspace @aedventure/add-domain run build && node scripts/lore-refs.cjs --check",
     "lore:render": "python3 tools/lore_render.py --write",
     "test:packages": "npm run test --workspaces --if-present",
     "verify": "npm run wasm:build:add && tsc -b && npm run content:check && cargo test -p add-core && npm run test:packages",
