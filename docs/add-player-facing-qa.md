@@ -14,7 +14,7 @@ screenshot evidence without moving gameplay authority into the browser.
 | Change | Owning layer | First check |
 | --- | --- | --- |
 | New gameplay result, save field, or availability rule | `crates/add-core/` | `cargo test -p add-core` |
-| New content or story ID | `packages/add-domain/src/content/` | `npm run content:check` |
+| New content or story ID | `packages/add-content/src/content/` | `npm run content:check` |
 | New state/action explanation | `packages/add-domain/src/runtime/` or `src/adapters/` | `npm --workspace @aedventure/add-domain test` |
 | New player-facing selector, action hook, or screenshot fixture | `apps/add-rpg/src/browser/` and `scenarios/add/browser-fixtures.json` | `npm run qa:add-rpg:phase5:built` |
 | Neutral renderer behavior | `packages/game-*` plus a real consumer | `npm run qa:renderer:built` |

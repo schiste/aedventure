@@ -7,28 +7,20 @@
   },
   "references": [
     {
-      "path": "../add-content"
-    },
-    {
       "path": "../add-protocol"
     },
     {
-      "path": "../game-topology"
-    },
-    {
-      "path": "../game-visibility"
-    },
-    {
-      "path": "../game-world"
+      "path": "../game-content"
     },
     {
       "path": "../game-dungeon"
     },
     {
-      "path": "../game-content"
+      "path": "../game-topology"
     },
+    {
+      "path": "../game-world"
+    }
   ],
-  "include": [
-    "src/**/*.ts"
-  ]
+  "include": ["src"]
 }

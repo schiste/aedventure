@@ -34,7 +34,7 @@ import {
   ROLE_SCAVENGE,
   ROLE_WATER,
 } from "./add-ids"
-import { BALANCE } from "../content/balance"
+import { BALANCE } from "@aedventure/add-content"
 import {
   selectAddConstructionSummaries,
   selectAddResourceSummaries,

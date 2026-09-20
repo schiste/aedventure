@@ -1,5 +1,5 @@
 import type { SimulationSnapshot } from "@aedventure/add-protocol"
-import { PERKS } from "../content/perks"
+import { PERKS } from "@aedventure/add-content"
 
 // Presents perk progression for the UI: which perks are acquired, which can be
 // learned now, and why locked. Perk points = total Hero level - acquired count

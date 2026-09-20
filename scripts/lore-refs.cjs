@@ -31,10 +31,10 @@ const LORE_DIR = path.join(ROOT, "lore")
 const NON_SUBJECT = /^(README|index|.*_TEMPLATE.*|pages-to-create|Lore_todo|progress_report)$/i
 
 function loadLoreRefs() {
-  const distPath = path.join(ROOT, "packages/add-domain/dist/content/lore-refs.js")
+  const distPath = path.join(ROOT, "packages/add-content/dist/content/lore-refs.js")
   if (!fs.existsSync(distPath)) {
     throw new Error(
-      "ADD content dist files are missing. Run `npm --workspace @aedventure/add-domain run build` first.",
+      "ADD content dist files are missing. Run `npm --workspace @aedventure/add-content run build` first.",
     )
   }
   return require(distPath)

@@ -322,7 +322,7 @@ function classifyChangedPaths(paths) {
     addCheck(plan, {
       id: "add-content-check",
       command: ["npm", "run", "content:check"],
-      sourceBoundary: "packages/add-domain/src/content/",
+      sourceBoundary: "packages/add-content/src/content/",
       reason: "Validate authored IDs, references, and generated Rust catalog output.",
     })
   }

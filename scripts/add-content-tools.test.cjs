@@ -52,7 +52,7 @@ assert.ok(Array.isArray(reverse.usedBy))
 
 const explanation = JSON.parse(printExplainGeneric(content, "objective.restore_studio", "json"))
 assert.equal(explanation.family, "objective")
-assert.equal(explanation.sourcePath, "packages/add-domain/src/content/objectives.ts")
+assert.equal(explanation.sourcePath, "packages/add-content/src/content/objectives.ts")
 assert.ok(explanation.verification.includes("npm run content:check"))
 
 const stone = JSON.parse(printExplainGeneric(content, "resource.stone", "json"))

@@ -24,7 +24,7 @@ This is a boundary audit only. No code movement is part of this phase.
 - Put ADD rules, saves, progression, combat, and simulation state in
   `crates/add-core/`.
 - Put ADD authored IDs and content graph changes in
-  `packages/add-domain/src/content/`.
+  `packages/add-content/src/content/`.
 - Put reusable topology, world, input, or renderer contracts in
   `packages/game-*` only when a current ADD or office consumer exercises them.
 - Put office room, tenant, media, auth, and collaboration behavior in the

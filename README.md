@@ -53,7 +53,7 @@ scaffolding.
 For gameplay work, begin with the live ADD path:
 
 1. Put authoritative rules and state transitions in `crates/add-core/`.
-2. Author content in `packages/add-domain/src/content/` and run the content
+2. Author content in `packages/add-content/src/content/` and run the content
    validation/code-generation path documented in
    [ADD Content Authoring and Codegen](docs/add-content-authoring.md).
 3. Put player-facing presentation and command dispatch in `apps/add-rpg/`.
@@ -79,7 +79,7 @@ crosses a boundary. The short routing rule is:
 | If the change affects... | Put it in... | First check |
 | --- | --- | --- |
 | Gameplay rules, state, progression, combat, or saves | `crates/add-core/` | `cargo test -p add-core` |
-| Authored IDs, story, objectives, recipes, creatures, items, perks, or balance | `packages/add-domain/src/content/` | `npm run content:check` |
+| Authored IDs, story, objectives, recipes, creatures, items, perks, or balance | `packages/add-content/src/content/` | `npm run content:check` |
 | Snapshot projections, available actions, or command mapping | `packages/add-domain/src/adapters/` | `npm run agent:verify:add-ui` |
 | Agent-readable runtime state, action availability, blockers, or stable report IDs | `packages/add-domain/src/runtime/` plus `crates/add-scenario/src/inspection.rs` | `npm --workspace @aedventure/add-domain test` and `cargo test -p add-scenario` |
 | Player-facing ADD UI, input, map presentation, or browser lifecycle | `apps/add-rpg/` | `npm run agent:verify:add-ui` |

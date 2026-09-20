@@ -60,7 +60,7 @@ map mode (`overworld_hex`, `base_square`, or another registered mode).
 | Headless report, replay output, checkpoint IDs, or report assertions | `crates/add-scenario/` | `cargo test -p add-scenario` |
 | Snapshot-to-report projection, labels, or browser command explanations | `packages/add-domain/src/runtime/` and `packages/add-domain/src/adapters/` | `npm --workspace @aedventure/add-domain test` |
 | Browser exposure or runtime lifecycle diagnostics | `apps/add-rpg/src/browser/` | `npm run smoke:add-rpg:built` |
-| Content/catalog identity | `packages/add-domain/src/content/` and generated Rust catalog | `npm run content:check` |
+| Content/catalog identity | `packages/add-content/src/content/` and generated Rust catalog | `npm run content:check` |
 
 When a change crosses this boundary, update the authoritative Rust state
 first, then the domain projection, then the browser renderer/accessor. Do not

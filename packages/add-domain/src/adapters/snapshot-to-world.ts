@@ -31,7 +31,7 @@ import {
   type AddVisibilitySummary,
   type AddKnownTileFacts,
 } from "./visibility-selectors"
-import { resolveAddDungeon } from "../dungeons/registry"
+import { resolveAddDungeon } from "@aedventure/add-content"
 
 export interface AddSnapshotWorldAdapterOptions {
   readonly worldId?: string

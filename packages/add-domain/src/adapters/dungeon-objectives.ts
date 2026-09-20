@@ -2,7 +2,7 @@ import type { AddMapMode } from "./map-modes"
 import {
   addDungeonByMapId,
   SURVIVOR_CAVE_DUNGEON_MAP_ID,
-} from "../dungeons/registry"
+} from "@aedventure/add-content"
 
 export type AddDungeonObjectiveStepStatus = "active" | "next" | "complete"
 

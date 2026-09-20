@@ -3,7 +3,7 @@ import type {
   AddAvailableCommandsState,
 } from "../adapters/available-commands-selectors"
 import type { AddDomainCommand } from "../adapters/command-mapping"
-import { ADD_CONTENT_VALIDATION_VERSION } from "../content/content-validation"
+import { ADD_CONTENT_VALIDATION_VERSION } from "@aedventure/add-content"
 import type { AddUiState } from "../adapters/ui-selectors"
 import type { CatalogSnapshot, SimulationSnapshot } from "@aedventure/add-protocol"
 

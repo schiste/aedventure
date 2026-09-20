@@ -30,6 +30,7 @@ ln -sfn "../../packages/game-topology" "$ROOT_DIR/node_modules/@aedventure/game-
 ln -sfn "../../packages/game-visibility" "$ROOT_DIR/node_modules/@aedventure/game-visibility"
 ln -sfn "../../packages/game-world" "$ROOT_DIR/node_modules/@aedventure/game-world"
 ln -sfn "../../packages/add-protocol" "$ROOT_DIR/node_modules/@aedventure/add-protocol"
+ln -sfn "../../packages/add-content" "$ROOT_DIR/node_modules/@aedventure/add-content"
 ln -sfn "../../packages/add-domain" "$ROOT_DIR/node_modules/@aedventure/add-domain"
 ln -sfn "../../packages/map-engine" "$ROOT_DIR/node_modules/@aedventure/map-engine"
 ln -sfn "../../packages/game-assets" "$ROOT_DIR/node_modules/@aedventure/game-assets"

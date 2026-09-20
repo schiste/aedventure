@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Content pipeline: codegen Rust catalog `const` arrays from the authored TS
-// content modules (the single source of truth in packages/add-domain/src/content).
+// content modules (the single source of truth in packages/add-content/src/content).
 // Mirrors scripts/build-internal-office-atlas.cjs: a deterministic generator with
 // a `--check` mode (used by `content:check`) that fails if the checked-in Rust has
 // drifted. Data equivalence across a migration is guarded separately by the Rust
@@ -39,7 +39,7 @@ execFileSync(path.join(ROOT, "node_modules", ".bin", "tsc"), ["-b", "packages/ad
 
 const { toRustConst, toRustStatic } = require(path.join(ROOT, "packages/game-content/dist/index.js"))
 const { validateAddContent } = require(path.join(__dirname, "add-content-validator.cjs"))
-const content = (name) => require(path.join(ROOT, "packages/add-domain/dist/content", `${name}.js`))
+const content = (name) => require(path.join(ROOT, "packages/add-content/dist/content", `${name}.js`))
 const resources = content("resources")
 const roles = content("roles")
 const flags = content("flags")
@@ -61,8 +61,8 @@ const objectives = content("objectives")
 const contentVersion = content("content-version")
 const encounterTables = content("encounter-tables")
 const lootTables = content("loot-tables")
-const dungeons = require(path.join(ROOT, "packages/add-domain/dist/dungeons/registry.js"))
-const areas = require(path.join(ROOT, "packages/add-domain/dist/areas/registry.js"))
+const dungeons = require(path.join(ROOT, "packages/add-content/dist/dungeons/registry.js"))
+const areas = require(path.join(ROOT, "packages/add-content/dist/areas/registry.js"))
 
 try {
   validateAddContent({
@@ -359,7 +359,7 @@ const STORY_PROGRESSION_FIELD = {
 // each maps authored TS data → a Rust `const` array via a shape descriptor.
 const FILES = [
   {
-    sourceModule: "packages/add-domain/src/content/resources.ts",
+    sourceModule: "packages/add-content/src/content/resources.ts",
     rustPath: "crates/add-core/src/game_data/catalog/resources.rs",
     consts: [
       {
@@ -382,7 +382,7 @@ const FILES = [
     ],
   },
   {
-    sourceModule: "packages/add-domain/src/content/roles.ts",
+    sourceModule: "packages/add-content/src/content/roles.ts",
     rustPath: "crates/add-core/src/game_data/catalog/roles.rs",
     consts: [
       {
@@ -407,7 +407,7 @@ const FILES = [
     ],
   },
   {
-    sourceModule: "packages/add-domain/src/content/flags.ts",
+    sourceModule: "packages/add-content/src/content/flags.ts",
     rustPath: "crates/add-core/src/game_data/catalog/flags.rs",
     consts: [
       {
@@ -426,7 +426,7 @@ const FILES = [
     ],
   },
   {
-    sourceModule: "packages/add-domain/src/content/{flora,structures,tiles}.ts",
+    sourceModule: "packages/add-content/src/content/{flora,structures,tiles}.ts",
     rustPath: "crates/add-core/src/game_data/catalog/tiles.rs",
     consts: [
       {
@@ -485,7 +485,7 @@ const FILES = [
     ],
   },
   {
-    sourceModule: "packages/add-domain/src/content/stations.ts",
+    sourceModule: "packages/add-content/src/content/stations.ts",
     rustPath: "crates/add-core/src/game_data/catalog/stations.rs",
     consts: [
       {
@@ -510,7 +510,7 @@ const FILES = [
     ],
   },
   {
-    sourceModule: "packages/add-domain/src/content/{construction,world-actions,processing}.ts",
+    sourceModule: "packages/add-content/src/content/{construction,world-actions,processing}.ts",
     rustPath: "crates/add-core/src/game_data/catalog/actions.rs",
     consts: [
       {
@@ -577,7 +577,7 @@ const FILES = [
     ],
   },
   {
-    sourceModule: "packages/add-domain/src/content/story/index.ts",
+    sourceModule: "packages/add-content/src/content/story/index.ts",
     rustPath: "crates/add-core/src/game_data/catalog/story_beats.rs",
     consts: [
       {
@@ -624,7 +624,7 @@ const FILES = [
     ],
   },
   {
-    sourceModule: "packages/add-domain/src/content/ui-elements.ts",
+    sourceModule: "packages/add-content/src/content/ui-elements.ts",
     rustPath: "crates/add-core/src/game_data/catalog/ui_elements.rs",
     consts: [
       {
@@ -645,7 +645,7 @@ const FILES = [
     ],
   },
   {
-    sourceModule: "packages/add-domain/src/content/entity-schemas.ts",
+    sourceModule: "packages/add-content/src/content/entity-schemas.ts",
     rustPath: "crates/add-core/src/game_data/catalog/entity_schemas.rs",
     consts: [
       {
@@ -738,7 +738,7 @@ const FILES = [
     ],
   },
   {
-    sourceModule: "packages/add-domain/src/content/balance.ts",
+    sourceModule: "packages/add-content/src/content/balance.ts",
     rustPath: "crates/add-core/src/game_data/catalog/balance.rs",
     consts: [
       {
@@ -785,7 +785,7 @@ const FILES = [
     ],
   },
   {
-    sourceModule: "packages/add-domain/src/content/perks.ts",
+    sourceModule: "packages/add-content/src/content/perks.ts",
     rustPath: "crates/add-core/src/game_data/catalog/perks.rs",
     consts: [
       {
@@ -817,7 +817,7 @@ const FILES = [
     ],
   },
   {
-    sourceModule: "packages/add-domain/src/content/items.ts",
+    sourceModule: "packages/add-content/src/content/items.ts",
     rustPath: "crates/add-core/src/game_data/catalog/items.rs",
     consts: [
       {
@@ -847,7 +847,7 @@ const FILES = [
     ],
   },
   {
-    sourceModule: "packages/add-domain/src/content/creatures.ts",
+    sourceModule: "packages/add-content/src/content/creatures.ts",
     rustPath: "crates/add-core/src/game_data/catalog/creatures.rs",
     consts: [
       {
@@ -869,7 +869,7 @@ const FILES = [
     ],
   },
   {
-    sourceModule: "packages/add-domain/src/content/objectives.ts",
+    sourceModule: "packages/add-content/src/content/objectives.ts",
     rustPath: "crates/add-core/src/game_data/catalog/objectives.rs",
     consts: [
       {
@@ -891,7 +891,7 @@ const FILES = [
     ],
   },
   {
-    sourceModule: "packages/add-domain/src/content/content-version.ts",
+    sourceModule: "packages/add-content/src/content/content-version.ts",
     rustPath: "crates/add-core/src/game_data/catalog/version.rs",
     preamble: false,
     render: () => [

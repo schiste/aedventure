@@ -16,13 +16,13 @@ import { addSnapshotToGameWorld } from "./snapshot-to-world"
 import {
   addDungeonByMapId,
   SURVIVOR_CAVE_DUNGEON_MAP_ID,
-} from "../dungeons/registry"
+} from "@aedventure/add-content"
 import {
   studioDungeonMap,
   STUDIO_DUNGEON_MAP_ID,
-} from "../dungeons/studio"
-import { addAreaByMapId, addAreaById, DEFAULT_AREA_MAP_ID } from "../areas/registry"
-import type { AddAreaEntrySide } from "../areas/build-area-map"
+} from "@aedventure/add-content"
+import { addAreaByMapId, addAreaById, DEFAULT_AREA_MAP_ID } from "@aedventure/add-content"
+import type { AddAreaEntrySide } from "@aedventure/add-content"
 import { selectAddMapScaleForMode } from "./map-scale"
 
 export type AddMapMode = "overworld_hex" | "dungeon_square" | "base_square" | "area_hex"

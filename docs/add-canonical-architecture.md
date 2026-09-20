@@ -48,7 +48,7 @@ should use the [ADD Task Brief Template](templates/add-task-brief.md).
 | Change | Owning layer | Keep out of | First verification |
 | --- | --- | --- | --- |
 | Gameplay rules, state transitions, progression, combat, or save fields | `crates/add-core/` | Solid, Phaser, and domain selectors | `cargo test -p add-core` |
-| New authored IDs, story, objectives, recipes, creatures, items, perks, or balance | `packages/add-domain/src/content/` | UI conditionals and ad hoc Rust constants | `npm run content:check` |
+| New authored IDs, story, objectives, recipes, creatures, items, perks, or balance | `packages/add-content/src/content/` | UI conditionals and ad hoc Rust constants | `npm run content:check` |
 | Snapshot projections, command mapping, labels, and available actions | `packages/add-domain/src/adapters/` | A second gameplay calculation | `npm run agent:verify:add-ui` |
 | Agent-readable runtime reports, stable command/checkpoint IDs, and blocker explanations | `packages/add-domain/src/runtime/` plus `crates/add-scenario/src/inspection.rs` | DOM scraping and UI-only guesses | `npm --workspace @aedventure/add-domain test` and `cargo test -p add-scenario` |
 | Player-facing panels, input, map modes, browser persistence, or telemetry | `apps/add-rpg/` | Neutral packages and legacy code | `npm run agent:verify:add-ui` |
@@ -114,7 +114,7 @@ runtime dependency.
   separated. The remaining violation is the ADD browser shell’s size, not a
   second gameplay authority.
 - **Open/closed:** content catalogs and typed commands provide extension seams;
-  new content should be authored in `packages/add-domain/src/content` and
+  new content should be authored in `packages/add-content/src/content` and
   generated into Rust rather than adding switch branches in the UI.
 - **Substitutability/interface segregation:** neutral world and policy types
   are now independent of Phaser. Renderer-specific implementations can consume

@@ -1,5 +1,5 @@
 import type { SimulationSnapshot } from "@aedventure/add-protocol"
-import { ITEMS } from "../content/items"
+import { ITEMS } from "@aedventure/add-content"
 
 // Projects the Hero inventory for the UI: held items (quantity > 0) with their
 // label and stack cap. Quantities come from the snapshot; defs from the catalog.

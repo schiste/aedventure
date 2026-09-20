@@ -74,13 +74,15 @@ for (const dir of engineDirs) {
 
 // Content may cite lore, but only through the declared registry, so there is
 // exactly one place to audit and one place the generator must keep out of Rust.
-const loreRefModule = path.join(__dirname, "../src/content/lore-refs.ts")
+const loreRefModule = path.join(repoRoot, "packages/add-content/src/content/lore-refs.ts")
 assert.ok(
   fs.existsSync(loreRefModule),
   "Content brick must declare its lore links in content/lore-refs.ts.",
 )
 
-for (const file of sourceFiles("packages/add-domain/src", [".ts"])) {
+for (const file of sourceFiles("packages/add-content/src", [".ts"]).concat(
+  sourceFiles("packages/add-domain/src", [".ts"]),
+)) {
   if (file === loreRefModule) continue
   assert.doesNotMatch(
     fs.readFileSync(file, "utf8"),

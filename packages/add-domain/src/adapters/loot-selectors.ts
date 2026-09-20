@@ -1,6 +1,6 @@
 import { hashUnit, lootDrop } from "@aedventure/game-content"
 
-import { lootTableById } from "../content/loot-tables"
+import { lootTableById } from "@aedventure/add-content"
 
 // Resolve a loot table to a concrete drop for a specific location. Deterministic:
 // the same cell always yields the same drop (no RNG), so re-entry/reload are

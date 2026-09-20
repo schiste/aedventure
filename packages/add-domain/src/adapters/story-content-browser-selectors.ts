@@ -4,7 +4,7 @@ import type {
   SimulationSnapshot,
   StoryBeatDef,
 } from "@aedventure/add-protocol"
-import { ADD_CONTENT_VALIDATION_VERSION } from "../content/content-validation"
+import { ADD_CONTENT_VALIDATION_VERSION } from "@aedventure/add-content"
 import {
   type AddAvailableCommand,
   type AddAvailableCommandsState,

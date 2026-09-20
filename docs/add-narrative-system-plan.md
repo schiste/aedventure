@@ -23,9 +23,9 @@ decision below follows from it.
 | --- | --- | --- |
 | Axes, impact pipeline, decay, saturation, inheritance, event log, knowledge, rumor, sifter, caster | `crates/add-core/` | `cargo test -p add-core` |
 | ink runtime binding, external functions, tag parsing | `crates/add-core/src/narrative/story.rs` | `cargo test -p add-core` |
-| Entities, acts, values, relationship states, patterns, storylet sidecars, reactions, tuning | `packages/add-domain/src/content/narrative/` | `npm run content:check` |
+| Entities, acts, values, relationship states, patterns, storylet sidecars, reactions, tuning | `packages/add-content/src/content/narrative/` | `npm run content:check` |
 | `.ink` prose, choices, scene flow | `packages/add-domain/narrative/story/` | `npm run content:check` |
-| Which canon subject a narrative entity implements | `packages/add-domain/src/content/lore-refs.ts` | `npm run lore:refs:check` |
+| Which canon subject a narrative entity implements | `packages/add-content/src/content/lore-refs.ts` | `npm run lore:refs:check` |
 | Standing explanation, storylet presentation, dialogue rendering | `packages/add-domain/src/adapters/` | `npm run agent:verify:add-ui` |
 | Dialogue panel, choice list, speaker and mood presentation | `apps/add-rpg/src/browser/` | `npm run smoke:add-rpg:built` |
 | Narrative scenarios, fuzz corpora, replay fixtures | `scenarios/add/narrative/` | `npm run scenario:add -- scenarios/add/narrative/<id>.json` |
@@ -176,7 +176,7 @@ lookup, and a second thing that can drift from the Rust it produces.
 **Decision.** Keep the specification's data model exactly — every field, every
 enum, every default in §5A, §5B and §12 — and change only the file format.
 Narrative world data is authored as TypeScript under
-`packages/add-domain/src/content/narrative/` and code-generated into
+`packages/add-content/src/content/narrative/` and code-generated into
 `crates/add-core/src/game_data/catalog/narrative/` by the existing generator.
 
 What this buys, at no design cost:
@@ -432,7 +432,7 @@ existing `--json` result contract and writes to
 | `narr play` | `npm run agent:state`, the browser app | **Extend.** Terminal player with a diagnostics side panel |
 | `narr fuzz -n 10000` | — | **New.** Policy-driven playthroughs and coverage |
 | `narr reach` | — | **New.** Static gate analysis plus guided search |
-| `narr generate` | `npm run content:fixtures` | **New.** Value-profile generation from group rules and the world seed, output committed to `packages/add-domain/src/content/narrative/generated/` |
+| `narr generate` | `npm run content:fixtures` | **New.** Value-profile generation from group rules and the world seed, output committed to `packages/add-content/src/content/narrative/generated/` |
 | `narr calibrate` | — | **New.** Band distribution per axis at 25, 50, 100 percent of a playthrough; dead-axis and runaway flags |
 | `narr diff-tuning <a> <b>` | — | **New.** Replay a fixed corpus under two tunings and report which gates flipped |
 | `narr build` | `npm run content:check` | **Not needed.** The existing generator is the build step |

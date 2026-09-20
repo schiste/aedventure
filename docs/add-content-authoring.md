@@ -12,8 +12,8 @@ opening `apps/add-rpg`.
 
 | Change | Authoritative layer | First verification |
 | --- | --- | --- |
-| A resource, role, station, action, objective, story beat, tile, structure, creature, item, perk, or balance value | `packages/add-domain/src/content/` | `npm run content:check` |
-| An encounter or loot table used to seed a domain-side dungeon/map result | `packages/add-domain/src/content/` | `npm run content:check` and `npm run content:tools:test` |
+| A resource, role, station, action, objective, story beat, tile, structure, creature, item, perk, or balance value | `packages/add-content/src/content/` | `npm run content:check` |
+| An encounter or loot table used to seed a domain-side dungeon/map result | `packages/add-content/src/content/` | `npm run content:check` and `npm run content:tools:test` |
 | A rule, effect implementation, save field, migration, or state transition | `crates/add-core/` | `cargo test -p add-core` |
 | A snapshot projection or player-facing explanation | `packages/add-domain/src/adapters/` | `npm run agent:verify:add-ui` |
 | Browser controls or presentation | `apps/add-rpg/` | `npm run agent:verify:add-ui` |
@@ -31,21 +31,21 @@ inspection, snapshots, and telemetry.
 
 | Content family | TypeScript source | Validation/reference checks | Rust/codegen output | Consumer |
 | --- | --- | --- | --- | --- |
-| Resources | `packages/add-domain/src/content/resources.ts` | IDs, schema IDs, numeric caps, cost/effect references | `crates/add-core/src/game_data/catalog/resources.rs` | `add-core` economy and snapshot catalog |
-| Roles | `packages/add-domain/src/content/roles.ts` | IDs and role references | `crates/add-core/src/game_data/catalog/roles.rs` | roster and staffing simulation |
-| Flags | `packages/add-domain/src/content/flags.ts` | IDs and all flag requirements/effects | `crates/add-core/src/game_data/catalog/flags.rs` | story, actions, and save state |
-| Flora, structures, and map tiles | `packages/add-domain/src/content/{flora,structures,tiles}.ts` | tile flora/structure, dungeon, and area references | `crates/add-core/src/game_data/catalog/tiles.rs` | map generation and presentation |
-| Stations | `packages/add-domain/src/content/stations.ts` | requirements and station IDs | `crates/add-core/src/game_data/catalog/stations.rs` | power, production, and UI catalog |
-| Construction options and world actions | `packages/add-domain/src/content/{construction,world-actions}.ts` | costs, duration, requirements, effects, impossible-action checks | `crates/add-core/src/game_data/catalog/actions.rs` | authoritative command execution |
-| Processing recipes | `packages/add-domain/src/content/processing.ts` | station, costs, tracks, requirements, and effects | `crates/add-core/src/game_data/catalog/actions.rs` | authoritative processing execution |
-| Story arcs, beats, and choices | `packages/add-domain/src/content/story/` | choice IDs, conditions, effects, graph reachability, progression actions | `crates/add-core/src/game_data/catalog/story_beats.rs` | Rust storylet selection and narrative snapshot |
-| Objectives | `packages/add-domain/src/content/objectives.ts` | sequence uniqueness, conditions, effects, and references | `crates/add-core/src/game_data/catalog/objectives.rs` | Rust objective progression |
-| UI/entity metadata | `packages/add-domain/src/content/{ui-elements,entity-schemas}.ts` | related IDs, visibility, flow, and schema ownership | `crates/add-core/src/game_data/catalog/{ui_elements,entity_schemas}.rs` | domain explanations and runtime catalog |
-| Items, perks, and creatures | `packages/add-domain/src/content/{items,perks,creatures}.ts` | IDs, perk prerequisites, item effects, numeric combat values | `crates/add-core/src/game_data/catalog/{items,perks,creatures}.rs` | inventory, combat, and progression |
-| Encounter tables | `packages/add-domain/src/content/encounter-tables.ts` | creature IDs, positive weights, quantity ranges | Client/domain only; no Rust codegen | deterministic dungeon spawn selection |
-| Loot tables | `packages/add-domain/src/content/loot-tables.ts` | item IDs, positive weights, quantity ranges | Client/domain only; no Rust codegen | deterministic loot selection before typed Rust mutation |
+| Resources | `packages/add-content/src/content/resources.ts` | IDs, schema IDs, numeric caps, cost/effect references | `crates/add-core/src/game_data/catalog/resources.rs` | `add-core` economy and snapshot catalog |
+| Roles | `packages/add-content/src/content/roles.ts` | IDs and role references | `crates/add-core/src/game_data/catalog/roles.rs` | roster and staffing simulation |
+| Flags | `packages/add-content/src/content/flags.ts` | IDs and all flag requirements/effects | `crates/add-core/src/game_data/catalog/flags.rs` | story, actions, and save state |
+| Flora, structures, and map tiles | `packages/add-content/src/content/{flora,structures,tiles}.ts` | tile flora/structure, dungeon, and area references | `crates/add-core/src/game_data/catalog/tiles.rs` | map generation and presentation |
+| Stations | `packages/add-content/src/content/stations.ts` | requirements and station IDs | `crates/add-core/src/game_data/catalog/stations.rs` | power, production, and UI catalog |
+| Construction options and world actions | `packages/add-content/src/content/{construction,world-actions}.ts` | costs, duration, requirements, effects, impossible-action checks | `crates/add-core/src/game_data/catalog/actions.rs` | authoritative command execution |
+| Processing recipes | `packages/add-content/src/content/processing.ts` | station, costs, tracks, requirements, and effects | `crates/add-core/src/game_data/catalog/actions.rs` | authoritative processing execution |
+| Story arcs, beats, and choices | `packages/add-content/src/content/story/` | choice IDs, conditions, effects, graph reachability, progression actions | `crates/add-core/src/game_data/catalog/story_beats.rs` | Rust storylet selection and narrative snapshot |
+| Objectives | `packages/add-content/src/content/objectives.ts` | sequence uniqueness, conditions, effects, and references | `crates/add-core/src/game_data/catalog/objectives.rs` | Rust objective progression |
+| UI/entity metadata | `packages/add-content/src/content/{ui-elements,entity-schemas}.ts` | related IDs, visibility, flow, and schema ownership | `crates/add-core/src/game_data/catalog/{ui_elements,entity_schemas}.rs` | domain explanations and runtime catalog |
+| Items, perks, and creatures | `packages/add-content/src/content/{items,perks,creatures}.ts` | IDs, perk prerequisites, item effects, numeric combat values | `crates/add-core/src/game_data/catalog/{items,perks,creatures}.rs` | inventory, combat, and progression |
+| Encounter tables | `packages/add-content/src/content/encounter-tables.ts` | creature IDs, positive weights, quantity ranges | Client/domain only; no Rust codegen | deterministic dungeon spawn selection |
+| Loot tables | `packages/add-content/src/content/loot-tables.ts` | item IDs, positive weights, quantity ranges | Client/domain only; no Rust codegen | deterministic loot selection before typed Rust mutation |
 | Dungeon and area registry | `packages/add-domain/src/{dungeons,areas}/` | IDs and map routing references | Client/domain only; map factories remain authored code | map modes and Phaser presentation |
-| Content/save version | `packages/add-domain/src/content/content-version.ts` | generated version and Rust migration coupling | `crates/add-core/src/game_data/catalog/version.rs` | `GameState` schema/catalog compatibility |
+| Content/save version | `packages/add-content/src/content/content-version.ts` | generated version and Rust migration coupling | `crates/add-core/src/game_data/catalog/version.rs` | `GameState` schema/catalog compatibility |
 
 Expedition targets, resonance recipes, and their current Rust-only catalog
 entries remain in `crates/add-core/src/game_data/catalog/`; they are not silently

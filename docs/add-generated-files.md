@@ -15,7 +15,7 @@ The checker is `npm run generated:check`; it is intentionally read-only.
 | Change | Owning layer | First check |
 | --- | --- | --- |
 | Gameplay rule or persisted state | `crates/add-core/` | `cargo test -p add-core` |
-| Authored content ID or balance | `packages/add-domain/src/content/` | `npm run content:check` |
+| Authored content ID or balance | `packages/add-content/src/content/` | `npm run content:check` |
 | Browser runtime seam or presentation | `apps/add-rpg/src/` | `npm run agent:verify:add-ui` |
 | Performance budget or report schema | `performance/` and `scripts/` | `npm run qa:add-rpg:performance` |
 | Generated-output contract | `performance/generated-files.json` and this document | `npm run generated:check` |
@@ -28,7 +28,7 @@ result.
 
 | Output | Source of truth | Producer | No-drift or focused check | Tracked? |
 | --- | --- | --- | --- | --- |
-| `crates/add-core/src/game_data/catalog/*.rs` | `packages/add-domain/src/content/*.ts` | `npm run content:build` | `npm run content:check` | Yes |
+| `crates/add-core/src/game_data/catalog/*.rs` | `packages/add-content/src/content/*.ts` | `npm run content:build` | `npm run content:check` | Yes |
 | `scenarios/add/fixtures/content/*.json` | ADD authored content and registry | `npm run content:fixtures` | `npm run content:fixtures:check` | Yes |
 | `apps/add-rpg/src/generated/wasm/add-web-bindings/` | `crates/add-web-bindings/` | `npm run wasm:build:add` | `npm run agent:verify:add-ui` | No; ignored build output |
 | `apps/add-rpg/dist-app/` | `apps/add-rpg/src/` and generated WASM | `npm --workspace @aedventure/add-rpg run build:browser` | `npm run qa:add-rpg:size:built` | No; ignored build output |
@@ -40,7 +40,7 @@ result.
 The authoritative content/codegen chain is:
 
 ```text
-packages/add-domain/src/content/*.ts
+packages/add-content/src/content/*.ts
   -> npm run content:build
   -> crates/add-core/src/game_data/catalog/*.rs
   -> cargo test -p add-core / npm run content:check

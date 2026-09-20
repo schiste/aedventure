@@ -7,7 +7,7 @@ import type {
   AddVisibilityRenderState,
 } from "./map-presentation"
 import { ADD_BASE_SQUARE_MAP_ID } from "./map-modes"
-import { addAreaById } from "../areas/registry"
+import { addAreaById } from "@aedventure/add-content"
 
 export type AddTileLinkKind =
   | "base"

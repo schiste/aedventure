@@ -49,4 +49,4 @@ for (const table of LOOT_TABLES) {
   }
 }
 
-console.log("add-domain content: all assertions passed")
+console.log("add-content: all assertions passed")

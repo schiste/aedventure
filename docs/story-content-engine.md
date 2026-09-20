@@ -30,7 +30,7 @@ the lore/engine/content boundary it sits on is fixed by the
 
 | Change | Owner | First verification |
 | --- | --- | --- |
-| Story beat, choice, condition, effect, flag, objective, or authored copy | `packages/add-domain/src/content/` | `npm run content:check` |
+| Story beat, choice, condition, effect, flag, objective, or authored copy | `packages/add-content/src/content/` | `npm run content:check` |
 | Authoritative evaluation or mutation of a story effect | `crates/add-core/` | `cargo test -p add-core` |
 | Story progression projection, available action, or explanation | `packages/add-domain/src/adapters/` | `npm run agent:verify:add-ui` |
 | Player-facing journal, panel, or moment presentation | `apps/add-rpg/` | `npm run smoke:add-rpg:built` |
@@ -45,7 +45,7 @@ story change crosses more than one row.
 The live story/content path is:
 
 ```text
-packages/add-domain/src/content/*
+packages/add-content/src/content/*
   authored TypeScript content
   ↓
 scripts/build-add-content.cjs
@@ -94,7 +94,7 @@ Any logic that changes those fields belongs in Rust, not the browser app.
 
 ### TypeScript Content Owns Authoring
 
-`packages/add-domain/src/content/*` owns authored content:
+`packages/add-content/src/content/*` owns authored content:
 
 - story beat IDs, labels, bodies, arcs, and sequence numbers
 - choices and choice copy

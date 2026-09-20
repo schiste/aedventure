@@ -8,27 +8,27 @@ const ROOT = path.resolve(__dirname, "..")
  * add-domain build output and carries its authored source and Rust consumer.
  */
 const CATALOG_SPECS = [
-  spec("resources", "resource", "content/resources.js", "RESOURCES", "packages/add-domain/src/content/resources.ts", "crates/add-core/src/game_data/catalog/resources.rs"),
-  spec("roles", "role", "content/roles.js", "ROLES", "packages/add-domain/src/content/roles.ts", "crates/add-core/src/game_data/catalog/roles.rs"),
-  spec("flags", "flag", "content/flags.js", "FLAGS", "packages/add-domain/src/content/flags.ts", "crates/add-core/src/game_data/catalog/flags.rs"),
-  spec("flora", "flora", "content/flora.js", "FLORA", "packages/add-domain/src/content/flora.ts", "crates/add-core/src/game_data/catalog/tiles.rs"),
-  spec("structures", "structure", "content/structures.js", "STRUCTURES", "packages/add-domain/src/content/structures.ts", "crates/add-core/src/game_data/catalog/tiles.rs"),
-  spec("tiles", "tile", "content/tiles.js", "TILES", "packages/add-domain/src/content/tiles.ts", "crates/add-core/src/game_data/catalog/tiles.rs"),
-  spec("stations", "station", "content/stations.js", "STATIONS", "packages/add-domain/src/content/stations.ts", "crates/add-core/src/game_data/catalog/stations.rs"),
-  spec("constructionOptions", "construction", "content/construction.js", "CONSTRUCTION_OPTIONS", "packages/add-domain/src/content/construction.ts", "crates/add-core/src/game_data/catalog/actions.rs"),
-  spec("worldActions", "world_action", "content/world-actions.js", "WORLD_ACTIONS", "packages/add-domain/src/content/world-actions.ts", "crates/add-core/src/game_data/catalog/actions.rs"),
-  spec("processingRecipes", "processing_recipe", "content/processing.js", "PROCESSING_RECIPES", "packages/add-domain/src/content/processing.ts", "crates/add-core/src/game_data/catalog/actions.rs"),
-  spec("storyBeats", "story_beat", "content/story.js", "STORY_BEATS", "packages/add-domain/src/content/story/index.ts", "crates/add-core/src/game_data/catalog/story_beats.rs"),
-  spec("objectives", "objective", "content/objectives.js", "OBJECTIVES", "packages/add-domain/src/content/objectives.ts", "crates/add-core/src/game_data/catalog/objectives.rs"),
-  spec("uiElements", "ui_element", "content/ui-elements.js", "UI_ELEMENTS", "packages/add-domain/src/content/ui-elements.ts", "crates/add-core/src/game_data/catalog/ui_elements.rs"),
-  spec("entitySchemas", "entity_schema", "content/entity-schemas.js", "ENTITY_SCHEMAS", "packages/add-domain/src/content/entity-schemas.ts", "crates/add-core/src/game_data/catalog/entity_schemas.rs", { identity: false }),
-  spec("items", "item", "content/items.js", "ITEMS", "packages/add-domain/src/content/items.ts", "crates/add-core/src/game_data/catalog/items.rs"),
-  spec("perks", "perk", "content/perks.js", "PERKS", "packages/add-domain/src/content/perks.ts", "crates/add-core/src/game_data/catalog/perks.rs"),
-  spec("creatures", "creature", "content/creatures.js", "CREATURES", "packages/add-domain/src/content/creatures.ts", "crates/add-core/src/game_data/catalog/creatures.rs"),
-  spec("encounterTables", "encounter", "content/encounter-tables.js", "ENCOUNTER_TABLES", "packages/add-domain/src/content/encounter-tables.ts", null, { generated: false }),
-  spec("lootTables", "loot_table", "content/loot-tables.js", "LOOT_TABLES", "packages/add-domain/src/content/loot-tables.ts", null, { generated: false }),
-  spec("dungeons", "dungeon", "dungeons/registry.js", "ADD_DUNGEON_REGISTRY", "packages/add-domain/src/dungeons/registry.ts", null, { generated: false }),
-  spec("areas", "area", "areas/registry.js", "ADD_AREA_REGISTRY", "packages/add-domain/src/areas/registry.ts", null, { generated: false }),
+  spec("resources", "resource", "content/resources.js", "RESOURCES", "packages/add-content/src/content/resources.ts", "crates/add-core/src/game_data/catalog/resources.rs"),
+  spec("roles", "role", "content/roles.js", "ROLES", "packages/add-content/src/content/roles.ts", "crates/add-core/src/game_data/catalog/roles.rs"),
+  spec("flags", "flag", "content/flags.js", "FLAGS", "packages/add-content/src/content/flags.ts", "crates/add-core/src/game_data/catalog/flags.rs"),
+  spec("flora", "flora", "content/flora.js", "FLORA", "packages/add-content/src/content/flora.ts", "crates/add-core/src/game_data/catalog/tiles.rs"),
+  spec("structures", "structure", "content/structures.js", "STRUCTURES", "packages/add-content/src/content/structures.ts", "crates/add-core/src/game_data/catalog/tiles.rs"),
+  spec("tiles", "tile", "content/tiles.js", "TILES", "packages/add-content/src/content/tiles.ts", "crates/add-core/src/game_data/catalog/tiles.rs"),
+  spec("stations", "station", "content/stations.js", "STATIONS", "packages/add-content/src/content/stations.ts", "crates/add-core/src/game_data/catalog/stations.rs"),
+  spec("constructionOptions", "construction", "content/construction.js", "CONSTRUCTION_OPTIONS", "packages/add-content/src/content/construction.ts", "crates/add-core/src/game_data/catalog/actions.rs"),
+  spec("worldActions", "world_action", "content/world-actions.js", "WORLD_ACTIONS", "packages/add-content/src/content/world-actions.ts", "crates/add-core/src/game_data/catalog/actions.rs"),
+  spec("processingRecipes", "processing_recipe", "content/processing.js", "PROCESSING_RECIPES", "packages/add-content/src/content/processing.ts", "crates/add-core/src/game_data/catalog/actions.rs"),
+  spec("storyBeats", "story_beat", "content/story.js", "STORY_BEATS", "packages/add-content/src/content/story/index.ts", "crates/add-core/src/game_data/catalog/story_beats.rs"),
+  spec("objectives", "objective", "content/objectives.js", "OBJECTIVES", "packages/add-content/src/content/objectives.ts", "crates/add-core/src/game_data/catalog/objectives.rs"),
+  spec("uiElements", "ui_element", "content/ui-elements.js", "UI_ELEMENTS", "packages/add-content/src/content/ui-elements.ts", "crates/add-core/src/game_data/catalog/ui_elements.rs"),
+  spec("entitySchemas", "entity_schema", "content/entity-schemas.js", "ENTITY_SCHEMAS", "packages/add-content/src/content/entity-schemas.ts", "crates/add-core/src/game_data/catalog/entity_schemas.rs", { identity: false }),
+  spec("items", "item", "content/items.js", "ITEMS", "packages/add-content/src/content/items.ts", "crates/add-core/src/game_data/catalog/items.rs"),
+  spec("perks", "perk", "content/perks.js", "PERKS", "packages/add-content/src/content/perks.ts", "crates/add-core/src/game_data/catalog/perks.rs"),
+  spec("creatures", "creature", "content/creatures.js", "CREATURES", "packages/add-content/src/content/creatures.ts", "crates/add-core/src/game_data/catalog/creatures.rs"),
+  spec("encounterTables", "encounter", "content/encounter-tables.js", "ENCOUNTER_TABLES", "packages/add-content/src/content/encounter-tables.ts", null, { generated: false }),
+  spec("lootTables", "loot_table", "content/loot-tables.js", "LOOT_TABLES", "packages/add-content/src/content/loot-tables.ts", null, { generated: false }),
+  spec("dungeons", "dungeon", "dungeons/registry.js", "ADD_DUNGEON_REGISTRY", "packages/add-content/src/dungeons/registry.ts", null, { generated: false }),
+  spec("areas", "area", "areas/registry.js", "ADD_AREA_REGISTRY", "packages/add-content/src/areas/registry.ts", null, { generated: false }),
 ]
 
 function spec(key, family, distPath, exportName, sourcePath, rustPath, options = {}) {
@@ -47,11 +47,11 @@ function spec(key, family, distPath, exportName, sourcePath, rustPath, options =
 function loadContent(root = ROOT) {
   const requireDist = (relativePath) => {
     try {
-      return require(path.join(root, "packages/add-domain/dist", relativePath))
+      return require(path.join(root, "packages/add-content/dist", relativePath))
     } catch (error) {
       if (error?.code === "MODULE_NOT_FOUND") {
         throw new Error(
-          "ADD content dist files are missing. Run `npm --workspace @aedventure/add-domain run build` first.",
+          "ADD content dist files are missing. Run `npm --workspace @aedventure/add-content run build` first.",
         )
       }
       throw error

@@ -40,6 +40,9 @@
       "@aedventure/game-content": [
         "packages/game-content/src"
       ],
+      "@aedventure/add-content": [
+        "packages/add-content/src"
+      ],
       "@aedventure/add-protocol": [
         "packages/add-protocol/src"
       ],

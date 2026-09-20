@@ -69,7 +69,7 @@ Rust/WASM snapshot and send commands back to the worker.
 | Bad Vibes, bunks, housing pressure | Migrated | `BaseState`, `progress_vibes`, `update_bad_vibes_state` | Current pressure model is implemented in Rust. |
 | Bubble reach and terrain impedance | Migrated | `BubbleState`, `HexState`, tile catalog, `progress_bubble` | Coverage is derived from stored Bassline, terrain cost, and inertia. |
 | Hex overworld map state | Migrated | `HexState`, tile/flora/structure catalog | ADD uses neutral game-world adapters for rendering, not browser-owned rules. |
-| Square dungeon/base maps and entry flow | Migrated for current slice | `apps/add-rpg/src/browser/add-map-modes.ts`, `packages/add-domain/src/dungeons/` | Current slice has map modes, dungeon entry, objectives, doors, locations, and return flow; broader dungeon breadth remains. |
+| Square dungeon/base maps and entry flow | Migrated for current slice | `apps/add-rpg/src/browser/add-map-modes.ts`, `packages/add-content/src/dungeons/` | Current slice has map modes, dungeon entry, objectives, doors, locations, and return flow; broader dungeon breadth remains. |
 | Investigate/Explore onboarding actions | Migrated | `WorldActionDef`, `WorldAction`, `progress_world_action` | Online-only actions remain Rust-authoritative. |
 | Authored story beats, choices, flags, and objective progression | Migrated for current slice | `StoryBeatDef`, `NarrativeState`, `ObjectiveState` | The current onboarding/base arc is data/state; broader story content remains content work. |
 | Hero Viral Load / forced return | Migrated | `HeroSurvivalState`, survival balance, simulation methods | Survival pressure, forced return, recovery, and debuff multipliers are Rust-side. |
@@ -132,8 +132,8 @@ It covers the current playable data families:
 - UI metadata
 - balance values
 
-Dungeon and area definitions live in `packages/add-domain/src/dungeons/` and
-`packages/add-domain/src/areas/` because they are map/presentation content.
+Dungeon and area definitions live in `packages/add-content/src/dungeons/` and
+`packages/add-content/src/areas/` because they are map/presentation content.
 Encounter and loot tables are currently domain-side selectors; Rust receives
 the resolved typed result and remains authoritative for applying combat and
 inventory mutation.
