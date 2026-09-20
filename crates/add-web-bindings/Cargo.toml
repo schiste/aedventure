@@ -12,5 +12,6 @@ wasm-opt = false
 
 [dependencies]
 add-core = { path = "../add-core" }
+serde.workspace = true
 serde-wasm-bindgen.workspace = true
 wasm-bindgen.workspace = true

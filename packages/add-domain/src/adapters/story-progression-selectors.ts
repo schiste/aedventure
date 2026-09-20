@@ -866,15 +866,7 @@ function resourceValue(snapshot: SimulationSnapshot, resourceId: string): number
 }
 
 function roleCrew(snapshot: SimulationSnapshot, roleId: string): number {
-  const crewByRole = snapshot.roster.crewByRole as
-    | Record<string, number>
-    | Map<string, number>
-    | undefined
-  if (!crewByRole) return 0
-  if (typeof (crewByRole as Map<string, number>).get === "function") {
-    return Number((crewByRole as Map<string, number>).get(roleId) ?? 0)
-  }
-  return Number((crewByRole as Record<string, number>)[roleId] ?? 0)
+  return Number(snapshot.roster.crewByRole[roleId] ?? 0)
 }
 
 function storyChoiceAction(

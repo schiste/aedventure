@@ -1,4 +1,5 @@
 use add_core::{GameCommand, GameState, Simulation, catalog_snapshot, export_save, import_save};
+use serde::Serialize;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
@@ -17,13 +18,16 @@ impl WebRuntime {
 
     #[wasm_bindgen(js_name = snapshot)]
     pub fn snapshot(&self) -> Result<JsValue, JsValue> {
-        serde_wasm_bindgen::to_value(self.simulation.state())
+        self.simulation
+            .state()
+            .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
             .map_err(|error| JsValue::from_str(&error.to_string()))
     }
 
     #[wasm_bindgen(js_name = catalog)]
     pub fn catalog(&self) -> Result<JsValue, JsValue> {
-        serde_wasm_bindgen::to_value(&catalog_snapshot())
+        catalog_snapshot()
+            .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
             .map_err(|error| JsValue::from_str(&error.to_string()))
     }
 

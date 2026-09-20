@@ -2128,11 +2128,11 @@ function baseLoopReturnPlan(
       label: "expedition",
       remainingSeconds: job.remainingSeconds,
     })),
-    ...recordValues(snapshot.processing.activeJobs).map((job) => ({
+    ...Object.values(snapshot.processing.activeJobs).map((job) => ({
       label: "processing",
       remainingSeconds: job.remainingWorkSeconds,
     })),
-    ...recordValues(snapshot.resonance.activeJobs).map((job) => ({
+    ...Object.values(snapshot.resonance.activeJobs).map((job) => ({
       label: "resonance",
       remainingSeconds: job.remainingWorkSeconds,
     })),
@@ -2746,7 +2746,7 @@ function selectBaseResonanceProjection(
       resonanceRecipeSummary(snapshot, recipe, stationById.get(recipe.stationId)),
     )
   const recommendedRecipeId = recipes.find((recipe) => recipe.enabled)?.id ?? null
-  const activeJobCount = recordValues(snapshot.resonance.activeJobs).length
+  const activeJobCount = Object.values(snapshot.resonance.activeJobs).length
   const tuning = {
     basslineLevel: snapshot.resonance.tuning.basslineLevel,
     chorusLevel: snapshot.resonance.tuning.chorusLevel,
@@ -2803,8 +2803,8 @@ function resonanceRecipeSummary(
   recipe: ResonanceRecipeDef,
   station: StationDef | undefined,
 ): AddBaseResonanceRecipeSummary {
-  const job = recordValue(snapshot.resonance.activeJobs, recipe.stationId) ?? null
-  const stationRuntime = recordValue(snapshot.stations, recipe.stationId)
+  const job = snapshot.resonance.activeJobs[recipe.stationId] ?? null
+  const stationRuntime = snapshot.stations[recipe.stationId]
   const inProgress = job?.recipeId === recipe.id
   const stationPowered =
     stationRuntime?.isPowered ??
@@ -2847,8 +2847,7 @@ function resonanceStationSpecializations(
     .filter((station): station is StationDef => station !== undefined)
     .filter((station) => requirementsMet(snapshot, station.requirements))
     .map((station) => {
-      const currentPath =
-        recordValue(snapshot.resonance.stationSpecializations, station.id) ?? "balanced"
+      const currentPath = snapshot.resonance.stationSpecializations[station.id] ?? "balanced"
       return {
         stationId: station.id,
         stationLabel: station.label,
@@ -2974,7 +2973,7 @@ function effectiveExpeditionDurationSeconds(
     snapshot.resonance.expeditionSupportLevel * RESONANCE_SUPPORT_DURATION_REDUCTION_PER_LEVEL,
   )
   const fieldBonus =
-    recordValue(snapshot.resonance.stationSpecializations, "station.resonance_chamber") === "field"
+    snapshot.resonance.stationSpecializations["station.resonance_chamber"] === "field"
       ? STATION_SPECIALIZATION_FIELD_DURATION_BONUS
       : 0
   return baseDurationSeconds * Math.max(0.4, Math.min(1, 1 - supportBonus - fieldBonus))
@@ -3904,18 +3903,6 @@ function costLabel(cost: CostDef): string {
 
 function costItemResourceId(item: { readonly item_id?: string; readonly itemId?: string }): string {
   return item.item_id ?? item.itemId ?? ""
-}
-
-function recordValue<T>(record: Record<string, T> | ReadonlyMap<string, T>, key: string): T | undefined {
-  const maybeMap = record as unknown as { get?: (key: string) => T | undefined }
-  if (typeof maybeMap.get === "function") return maybeMap.get(key)
-  return (record as Record<string, T> | undefined)?.[key]
-}
-
-function recordValues<T>(record: Record<string, T> | ReadonlyMap<string, T>): T[] {
-  const maybeMap = record as unknown as { values?: () => Iterable<T> }
-  if (typeof maybeMap.values === "function") return Array.from(maybeMap.values())
-  return Object.values(record as Record<string, T>)
 }
 
 function resourceName(resourceId: string): string {

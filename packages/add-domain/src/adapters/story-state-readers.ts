@@ -4,15 +4,7 @@ export function selectedStoryChoiceId(
   snapshot: SimulationSnapshot,
   beatId: string,
 ): string | null {
-  const choiceByBeat = snapshot.narrative.choiceByBeat as
-    | Record<string, string>
-    | Map<string, string>
-    | undefined
-  if (!choiceByBeat) return null
-  if (typeof (choiceByBeat as Map<string, string>).get === "function") {
-    return (choiceByBeat as Map<string, string>).get(beatId) ?? null
-  }
-  return (choiceByBeat as Record<string, string>)[beatId] ?? null
+  return snapshot.narrative.choiceByBeat[beatId] ?? null
 }
 
 export function storyChoiceSelected(snapshot: SimulationSnapshot, beatId: string): boolean {
@@ -53,30 +45,13 @@ export function storyFlagSet(snapshot: SimulationSnapshot, flagId: string): bool
 }
 
 export function storyQualityValue(snapshot: SimulationSnapshot, key: string): number {
-  const qualities = snapshot.narrative.qualities as
-    | Record<string, number>
-    | Map<string, number>
-    | undefined
-  if (!qualities) return 0
-  if (typeof (qualities as Map<string, number>).get === "function") {
-    return Number((qualities as Map<string, number>).get(key) ?? 0)
-  }
-  return Number((qualities as Record<string, number>)[key] ?? 0)
+  return Number(snapshot.narrative.qualities?.[key] ?? 0)
 }
 
 export function storyQualityEntries(
   snapshot: SimulationSnapshot,
 ): readonly { readonly key: string; readonly value: number }[] {
-  const qualities = snapshot.narrative.qualities as
-    | Record<string, number>
-    | Map<string, number>
-    | undefined
-  if (!qualities) return []
-  const entries =
-    typeof (qualities as Map<string, number>).entries === "function"
-      ? Array.from((qualities as Map<string, number>).entries())
-      : Object.entries(qualities as Record<string, number>)
-  return entries
+  return Object.entries(snapshot.narrative.qualities ?? {})
     .map(([key, value]) => ({ key, value: Number(value) }))
     .sort((a, b) => a.key.localeCompare(b.key))
 }

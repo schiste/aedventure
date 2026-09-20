@@ -160,8 +160,8 @@ function completedResonanceJobs(
   after: SimulationSnapshot,
   catalog: CatalogSnapshot,
 ): readonly AddOfflineReturnCompletedJob[] {
-  return recordValues(before.resonance.activeJobs).flatMap((job) => {
-    const sameJobStillRunning = recordValue(after.resonance.activeJobs, job.stationId)?.recipeId === job.recipeId
+  return Object.values(before.resonance.activeJobs).flatMap((job) => {
+    const sameJobStillRunning = after.resonance.activeJobs[job.stationId]?.recipeId === job.recipeId
     if (sameJobStillRunning) return []
     const recipe = catalog.resonanceRecipes.find((candidate) => candidate.id === job.recipeId)
     return [{
@@ -296,18 +296,6 @@ function resourceValue(snapshot: SimulationSnapshot, resourceId: string): number
     default:
       return 0
   }
-}
-
-function recordValue<T>(record: Record<string, T> | ReadonlyMap<string, T>, key: string): T | undefined {
-  const maybeMap = record as unknown as { get?: (key: string) => T | undefined }
-  if (typeof maybeMap.get === "function") return maybeMap.get(key)
-  return (record as Record<string, T> | undefined)?.[key]
-}
-
-function recordValues<T>(record: Record<string, T> | ReadonlyMap<string, T>): T[] {
-  const maybeMap = record as unknown as { values?: () => Iterable<T> }
-  if (typeof maybeMap.values === "function") return Array.from(maybeMap.values())
-  return Object.values(record as Record<string, T>)
 }
 
 function formatOfflineDuration(seconds: number): string {
