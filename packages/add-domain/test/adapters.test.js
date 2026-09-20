@@ -1,4 +1,7 @@
 const assert = require("node:assert")
+const fs = require("node:fs")
+const path = require("node:path")
+const { pathToFileURL } = require("node:url")
 const {
   addCommandForGameInteraction,
   addVisibilityAllowsDungeonLinks,
@@ -12,6 +15,8 @@ const {
   createAddTopologyNavigationPolicy,
   createAddWorldInteractionPolicy,
   selectAddAvailableCommands,
+  selectAddBaseManagementState,
+  selectAddInventory,
   createAddAgentRuntimeReport,
   renderAddAgentRuntimeText,
   serializeAddAgentRuntimeReport,
@@ -753,4 +758,151 @@ function hex(q, r, distance, tileId, state, progress) {
     state,
     progress,
   }
+}
+
+void runWasmProjectionConsistencyTest().catch((error) => {
+  console.error(error)
+  process.exitCode = 1
+})
+
+async function runWasmProjectionConsistencyTest() {
+  const rootDir = path.resolve(__dirname, "../../..")
+  const wasmDir = path.join(
+    rootDir,
+    "apps/add-rpg/src/generated/wasm/add-web-bindings",
+  )
+  const wasmModule = await import(pathToFileURL(path.join(wasmDir, "runtime.js")))
+  wasmModule.initSync({
+    module: fs.readFileSync(path.join(wasmDir, "runtime_bg.wasm")),
+  })
+
+  const runtime = new wasmModule.WebRuntime()
+  try {
+    const save = JSON.parse(
+      fs.readFileSync(
+        path.join(rootDir, "scenarios/add/fixtures/saves/base-onboarding.json"),
+        "utf8",
+      ),
+    )
+
+    // Keep the committed Rust save as the fixture, but retain one in-flight
+    // job so this test checks the non-empty active-job projection too.
+    save.processing.activeJobs = {
+      "station.resonance_chamber": {
+        recipeId: "recipe.resonance_field_calibration",
+        stationId: "station.resonance_chamber",
+        totalWorkSeconds: 10,
+        remainingWorkSeconds: 7,
+      },
+    }
+    save.resonance.activeJobs = {
+      "station.crystal_circle": {
+        recipeId: "resonance.recipe.bassline_overtone",
+        stationId: "station.crystal_circle",
+        totalWorkSeconds: 45,
+        remainingWorkSeconds: 30,
+      },
+    }
+    runtime.importSave(JSON.stringify(save))
+    runtime.clearLocation("add.test.inventory", "item.field_kit", 1)
+    runtime.setRoleCrew("role.construction", runtime.snapshot().roster.totalCrew)
+
+    const snapshot = runtime.snapshot()
+    const catalog = runtime.catalog()
+    const base = selectAddBaseManagementState(snapshot, catalog)
+
+    const crewByRole = recordEntries(snapshot.roster.crewByRole)
+    const authoritativeAssignedCrew = crewByRole.reduce(
+      (total, [, amount]) => total + Number(amount),
+      0,
+    )
+    const expeditionCrew = snapshot.expeditions.activeJobs.reduce(
+      (total, job) => total + job.assignedCrew,
+      0,
+    )
+    const expedition = base.expeditions.targets.find(
+      (target) => target.id === "expedition.local_scavenge_sweep",
+    )
+    assert.deepEqual(
+      {
+        totalCrew: base.staffing.totalCrew,
+        assignedCrew: base.staffing.assignedCrew,
+        freeCrew: base.expeditions.availableCrew,
+        expeditionBlockedForFreeCrew:
+          !expedition?.enabled && /free crew/i.test(expedition?.disabledReason ?? ""),
+      },
+      {
+        totalCrew: snapshot.roster.totalCrew,
+        assignedCrew: authoritativeAssignedCrew,
+        freeCrew: Math.max(
+          0,
+          snapshot.roster.totalCrew - authoritativeAssignedCrew - expeditionCrew,
+        ),
+        expeditionBlockedForFreeCrew: true,
+      },
+      "crew totals and free-crew projection must agree with the WASM roster",
+    )
+
+    const authoritativeStation = recordValue(
+      snapshot.stations,
+      "station.resonance_chamber",
+    )
+    const station = base.stationMachine.cards.find(
+      (card) => card.id === "station.resonance_chamber",
+    )
+    assert.deepEqual(
+      {
+        powered: station?.powered,
+        brownoutPriority: station?.brownoutPriority,
+      },
+      {
+        powered: authoritativeStation?.isPowered,
+        brownoutPriority: authoritativeStation?.powerOrder,
+      },
+      "station power and brownout order must come from the WASM station state",
+    )
+
+    const authoritativeJobs = recordEntries(snapshot.processing.activeJobs)
+      .map(([, job]) => job)
+      .map((job) => job.recipeId)
+      .sort()
+    const derivedJobs = base.processing
+      .filter((recipe) => recipe.inProgress)
+      .map((recipe) => recipe.id)
+      .sort()
+    const authoritativeResonanceJobs = recordEntries(snapshot.resonance.activeJobs)
+      .map(([, job]) => job)
+      .map((job) => job.recipeId)
+      .sort()
+    const derivedResonanceJobs = base.resonance.recipes
+      .filter((recipe) => recipe.inProgress)
+      .map((recipe) => recipe.id)
+      .sort()
+    assert.deepEqual(
+      { processing: derivedJobs, resonance: derivedResonanceJobs },
+      { processing: authoritativeJobs, resonance: authoritativeResonanceJobs },
+      "job projections must expose every active WASM processing and resonance job",
+    )
+
+    const authoritativeInventoryQuantity =
+      recordValue(snapshot.inventory, "item.field_kit") ?? 0
+    const inventoryEntry = selectAddInventory(snapshot).find(
+      (entry) => entry.id === "item.field_kit",
+    )
+    assert.equal(
+      inventoryEntry?.quantity ?? 0,
+      authoritativeInventoryQuantity,
+      "inventory quantities must agree with the WASM inventory",
+    )
+  } finally {
+    runtime.free()
+  }
+}
+
+function recordValue(record, key) {
+  return record instanceof Map ? record.get(key) : record?.[key]
+}
+
+function recordEntries(record) {
+  return record instanceof Map ? [...record.entries()] : Object.entries(record ?? {})
 }
