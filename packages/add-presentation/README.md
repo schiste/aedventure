@@ -12,10 +12,10 @@ it - see the availability note in
 
 It depends on `@aedventure/add-protocol` for the snapshot shape and
 `@aedventure/add-content` for the catalogs, and on nothing that renders. The
-browser shell in `apps/add-rpg` consumes it through the `@aedventure/add-domain`
+browser shell in `apps/add-rpg` consumes it through the `@aedventure/add-runtime-client`
 barrel.
 
-These selectors are tested from `@aedventure/add-domain`, in
+These selectors are tested from `@aedventure/add-runtime-client`, in
 `test/adapters.test.js`, because the suite exercises the assembled surface -
 the selectors plus the agent runtime report built on top of them - through the
 barrel that consumers actually import. That includes the

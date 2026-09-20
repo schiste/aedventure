@@ -97,7 +97,7 @@ types_check() {
 }
 
 focused_checks() {
-  if has_changed_match '^(apps/add-rpg/|packages/add-domain/|scripts/add-rpg-smoke\.test\.cjs|crates/add-|package\.json|package-lock\.json|tsconfig\.json)'; then
+  if has_changed_match '^(apps/add-rpg/|packages/add-runtime-client/|scripts/add-rpg-smoke\.test\.cjs|crates/add-|package\.json|package-lock\.json|tsconfig\.json)'; then
     echo "Detected ADD/app-layer changes; running ADD gameplay-focused checks."
     add_ui_checks
     return

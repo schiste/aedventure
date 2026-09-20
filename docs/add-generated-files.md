@@ -3,7 +3,7 @@
 Status: implemented Phase 6 contract for the live ADD game.
 
 > Scope note: this document covers `apps/add-rpg`, `crates/add-core`,
-> `packages/add-domain`, and the ADD tooling under `scenarios/add` and
+> `packages/add-runtime-client`, and the ADD tooling under `scenarios/add` and
 > `scripts`. Office/platform outputs and `legacy/add` follow their own
 > contracts and are not generated inputs to the ADD runtime.
 

@@ -8,7 +8,7 @@
 //   for (const e of snapshot.events)
 //     window.dispatchEvent(new CustomEvent("add-game-event", { detail: e }))
 
-import type { AddGameEvent } from "@aedventure/add-domain"
+import type { AddGameEvent } from "@aedventure/add-runtime-client"
 
 import type { MusicIntent } from "./music-tracks"
 import { releaseMusic, requestMusic } from "./music-director"

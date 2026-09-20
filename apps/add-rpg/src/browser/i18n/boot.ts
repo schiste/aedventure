@@ -9,7 +9,7 @@ import {
   detectLocale,
   registerLocale,
   setLocale,
-} from "@aedventure/add-domain"
+} from "@aedventure/add-runtime-client"
 
 import { type AddSettings, loadSettings } from "../settings/settings-state"
 

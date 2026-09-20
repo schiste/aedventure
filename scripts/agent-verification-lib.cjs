@@ -330,8 +330,8 @@ function classifyChangedPaths(paths) {
   if (hasDomain) {
     addCheck(plan, {
       id: "add-domain-tests",
-      command: ["npm", "--workspace", "@aedventure/add-domain", "test"],
-      sourceBoundary: "packages/add-domain/",
+      command: ["npm", "--workspace", "@aedventure/add-runtime-client", "test"],
+      sourceBoundary: "packages/add-runtime-client/",
       reason: "Verify ADD selectors, runtime reports, and domain projections.",
     })
   }

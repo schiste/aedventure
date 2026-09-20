@@ -39,7 +39,7 @@ Both adapters emit the same top-level shape:
 | --- | --- | --- |
 | `runtime` | Readiness, source, snapshot/catalog receipt, and runtime error | Browser lifecycle or headless runner |
 | `authoritative` | Time, resources, jobs, crew/hero, story, map state, and catalog identity | Rust `GameState`/WASM `SimulationSnapshot` |
-| `derived` | Map presentation mode, next action, available commands, stable command IDs, and blocker explanations | ADD domain selectors or the Rust state-report adapter |
+| `derived` | Map presentation mode, next action, available commands, stable command IDs, and blocker explanations | ADD presentation selectors or the Rust state-report adapter |
 | `diagnostics` | Last command/event, warning count, and layer ownership labels | Runtime/reporting diagnostics; never gameplay authority |
 
 Every command includes `id`, `kind`, `label`, `enabled`,
@@ -58,7 +58,7 @@ map mode (`overworld_hex`, `base_square`, or another registered mode).
 | --- | --- | --- |
 | State, command validity, save behavior, or a new authoritative field | `crates/add-core/` | `cargo test -p add-core` |
 | Headless report, replay output, checkpoint IDs, or report assertions | `crates/add-scenario/` | `cargo test -p add-scenario` |
-| Snapshot-to-report projection, labels, or browser command explanations | `packages/add-domain/src/runtime/` and `packages/add-presentation/src/adapters/` | `npm --workspace @aedventure/add-domain test` |
+| Snapshot-to-report projection, labels, or browser command explanations | `packages/add-runtime-client/src/runtime/` and `packages/add-presentation/src/adapters/` | `npm --workspace @aedventure/add-runtime-client test` |
 | Browser exposure or runtime lifecycle diagnostics | `apps/add-rpg/src/browser/` | `npm run smoke:add-rpg:built` |
 | Content/catalog identity | `packages/add-content/src/content/` and generated Rust catalog | `npm run content:check` |
 
@@ -132,8 +132,8 @@ identity, command explanations, layer authority, and both accessors.
 ```sh
 cargo fmt --all -- --check
 cargo test -p add-scenario
-npm --workspace @aedventure/add-domain test
-npm --workspace @aedventure/add-domain run build
+npm --workspace @aedventure/add-runtime-client test
+npm --workspace @aedventure/add-runtime-client run build
 npm --workspace @aedventure/add-rpg run build:types
 npm run smoke:add-rpg:built
 npm run docs:check

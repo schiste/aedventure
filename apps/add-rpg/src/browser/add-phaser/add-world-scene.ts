@@ -28,7 +28,7 @@ import {
   tileInteractionDetailForCoord,
   type AddTileActionAffordance,
   type AddMapMarker,
-} from "@aedventure/add-domain"
+} from "@aedventure/add-runtime-client"
 
 import { ADD_TILE_TRAVEL_PRESENTATION } from "../travel-presentation-timing"
 import {

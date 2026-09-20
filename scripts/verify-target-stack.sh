@@ -32,7 +32,7 @@ ln -sfn "../../packages/game-world" "$ROOT_DIR/node_modules/@aedventure/game-wor
 ln -sfn "../../packages/add-protocol" "$ROOT_DIR/node_modules/@aedventure/add-protocol"
 ln -sfn "../../packages/add-content" "$ROOT_DIR/node_modules/@aedventure/add-content"
 ln -sfn "../../packages/add-presentation" "$ROOT_DIR/node_modules/@aedventure/add-presentation"
-ln -sfn "../../packages/add-domain" "$ROOT_DIR/node_modules/@aedventure/add-domain"
+ln -sfn "../../packages/add-runtime-client" "$ROOT_DIR/node_modules/@aedventure/add-runtime-client"
 ln -sfn "../../packages/map-engine" "$ROOT_DIR/node_modules/@aedventure/map-engine"
 ln -sfn "../../packages/game-assets" "$ROOT_DIR/node_modules/@aedventure/game-assets"
 ln -sfn "../../packages/game-map" "$ROOT_DIR/node_modules/@aedventure/game-map"
@@ -66,7 +66,7 @@ echo "Running game-world checks..."
 node "$ROOT_DIR/packages/game-world/test/world.test.js"
 
 echo "Running ADD domain adapter checks..."
-node "$ROOT_DIR/packages/add-domain/test/adapters.test.js"
+node "$ROOT_DIR/packages/add-runtime-client/test/adapters.test.js"
 
 echo "Running map-engine movement checks..."
 node "$ROOT_DIR/packages/map-engine/test/movement.test.js"

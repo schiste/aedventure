@@ -24,7 +24,7 @@ decision below follows from it.
 | Axes, impact pipeline, decay, saturation, inheritance, event log, knowledge, rumor, sifter, caster | `crates/add-core/` | `cargo test -p add-core` |
 | ink runtime binding, external functions, tag parsing | `crates/add-core/src/narrative/story.rs` | `cargo test -p add-core` |
 | Entities, acts, values, relationship states, patterns, storylet sidecars, reactions, tuning | `packages/add-content/src/content/narrative/` | `npm run content:check` |
-| `.ink` prose, choices, scene flow | `packages/add-domain/narrative/story/` | `npm run content:check` |
+| `.ink` prose, choices, scene flow | `packages/add-runtime-client/narrative/story/` | `npm run content:check` |
 | Which canon subject a narrative entity implements | `packages/add-content/src/content/lore-refs.ts` | `npm run lore:refs:check` |
 | Standing explanation, storylet presentation, dialogue rendering | `packages/add-presentation/src/adapters/` | `npm run agent:verify:add-ui` |
 | Dialogue panel, choice list, speaker and mood presentation | `apps/add-rpg/src/browser/` | `npm run smoke:add-rpg:built` |
@@ -46,7 +46,7 @@ non-obvious rows.
 | Storylets with salience, cooldown, priority, auto-completion | `StoryBeatDef` with `priority`, `sequence`, `repeatable`, auto-complete conditions; nine storylet tests | **Exists in simpler form.** Extend rather than replace |
 | Conditions and effects as data | `Condition` (18 variants) and `EffectDef` in `game_data.rs`, authored in TypeScript, code-generated to Rust | **Exists.** The narrative vocabulary extends these enums |
 | Deterministic headless runner taking a seed, a save and a command log | `crates/add-scenario` + `crates/add-scenario-runner`, `scenarios/add/*.json` with `{id, seed, commands, checkpoints}` | **Exists.** This *is* `narr replay`, and its format already matches §13 M2 |
-| Agent-readable state report | `agent_runtime_v1` (`crates/add-scenario/src/inspection.rs`, `packages/add-domain/src/runtime/inspection.ts`) | **Exists.** Standing goes in its diagnostics channel |
+| Agent-readable state report | `agent_runtime_v1` (`crates/add-scenario/src/inspection.rs`, `packages/add-runtime-client/src/runtime/inspection.ts`) | **Exists.** Standing goes in its diagnostics channel |
 | Content validation, ID registry, explain, reverse lookup, fixtures, version check | `content:check`, `content:validate`, `content:explain`, `content:graph --reverse`, `content:fixtures`, `content:version:check` | **Exists.** This is most of `narr lint`, `narr schema` and `narr explain` |
 | Save versioning and forward migration | `CURRENT_SCHEMA_VERSION = 15`, `CURRENT_CATALOG_VERSION = 1`, migration registry, future-save rejection | **Exists.** Narrative state is a migration, not a new save file |
 | Performance budgets enforced in CI | `performance/add-budgets.json`, `qa:add-rpg:size`, `qa:add-rpg:trace` | **Exists.** Narrative budgets join this file |
@@ -196,7 +196,7 @@ so the shapes are expressible; the cost is transcription, once.
 
 `.ink` files are the exception. They are prose, not data, and they are
 compiled by a different tool. They live at
-`packages/add-domain/narrative/story/`, and their compiled JSON is a generated
+`packages/add-runtime-client/narrative/story/`, and their compiled JSON is a generated
 artifact registered in `performance/generated-files.json` alongside the WASM.
 
 If the RON format is preferred after all, the honest version of that choice is
@@ -234,7 +234,7 @@ system lands, because it would multiply both.
 
 **P0 — the WASM snapshot serializer.** `crates/add-web-bindings/src/lib.rs`
 serializes with bare `serde_wasm_bindgen::to_value`, which emits a JS `Map` for
-every Rust `BTreeMap`, while `packages/add-domain/src/runtime/protocol.ts`
+every Rust `BTreeMap`, while `packages/add-runtime-client/src/runtime/protocol.ts`
 declares those fields as `Record<string, …>`. Selectors shim around it
 inconsistently, and three player-facing panels are wrong as a result.
 

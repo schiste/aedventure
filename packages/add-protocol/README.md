@@ -10,7 +10,7 @@ nothing.
 
 It is the hand-written mirror of the Rust types in `crates/add-core`. When a
 Rust state field changes, this is the file that has to change with it, and
-`packages/add-domain/test/adapters.test.js` is what proves the two still
+`packages/add-runtime-client/test/adapters.test.js` is what proves the two still
 agree against a real WASM snapshot.
 
 See [the three-brick contract](../../docs/lore-engine-content-bricks.md).

@@ -24,7 +24,7 @@ the lore/content seam and would drift immediately without a written rule.
 | --- | --- | --- | --- | --- |
 | **Lore** | What is true in this world? | `lore/` | Markdown wiki + `lore/data/*.json` | `npm run lore:check` |
 | **Engine** | What can happen, and what happens next? | `crates/add-core/`, `crates/add-web-bindings/`, `crates/add-scenario*/`, `packages/game-*` | Rust and neutral TypeScript | `cargo test -p add-core` |
-| **Content** | What exists in this particular game, and what does it say? | `packages/add-content/`, `packages/add-presentation/`, `packages/add-protocol/`, `packages/add-domain/`, `scenarios/` | TypeScript content modules, JSON fixtures, `.ink` scripts | `npm run content:check` |
+| **Content** | What exists in this particular game, and what does it say? | `packages/add-content/`, `packages/add-presentation/`, `packages/add-protocol/`, `packages/add-runtime-client/`, `scenarios/` | TypeScript content modules, JSON fixtures, `.ink` scripts | `npm run content:check` |
 
 ### Lore owns canon, not behavior
 
@@ -83,7 +83,7 @@ Content owns:
   snapshot selectors, command mapping, map projection, and the reason behind
   every blocked action. Projections only - no rules, no mutation.
 - The worker client, i18n copy, the agent runtime report, and the barrel the
-  app imports, in `packages/add-domain/`.
+  app imports, in `packages/add-runtime-client/`.
 - Committed scenarios and fixtures in `scenarios/`.
 - The lore links in `content/lore-refs.ts` that tie a content ID to the canon
   it implements.
@@ -97,11 +97,11 @@ each can be built, tested and reasoned about without the ones above it:
 flowchart LR
   P["@aedventure/add-protocol<br/>boundary types"] --> C["@aedventure/add-content<br/>authored catalogs"]
   C --> PR["@aedventure/add-presentation<br/>snapshot selectors"]
-  PR --> D["@aedventure/add-domain<br/>worker client, i18n,<br/>agent report, barrel"]
+  PR --> D["@aedventure/add-runtime-client<br/>worker client, i18n,<br/>agent report, barrel"]
   D --> A[apps/add-rpg]
 ```
 
-`add-domain` re-exports the three packages beneath it, so the app imports one
+`add-runtime-client` re-exports the three packages beneath it, so the app imports one
 name and the split stayed invisible to it. Extraction order was leaf-first -
 protocol, then content, then presentation - because a leaf is both the correct
 dependency order and the lowest-conflict order when other sessions are editing
@@ -114,7 +114,7 @@ create an edge pointing backwards along it.
 
 ```mermaid
 flowchart LR
-  L[Lore<br/>lore/] -->|canon ids, facts, names| C[Content<br/>packages/add-domain, scenarios]
+  L[Lore<br/>lore/] -->|canon ids, facts, names| C[Content<br/>packages/add-runtime-client, scenarios]
   C -->|codegen| E[Engine<br/>crates/add-core, packages/game-*]
   E -->|snapshot, events| C
   C -.->|generated back-index only| L
@@ -153,7 +153,7 @@ authored input.
 | Neutral topology, world, visibility, renderer, or input contracts | Engine | `packages/game-*` | `npm run agent:verify:types` |
 | A new beat, resource, station, role, item, creature, perk, act, or entity | Content | `packages/add-content/src/content/` | `npm run content:check` |
 | Balance numbers, costs, durations, tiers | Content | `packages/add-content/src/content/` | `npm run content:check` |
-| Player-facing copy, dialogue, `.ink` prose | Content | `packages/add-domain/` | `npm run content:check` |
+| Player-facing copy, dialogue, `.ink` prose | Content | `packages/add-runtime-client/` | `npm run content:check` |
 | Snapshot explanation, available-action projection, blocker copy | Content | `packages/add-presentation/src/adapters/` | `npm run agent:verify:add-ui` |
 | A committed scenario, fixture, or replay | Content | `scenarios/` | `npm run scenario:add -- scenarios/add/<id>.json` |
 | The lore link tying a content ID to its canon subject | Content | `packages/add-content/src/content/lore-refs.ts` | `npm run lore:refs:check` |
@@ -173,7 +173,7 @@ reorganization.
 | Lore is separate from the game | Yes | `lore/` is 389 tracked files with its own Python tooling and its own site build; nothing in `apps/` or `crates/` reads it |
 | Engine is free of authored material | Yes | Every `crates/add-core/src/game_data/catalog/*.rs` is `@generated`; hand-written rules live in `simulation.rs` and `game_data.rs` |
 | Content compiles into the engine | Yes | `scripts/build-add-content.cjs` with a `--check` drift mode and a golden catalog snapshot |
-| Content does not reimplement engine rules | Yes | `packages/add-domain/test/architecture.test.js` enforces the renderer boundary; command availability now consumes Rust outcomes and catalog-owned `BlockerDef` labels |
+| Content does not reimplement engine rules | Yes | `packages/add-runtime-client/test/architecture.test.js` enforces the renderer boundary; command availability now consumes Rust outcomes and catalog-owned `BlockerDef` labels |
 | Lore links to content | Yes, one-way | `content/lore-refs.ts` cites lore by path; `npm run lore:refs:check` resolves every link and reports both coverage gaps |
 | Boundary is machine-checked | **Partial** | Renderer direction and content drift are checked; brick direction is not |
 
@@ -190,11 +190,11 @@ TypeScript. `cargo test -p add-core` additionally holds a golden snapshot of
 the whole catalog, so a data change is always visible in review.
 
 **2. Import direction (exists).**
-`packages/add-domain/test/architecture.test.js` asserts that the domain package
+`packages/add-runtime-client/test/architecture.test.js` asserts that the domain package
 does not depend on the renderer, and additionally that:
 
 - no file under `crates/add-*/src` or `packages/game-*/src` cites `lore/`;
-- no file under `packages/add-domain/src/` cites `lore/` except
+- no file under `packages/add-runtime-client/src/` cites `lore/` except
   `content/lore-refs.ts`.
 
 Both are negative-tested: planting a lore path in an engine source file fails
@@ -272,7 +272,7 @@ follows this split for every milestone.
 | Act definitions: tiers, scopes, expressed values | Content | `packages/add-content/src/content/narrative/` |
 | Relationship states, sifting patterns, storylet sidecars | Content | `packages/add-content/src/content/narrative/` |
 | Tuning tables: tier bases, modifiers, band edges, value angles | Content | `packages/add-content/src/content/narrative/` |
-| `.ink` prose, choices, scene flow | Content | `packages/add-domain/narrative/story/` |
+| `.ink` prose, choices, scene flow | Content | `packages/add-runtime-client/narrative/story/` |
 | Reaction rules | Content | `packages/add-content/src/content/narrative/` |
 
 The specification's §12 puts all of this in RON files under `story/` and
@@ -295,7 +295,7 @@ argued in the plan's "One content pipeline, not two" section.
 | Content | `npm run content:check` | Authored content validates and generated Rust has not drifted |
 | Content | `npm run content:explain -- <id>` | A content ID exposes its definition, source, references and users |
 | Content | `npm run scenario:add -- scenarios/add/<id>.json` | Authored content behaves deterministically against the engine |
-| Boundary | `npm --workspace @aedventure/add-domain test` | Import direction assertions hold |
+| Boundary | `npm --workspace @aedventure/add-runtime-client test` | Import direction assertions hold |
 | Boundary | `npm run lore:refs:check` | Every lore link resolves; unbound content and unimplemented lore are reported |
 
 ## Known gaps

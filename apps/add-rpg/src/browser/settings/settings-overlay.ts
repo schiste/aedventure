@@ -10,7 +10,7 @@ import { createSignal } from "solid-js"
 import html from "solid-js/html"
 import { render } from "solid-js/web"
 
-import { PSEUDO_LOCALE, onLocaleChange, t } from "@aedventure/add-domain"
+import { PSEUDO_LOCALE, onLocaleChange, t } from "@aedventure/add-runtime-client"
 
 import "./settings.css"
 import "../i18n/boot" // registers the catalog + sets the initial locale

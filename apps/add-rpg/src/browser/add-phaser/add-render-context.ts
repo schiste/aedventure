@@ -14,7 +14,7 @@ import {
   isBaseFeature,
   numberMetadata,
   stateForCell,
-} from "@aedventure/add-domain"
+} from "@aedventure/add-runtime-client"
 
 import { DEFAULT_RADIUS, type RenderContext, type StateCounts } from "./types"
 

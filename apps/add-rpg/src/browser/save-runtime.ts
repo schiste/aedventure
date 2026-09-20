@@ -1,4 +1,4 @@
-import type { SimulationSnapshot } from "@aedventure/add-domain"
+import type { SimulationSnapshot } from "@aedventure/add-runtime-client"
 
 export type AddSaveSource = "autosave" | "manual" | "import" | "offline_catchup" | "reset"
 

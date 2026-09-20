@@ -15,7 +15,7 @@ import type {
   AddTileInteractionDetail,
   AddTravelExposureRisk,
   AddVisibilityRenderState,
-} from "@aedventure/add-domain"
+} from "@aedventure/add-runtime-client"
 
 export type PhaserMapTopologyKind = "hex" | "square"
 export type AddTopologyKind = PhaserMapTopologyKind

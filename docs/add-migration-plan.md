@@ -12,7 +12,7 @@ engine to support both square and hex maps.
 ## Where does this change belong?
 
 Migration work must preserve the current product boundary: ADD gameplay stays
-in `crates/add-core/`, authored ADD data stays in `packages/add-domain/`, and
+in `crates/add-core/`, authored ADD data stays in `packages/add-runtime-client/`, and
 the player-facing application stays in `apps/add-rpg/`. Shared `packages/game-*`
 work is allowed only when the live ADD app or an exercised neutral fixture has
 a concrete consumer. Office changes stay in the office/platform lane, and
@@ -111,7 +111,7 @@ packages/
     Office maps, office interaction mapping, meeting zones, collaboration
     affordances, and office-specific visual catalog.
 
-  add-domain/
+  add-runtime-client/
     ADD snapshot adapters, ADD command mapping, ADD visual catalog, ADD map
     selectors, hex overworld adapters, square dungeon adapters, and UI selectors.
 
@@ -179,7 +179,7 @@ ADD DOM/Solid UI
   -> Web Worker
   -> Rust/WASM WebRuntime
   -> ADD SimulationSnapshot
-  -> add-domain adapters
+  -> add-presentation adapters
   -> neutral GameWorld
   -> Phaser renderer
 ```

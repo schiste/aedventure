@@ -1,4 +1,4 @@
-import { ADD_DOMAIN_BOUNDARY } from "@aedventure/add-domain"
+import { ADD_DOMAIN_BOUNDARY } from "@aedventure/add-runtime-client"
 
 export interface AddRpgAppScaffold {
   readonly appId: "add-rpg"

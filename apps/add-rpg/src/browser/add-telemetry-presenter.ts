@@ -20,7 +20,7 @@ import {
   type AddWorldTimeSummary,
   type CatalogSnapshot,
   type SimulationSnapshot,
-} from "@aedventure/add-domain"
+} from "@aedventure/add-runtime-client"
 
 import type { AddPhaserMapInfo, AddCharacterTravelEvent } from "./phaser-add-map"
 import {

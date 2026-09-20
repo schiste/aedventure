@@ -5,7 +5,7 @@
 // `ObjectiveDef` carrying `conditions` and `rewards`, while
 // `@aedventure/add-protocol` declares a *runtime* `ObjectiveDef` — the trimmed
 // shape that actually reaches a snapshot. Both names are re-exported through
-// `@aedventure/add-domain`, so exporting the type here would be ambiguous.
+// `@aedventure/add-runtime-client`, so exporting the type here would be ambiguous.
 // Only its values are re-exported; the type is deep-import only until one side
 // is renamed. Nothing in the codegen pipeline is affected: the generator and
 // the content tooling load every module by path.

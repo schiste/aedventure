@@ -49,8 +49,8 @@
       "@aedventure/add-protocol": [
         "packages/add-protocol/src"
       ],
-      "@aedventure/add-domain": [
-        "packages/add-domain/src"
+      "@aedventure/add-runtime-client": [
+        "packages/add-runtime-client/src"
       ],
       "@aedventure/map-engine": [
         "packages/map-engine/src"

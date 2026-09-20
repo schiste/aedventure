@@ -1,4 +1,4 @@
-import type { AddGameEvent, SimulationSnapshot, TraceEntry } from "@aedventure/add-domain"
+import type { AddGameEvent, SimulationSnapshot, TraceEntry } from "@aedventure/add-runtime-client"
 
 import {
   ADD_TRACE_BUDGETS_ID,

@@ -44,7 +44,7 @@ inspection, snapshots, and telemetry.
 | Items, perks, and creatures | `packages/add-content/src/content/{items,perks,creatures}.ts` | IDs, perk prerequisites, item effects, numeric combat values | `crates/add-core/src/game_data/catalog/{items,perks,creatures}.rs` | inventory, combat, and progression |
 | Encounter tables | `packages/add-content/src/content/encounter-tables.ts` | creature IDs, positive weights, quantity ranges | Client/domain only; no Rust codegen | deterministic dungeon spawn selection |
 | Loot tables | `packages/add-content/src/content/loot-tables.ts` | item IDs, positive weights, quantity ranges | Client/domain only; no Rust codegen | deterministic loot selection before typed Rust mutation |
-| Dungeon and area registry | `packages/add-domain/src/{dungeons,areas}/` | IDs and map routing references | Client/domain only; map factories remain authored code | map modes and Phaser presentation |
+| Dungeon and area registry | `packages/add-runtime-client/src/{dungeons,areas}/` | IDs and map routing references | Client/domain only; map factories remain authored code | map modes and Phaser presentation |
 | Content/save version | `packages/add-content/src/content/content-version.ts` | generated version and Rust migration coupling | `crates/add-core/src/game_data/catalog/version.rs` | `GameState` schema/catalog compatibility |
 
 Expedition targets, resonance recipes, and their current Rust-only catalog

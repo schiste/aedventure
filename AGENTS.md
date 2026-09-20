@@ -9,7 +9,7 @@ For ADD gameplay, content, tooling, or shared-engine work, start from
 The brief must state the player outcome, authoritative layer, affected content
 IDs, acceptance scenarios, focused verification command, and likely follow-up.
 Keep gameplay mutation in `crates/add-core/`, authored IDs in
-`packages/add-domain/src/content/`, and player-facing behavior in the existing
+`packages/add-runtime-client/src/content/`, and player-facing behavior in the existing
 `apps/add-rpg/` application. Run `npm run docs:check` when changing the
 routing documentation or task template.
 

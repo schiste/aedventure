@@ -29,7 +29,7 @@ The repository already has meaningful pieces of the desired environment:
 | Browser runtime boundary | `crates/add-web-bindings/`, `apps/add-rpg/src/workers/` | WASM runtime behind a typed worker protocol |
 | Authored content and code generation | `packages/add-content/src/content/`, `scripts/build-add-content.cjs` | TypeScript authoring with generated Rust catalogs |
 | Deterministic scenarios and replay | `crates/add-core/src/bin/scenario.rs`, `crates/add-scenario/`, `scenarios/` | Headless command logs, canonical snapshots, checkpoints, save round-trips, and committed idle/offline fixtures |
-| Agent-readable runtime inspection | `packages/add-domain/src/runtime/inspection.ts`, `crates/add-scenario/src/inspection.rs`, `apps/add-rpg/src/browser/` | Versioned authoritative/derived/diagnostic reports, stable IDs, blocker explanations, and text/JSON accessors |
+| Agent-readable runtime inspection | `packages/add-runtime-client/src/runtime/inspection.ts`, `crates/add-scenario/src/inspection.rs`, `apps/add-rpg/src/browser/` | Versioned authoritative/derived/diagnostic reports, stable IDs, blocker explanations, and text/JSON accessors |
 | Domain projections | `packages/add-presentation/src/adapters/` | Snapshot selectors, command mapping, map/world adapters, and explanations |
 | Player-facing app | `apps/add-rpg/src/browser/` | Solid UI, Phaser map, saves, settings, telemetry, and development tools |
 | Content inspection | `npm run content:validate`, `content:graph`, `content:timeline`, `content:explain` | Deterministic text output for humans and agents |

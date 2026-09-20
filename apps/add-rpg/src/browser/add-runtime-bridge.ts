@@ -4,8 +4,8 @@ import type {
   SimulationSnapshot,
   TraceEntry,
   WorkerRequest,
-} from "@aedventure/add-domain"
-import { SimulationClient } from "@aedventure/add-domain"
+} from "@aedventure/add-runtime-client"
+import { SimulationClient } from "@aedventure/add-runtime-client"
 
 export interface AddRuntimeBridgeCallbacks {
   readonly onReady: (snapshot: SimulationSnapshot, catalog: CatalogSnapshot) => void

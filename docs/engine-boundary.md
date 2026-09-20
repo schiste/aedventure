@@ -72,7 +72,7 @@ may map the same primitive to "Harvest node" or "Enter building".
 | --- | --- | --- |
 | `apps/add-rpg` | `live product app` | The current ADD idle/RPG game: Solid UI, Phaser presentation, worker runtime, saves, telemetry, and player-facing flows. Engine work must keep this app working. |
 | `crates/add-core` | `game-domain authority` | Rust-authoritative ADD simulation, commands, progression, saves, and deterministic state transitions. It is not a generic engine package. |
-| `packages/add-domain` | `game-domain adapter/content` | Authored ADD content, validation, snapshot selectors, command mapping, and world/presentation adapters. |
+| `packages/add-runtime-client` | `game-domain adapter/content` | Authored ADD content, validation, snapshot selectors, command mapping, and world/presentation adapters. |
 | `packages/game-*` | `engine-neutral` | Shared topology, world, renderer, input, and protocol primitives when they have a concrete app consumer. |
 | `apps/engine-sandbox` | `engine-neutral QA` | Development fixture for topology and renderer proof; not the product game and not the source of ADD mechanics. |
 | `packages/map-engine` | `engine-neutral` | Strongest current engine package. It owns vector movement, collision, zone overlap, speed limits, and permission-gated zone entry. Keep it neutral, but eventually rename concepts around generic entity movement instead of player-only movement if strategy units share it. |
@@ -329,7 +329,7 @@ Acceptance for this phase:
 - the ADD smoke test exercises the changed engine seam through a player-facing
   flow
 - the seam has a focused package test and a deterministic fixture
-- ADD-specific rules remain in `crates/add-core` or `packages/add-domain`
+- ADD-specific rules remain in `crates/add-core` or `packages/add-runtime-client`
 - the engine package does not import office or ADD domain code
 - `apps/engine-sandbox` covers neutral square/hex rendering cases where a
   product flow would be unnecessarily expensive
@@ -352,7 +352,7 @@ packages/
   game-telemetry/
 
   office-domain/
-  add-domain/
+  add-runtime-client/
 ```
 
 The existing `apps/web` can stay in place during extraction, but its long-term
@@ -377,7 +377,7 @@ Keep the live ADD app as the product check:
 
 - ADD smoke test as the real RPG/idle app check
 - engine sandbox square/hex nonblank screenshot check
-- import boundary checks for `office-domain`, `add-domain`, and neutral engine
+- import boundary checks for `office-domain`, `add-runtime-client`, and neutral engine
   packages
 
 ## Immediate Next Implementation Task

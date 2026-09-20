@@ -1,7 +1,7 @@
 /// <reference lib="webworker" />
 
-import type { CatalogSnapshot, SimulationSnapshot, WorkerEvent, WorkerRequest } from "@aedventure/add-domain"
-import { diffSnapshot } from "@aedventure/add-domain"
+import type { CatalogSnapshot, SimulationSnapshot, WorkerEvent, WorkerRequest } from "@aedventure/add-runtime-client"
+import { diffSnapshot } from "@aedventure/add-runtime-client"
 import init, { WebRuntime } from "../generated/wasm/add-web-bindings/runtime"
 
 let runtime: WebRuntime | null = null

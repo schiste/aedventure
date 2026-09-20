@@ -197,7 +197,7 @@ Allowed dependency direction:
 
 ```text
 apps/add-rpg
-  -> packages/add-domain
+  -> packages/add-runtime-client
   -> generated Rust/WASM snapshot and catalog contracts
   -> crates/add-core authority
 ```
@@ -261,8 +261,8 @@ Command intent:
 - `content:explain -- <id>`: explains one story beat, including conditions,
   effects, related IDs, incoming dependencies, and outgoing dependencies.
 
-These tools read `packages/add-domain/dist`, so the npm scripts build
-`@aedventure/add-domain` before running the inspector. The output is deliberately
+These tools read `packages/add-runtime-client/dist`, so the npm scripts build
+`@aedventure/add-runtime-client` before running the inspector. The output is deliberately
 plain text and stable in ordering so it can be pasted into planning notes,
 debugging reports, and agent context.
 

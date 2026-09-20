@@ -36,7 +36,7 @@ architecture before product feature work resumes.
 | `apps/add-rpg/` | Live ADD browser game: Solid UI, Phaser world, runtime client, saves, telemetry, and development tools | Player-facing application and app-level presentation behavior |
 | `crates/add-core/` | Live ADD gameplay runtime | Rust simulation, commands, progression, offline catch-up, saves, migrations, and deterministic rules |
 | `crates/add-web-bindings/` | Live browser boundary | WASM bindings consumed by the ADD worker |
-| `packages/add-domain/` | Live ADD content and translation layer | Authored content, validation, selectors, command mapping, and world/presentation adapters |
+| `packages/add-runtime-client/` | Live ADD content and translation layer | Authored content, validation, selectors, command mapping, and world/presentation adapters |
 | `packages/game-*` | Shared engine primitives | Neutral topology, world, renderer, input, and protocol contracts used when an app consumes them |
 | `apps/engine-sandbox/` | Engine fixture and QA surface | Square/hex renderer and topology proof, not a second product game |
 | `apps/web/`, `apps/api/`, `apps/world-server/`, `apps/media-gateway/` | Office/platform lane | Customer virtual-office product planning and infrastructure |
@@ -81,7 +81,7 @@ crosses a boundary. The short routing rule is:
 | Gameplay rules, state, progression, combat, or saves | `crates/add-core/` | `cargo test -p add-core` |
 | Authored IDs, story, objectives, recipes, creatures, items, perks, or balance | `packages/add-content/src/content/` | `npm run content:check` |
 | Snapshot projections, available actions, or command mapping | `packages/add-presentation/src/adapters/` | `npm run agent:verify:add-ui` |
-| Agent-readable runtime state, action availability, blockers, or stable report IDs | `packages/add-domain/src/runtime/` plus `crates/add-scenario/src/inspection.rs` | `npm --workspace @aedventure/add-domain test` and `cargo test -p add-scenario` |
+| Agent-readable runtime state, action availability, blockers, or stable report IDs | `packages/add-runtime-client/src/runtime/` plus `crates/add-scenario/src/inspection.rs` | `npm --workspace @aedventure/add-runtime-client test` and `cargo test -p add-scenario` |
 | Player-facing ADD UI, input, map presentation, or browser lifecycle | `apps/add-rpg/` | `npm run agent:verify:add-ui` |
 | Neutral topology/renderer behavior with a real consumer | `packages/game-*` or `apps/engine-sandbox/` | `npm run agent:verify:types` plus the relevant smoke |
 
@@ -104,7 +104,7 @@ npm run content:check
 npm run content:graph -- --reverse resource.stone
 npm run content:explain -- objective.restore_studio
 npm run content:fixtures:check
-npm --workspace @aedventure/add-domain test
+npm --workspace @aedventure/add-runtime-client test
 npm run agent:verify:add-ui
 AGENT_VERIFY_SMOKE=1 npm run agent:verify:add-ui
 npm run qa:add-rpg:phase5
@@ -174,7 +174,7 @@ ownership and dependency direction are fixed by the
 - `packages/add-content/` - authored ADD content: catalogs, story, dungeons, areas.
 - `packages/add-presentation/` - snapshot selectors, command mapping, and
   blocked-action explanations.
-- `packages/add-domain/` - worker client, i18n, agent runtime report, and the
+- `packages/add-runtime-client/` - worker client, i18n, agent runtime report, and the
   barrel the app imports.
 - `packages/game-*` - reusable topology, world, renderer, content, input, and
   protocol primitives.

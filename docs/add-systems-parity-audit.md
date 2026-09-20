@@ -46,7 +46,7 @@ The new live system is:
   save import/export, calculations.
 - `crates/add-web-bindings/`: WASM bridge for the Rust runtime.
 - `apps/add-rpg/src/workers/add-runtime.worker.ts`: browser worker boundary.
-- `packages/add-domain/`: snapshot adapters, UI selectors, command mapping.
+- `packages/add-runtime-client/`: snapshot adapters, UI selectors, command mapping.
 - `apps/add-rpg/`: Solid UI and Phaser presentation.
 
 Phaser and the browser UI do not own ADD gameplay calculations. They consume a
@@ -82,7 +82,7 @@ Rust/WASM snapshot and send commands back to the worker.
 | Deterministic RNG stream | Migrated for current slice | `GameState.rng_seed`, `Simulation::next_rng_u64` | The stream is persisted and save/reload deterministic; broader encounter generation remains incomplete. |
 | Save import/export | Migrated for current scope | `save.rs`, `WebRuntime::exportSave/importSave` | Current save payload is authoritative `GameState` JSON. |
 | Browser autosave/offline bridge | Migrated for current scope | `apps/add-rpg/src/browser/save-runtime.ts` | Browser stores save records; Rust owns the state payload and catch-up command. |
-| Agent-readable runtime inspection | Implemented for current slice | `crates/add-scenario/src/inspection.rs`, `packages/add-domain/src/runtime/inspection.ts`, `apps/add-rpg/src/browser/main.ts` | Versioned `agent_runtime_v1` report exposes authoritative state, derived commands/blockers, stable IDs, diagnostics, and compact text/JSON accessors. |
+| Agent-readable runtime inspection | Implemented for current slice | `crates/add-scenario/src/inspection.rs`, `packages/add-runtime-client/src/runtime/inspection.ts`, `apps/add-rpg/src/browser/main.ts` | Versioned `agent_runtime_v1` report exposes authoritative state, derived commands/blockers, stable IDs, diagnostics, and compact text/JSON accessors. |
 | Player-facing visual and interaction QA | Implemented for current critical flows | `scenarios/add/browser-fixtures.json`, `scripts/add-rpg-phase5.cjs`, `apps/add-rpg/src/browser/qa-contract.ts` | Boot, idle, map, story choice, save/load, and offline return combine state/text, semantic DOM/action IDs, renderer affordances, and screenshots; reviewed image baselines remain an explicit approval step. |
 | Full save-slot metadata, content hash, backups, and slot UX | Not yet | Future save system | Schema/catalog versions and migrations exist, but the full slot manager and backup contract do not. |
 | Per-system tick accumulators and event-scheduled catch-up | Partial | `Simulation::RunOfflineCatchup` | Active timed systems progress, but future encounters and complex RNG chains need a fuller event/replay model. |
@@ -167,8 +167,8 @@ Use these gates when changing ADD data or calculations:
 npm run docs:check
 npm run content:check
 cargo test -p add-core
-npm --workspace @aedventure/add-domain run build
-npm --workspace @aedventure/add-domain run test
+npm --workspace @aedventure/add-runtime-client run build
+npm --workspace @aedventure/add-runtime-client run test
 npm run agent:verify:add-ui
 npm run smoke:add-rpg:built
 npm run check

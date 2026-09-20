@@ -9,12 +9,12 @@
     "wasm:build": "node ../../scripts/build-add-content.cjs && node ../../scripts/build-add-rpg-wasm.cjs",
     "build": "npm run wasm:build && tsc -b && npm run build:browser",
     "build:types": "tsc -b",
-    "build:browser": "npm run wasm:build && npm --workspace @aedventure/add-domain run build && vite build --config vite.config.mjs",
-    "dev:browser": "npm run wasm:build && npm --workspace @aedventure/add-domain run build && vite --config vite.config.mjs --host 127.0.0.1",
+    "build:browser": "npm run wasm:build && npm --workspace @aedventure/add-runtime-client run build && vite build --config vite.config.mjs",
+    "dev:browser": "npm run wasm:build && npm --workspace @aedventure/add-runtime-client run build && vite --config vite.config.mjs --host 127.0.0.1",
     "smoke": "npm run build:browser && node ../../scripts/add-rpg-smoke.test.cjs"
   },
   "dependencies": {
-    "@aedventure/add-domain": "0.1.0",
+    "@aedventure/add-runtime-client": "0.1.0",
     "@aedventure/game-renderer-phaser": "0.1.0",
     "@aedventure/game-topology": "0.1.0",
     "@aedventure/game-world": "0.1.0",

@@ -77,7 +77,7 @@ import {
   type SimulationSnapshot,
   type StationSpecializationPath,
   type WorkerRequest,
-} from "@aedventure/add-domain"
+} from "@aedventure/add-runtime-client"
 import type { CellCoord } from "@aedventure/game-topology"
 import type { GameInteraction, GameWorld } from "@aedventure/game-world"
 

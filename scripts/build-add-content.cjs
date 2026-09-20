@@ -32,7 +32,7 @@ function resolveRustfmt() {
 }
 
 // Build the content source so we can require its compiled output.
-execFileSync(path.join(ROOT, "node_modules", ".bin", "tsc"), ["-b", "packages/add-domain"], {
+execFileSync(path.join(ROOT, "node_modules", ".bin", "tsc"), ["-b", "packages/add-runtime-client"], {
   cwd: ROOT,
   stdio: "inherit",
 })

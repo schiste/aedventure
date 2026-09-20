@@ -118,7 +118,7 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
 - `render_game_to_text` exposes the same base economy projection for automation.
   The ADD smoke asserts forecast horizons, stalled-system reasons, and offline
   preview copy.
-- Verification passed for `npm --workspace @aedventure/add-domain run build`,
+- Verification passed for `npm --workspace @aedventure/add-runtime-client run build`,
   `npm --workspace @aedventure/add-rpg run build`, `npm run smoke:add-rpg`, and
   full `npm run check`. The generated base-management smoke screenshot was
   visually inspected and showed readable limiter/forecast/stall copy without
@@ -135,7 +135,7 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   gain before restoring the worker for later scenarios. The dedicated
   `add-rpg-staffing-management-smoke.png` screenshot was inspected for readable
   staffing layout.
-- Verification passed again for `npm --workspace @aedventure/add-domain run
+- Verification passed again for `npm --workspace @aedventure/add-runtime-client run
   build`, `npm --workspace @aedventure/add-rpg run build`, `npm run
   smoke:add-rpg`, and full `npm run check`.
 - Phase 6 offline return is now a player-facing feature. `add-domain` projects
@@ -240,7 +240,7 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   for smoke/agent inspection, and offline-return summaries can report completed
   resonance jobs.
 - Verification passed for `cargo test -p add-core`,
-  `npm --workspace @aedventure/add-domain run build`,
+  `npm --workspace @aedventure/add-runtime-client run build`,
   `npm --workspace @aedventure/add-rpg run build`, `npm run smoke:add-rpg`, and
   full `npm run check`. The regenerated
   `tmp/add-rpg-resonance-smoke.png` screenshot was inspected and showed the
@@ -255,7 +255,7 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   same contract for agents/smoke tests, and ADD smoke asserts the eight ordered
   steps, one current step, health status, visible rates, return plan, and
   decision hint.
-- Verification passed for `npm --workspace @aedventure/add-domain run build`,
+- Verification passed for `npm --workspace @aedventure/add-runtime-client run build`,
   `npm --workspace @aedventure/add-rpg run build`, `npm run smoke:add-rpg`, and
   full `npm run check`. The regenerated
   `tmp/add-rpg-base-management-smoke.png` screenshot was inspected; the loop
@@ -354,7 +354,7 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   local/interior square submaps, the selected-tile card renders link/action
   rows from the domain projection, and smoke assertions cover normal tiles
   having no submap plus Survivor Cave/base/dungeon scale rules.
-- Verification for this slice: `npm --workspace @aedventure/add-domain run
+- Verification for this slice: `npm --workspace @aedventure/add-runtime-client run
   build`, `npm --workspace @aedventure/add-rpg run build:types`, and `node
   --check scripts/add-rpg-smoke.test.cjs` pass. Full ADD browser build/smoke is
   currently blocked by unrelated dirty inventory runtime work:
@@ -486,8 +486,8 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   offline rule split between allowed idle systems and online-only world actions.
   During verification, a reset/save race was fixed by awaiting the reset save
   export before allowing subsequent import edits; `cargo test -p add-core`,
-  `npm --workspace @aedventure/add-domain run build`, `npm --workspace
-  @aedventure/add-domain run test`, `npm run smoke:add-rpg:built`, `npm run
+  `npm --workspace @aedventure/add-runtime-client run build`, `npm --workspace
+  @aedventure/add-runtime-client run test`, `npm run smoke:add-rpg:built`, `npm run
   check`, and `git diff --check` all passed.
 - QA now asserts DOM interaction prompts/hotkeys and DOM emote glyphs use native
   font metrics, whole-pixel placement, and no transform scaling. Verification
@@ -2359,7 +2359,7 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   develop-web-game client was retried and still fails before navigation on its
   skill-local missing `playwright` import; repo-native Playwright checks pass.
 - ADD migration Phase 18 aligned the aeoffice ADD app with the imported
-  first-playable gate. `packages/add-domain` now derives first-playable
+  first-playable gate. `packages/add-runtime-client` now derives first-playable
   checklist steps, primary next actions, resource source/sink/blocker summaries,
   role assignment summaries, and construction readiness from the Rust/WASM
   snapshot and catalog without moving rules into Phaser or the UI.
@@ -2374,7 +2374,7 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   so ADD domain selectors and browser telemetry now normalize those values at
   the app/domain boundary. Manual first-playable actions now wait for an
   in-flight auto tick instead of being dropped.
-- Phase 18 verification passed with `npm --workspace @aedventure/add-domain run
+- Phase 18 verification passed with `npm --workspace @aedventure/add-runtime-client run
   build`, `npm --workspace @aedventure/add-rpg run build:types`, `npm
   --workspace @aedventure/add-rpg run build:browser`, `npm run
   smoke:add-rpg:built`, `npm run qa:renderer`, and `npm run check`. The ADD
@@ -2395,7 +2395,7 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   its own `playwright` dependency, so the live 8108 keyboard check used the
   repo Playwright dependency directly and captured
   `tmp/add-rpg-live-hex-chord.png`.
-- ADD now has a first-pass world time abstraction in `packages/add-domain`.
+- ADD now has a first-pass world time abstraction in `packages/add-runtime-client`.
   `selectAddWorldTime()` derives Day, local time, season, daylight phase,
   daylight ratio, and estimated sunrise/sunset from the authoritative Rust
   `clockSeconds` without adding new save state. The presentation uses the
@@ -2406,7 +2406,7 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   at dawn so the player discovers the Studio with visible environmental time
   instead of a debug seconds counter.
 - Verification for the world time pass passed with `npm --workspace
-  @aedventure/add-domain run build`, `npm --workspace @aedventure/add-domain run
+  @aedventure/add-runtime-client run build`, `npm --workspace @aedventure/add-runtime-client run
   test`, `npm --workspace @aedventure/add-rpg run build:browser`, `npm run
   smoke:add-rpg:built`, and `npm run check`. The ADD smoke now asserts the
   world-time telemetry, and the latest ADD screenshot was visually inspected.
@@ -2427,7 +2427,7 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   movement changes cells, waits for the visible travel animation, and advances
   `snapshot.clockSeconds` by roughly one tile-hour per accepted step.
 - Verification for the travel-time slice passed with `npm --workspace
-  @aedventure/add-domain run build`, `npm --workspace @aedventure/add-domain run
+  @aedventure/add-runtime-client run build`, `npm --workspace @aedventure/add-runtime-client run
   test`, `npm --workspace @aedventure/add-rpg run build:browser`, `npm run
   smoke:add-rpg:built`, `npm run check`, and `git diff --check`. The updated
   ADD map screenshot was visually inspected to ensure the travel card no longer
@@ -2443,8 +2443,8 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   `addSnapshotToGameWorld()`. Initial camera focus follows that character start,
   so the first overworld screen frames the cave instead of the Studio.
 - Verification for the first-move/cave-start polish passed with `npm
-  --workspace @aedventure/add-domain run build`, `npm --workspace
-  @aedventure/add-domain run test`, `npm --workspace @aedventure/add-rpg run
+  --workspace @aedventure/add-runtime-client run build`, `npm --workspace
+  @aedventure/add-runtime-client run test`, `npm --workspace @aedventure/add-rpg run
   build:browser`, `npm run smoke:add-rpg:built`, `npm run check`, and
   `git diff --check`. The ADD map screenshot was visually inspected and now
   shows the Hero at the Survivor Cave.
@@ -2454,7 +2454,7 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   presentation clock that ticks through each visible minute quickly and catches
   up to the authoritative clock.
 - Verification for the minute-by-minute clock pass passed with `npm --workspace
-  @aedventure/add-domain run build`, `npm --workspace @aedventure/add-rpg run
+  @aedventure/add-runtime-client run build`, `npm --workspace @aedventure/add-rpg run
   build:browser`, `npm run smoke:add-rpg:built`, `npm run check`, and
   `git diff --check`. The ADD smoke now samples several distinct travel-clock
   minute strings before accepting the one-hour tile crossing.
@@ -2477,7 +2477,7 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   construction can progress with the Hero assigned to construction, even without
   extra crew. `roleHasWorker()` now captures that domain concept, so the
   first-playable action advances construction instead of repeatedly asking for
-  build crew. Verification passed with `npm --workspace @aedventure/add-domain
+  build crew. Verification passed with `npm --workspace @aedventure/add-runtime-client
   run build`, `npm --workspace @aedventure/add-rpg run build:browser`,
   `npm run smoke:add-rpg:built`, `npm run check`, and `git diff --check`.
 - The travel-clock bug had a second input path: repeated keydown events could
@@ -2486,7 +2486,7 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   each toxic-world tile crossing a deliberate key press. Travel start/finally
   also forces admin auto-tick back to paused.
 - Verification for the held-key clock fix passed with `npm --workspace
-  @aedventure/add-domain run build`, `npm --workspace @aedventure/add-rpg run
+  @aedventure/add-runtime-client run build`, `npm --workspace @aedventure/add-rpg run
   build:browser`, `npm run smoke:add-rpg:built`, `npm run check`, and
   `git diff --check`. The smoke now asserts both authoritative and displayed
   clocks stay stopped after travel and that held-key repeats do not chain moves.
@@ -2598,18 +2598,18 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   now only supplies the Hero travel preview input and no longer contains the fog
   drawing algorithms. Verification passed with `npm --workspace
   @aedventure/game-renderer-phaser run build`, `npm --workspace
-  @aedventure/add-domain run build`, `npm --workspace @aedventure/add-rpg run
+  @aedventure/add-runtime-client run build`, `npm --workspace @aedventure/add-rpg run
   build:types`, `npm --workspace @aedventure/game-renderer-phaser run test`,
   `npm run smoke:add-rpg`, `npm run qa:renderer`, `npm run smoke:engine-sandbox`,
   exact renderer leakage `rg`, `git diff --check`, and `npm run check`.
 - ADD has started the post-renderer-neutralization gameplay loop. A new
-  `selectAddDiscoverySummary()` selector in `@aedventure/add-domain` projects
+  `selectAddDiscoverySummary()` selector in `@aedventure/add-runtime-client` projects
   movement consequences, revealed tile choices, first dungeon entry readiness,
   resource links, and available actions without importing Phaser or browser UI.
   `apps/add-rpg` renders that as a compact Discovery panel over the map, and
   `render_game_to_text` now exposes a typed discovery projection for smoke and
   agent inspection. Verification passed with `npm --workspace
-  @aedventure/add-domain run build`, `npm --workspace @aedventure/add-rpg run
+  @aedventure/add-runtime-client run build`, `npm --workspace @aedventure/add-rpg run
   build:types`, `npm run smoke:add-rpg`, `npm run qa:renderer`, `npm run
   smoke:engine-sandbox`, and the exact renderer leakage `rg`. A full `npm run
   check` reached the office smoke and failed only on the large GPU map
@@ -2636,7 +2636,7 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   link count/copy, and objective/resource usefulness reasons. The Discovery
   panel renders that card, and `render_game_to_text` exposes the same selected
   tile decision for agents and smoke tests. Verification passed with
-  `npm --workspace @aedventure/add-domain run build`, `npm --workspace
+  `npm --workspace @aedventure/add-runtime-client run build`, `npm --workspace
   @aedventure/add-rpg run build:types`, `npm run smoke:add-rpg`,
   `npm run qa:renderer`, `npm run smoke:engine-sandbox`, `git diff --check`,
   exact renderer leakage `rg`, and `npm run check`. Visual artifact:
@@ -2647,7 +2647,7 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   from the authoritative ADD snapshot. The ADD app renders a compact Movement
   Consequences card after travel, and `render_game_to_text` exposes the same
   consequence projection for agent/smoke inspection. Verification passed with
-  `npm --workspace @aedventure/add-domain run build`, `npm --workspace
+  `npm --workspace @aedventure/add-runtime-client run build`, `npm --workspace
   @aedventure/add-rpg run build:types`, `npm run smoke:add-rpg`,
   `npm run qa:renderer`, `npm run smoke:engine-sandbox`, `git diff --check`,
   exact renderer leakage `rg`, and `npm run check`. Visual artifact:
@@ -2659,7 +2659,7 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   Next Step card, supports panel collapse/expand while keeping the
   recommendation visible, and exposes the collapsed state plus next-action
   contract through `render_game_to_text`. Verification passed with
-  `npm --workspace @aedventure/add-domain run build`, `npm --workspace
+  `npm --workspace @aedventure/add-runtime-client run build`, `npm --workspace
   @aedventure/add-rpg run build:types`, `npm run smoke:add-rpg`,
   `npm run qa:renderer`, `npm run smoke:engine-sandbox`, `git diff --check`,
   exact renderer leakage `rg`, and `npm run check`. Visual artifact:
@@ -2683,7 +2683,7 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   plus a `GameInteraction` targeting `add.rpg.dungeon.studio`; entering from
   that subtile returns to the Studio map instead of jumping straight back to
   the overworld. Verification passed with `node --check
-  scripts/add-rpg-smoke.test.cjs`, `npm --workspace @aedventure/add-domain run
+  scripts/add-rpg-smoke.test.cjs`, `npm --workspace @aedventure/add-runtime-client run
   build`, `npm --workspace @aedventure/add-rpg run build:types`,
   `npm run smoke:add-rpg`, `npm run qa:renderer`,
   `npm run smoke:engine-sandbox`, `git diff --check`, and `npm run check`.
@@ -2716,7 +2716,7 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   leads the Power and Processing tabs with grouped station cards instead of
   loose controls, and `render_game_to_text` exposes the station-machine contract
   for agent/smoke inspection. Verification passed with `npm --workspace
-  @aedventure/add-domain run build`, `npm --workspace @aedventure/add-rpg run
+  @aedventure/add-runtime-client run build`, `npm --workspace @aedventure/add-rpg run
   build`, `node --check scripts/add-rpg-smoke.test.cjs`, `npm run
   smoke:add-rpg`, visual inspection of `tmp/add-rpg-station-machine-smoke.png`,
   and full `npm run check`.
@@ -2731,7 +2731,7 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   The ADD Build tab now leads with the construction loop and grouped project
   cards, while `render_game_to_text` exposes the build-loop contract for agents
   and smoke tests. Verification passed with `npm --workspace
-  @aedventure/add-domain run build`, `npm --workspace @aedventure/add-rpg run
+  @aedventure/add-runtime-client run build`, `npm --workspace @aedventure/add-rpg run
   build`, `node --check scripts/add-rpg-smoke.test.cjs`, `npm run
   smoke:add-rpg`, visual inspection of `tmp/add-rpg-construction-loop-smoke.png`,
   and full `npm run check`.
@@ -2741,8 +2741,8 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   base/dungeon maps no longer publish fixture IDs, fixture metadata, fixture
   token names, or fixture interaction/zone kinds. Developer/QA renderer
   fixtures remain intentionally named as fixtures. Verification passed with
-  `npm --workspace @aedventure/add-domain run build`, `npm --workspace
-  @aedventure/add-rpg run build`, `npm --workspace @aedventure/add-domain test`,
+  `npm --workspace @aedventure/add-runtime-client run build`, `npm --workspace
+  @aedventure/add-rpg run build`, `npm --workspace @aedventure/add-runtime-client test`,
   `npm run smoke:add-rpg`, `npm run qa:renderer`, and full `npm run check`.
   Screenshots inspected: `tmp/add-rpg-smoke.png`,
   `tmp/add-rpg-fog-map-smoke.png`, and
@@ -2811,7 +2811,7 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   one-hour clock, warning dialog, reveal halo, and runtime snapshot remain the
   single source of movement truth. Unavailable actions are hidden unless their
   blocked reason is useful to the scouting decision. Verification passed with
-  `npm --workspace @aedventure/add-domain run build`,
+  `npm --workspace @aedventure/add-runtime-client run build`,
   `npm --workspace @aedventure/add-rpg exec vite -- build --config
   vite.config.mjs`, `npm run agent:verify:add-ui`, and
   `npm run smoke:add-rpg:built`.

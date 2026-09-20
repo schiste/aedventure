@@ -18,15 +18,15 @@ Run `npm run docs:check` after changing this map or the routing documents.
 | A gameplay rule, resource transition, timer, combat result, or save field | Rust simulation | `crates/add-core/src/` | `cargo test -p add-core` |
 | A new story beat, objective, role, recipe, station, item, creature, perk, or balance value | Authored ADD content (`@aedventure/add-content`) | `packages/add-content/src/content/` and [content authoring map](add-content-authoring.md) | `npm run content:check` |
 | A content graph, reverse lookup, explainer, fixture, or content-ID investigation | Content inspection tools | `scripts/add-content-registry.cjs`, `scripts/add-content-tools.cjs`, `scripts/add-content-fixtures.cjs` | `npm run content:validate` |
-| The typed shape of anything crossing the Rust/WASM boundary: snapshot, catalog, worker request or event | ADD protocol contract | `packages/add-protocol/src/index.ts` | `npm --workspace @aedventure/add-domain test` |
+| The typed shape of anything crossing the Rust/WASM boundary: snapshot, catalog, worker request or event | ADD protocol contract | `packages/add-protocol/src/index.ts` | `npm --workspace @aedventure/add-runtime-client test` |
 | Snapshot explanation, available-action projection, command mapping, or UI copy | ADD derived presentation (`@aedventure/add-presentation`) | `packages/add-presentation/src/adapters/` | `npm run agent:verify:add-ui` |
-| Agent-readable state, available commands, blocker reasons, or stable report IDs | ADD runtime inspection contract | `packages/add-domain/src/runtime/inspection.ts` and `crates/add-scenario/src/inspection.rs` | `npm --workspace @aedventure/add-domain test` and `cargo test -p add-scenario` |
+| Agent-readable state, available commands, blocker reasons, or stable report IDs | ADD runtime inspection contract | `packages/add-runtime-client/src/runtime/inspection.ts` and `crates/add-scenario/src/inspection.rs` | `npm --workspace @aedventure/add-runtime-client test` and `cargo test -p add-scenario` |
 | Player-facing panels, input dispatch, map presentation, save plumbing, or browser lifecycle | Live ADD app | `apps/add-rpg/src/` | `npm run agent:verify:add-ui` |
 | Browser fixture, semantic selector/action ID, screenshot evidence, or renderer-affordance check | ADD player-facing QA contract | `scenarios/add/browser-fixtures.json`, `scripts/add-rpg-phase5.cjs`, and `apps/add-rpg/src/browser/qa-contract.ts` | `npm run qa:add-rpg:phase5:built` |
 | A world fact, character history, place, faction, name, or canon status | Lore brick | `lore/` and the [three-brick contract](lore-engine-content-bricks.md) | `npm run lore:check` |
 | The lore link tying a content ID to the canon subject it implements | Content brick | `packages/add-content/src/content/lore-refs.ts` | `npm run lore:refs:check` |
 | Narrative standing, acts, knowledge, rumor, sifting, or storylet casting | Rust simulation | `crates/add-core/src/narrative/` and the [narrative plan](add-narrative-system-plan.md) | `cargo test -p add-core` (planned) |
-| A narrative entity, act, relationship state, sifting pattern, storylet sidecar, or `.ink` scene | Authored ADD content | `packages/add-content/src/content/narrative/` and `packages/add-domain/narrative/story/` | `npm run content:check` (planned) |
+| A narrative entity, act, relationship state, sifting pattern, storylet sidecar, or `.ink` scene | Authored ADD content | `packages/add-content/src/content/narrative/` and `packages/add-runtime-client/narrative/story/` | `npm run content:check` (planned) |
 | Neutral square/hex topology, world, input, protocol, or renderer behavior | Shared engine | `packages/game-*` and `apps/engine-sandbox/` | `npm run agent:verify:types` then the relevant engine smoke |
 | Office auth, rooms, media, tenant maps, or server policy | Office/platform lane | `apps/web/`, `apps/api/`, `apps/world-server/`, `apps/media-gateway/` | `npm run smoke:office` |
 | Historical ADD or SkyOffice comparison | Legacy reference | `legacy/add/` or `legacy/skyoffice-original/` | `npm run check:legacy` when SkyOffice is involved |
@@ -41,8 +41,8 @@ the Rust runtime owns mutation and deterministic outcomes.
 | --- | --- | --- |
 | Lore/content link integrity | `npm run lore:refs:check` | Every lore link resolves to a page and anchor; unlinked content and unimplemented lore subjects are reported |
 | Lore/content link report | `npm run lore:refs` or `node scripts/lore-refs.cjs --json` | The `lore_refs_v1` report: linked IDs, coverage gaps, and the unimplemented-lore backlog |
-| Protocol contract isolation | `npm --workspace @aedventure/add-domain test` | `@aedventure/add-protocol` stays dependency-free and imports no workspace package |
-| Brick dependency direction | `npm --workspace @aedventure/add-domain test` | The engine cites no lore, and content cites lore only from `content/lore-refs.ts` |
+| Protocol contract isolation | `npm --workspace @aedventure/add-runtime-client test` | `@aedventure/add-protocol` stays dependency-free and imports no workspace package |
+| Brick dependency direction | `npm --workspace @aedventure/add-runtime-client test` | The engine cites no lore, and content cites lore only from `content/lore-refs.ts` |
 | Documentation contract | `npm run docs:check` | Required maps, task brief fields, routing sections, commands, and office scope notes exist |
 | Changed-path agent loop | `npm run agent:verify` | Chooses the cheapest focused checks from changed paths and writes an actionable result artifact |
 | Machine-readable verification report | `npm run agent:report -- --format json` | Writes/emits the focused result contract with commit, duration, checks, artifacts, and failure hints |
@@ -58,7 +58,7 @@ the Rust runtime owns mutation and deterministic outcomes.
 | Headless ADD scenario/replay | `npm run scenario:add -- scenarios/add/<id>.json` | A committed seed/save/command log runs without the browser and checks canonical state checkpoints |
 | Agent scenario artifact | `npm run agent:scenario -- scenarios/add/<id>.json` | Runs the same Rust scenario and records the report, normalized snapshot, replay log, and command output |
 | Agent save inspection | `npm run agent:state -- --save <path>` | Reads a save through Rust and returns the versioned `agent_runtime_v1` report |
-| Agent-readable runtime report | `npm --workspace @aedventure/add-domain test` and `cargo test -p add-scenario` | The versioned authoritative/derived/diagnostic report, stable IDs, blocker reasons, and headless/browser parity checks |
+| Agent-readable runtime report | `npm --workspace @aedventure/add-runtime-client test` and `cargo test -p add-scenario` | The versioned authoritative/derived/diagnostic report, stable IDs, blocker reasons, and headless/browser parity checks |
 | ADD type/content/WASM boundary | `npm run agent:verify:add-ui` | Diff checks, content generation, WASM build, ADD types, and smoke syntax pass |
 | Built ADD browser flow | `npm run smoke:add-rpg:built` | The already-built ADD app passes browser/player-flow assertions |
 | Build-and-smoke ADD flow | `npm run smoke:add-rpg` | ADD browser build and Playwright flow both run |
@@ -105,7 +105,7 @@ schema, artifact naming, task evidence rules, and failure workflow are in
 | Expedition targets and resonance recipes | `crates/add-core/src/game_data/catalog/{expeditions,resonance}.rs` | `crates/add-core` expedition/resonance state and progression | Implemented for the current expedition/resonance slice; these are currently Rust-authored catalog entries |
 | Creatures, items, and perks | `packages/add-content/src/content/{creatures,items,perks}.ts` | [Authoring/codegen path](add-content-authoring.md#authoring-to-runtime-path); Rust combat, inventory, and perk state; domain selectors explain it | Implemented for the current combat/inventory slice |
 | Encounter and loot tables | `packages/add-content/src/content/{encounter-tables,loot-tables}.ts` | [Authoring/codegen path](add-content-authoring.md#authoring-to-runtime-path); domain selectors resolve a deterministic location result; Rust receives the typed result and applies mutation | Intentionally split; selection is not a second Rust rules engine |
-| Dungeon and area definitions | `packages/add-domain/src/{dungeons,areas}/` | ADD map modes, dungeon objectives, and Phaser presentation | Current entry/objective foundation implemented; broader dungeon breadth remains |
+| Dungeon and area definitions | `packages/add-runtime-client/src/{dungeons,areas}/` | ADD map modes, dungeon objectives, and Phaser presentation | Current entry/objective foundation implemented; broader dungeon breadth remains |
 
 When adding a content ID, follow [ADD Content Authoring and Codegen](add-content-authoring.md),
 keep the authored ID stable, run `npm run content:check`, inspect its reverse
@@ -115,7 +115,7 @@ lookup, and update the parity audit if its runtime status changes.
 
 The authoritative serialized model is `GameState` in
 `crates/add-core/src/state.rs`. The browser-facing counterpart is
-`SimulationSnapshot` in `packages/add-domain/src/runtime/protocol.ts`.
+`SimulationSnapshot` in `packages/add-runtime-client/src/runtime/protocol.ts`.
 
 | State family | Main fields | Authority |
 | --- | --- | --- |

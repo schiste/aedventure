@@ -25,7 +25,7 @@ survival, recruitment, story outcomes, or map truth.
 ```text
 main.ts
   ├── AddRuntimeBridge
-  │     └── add-domain SimulationClient
+  │     └── add-runtime-client SimulationClient
   │           └── Web Worker -> add-web-bindings -> add-core
   └── AddMapController
         └── AddRpgPhaserMapHost -> neutral world/topology/renderer packages

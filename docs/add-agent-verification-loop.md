@@ -89,7 +89,7 @@ checks owned by changed boundaries:
 | --- | --- | --- |
 | `crates/add-core/` | `cargo test -p add-core` | Full browser/renderer gate |
 | `crates/add-scenario/`, `scenarios/add/` | Scenario crate tests and changed scenario replay | Full browser smoke |
-| `packages/add-domain/` | ADD domain tests; content checks for authored content | Full renderer QA |
+| `packages/add-runtime-client/` | ADD runtime-client tests; content checks for authored content | Full renderer QA |
 | `apps/add-rpg/`, ADD WASM/browser bridge | `npm run agent:verify:add-ui` | Browser smoke unless `AGENT_VERIFY_SMOKE=1` |
 | `packages/game-*`, `apps/engine-sandbox/` | Type checks and the smallest relevant engine fixture smoke | Full cross-app gate |
 | Office/platform paths | Root type checks only | ADD gameplay checks |

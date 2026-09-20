@@ -2,7 +2,7 @@ import {
   ADD_GAME_MINUTES_PER_RUNTIME_SECOND,
   ADD_TRAVEL_GAME_MINUTES_PER_TILE,
   ADD_TRAVEL_RUNTIME_SECONDS_PER_TILE,
-} from "@aedventure/add-domain"
+} from "@aedventure/add-runtime-client"
 
 export interface AddTravelPresentationTiming {
   readonly visibleGameMinutes: number

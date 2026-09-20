@@ -82,7 +82,7 @@ assert.ok(
 
 for (const file of sourceFiles("packages/add-content/src", [".ts"])
   .concat(sourceFiles("packages/add-presentation/src", [".ts"]))
-  .concat(sourceFiles("packages/add-domain/src", [".ts"]))) {
+  .concat(sourceFiles("packages/add-runtime-client/src", [".ts"]))) {
   if (file === loreRefModule) continue
   assert.doesNotMatch(
     fs.readFileSync(file, "utf8"),
@@ -109,4 +109,4 @@ for (const file of sourceFiles("packages/add-protocol/src", [".ts"])) {
   )
 }
 
-console.log("add-domain architecture boundary: all assertions passed")
+console.log("brick architecture boundary: all assertions passed")

@@ -8,7 +8,7 @@
   },
   "references": [
     {
-      "path": "../../packages/add-domain"
+      "path": "../../packages/add-runtime-client"
     },
     {
       "path": "../../packages/game-renderer-phaser"

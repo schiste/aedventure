@@ -38,7 +38,7 @@
       "path": "packages/add-presentation"
     },
     {
-      "path": "packages/add-domain"
+      "path": "packages/add-runtime-client"
     },
     {
       "path": "packages/protocol"

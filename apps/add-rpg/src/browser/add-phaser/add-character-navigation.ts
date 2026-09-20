@@ -1,5 +1,5 @@
 import type { CellCoord } from "@aedventure/game-topology"
-import { addMapCoordKey, stateForCell } from "@aedventure/add-domain"
+import { addMapCoordKey, stateForCell } from "@aedventure/add-runtime-client"
 
 import type {
   AddCharacterMoveDirection,
