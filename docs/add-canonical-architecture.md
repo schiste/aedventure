@@ -92,11 +92,11 @@ runtime dependency.
 
 ### Intentional retained seams
 
-- `packages/protocol` and `packages/map-engine` are thin compatibility facades.
-  They have no active application consumers, but their documentation explicitly
-  describes a migration window. They should be removed in a separate migration
-  change after downstream imports are confirmed, not opportunistically during
-  an ADD gameplay change.
+- `packages/protocol` and `packages/map-engine` were thin compatibility
+  facades with no application consumers, each a single re-export line. They
+  were removed in a dedicated change; `map-engine`'s movement/collision/zone
+  test moved to `packages/game-core`, which owns those primitives, so no
+  coverage was lost.
 - `apps/add-rpg/src/browser/main.ts` is still a large presentation orchestrator.
   It is the main maintainability hotspot, but splitting it safely requires
   extracting coherent panel/state modules rather than scattering more helpers.

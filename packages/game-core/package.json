@@ -6,7 +6,7 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc -b",
-    "test": "node test/simulation.test.js"
+    "test": "node test/simulation.test.js && node test/movement.test.js"
   },
   "dependencies": {
     "@aedventure/game-protocol": "0.1.0"

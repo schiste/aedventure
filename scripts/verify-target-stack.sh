@@ -22,7 +22,6 @@ echo "Building target TypeScript workspace..."
 "$TSC" -b "$ROOT_DIR/tsconfig.json"
 
 mkdir -p "$ROOT_DIR/node_modules/@aedventure"
-ln -sfn "../../packages/protocol" "$ROOT_DIR/node_modules/@aedventure/protocol"
 ln -sfn "../../packages/game-protocol" "$ROOT_DIR/node_modules/@aedventure/game-protocol"
 ln -sfn "../../packages/game-core" "$ROOT_DIR/node_modules/@aedventure/game-core"
 ln -sfn "../../packages/game-content" "$ROOT_DIR/node_modules/@aedventure/game-content"
@@ -33,7 +32,6 @@ ln -sfn "../../packages/add-protocol" "$ROOT_DIR/node_modules/@aedventure/add-pr
 ln -sfn "../../packages/add-content" "$ROOT_DIR/node_modules/@aedventure/add-content"
 ln -sfn "../../packages/add-presentation" "$ROOT_DIR/node_modules/@aedventure/add-presentation"
 ln -sfn "../../packages/add-runtime-client" "$ROOT_DIR/node_modules/@aedventure/add-runtime-client"
-ln -sfn "../../packages/map-engine" "$ROOT_DIR/node_modules/@aedventure/map-engine"
 ln -sfn "../../packages/game-assets" "$ROOT_DIR/node_modules/@aedventure/game-assets"
 ln -sfn "../../packages/game-map" "$ROOT_DIR/node_modules/@aedventure/game-map"
 ln -sfn "../../packages/game-input" "$ROOT_DIR/node_modules/@aedventure/game-input"
@@ -55,6 +53,7 @@ node "$ROOT_DIR/packages/game-protocol/test/protocol.test.js"
 
 echo "Running game-core simulation checks..."
 node "$ROOT_DIR/packages/game-core/test/simulation.test.js"
+node "$ROOT_DIR/packages/game-core/test/movement.test.js"
 
 echo "Running game-topology checks..."
 node "$ROOT_DIR/packages/game-topology/test/topology.test.js"
@@ -68,8 +67,6 @@ node "$ROOT_DIR/packages/game-world/test/world.test.js"
 echo "Running ADD domain adapter checks..."
 node "$ROOT_DIR/packages/add-runtime-client/test/adapters.test.js"
 
-echo "Running map-engine movement checks..."
-node "$ROOT_DIR/packages/map-engine/test/movement.test.js"
 
 echo "Running game-assets checks..."
 node "$ROOT_DIR/packages/game-assets/test/assets.test.js"

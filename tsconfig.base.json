@@ -13,9 +13,6 @@
     "rootDir": ".",
     "baseUrl": ".",
     "paths": {
-      "@aedventure/protocol": [
-        "packages/protocol/src"
-      ],
       "@aedventure/game-protocol": [
         "packages/game-protocol/src"
       ],
@@ -51,9 +48,6 @@
       ],
       "@aedventure/add-runtime-client": [
         "packages/add-runtime-client/src"
-      ],
-      "@aedventure/map-engine": [
-        "packages/map-engine/src"
       ],
       "@aedventure/game-assets": [
         "packages/game-assets/src"

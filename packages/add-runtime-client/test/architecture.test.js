@@ -109,4 +109,66 @@ for (const file of sourceFiles("packages/add-protocol/src", [".ts"])) {
   )
 }
 
+// --- Lane separation
+//
+// `packages/game-*` is not one shared engine. Measured by consumer, it is
+// three clusters, and the prefix hides which is which:
+//
+//   shared      game-topology, game-renderer-phaser  (both lanes import them)
+//   ADD only    game-world, game-visibility, game-content, game-dungeon,
+//               game-animation
+//   office only game-core, game-protocol, game-map, game-input, game-assets
+//
+// The office lane is a different product. Keeping the two from importing each
+// other is what lets either move later without dragging the other along.
+
+const OFFICE_ONLY = [
+  "game-core",
+  "game-protocol",
+  "game-map",
+  "game-input",
+  "game-assets",
+  "asset-registry",
+  "office-domain",
+  "policy",
+  "auth-wikimedia",
+  "shared-types",
+]
+
+const ADD_PACKAGES = ["add-protocol", "add-content", "add-presentation", "add-runtime-client"]
+
+for (const name of ADD_PACKAGES) {
+  for (const file of sourceFiles(`packages/${name}/src`, [".ts"])) {
+    const text = fs.readFileSync(file, "utf8")
+    for (const office of OFFICE_ONLY) {
+      assert.doesNotMatch(
+        text,
+        new RegExp(`@aedventure/${office}["/]`),
+        `ADD lane must not import the office-only package ${office}: ${path.relative(repoRoot, file)}`,
+      )
+    }
+  }
+}
+
+for (const office of OFFICE_ONLY) {
+  for (const file of sourceFiles(`packages/${office}/src`, [".ts"])) {
+    const text = fs.readFileSync(file, "utf8")
+    for (const name of ADD_PACKAGES) {
+      assert.doesNotMatch(
+        text,
+        new RegExp(`@aedventure/${name}["/]`),
+        `Office lane must not import the ADD package ${name}: ${path.relative(repoRoot, file)}`,
+      )
+    }
+  }
+}
+
+// The retired compatibility facades must not come back by import.
+for (const dead of ["protocol", "map-engine"]) {
+  assert.ok(
+    !fs.existsSync(path.join(repoRoot, "packages", dead)),
+    `packages/${dead} was retired as an unconsumed facade; do not reintroduce it.`,
+  )
+}
+
 console.log("brick architecture boundary: all assertions passed")

@@ -41,12 +41,6 @@
       "path": "packages/add-runtime-client"
     },
     {
-      "path": "packages/protocol"
-    },
-    {
-      "path": "packages/map-engine"
-    },
-    {
       "path": "packages/game-assets"
     },
     {

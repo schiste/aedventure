@@ -42,13 +42,13 @@ apps/media-gateway
   proximity subscription decisions
   coturn configuration surface
 
-packages/protocol
+packages/protocol          # retired: unconsumed facade
   event schemas
   movement intent protocol
   chat protocol
   media protocol
 
-packages/map-engine
+packages/map-engine        # retired: unconsumed facade
   map loading
   collision model
   zones

@@ -189,8 +189,6 @@ ownership and dependency direction are fixed by the
   permission enforcement, and persistence boundaries. Full RBAC management comes
   later via the SaaS/control-plane phase.
 - `apps/media-gateway/` - LiveKit token service and media policy layer.
-- `packages/protocol/` - future client/server protocol definitions.
-- `packages/map-engine/` - future map parsing, collision, zones, and navigation.
 - `packages/auth-wikimedia/` - future Wikimedia OAuth 2.0 integration.
 - `packages/policy/` - server-side permission and delivery policy decisions.
 - `packages/shared-types/` - future shared application types.

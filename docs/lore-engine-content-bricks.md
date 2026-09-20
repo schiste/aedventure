@@ -107,6 +107,32 @@ protocol, then content, then presentation - because a leaf is both the correct
 dependency order and the lowest-conflict order when other sessions are editing
 the same tree.
 
+### What is actually under `packages/game-*`
+
+The `game-*` prefix reads like one shared engine. Counted by consumer, it is
+three clusters, and the name hides which is which. Measured on the current
+tree:
+
+| Cluster | Packages | ADD consumers | Office consumers |
+| --- | --- | --- | --- |
+| Shared | `game-topology`, `game-renderer-phaser` | 18, 3 | 1, 2 |
+| ADD only | `game-world`, `game-visibility`, `game-content`, `game-dungeon`, `game-animation` | 20, 4, 6, 1, 1 | 0 |
+| Office only | `game-core`, `game-protocol`, `game-map`, `game-input`, `game-assets` | 0 | 4, 9, 2, 1, 4 |
+
+Two consequences worth stating plainly.
+
+**The two lanes must not import each other.** The office lane is a different
+product with its own boundaries. `packages/add-runtime-client/test/architecture.test.js`
+asserts both directions: no ADD package imports an office-only package, and no
+office package imports an ADD package. Either would couple two products that
+should be able to move independently.
+
+**A physical split into `engine/` and `office/` is not straightforward**, because
+two packages are genuinely shared and belong in neither bucket. Relocating would
+need a third shared tier, which buys legibility at the cost of roughly 450 path
+edits across scripts, tsconfigs and docs. The assertion above delivers the
+separation that actually matters; the move stays available and unblocked.
+
 ## Dependency direction
 
 The direction is strictly one-way. Nothing in this repository should ever
