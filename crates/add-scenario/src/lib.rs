@@ -26,6 +26,7 @@ const FLOAT_PRECISION: f64 = 1_000_000.0;
 /// A committed, deterministic gameplay scenario.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Scenario {
+    #[serde(default)]
     pub id: String,
     pub seed: String,
     #[serde(default, alias = "initialSave")]
@@ -555,10 +556,19 @@ pub fn run_scenario_file(path: &Path) -> Result<ScenarioRun, ScenarioError> {
         path: path.to_path_buf(),
         source,
     })?;
-    let scenario: Scenario = serde_json::from_str(&raw).map_err(|source| ScenarioError::Parse {
-        path: Some(path.to_path_buf()),
-        source,
-    })?;
+    let mut scenario: Scenario =
+        serde_json::from_str(&raw).map_err(|source| ScenarioError::Parse {
+            path: Some(path.to_path_buf()),
+            source,
+        })?;
+    if scenario.id.trim().is_empty() {
+        scenario.id = path
+            .file_stem()
+            .and_then(|stem| stem.to_str())
+            .filter(|stem| !stem.trim().is_empty())
+            .unwrap_or("scenario")
+            .to_string();
+    }
     let initial_save = scenario.initial_save.as_deref().map(|relative| {
         let save_path = Path::new(relative);
         if save_path.is_absolute() {

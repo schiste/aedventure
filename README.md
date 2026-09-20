@@ -94,10 +94,10 @@ Useful focused checks:
 ```sh
 npm run agent:task
 npm run agent:report -- --format json
-npm run agent:scenario -- scenarios/add/idle-base-first-cycle.json
+npm run agent:scenario -- scenarios/idle-base-first-cycle.json
 npm run agent:state -- --save scenarios/add/fixtures/saves/base-onboarding.json
-npm run scenario:add -- scenarios/add/idle-base-first-cycle.json
-npm run scenario:add -- scenarios/add/offline-return.json
+npm run scenario:add -- scenarios/idle-base-first-cycle.json
+npm run scenario:add -- scenarios/offline-return.json
 npm run content:check
 npm run content:graph -- --reverse resource.stone
 npm run content:explain -- objective.restore_studio
@@ -164,8 +164,9 @@ ownership and dependency direction are fixed by the
 - `crates/add-core/` - authoritative ADD simulation, saves, migrations, and
   gameplay rules.
 - `crates/add-web-bindings/` - browser-facing Rust/WASM bindings.
-- `crates/add-scenario/`, `crates/add-scenario-runner/` - headless scenario,
-  replay, and runtime-inspection harness.
+- `crates/add-core/src/bin/scenario.rs`, `crates/add-scenario/`, and
+  `crates/add-scenario-runner/` - headless scenario, replay, and
+  runtime-inspection harness.
 - `packages/add-domain/` - authored ADD content and snapshot/map/UI adapters.
 - `packages/game-*` - reusable topology, world, renderer, content, input, and
   protocol primitives.

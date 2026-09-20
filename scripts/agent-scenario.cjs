@@ -19,8 +19,8 @@ const {
 
 function usage() {
   console.log(`Usage:
-  npm run agent:scenario -- scenarios/add/<scenario>.json
-  npm run agent:scenario -- scenarios/add/<scenario>.json --write-final-save <path>
+  npm run agent:scenario -- scenarios/<scenario>.json
+  npm run agent:scenario -- scenarios/<scenario>.json --write-final-save <path>
 
 Runs the existing Rust ADD scenario runner and records its canonical report,
 replay commands, final snapshot, and command log under artifacts/agent-verification/.`)
@@ -82,7 +82,9 @@ function main() {
     "run",
     "--quiet",
     "-p",
-    "add-scenario-runner",
+    "add-core",
+    "--bin",
+    "scenario",
     "--",
     scenarioPath,
   ]
@@ -91,7 +93,7 @@ function main() {
   const check = runCommand(run, {
     id: "scenario-replay",
     command,
-    sourceBoundary: "crates/add-scenario-runner/",
+    sourceBoundary: "crates/add-core/src/bin/scenario.rs",
     scenario: relativePath(scenarioPath),
     reason: "Run the deterministic ADD scenario without booting the browser.",
   })

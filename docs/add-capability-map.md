@@ -140,8 +140,8 @@ player path, including:
 - save reload, offline catch-up, reset, return review, mobile layout, stable
   screenshots, and console cleanliness.
 
-The headless gameplay path lives in `crates/add-scenario/` and
-`crates/add-scenario-runner/`. Run the committed idle and offline-return
+The headless gameplay path lives in `crates/add-core/src/bin/scenario.rs`,
+backed by `crates/add-scenario/`. Run the committed idle and offline-return
 scenarios with the commands in the [scenario/replay harness guide](add-scenario-harness.md).
 The live browser exposes the same inspection contract through
 `window.render_add_runtime_json()` and

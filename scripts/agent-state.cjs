@@ -98,14 +98,16 @@ function main() {
       "run",
       "--quiet",
       "-p",
-      "add-scenario-runner",
+      "add-core",
+      "--bin",
+      "scenario",
       "--",
       scenarioPath,
     ]
     const check = runCommand(run, {
       id: "state-report",
       command,
-      sourceBoundary: "crates/add-scenario-runner/ and crates/add-core/",
+      sourceBoundary: "crates/add-core/src/bin/scenario.rs and crates/add-core/",
       reason: "Read the save through the authoritative Rust state/report boundary.",
     })
     let scenarioResult = null

@@ -1,0 +1,174 @@
+{
+  "id": "idle-base-first-cycle",
+  "seed": "fixture-seed",
+  "commands": [
+    { "type": "MoveHeroTo", "q": 5, "r": 0 },
+    { "type": "MoveHeroTo", "q": 4, "r": 1 },
+    { "type": "MoveHeroTo", "q": 3, "r": 1 },
+    { "type": "MoveHeroTo", "q": 2, "r": 2 },
+    { "type": "MoveHeroTo", "q": 1, "r": 2 },
+    { "type": "MoveHeroTo", "q": 0, "r": 3 },
+    {
+      "type": "ChooseStoryOption",
+      "beatId": "story.beat.road_to_base",
+      "optionId": "story.choice.road.follow_signal"
+    },
+    {
+      "type": "ChooseStoryOption",
+      "beatId": "story.beat.first_glimpse",
+      "optionId": "story.choice.glimpse.watch_lights"
+    },
+    {
+      "type": "ChooseStoryOption",
+      "beatId": "story.beat.enter_the_bubble",
+      "optionId": "story.choice.bubble.trust_sound"
+    },
+    {
+      "type": "ChooseStoryOption",
+      "beatId": "story.beat.investigate_base",
+      "optionId": "story.choice.investigate.search_power"
+    },
+    { "type": "StartWorldAction", "actionId": "world_action.investigate_base" },
+    { "type": "Tick", "seconds": 5 },
+    {
+      "type": "ChooseStoryOption",
+      "beatId": "story.beat.explore_base",
+      "optionId": "story.choice.explore.look_for_tools"
+    },
+    { "type": "StartWorldAction", "actionId": "world_action.explore_base" },
+    { "type": "Tick", "seconds": 10 },
+    { "type": "SetRoleCrew", "roleId": "role.scavenge", "crew": 1 },
+    { "type": "SetHeroRole", "roleId": "role.scavenge" },
+    { "type": "Tick", "seconds": 15 },
+    { "type": "StartConstruction", "id": "project.restore_studio" },
+    { "type": "SetRoleCrew", "roleId": "role.construction", "crew": 1 },
+    { "type": "SetHeroRole", "roleId": "role.construction" },
+    { "type": "Tick", "seconds": 12 },
+    { "type": "SetHeroRole", "roleId": "role.crystal_bassline" },
+    { "type": "Tick", "seconds": 60 },
+    { "type": "RunOfflineCatchup", "seconds": 3600 },
+    { "type": "SaveRoundTrip" }
+  ],
+  "checkpoints": [
+    {
+      "id": "travel-started",
+      "after": 1,
+      "state": {
+        "heroMap": { "q": 5, "r": 0 },
+        "narrative": { "activeBeatId": "story.beat.road_to_base" }
+      }
+    },
+    {
+      "id": "studio-reached",
+      "after": 6,
+      "state": {
+        "heroMap": { "q": 0, "r": 3 },
+        "narrative": { "activeBeatId": "story.beat.road_to_base" },
+        "heroSurvival": { "location": "studio" }
+      }
+    },
+    {
+      "id": "base-investigation-unlocked",
+      "after": 9,
+      "state": {
+        "heroMap": { "q": 0, "r": 3 },
+        "narrative": { "activeBeatId": "story.beat.investigate_base" },
+        "base": { "studioRestoreUnlocked": false }
+      }
+    },
+    {
+      "id": "base-explored-and-studio-unlocked",
+      "after": 15,
+      "state": {
+        "base": {
+          "tutorialInvestigated": true,
+          "tutorialExplored": true,
+          "studioRestoreUnlocked": true
+        },
+        "narrative": { "activeBeatId": "story.beat.restore_studio" },
+        "activeWorldAction": null
+      }
+    },
+    {
+      "id": "crew-earned-stone",
+      "after": 18,
+      "state": {
+        "resources": { "stone": { "atLeast": 900 } },
+        "roster": {
+          "heroAssigned": true,
+          "heroRoleId": "role.scavenge",
+          "crewByRole": { "role.scavenge": 1 }
+        },
+        "activeConstruction": null,
+        "narrative": { "activeBeatId": "story.beat.restore_studio" }
+      }
+    },
+    {
+      "id": "studio-construction-started",
+      "after": 19,
+      "state": {
+        "resources": { "stone": { "atLeast": 0 } },
+        "activeConstruction": { "optionId": "project.restore_studio" },
+        "narrative": { "activeBeatId": "story.beat.restore_studio" }
+      }
+    },
+    {
+      "id": "studio-restored",
+      "after": 22,
+      "state": {
+        "base": { "studioRestored": true },
+        "activeConstruction": null,
+        "narrative": { "activeBeatId": "story.beat.build_fire_pit" },
+        "roster": {
+          "heroAssigned": true,
+          "heroRoleId": "role.construction",
+          "crewByRole": {
+            "role.scavenge": 1,
+            "role.construction": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "online-resource-loop",
+      "after": 24,
+      "state": {
+        "clockSeconds": 102,
+        "resources": { "bassline": { "atLeast": 1 } },
+        "roster": {
+          "heroAssigned": true,
+          "heroRoleId": "role.crystal_bassline"
+        },
+        "base": { "studioRestored": true }
+      }
+    },
+    {
+      "id": "offline-return-earned-resources",
+      "after": 25,
+      "state": {
+        "clockSeconds": 3702,
+        "resources": { "bassline": { "atLeast": 1 } },
+        "heroMap": { "q": 0, "r": 3 },
+        "base": { "studioRestored": true },
+        "roster": {
+          "heroAssigned": true,
+          "heroRoleId": "role.crystal_bassline"
+        }
+      }
+    },
+    {
+      "id": "save-round-trip-stable",
+      "after": 26,
+      "state": {
+        "clockSeconds": 3702,
+        "base": { "studioRestored": true },
+        "activeConstruction": null,
+        "activeWorldAction": null,
+        "roster": {
+          "heroAssigned": true,
+          "heroRoleId": "role.crystal_bassline"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "id": "offline-return",
+  "seed": "fixture-seed",
+  "initial_save": "add/fixtures/saves/base-onboarding.json",
+  "commands": [
+    { "type": "RunOfflineCatchup", "seconds": 3600 },
+    { "type": "SaveRoundTrip" }
+  ],
+  "checkpoints": [
+    {
+      "id": "offline-start",
+      "after": 0,
+      "state": {
+        "clockSeconds": 42,
+        "resources": { "stone": 400 },
+        "recruitment": { "pendingRecruits": [] },
+        "heroSurvival": { "location": "studio" },
+        "heroMap": { "q": 6, "r": 0 },
+        "narrative": { "activeBeatId": "story.beat.build_fire_pit" },
+        "base": { "studioRestored": true },
+        "roster": { "heroRoleId": "role.crystal_bassline" }
+      }
+    },
+    {
+      "id": "offline-catchup-applied",
+      "after": 1,
+      "state": {
+        "clockSeconds": 3642,
+        "resources": { "bassline": { "atLeast": 1 } },
+        "recruitment": { "pendingRecruits": [] },
+        "heroSurvival": { "location": "studio" },
+        "heroMap": { "q": 6, "r": 0 },
+        "narrative": { "activeBeatId": "story.beat.build_fire_pit" },
+        "base": { "studioRestored": true },
+        "roster": { "heroRoleId": "role.crystal_bassline" }
+      }
+    },
+    {
+      "id": "offline-save-round-trip-stable",
+      "after": 2,
+      "state": {
+        "clockSeconds": 3642,
+        "roster": {
+          "heroAssigned": true,
+          "heroRoleId": "role.crystal_bassline"
+        },
+        "heroSurvival": { "location": "studio" },
+        "base": { "studioRestored": true }
+      }
+    }
+  ]
+}

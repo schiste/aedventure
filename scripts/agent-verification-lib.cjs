@@ -221,7 +221,7 @@ function hasPath(paths, pattern) {
 }
 
 function scenarioPaths(paths) {
-  return paths.filter((value) => /^scenarios\/add\/[^/]+\.json$/.test(value))
+  return paths.filter((value) => /^scenarios\/(?:add\/)?[^/]+\.json$/.test(value))
 }
 
 /**
@@ -254,7 +254,7 @@ function classifyChangedPaths(paths) {
   }
 
   const hasCore = hasPath(normalized, /^(crates\/add-core\/|Cargo\.toml$|Cargo\.lock$)/)
-  const hasScenario = hasPath(normalized, /^(crates\/add-scenario(?:-runner)?\/|scenarios\/add\/)/)
+  const hasScenario = hasPath(normalized, /^(crates\/add-scenario(?:-runner)?\/|scenarios(?:\/add)?\/)/)
   const hasScenarioRunner = hasPath(normalized, /^crates\/add-scenario-runner\//)
   const hasContent = hasPath(
     normalized,
@@ -311,7 +311,7 @@ function classifyChangedPaths(paths) {
       addCheck(plan, {
         id,
         command: ["npm", "run", "agent:scenario", "--", scenario],
-        sourceBoundary: "scenarios/add/",
+        sourceBoundary: scenario.startsWith("scenarios/add/") ? "scenarios/add/" : "scenarios/",
         scenario,
         reason: "Replay each changed committed scenario and preserve its command log.",
       })

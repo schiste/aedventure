@@ -85,8 +85,8 @@ The scenario runner appends `agentRuntime` and `agentRuntimeText` to its
 stable JSON output:
 
 ```sh
-npm run scenario:add -- scenarios/add/idle-base-first-cycle.json
-npm run scenario:add -- scenarios/add/offline-return.json
+npm run scenario:add -- scenarios/idle-base-first-cycle.json
+npm run scenario:add -- scenarios/offline-return.json
 ```
 
 `agentRuntime` is the automation form. `agentRuntimeText` is the compact log

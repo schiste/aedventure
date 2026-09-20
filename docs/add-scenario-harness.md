@@ -15,8 +15,8 @@ loop transition must be reproduced without a browser. The owning layers are:
 | --- | --- | --- |
 | Gameplay rules, state, saves, or command semantics | `crates/add-core/` | `cargo test -p add-core` |
 | Scenario format, replay diagnostics, canonical comparison | `crates/add-scenario/` | `cargo test -p add-scenario` |
-| CLI invocation and fixture generation | `crates/add-scenario-runner/` | `cargo check -p add-scenario-runner` |
-| Committed player-flow fixtures | `scenarios/add/` | `npm run scenario:add -- scenarios/add/<id>.json` |
+| CLI invocation and fixture generation | `crates/add-core/src/bin/scenario.rs` | `cargo run -p add-core --bin scenario -- <scenario.json>` |
+| Committed player-flow fixtures | `scenarios/` | `npm run scenario:add -- scenarios/<id>.json` |
 | Browser command reuse or presentation behavior | `scripts/add-rpg-smoke.test.cjs` / `apps/add-rpg/` | `npm run smoke:add-rpg:built` |
 
 The scenario crate maps directly to the public `GameCommand` variants. It does
@@ -27,8 +27,8 @@ not implement a second simulation or duplicate gameplay formulas.
 From the repository root:
 
 ```sh
-npm run scenario:add -- scenarios/add/idle-base-first-cycle.json
-npm run scenario:add -- scenarios/add/offline-return.json
+cargo run -p add-core --bin scenario -- scenarios/idle-base-first-cycle.json
+cargo run -p add-core --bin scenario -- scenarios/offline-return.json
 ```
 
 The command prints stable, pretty JSON with `status`, scenario and seed
@@ -47,6 +47,10 @@ npm run scenario:add -- scenarios/add/idle-base-first-cycle.json \
 
 The generated save is a normal `add-core` export and can be used as another
 scenario's `initial_save`.
+
+The fixtures under `scenarios/` are the direct Phase 1 command paths. The
+equivalent `scenarios/add/` fixtures remain available to the browser smoke and
+the compatibility `npm run scenario:add` workflow.
 
 ## File contract
 
@@ -169,9 +173,9 @@ authoritative-versus-derived boundary.
 
 ```sh
 cargo test -p add-scenario
+cargo run -p add-core --bin scenario -- scenarios/idle-base-first-cycle.json
 cargo check -p add-scenario-runner
-npm run scenario:add -- scenarios/add/idle-base-first-cycle.json
-npm run scenario:add -- scenarios/add/offline-return.json
+npm run scenario:add -- scenarios/offline-return.json
 npm run docs:check
 ```
 

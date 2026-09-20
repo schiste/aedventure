@@ -28,7 +28,7 @@ The repository already has meaningful pieces of the desired environment:
 | Authoritative deterministic simulation | `crates/add-core/` | Commands, progression, resources, offline catch-up, saves, migrations, and Rust tests |
 | Browser runtime boundary | `crates/add-web-bindings/`, `apps/add-rpg/src/workers/` | WASM runtime behind a typed worker protocol |
 | Authored content and code generation | `packages/add-domain/src/content/`, `scripts/build-add-content.cjs` | TypeScript authoring with generated Rust catalogs |
-| Deterministic scenarios and replay | `crates/add-scenario/`, `crates/add-scenario-runner/`, `scenarios/add/` | Headless command logs, canonical snapshots, checkpoints, save round-trips, and committed idle/offline fixtures |
+| Deterministic scenarios and replay | `crates/add-core/src/bin/scenario.rs`, `crates/add-scenario/`, `scenarios/` | Headless command logs, canonical snapshots, checkpoints, save round-trips, and committed idle/offline fixtures |
 | Agent-readable runtime inspection | `packages/add-domain/src/runtime/inspection.ts`, `crates/add-scenario/src/inspection.rs`, `apps/add-rpg/src/browser/` | Versioned authoritative/derived/diagnostic reports, stable IDs, blocker explanations, and text/JSON accessors |
 | Domain projections | `packages/add-domain/src/adapters/` | Snapshot selectors, command mapping, map/world adapters, and explanations |
 | Player-facing app | `apps/add-rpg/src/browser/` | Solid UI, Phaser map, saves, settings, telemetry, and development tools |
@@ -133,9 +133,10 @@ Planned scenario shape:
 
 Implemented deliverables:
 
-- `add-scenario-runner` runs a scenario file against `crates/add-core`; the
-  scenario owns its human-readable seed, optional relative initial save, and
-  typed command sequence.
+- The native `add-core` `scenario` binary runs a scenario file against the
+  authoritative simulation; the scenario owns its human-readable seed,
+  optional relative initial save, and typed command sequence. The existing
+  `add-scenario` crate remains the reusable format/comparison implementation.
 - Canonical snapshots remove transient events, normalize derived save-boundary
   state, sort JSON objects, and round floating-point noise for stable output.
 - Checkpoints support exact values, partial objects, and `equals`, `atLeast`,
