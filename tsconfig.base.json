@@ -43,6 +43,9 @@
       "@aedventure/add-content": [
         "packages/add-content/src"
       ],
+      "@aedventure/add-presentation": [
+        "packages/add-presentation/src"
+      ],
       "@aedventure/add-protocol": [
         "packages/add-protocol/src"
       ],

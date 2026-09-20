@@ -24,7 +24,7 @@ the lore/content seam and would drift immediately without a written rule.
 | --- | --- | --- | --- | --- |
 | **Lore** | What is true in this world? | `lore/` | Markdown wiki + `lore/data/*.json` | `npm run lore:check` |
 | **Engine** | What can happen, and what happens next? | `crates/add-core/`, `crates/add-web-bindings/`, `crates/add-scenario*/`, `packages/game-*` | Rust and neutral TypeScript | `cargo test -p add-core` |
-| **Content** | What exists in this particular game, and what does it say? | `packages/add-content/`, `packages/add-domain/`, `packages/add-protocol/`, `scenarios/` | TypeScript content modules, JSON fixtures, `.ink` scripts | `npm run content:check` |
+| **Content** | What exists in this particular game, and what does it say? | `packages/add-content/`, `packages/add-presentation/`, `packages/add-protocol/`, `packages/add-domain/`, `scenarios/` | TypeScript content modules, JSON fixtures, `.ink` scripts | `npm run content:check` |
 
 ### Lore owns canon, not behavior
 
@@ -79,12 +79,33 @@ Content owns:
   everything crossing between the Rust simulation and the browser. Types
   only, dependency-free, so anything may depend on it.
 - Player-facing copy and, once the narrative system lands, `.ink` prose.
-- Derived presentation and explanations in `packages/add-domain/src/adapters/`,
-  which still carries the worker client and the agent report. It is the next
-  package to split.
+- Derived presentation and explanations in `packages/add-presentation/`:
+  snapshot selectors, command mapping, map projection, and the reason behind
+  every blocked action. Projections only - no rules, no mutation.
+- The worker client, i18n copy, the agent runtime report, and the barrel the
+  app imports, in `packages/add-domain/`.
 - Committed scenarios and fixtures in `scenarios/`.
 - The lore links in `content/lore-refs.ts` that tie a content ID to the canon
   it implements.
+
+### How the content brick is packaged
+
+The content brick is four packages with a strict one-way dependency chain, so
+each can be built, tested and reasoned about without the ones above it:
+
+```mermaid
+flowchart LR
+  P["@aedventure/add-protocol<br/>boundary types"] --> C["@aedventure/add-content<br/>authored catalogs"]
+  C --> PR["@aedventure/add-presentation<br/>snapshot selectors"]
+  PR --> D["@aedventure/add-domain<br/>worker client, i18n,<br/>agent report, barrel"]
+  D --> A[apps/add-rpg]
+```
+
+`add-domain` re-exports the three packages beneath it, so the app imports one
+name and the split stayed invisible to it. Extraction order was leaf-first -
+protocol, then content, then presentation - because a leaf is both the correct
+dependency order and the lowest-conflict order when other sessions are editing
+the same tree.
 
 ## Dependency direction
 
@@ -133,7 +154,7 @@ authored input.
 | A new beat, resource, station, role, item, creature, perk, act, or entity | Content | `packages/add-content/src/content/` | `npm run content:check` |
 | Balance numbers, costs, durations, tiers | Content | `packages/add-content/src/content/` | `npm run content:check` |
 | Player-facing copy, dialogue, `.ink` prose | Content | `packages/add-domain/` | `npm run content:check` |
-| Snapshot explanation, available-action projection, blocker copy | Content | `packages/add-domain/src/adapters/` | `npm run agent:verify:add-ui` |
+| Snapshot explanation, available-action projection, blocker copy | Content | `packages/add-presentation/src/adapters/` | `npm run agent:verify:add-ui` |
 | A committed scenario, fixture, or replay | Content | `scenarios/` | `npm run scenario:add -- scenarios/add/<id>.json` |
 | The lore link tying a content ID to its canon subject | Content | `packages/add-content/src/content/lore-refs.ts` | `npm run lore:refs:check` |
 

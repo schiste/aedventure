@@ -15,7 +15,7 @@ opening `apps/add-rpg`.
 | A resource, role, station, action, objective, story beat, tile, structure, creature, item, perk, or balance value | `packages/add-content/src/content/` | `npm run content:check` |
 | An encounter or loot table used to seed a domain-side dungeon/map result | `packages/add-content/src/content/` | `npm run content:check` and `npm run content:tools:test` |
 | A rule, effect implementation, save field, migration, or state transition | `crates/add-core/` | `cargo test -p add-core` |
-| A snapshot projection or player-facing explanation | `packages/add-domain/src/adapters/` | `npm run agent:verify:add-ui` |
+| A snapshot projection or player-facing explanation | `packages/add-presentation/src/adapters/` | `npm run agent:verify:add-ui` |
 | Browser controls or presentation | `apps/add-rpg/` | `npm run agent:verify:add-ui` |
 
 Do not duplicate Rust rules in a content module or UI. If an authored field

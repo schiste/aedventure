@@ -26,7 +26,7 @@ decision below follows from it.
 | Entities, acts, values, relationship states, patterns, storylet sidecars, reactions, tuning | `packages/add-content/src/content/narrative/` | `npm run content:check` |
 | `.ink` prose, choices, scene flow | `packages/add-domain/narrative/story/` | `npm run content:check` |
 | Which canon subject a narrative entity implements | `packages/add-content/src/content/lore-refs.ts` | `npm run lore:refs:check` |
-| Standing explanation, storylet presentation, dialogue rendering | `packages/add-domain/src/adapters/` | `npm run agent:verify:add-ui` |
+| Standing explanation, storylet presentation, dialogue rendering | `packages/add-presentation/src/adapters/` | `npm run agent:verify:add-ui` |
 | Dialogue panel, choice list, speaker and mood presentation | `apps/add-rpg/src/browser/` | `npm run smoke:add-rpg:built` |
 | Narrative scenarios, fuzz corpora, replay fixtures | `scenarios/add/narrative/` | `npm run scenario:add -- scenarios/add/narrative/<id>.json` |
 

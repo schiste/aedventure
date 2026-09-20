@@ -58,7 +58,7 @@ map mode (`overworld_hex`, `base_square`, or another registered mode).
 | --- | --- | --- |
 | State, command validity, save behavior, or a new authoritative field | `crates/add-core/` | `cargo test -p add-core` |
 | Headless report, replay output, checkpoint IDs, or report assertions | `crates/add-scenario/` | `cargo test -p add-scenario` |
-| Snapshot-to-report projection, labels, or browser command explanations | `packages/add-domain/src/runtime/` and `packages/add-domain/src/adapters/` | `npm --workspace @aedventure/add-domain test` |
+| Snapshot-to-report projection, labels, or browser command explanations | `packages/add-domain/src/runtime/` and `packages/add-presentation/src/adapters/` | `npm --workspace @aedventure/add-domain test` |
 | Browser exposure or runtime lifecycle diagnostics | `apps/add-rpg/src/browser/` | `npm run smoke:add-rpg:built` |
 | Content/catalog identity | `packages/add-content/src/content/` and generated Rust catalog | `npm run content:check` |
 

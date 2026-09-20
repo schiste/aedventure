@@ -49,7 +49,7 @@ should use the [ADD Task Brief Template](templates/add-task-brief.md).
 | --- | --- | --- | --- |
 | Gameplay rules, state transitions, progression, combat, or save fields | `crates/add-core/` | Solid, Phaser, and domain selectors | `cargo test -p add-core` |
 | New authored IDs, story, objectives, recipes, creatures, items, perks, or balance | `packages/add-content/src/content/` | UI conditionals and ad hoc Rust constants | `npm run content:check` |
-| Snapshot projections, command mapping, labels, and available actions | `packages/add-domain/src/adapters/` | A second gameplay calculation | `npm run agent:verify:add-ui` |
+| Snapshot projections, command mapping, labels, and available actions | `packages/add-presentation/src/adapters/` | A second gameplay calculation | `npm run agent:verify:add-ui` |
 | Agent-readable runtime reports, stable command/checkpoint IDs, and blocker explanations | `packages/add-domain/src/runtime/` plus `crates/add-scenario/src/inspection.rs` | DOM scraping and UI-only guesses | `npm --workspace @aedventure/add-domain test` and `cargo test -p add-scenario` |
 | Player-facing panels, input, map modes, browser persistence, or telemetry | `apps/add-rpg/` | Neutral packages and legacy code | `npm run agent:verify:add-ui` |
 | Neutral topology/world/renderer behavior with a real consumer | `packages/game-*` or `apps/engine-sandbox/` | ADD- or office-specific rules | `npm run agent:verify:types` plus the relevant smoke |

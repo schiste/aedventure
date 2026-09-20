@@ -4,7 +4,7 @@ const path = require("node:path")
 
 const packageJson = require("../package.json")
 const rendererPolicies = fs.readFileSync(
-  path.join(__dirname, "../src/adapters/renderer-policies.ts"),
+  path.join(__dirname, "../../add-presentation/src/adapters/renderer-policies.ts"),
   "utf8",
 )
 
@@ -80,9 +80,9 @@ assert.ok(
   "Content brick must declare its lore links in content/lore-refs.ts.",
 )
 
-for (const file of sourceFiles("packages/add-content/src", [".ts"]).concat(
-  sourceFiles("packages/add-domain/src", [".ts"]),
-)) {
+for (const file of sourceFiles("packages/add-content/src", [".ts"])
+  .concat(sourceFiles("packages/add-presentation/src", [".ts"]))
+  .concat(sourceFiles("packages/add-domain/src", [".ts"]))) {
   if (file === loreRefModule) continue
   assert.doesNotMatch(
     fs.readFileSync(file, "utf8"),

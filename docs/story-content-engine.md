@@ -32,7 +32,7 @@ the lore/engine/content boundary it sits on is fixed by the
 | --- | --- | --- |
 | Story beat, choice, condition, effect, flag, objective, or authored copy | `packages/add-content/src/content/` | `npm run content:check` |
 | Authoritative evaluation or mutation of a story effect | `crates/add-core/` | `cargo test -p add-core` |
-| Story progression projection, available action, or explanation | `packages/add-domain/src/adapters/` | `npm run agent:verify:add-ui` |
+| Story progression projection, available action, or explanation | `packages/add-presentation/src/adapters/` | `npm run agent:verify:add-ui` |
 | Player-facing journal, panel, or moment presentation | `apps/add-rpg/` | `npm run smoke:add-rpg:built` |
 
 Keep the content ID and its conditions in the authored catalog. Do not copy
@@ -57,7 +57,7 @@ crates/add-core/src/game_data/catalog/*
 crates/add-core
   authoritative simulation, story selection, effects, saves
   ↓
-packages/add-domain/src/adapters/*
+packages/add-presentation/src/adapters/*
   typed projections for UI, telemetry, and agents
   ↓
 apps/add-rpg
@@ -130,7 +130,7 @@ Generated Rust catalog files are runtime inputs, not the editing surface.
 
 ### Domain Selectors Explain, They Do Not Mutate
 
-`packages/add-domain/src/adapters/*` may:
+`packages/add-presentation/src/adapters/*` may:
 
 - project active story state into UI-friendly structures
 - explain why a beat or command is available

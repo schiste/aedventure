@@ -144,7 +144,7 @@ runtime data unless a specific mechanic enters the current playable scope.
 
 ## Drift Risks
 
-1. `packages/add-domain/src/adapters/ui-selectors.ts` duplicates some
+1. `packages/add-presentation/src/adapters/ui-selectors.ts` duplicates some
    presentation-side checks for blocked/enabled labels. It does not mutate game
    state, but it can drift from Rust if new requirements are added.
 2. The save model has schema/catalog versions and migrations, but not yet the

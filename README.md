@@ -80,7 +80,7 @@ crosses a boundary. The short routing rule is:
 | --- | --- | --- |
 | Gameplay rules, state, progression, combat, or saves | `crates/add-core/` | `cargo test -p add-core` |
 | Authored IDs, story, objectives, recipes, creatures, items, perks, or balance | `packages/add-content/src/content/` | `npm run content:check` |
-| Snapshot projections, available actions, or command mapping | `packages/add-domain/src/adapters/` | `npm run agent:verify:add-ui` |
+| Snapshot projections, available actions, or command mapping | `packages/add-presentation/src/adapters/` | `npm run agent:verify:add-ui` |
 | Agent-readable runtime state, action availability, blockers, or stable report IDs | `packages/add-domain/src/runtime/` plus `crates/add-scenario/src/inspection.rs` | `npm --workspace @aedventure/add-domain test` and `cargo test -p add-scenario` |
 | Player-facing ADD UI, input, map presentation, or browser lifecycle | `apps/add-rpg/` | `npm run agent:verify:add-ui` |
 | Neutral topology/renderer behavior with a real consumer | `packages/game-*` or `apps/engine-sandbox/` | `npm run agent:verify:types` plus the relevant smoke |
@@ -170,7 +170,12 @@ ownership and dependency direction are fixed by the
 - `crates/add-core/src/bin/scenario.rs`, `crates/add-scenario/`, and
   `crates/add-scenario-runner/` - headless scenario, replay, and
   runtime-inspection harness.
-- `packages/add-domain/` - authored ADD content and snapshot/map/UI adapters.
+- `packages/add-protocol/` - the typed Rust/WASM boundary contract.
+- `packages/add-content/` - authored ADD content: catalogs, story, dungeons, areas.
+- `packages/add-presentation/` - snapshot selectors, command mapping, and
+  blocked-action explanations.
+- `packages/add-domain/` - worker client, i18n, agent runtime report, and the
+  barrel the app imports.
 - `packages/game-*` - reusable topology, world, renderer, content, input, and
   protocol primitives.
 - `scenarios/` - committed deterministic scenarios, saves, and fixtures.

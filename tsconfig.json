@@ -35,6 +35,9 @@
       "path": "packages/add-content"
     },
     {
+      "path": "packages/add-presentation"
+    },
+    {
       "path": "packages/add-domain"
     },
     {

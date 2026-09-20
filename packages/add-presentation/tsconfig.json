@@ -10,10 +10,10 @@
       "path": "../add-content"
     },
     {
-      "path": "../add-presentation"
+      "path": "../add-protocol"
     },
     {
-      "path": "../add-protocol"
+      "path": "../game-content"
     },
     {
       "path": "../game-topology"
@@ -23,15 +23,7 @@
     },
     {
       "path": "../game-world"
-    },
-    {
-      "path": "../game-dungeon"
-    },
-    {
-      "path": "../game-content"
-    },
+    }
   ],
-  "include": [
-    "src/**/*.ts"
-  ]
+  "include": ["src"]
 }

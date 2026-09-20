@@ -1,10 +1,10 @@
 import type {
   AddAvailableCommand,
   AddAvailableCommandsState,
-} from "../adapters/available-commands-selectors"
-import type { AddDomainCommand } from "../adapters/command-mapping"
+} from "@aedventure/add-presentation"
+import type { AddDomainCommand } from "@aedventure/add-presentation"
 import { ADD_CONTENT_VALIDATION_VERSION } from "@aedventure/add-content"
-import type { AddUiState } from "../adapters/ui-selectors"
+import type { AddUiState } from "@aedventure/add-presentation"
 import type { CatalogSnapshot, SimulationSnapshot } from "@aedventure/add-protocol"
 
 /** The versioned contract consumed by agents, scenario tooling, and app smoke checks. */
