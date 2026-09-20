@@ -860,7 +860,13 @@ async function assertPopinKeyboardNavigation(page, options) {
   const { rootSelector, textSectionSelector, firstStopClass, firstStopId, label } = options
   await page.locator(textSectionSelector).first().waitFor({ state: "visible" })
   await page.locator(textSectionSelector).first().focus()
-  let snapshot = await popinKeyboardSnapshot(page, rootSelector)
+  let snapshot = await settlePopinFocus(page, {
+    rootSelector,
+    label,
+    description: "a readable text section",
+    refocus: () => page.locator(textSectionSelector).first().focus(),
+    matches: (candidate) => candidate.activeClassName.includes("keyboard-section"),
+  })
   assert.equal(
     snapshot.activeInsideRoot,
     true,
@@ -872,6 +878,13 @@ async function assertPopinKeyboardNavigation(page, options) {
   )
 
   await focusPopinStop(page, rootSelector, -1)
+  await settlePopinFocus(page, {
+    rootSelector,
+    label,
+    description: "the last focus stop",
+    refocus: () => focusPopinStop(page, rootSelector, -1),
+    matches: (candidate) => candidate.activeIndex === candidate.stopCount - 1,
+  })
   await page.keyboard.press("Tab")
   snapshot = await popinKeyboardSnapshot(page, rootSelector)
   assert.equal(snapshot.activeInsideRoot, true, `${label} Tab cycle should stay inside the pop-in.`)
@@ -892,6 +905,40 @@ async function assertPopinKeyboardNavigation(page, options) {
       `${label} first focus stop should be the expected panel/navigation start.`,
     )
   }
+}
+
+/**
+ * Wait until keyboard focus has come to rest where the caller put it.
+ *
+ * A pop-in focuses its own control shortly after opening, and that can land
+ * after a deliberate `.focus()` from the test. The keyboard assertions below
+ * then read whichever element won the race, and fail for a timing reason
+ * rather than a real focus regression. Re-focus until `matches` holds on two
+ * samples `HOLD_MS` apart, so a late steal cannot slip in between the check
+ * and the caller's next keypress.
+ */
+async function settlePopinFocus(page, options) {
+  const { rootSelector, label, description, refocus, matches, timeoutMs = 4000 } = options
+  const HOLD_MS = 150
+  const startedAt = Date.now()
+  let snapshot = null
+
+  while (Date.now() - startedAt < timeoutMs) {
+    snapshot = await popinKeyboardSnapshot(page, rootSelector)
+    if (matches(snapshot)) {
+      await page.waitForTimeout(HOLD_MS)
+      const held = await popinKeyboardSnapshot(page, rootSelector)
+      if (matches(held)) return held
+      snapshot = held
+    }
+    await refocus()
+    await page.waitForTimeout(100)
+  }
+
+  throw new Error(
+    `${label} focus never settled on ${description} in ${rootSelector}. ` +
+      `Last snapshot: ${JSON.stringify(snapshot)}`,
+  )
 }
 
 async function focusPopinStop(page, rootSelector, index) {
