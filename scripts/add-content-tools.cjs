@@ -140,14 +140,23 @@ function printReverseLookup(registry, id, format = "text") {
   if (!target) throw new Error(`Unknown content id "${id}".`)
   const usedBy = (registry.reverse.get(id) ?? []).map(edgeSummary)
   if (format === "json") {
-    return JSON.stringify({ schemaVersion: 1, target: nodeSummary(target), usedBy }, null, 2)
+    return JSON.stringify(
+      {
+        schemaVersion: 1,
+        target: nodeSummary(target),
+        dependants: usedBy,
+        usedBy,
+      },
+      null,
+      2,
+    )
   }
   const lines = [
     `ADD Content Reverse Lookup: ${id}`,
     `Family: ${target.family}`,
     `Source: ${target.sourcePath}`,
     "",
-    "Used by:",
+    "Dependants (used by):",
   ]
   if (usedBy.length === 0) lines.push("  none")
   else for (const edge of usedBy) lines.push(`  ${edge.from.family}:${edge.from.id} (${edge.path})`)
@@ -247,6 +256,15 @@ function printExplainGeneric(content, id, format = "text") {
   const outgoing = content.registry.edges
     .filter((edge) => edge.from.key === target.key)
     .map(edgeSummary)
+  const schema = content.entitySchemas.find((entry) => entry?.id === id)
+  const flows = schema?.flows ?? []
+  const producers = flows
+    .filter((flow) => flow.direction === "output")
+    .map(flowSummary)
+  const consumers = flows
+    .filter((flow) => flow.direction === "input")
+    .map(flowSummary)
+  const caps = capSummary(target, schema)
   const explanation = {
     schemaVersion: 1,
     id,
@@ -256,7 +274,12 @@ function printExplainGeneric(content, id, format = "text") {
     generated: target.generated,
     definition: target.entry,
     references: outgoing,
+    dependants: incoming,
     usedBy: incoming,
+    producers,
+    consumers,
+    caps,
+    ...(schema ? { entitySchema: schema } : {}),
     verification: ["npm run content:check", `npm run content:graph -- --reverse ${id}`],
   }
   if (format === "json") return JSON.stringify(explanation, null, 2)
@@ -275,16 +298,70 @@ function printExplainGeneric(content, id, format = "text") {
       ? outgoing.map((edge) => `  - ${edge.to.family}:${edge.to.id} (${edge.path})`)
       : ["  none"]),
     "",
-    "Used by:",
+    "Dependants (used by):",
     ...(incoming.length > 0
       ? incoming.map((edge) => `  - ${edge.from.family}:${edge.from.id} (${edge.path})`)
       : ["  none"]),
+    "",
+    "Producers:",
+    ...(producers.length > 0
+      ? producers.map((flow) => `  - ${flow.relatedIds.join(", ") || "catalog flow"} (${flow.cadence})`)
+      : ["  none"]),
+    "",
+    "Consumers:",
+    ...(consumers.length > 0
+      ? consumers.map((flow) => `  - ${flow.relatedIds.join(", ") || "catalog flow"} (${flow.cadence})`)
+      : ["  none"]),
+    "",
+    "Caps:",
+    ...JSON.stringify(caps, null, 2).split("\n").map((line) => `  ${line}`),
     "",
     "Verification:",
     "  - npm run content:check",
     `  - npm run content:graph -- --reverse ${id}`,
   ]
   return lines.join("\n")
+}
+
+function flowSummary(flow) {
+  return {
+    itemId: flow.itemId,
+    label: flow.label,
+    direction: flow.direction,
+    cadence: flow.cadence,
+    relatedIds: [...(flow.relatedIds ?? [])].sort(),
+  }
+}
+
+function capSummary(target, schema) {
+  const capFlows = (schema?.flows ?? [])
+    .filter((flow) => flow.direction === "capacity")
+    .map(flowSummary)
+  const capBlockers = (schema?.blockers ?? [])
+    .filter((blocker) => blocker.kind === "blocked_at_cap")
+    .map((blocker) => ({
+      kind: blocker.kind,
+      label: blocker.label,
+      relatedIds: [...(blocker.relatedIds ?? [])].sort(),
+    }))
+
+  if (target.family !== "resource") {
+    return {
+      baseCap: null,
+      behavior: null,
+      startsAt: null,
+      flows: capFlows,
+      rules: capBlockers,
+    }
+  }
+
+  return {
+    baseCap: target.entry.baseCap ?? null,
+    behavior: target.entry.capBehavior ?? null,
+    startsAt: target.entry.startsAt ?? null,
+    flows: capFlows,
+    rules: capBlockers,
+  }
 }
 
 function resolutionSummary(beat) {
@@ -415,10 +492,11 @@ function usage() {
     "Usage: node scripts/add-content-tools.cjs <graph|validate|timeline|explain> [id] [options]",
     "",
     "Commands:",
-    "  graph [--reverse <id>] [--format json]  Inspect all content dependencies or reverse lookup.",
-    "  validate [--format json]               Validate IDs, references, effects, actions, and reachability.",
-    "  timeline [--format json]               Print story beats grouped by arc and sequence.",
-    "  explain <content-id> [--format json]   Explain any content item and its users.",
+    "  graph [--reverse <id>] [--json]         Inspect all content dependencies or reverse lookup.",
+    "  validate [--json]                      Validate IDs, references, effects, actions, and reachability.",
+    "  timeline [--json]                      Print story beats grouped by arc and sequence.",
+    "  explain <content-id> [--json]          Explain content, flows, caps, and dependants.",
+    "  explain --reverse <id> [--json]       Answer what uses this content ID.",
   ].join("\n")
 }
 
@@ -428,12 +506,23 @@ function parseOptions(argv) {
   let reverse = null
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index]
+    if (arg === "--json") {
+      format = "json"
+      continue
+    }
     if (arg === "--format") {
       format = argv[++index]
       if (!["text", "json"].includes(format)) throw new Error(`Unsupported content tooling format "${format}".`)
     } else if (arg === "--reverse" || arg === "--id") {
-      reverse = argv[++index]
-      if (!reverse) throw new Error(`${arg} requires a content id.`)
+      const candidate = argv[index + 1]
+      if (candidate && !candidate.startsWith("--")) {
+        reverse = candidate
+        index += 1
+      } else if (arg === "--reverse") {
+        reverse = true
+      } else {
+        throw new Error(`${arg} requires a content id.`)
+      }
     } else if (!arg.startsWith("--")) {
       positionals.push(arg)
     } else {
@@ -453,6 +542,7 @@ function main(argv) {
   const options = parseOptions(rest)
   const content = loadContent()
   if (command === "graph") {
+    if (options.reverse === true) throw new Error("graph --reverse requires a content id.")
     console.log(printGraph(content, options))
     return
   }
@@ -465,9 +555,13 @@ function main(argv) {
     return
   }
   if (command === "explain") {
-    const id = options.positionals[0]
+    const id = typeof options.reverse === "string" ? options.reverse : options.positionals[0]
     if (!id) throw new Error("content:explain requires a content id.")
-    console.log(printExplainGeneric(content, id, options.format))
+    console.log(
+      options.reverse
+        ? printReverseLookup(content.registry, id, options.format)
+        : printExplainGeneric(content, id, options.format),
+    )
     return
   }
 

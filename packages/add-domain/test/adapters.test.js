@@ -400,6 +400,8 @@ const agentRuntime = createAddAgentRuntimeReport({
 })
 assert.equal(agentRuntime.contract, "agent_runtime_v1")
 assert.equal(agentRuntime.schemaVersion, 1)
+assert.equal(agentRuntime.catalogVersion, snapshot.catalogVersion)
+assert.equal(agentRuntime.reportVersion, 1)
 assert.equal(agentRuntime.runtime.ready, true)
 assert.equal(agentRuntime.authoritative.entities.heroId, "entity:hero")
 assert.ok(agentRuntime.authoritative.entities.crewRoleIds.includes("crew-role:role.crystal_bassline"))
@@ -617,6 +619,7 @@ function createCatalogFixture() {
 function createSnapshotFixture() {
   return {
     schemaVersion: 1,
+    catalogVersion: 1,
     commandAvailability: {
       "world-action:world_action.explore_base": outcome(true),
       "world-action:world_action.hero_only": outcome(false, "missing_requirement"),

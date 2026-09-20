@@ -15,6 +15,9 @@ fn committed_idle_loop_scenario_matches_the_core_contract() {
     assert_eq!(run.command_count, 26);
     assert_eq!(run.checkpoints_passed, 10);
     assert_eq!(run.final_agent_runtime["contract"], "agent_runtime_v1");
+    assert_eq!(run.final_agent_runtime["schemaVersion"], 1);
+    assert_eq!(run.final_agent_runtime["catalogVersion"], 1);
+    assert_eq!(run.final_agent_runtime["reportVersion"], 1);
     assert_eq!(
         run.final_agent_runtime["runtime"]["source"],
         "headless-add-core"
@@ -76,6 +79,13 @@ fn committed_idle_loop_scenario_matches_the_core_contract() {
             .as_array()
             .is_some_and(|commands| !commands.is_empty())
     );
+    let report = run.report_value();
+    assert_eq!(report["agentRuntime"], run.final_agent_runtime);
+    assert!(
+        report["agentRuntimeText"]
+            .as_str()
+            .is_some_and(|text| text.contains("runtime ready"))
+    );
 }
 
 #[test]
@@ -89,5 +99,7 @@ fn committed_offline_return_scenario_matches_the_core_contract() {
         run.final_agent_runtime["authoritative"]["currentTime"]["seconds"],
         3642.0
     );
+    assert_eq!(run.final_agent_runtime["catalogVersion"], 1);
+    assert_eq!(run.final_agent_runtime["reportVersion"], 1);
     assert!(run.final_agent_runtime["derived"]["blockers"].is_array());
 }

@@ -8,11 +8,14 @@ import type { AddUiState } from "../adapters/ui-selectors"
 import type { CatalogSnapshot, SimulationSnapshot } from "@aedventure/add-protocol"
 
 /** The versioned contract consumed by agents, scenario tooling, and app smoke checks. */
+export const ADD_AGENT_RUNTIME_SCHEMA_VERSION = 1 as const
 export const ADD_AGENT_RUNTIME_REPORT_VERSION = 1 as const
 export const ADD_AGENT_RUNTIME_CONTRACT = "agent_runtime_v1" as const
 
 export interface AddAgentRuntimeReport {
-  readonly schemaVersion: typeof ADD_AGENT_RUNTIME_REPORT_VERSION
+  readonly schemaVersion: typeof ADD_AGENT_RUNTIME_SCHEMA_VERSION
+  readonly catalogVersion: number
+  readonly reportVersion: typeof ADD_AGENT_RUNTIME_REPORT_VERSION
   readonly contract: typeof ADD_AGENT_RUNTIME_CONTRACT
   readonly runtime: AddAgentRuntimeReadiness
   readonly authoritative: AddAgentAuthoritativeState
@@ -230,7 +233,9 @@ export function createAddAgentRuntimeReport(
   }
 
   return {
-    schemaVersion: ADD_AGENT_RUNTIME_REPORT_VERSION,
+    schemaVersion: ADD_AGENT_RUNTIME_SCHEMA_VERSION,
+    catalogVersion: snapshot?.catalogVersion ?? 0,
+    reportVersion: ADD_AGENT_RUNTIME_REPORT_VERSION,
     contract: ADD_AGENT_RUNTIME_CONTRACT,
     runtime: {
       ready: input.runtime.ready && snapshot !== null && catalog !== null,

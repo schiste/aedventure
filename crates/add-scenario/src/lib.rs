@@ -15,8 +15,8 @@ use std::path::{Path, PathBuf};
 mod inspection;
 
 pub use inspection::{
-    AGENT_RUNTIME_CONTRACT, AGENT_RUNTIME_REPORT_VERSION, compact_text as agent_runtime_text,
-    report as agent_runtime_report,
+    AGENT_RUNTIME_CONTRACT, AGENT_RUNTIME_REPORT_VERSION, AGENT_RUNTIME_SCHEMA_VERSION,
+    compact_text as agent_runtime_text, report as agent_runtime_report,
 };
 
 const FNV_OFFSET_BASIS: u64 = 14_695_981_039_346_656_037;

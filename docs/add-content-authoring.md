@@ -64,8 +64,11 @@ and the capability map together.
    regression tests, checks the save/catalog version contract, rejects generated
    Rust drift, and checks the committed fixtures.
 5. Use `npm run content:explain -- <id>` and
-   `npm run content:explain -- <id> --format json` to inspect the authored item,
-   its generated Rust path, references, reverse users, and next checks.
+   `npm run content:explain -- <id> --json` to inspect the authored item,
+   its generated Rust path, references, reverse dependants, resource
+   producers/consumers/caps, and next checks.
+   Use `npm run content:explain -- --reverse <id> --json` when only the
+   "what uses this ID?" view is needed.
 6. Only then update adapters or `apps/add-rpg` if the new item needs a player
    presentation. Add a scenario or snapshot when the item changes gameplay.
 
@@ -76,7 +79,7 @@ npm run content:validate
 npm run content:graph
 npm run content:graph -- --reverse resource.stone
 npm run content:explain -- objective.restore_studio
-npm run content:explain -- tile.base_core --format json
+npm run content:explain -- tile.base_core --json
 npm run content:timeline -- --format json
 npm run content:fixtures
 npm run content:fixtures:check

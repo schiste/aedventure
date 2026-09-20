@@ -23,8 +23,15 @@ The report is versioned as:
 
 ```text
 schemaVersion: 1
+catalogVersion: 1
+reportVersion: 1
 contract: agent_runtime_v1
 ```
+
+`schemaVersion` identifies the report shape, `catalogVersion` identifies the
+save-facing content catalog, and `reportVersion` identifies the report
+producer contract. The headless scenario runner and the browser's
+`render_game_to_text().agentRuntime` expose these fields together.
 
 Both adapters emit the same top-level shape:
 

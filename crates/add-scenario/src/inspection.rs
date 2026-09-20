@@ -9,6 +9,7 @@ use add_core::{ForcedReturnPhase, GameState, HeroLocationState};
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
 
+pub const AGENT_RUNTIME_SCHEMA_VERSION: u64 = 1;
 pub const AGENT_RUNTIME_REPORT_VERSION: u64 = 1;
 pub const AGENT_RUNTIME_CONTRACT: &str = "agent_runtime_v1";
 
@@ -52,7 +53,9 @@ pub fn report(state: &GameState) -> Value {
     }
 
     json!({
-        "schemaVersion": AGENT_RUNTIME_REPORT_VERSION,
+        "schemaVersion": AGENT_RUNTIME_SCHEMA_VERSION,
+        "catalogVersion": state.catalog_version,
+        "reportVersion": AGENT_RUNTIME_REPORT_VERSION,
         "contract": AGENT_RUNTIME_CONTRACT,
         "runtime": {
             "ready": true,
