@@ -292,6 +292,19 @@ stop disagreeing with the simulation.
 *Accepted when:* `npm run verify` passes, and the spike answers all five
 questions in a committed note with a measured WASM delta.
 
+**Status: done.** All three prerequisites landed (P0.1 in session 16, P0.2 in
+18, P0.3 in 19, `CommandOutcome` as P1.3 in 23). The spike ran against pinned
+`bladeink 2.0.0` and `bladeink-compiler 2.0.0`; findings are in
+[the bladeink spike](add-narrative-bladeink-spike.md). Headlines: the compiler
+is a usable Rust crate so no `inklecate` step is needed; `choose_path_string`
+takes arguments so the storylet dispatch fallback is dropped; seeding is an
+ink-side `SEED_RANDOM` binding, not a Rust setter; named flows work; and the
+narrative runtime costs about 305 KB raw / 112 KB gzipped, which makes
+`wasm-opt` mandatory and needs the raw WASM budget raised to ~1,300,000 before
+N1 lands. `wasm-opt = ["-Oz"]` is now on, which was independently worth 206 KB.
+
+**N1 is unblocked.**
+
 ### N1 — ink in the game
 
 *Player outcome:* one existing ADD story beat is delivered as an ink scene, in
@@ -508,9 +521,9 @@ driven through `SimulationClient`. No channel layer is needed.
 
 | Risk | Why it matters here | Mitigation |
 | --- | --- | --- |
-| `bladeink-compiler` is not a usable Rust crate | The whole ink layer depends on it | N0 spike question 1; fallback is an `inklecate` step in the content build, producing a generated artifact like the WASM |
-| No argument-passing jump to a knot | Storylet casting depends on it | Specification's own fallback: an ink-side dispatch knot; confirmed or rejected in N0 |
-| WASM growth breaks the size budget | The budget is already enforced and the bundle is already large | Measure in N0; enable `wasm-opt`; lazy-load the story JSON separately from the WASM |
+| ~~`bladeink-compiler` is not a usable Rust crate~~ | — | **Closed by the N0 spike.** It is a usable Rust crate; no `inklecate` step needed |
+| ~~No argument-passing jump to a knot~~ | — | **Closed by the N0 spike.** `choose_path_string` takes `args`; the dispatch-knot fallback is dropped |
+| WASM growth breaks the size budget | **Confirmed and quantified.** bladeink adds ~305 KB raw / 112 KB gzip | `wasm-opt -Oz` enabled (worth 206 KB on its own); raise `wasmBytes` to ~1,300,000 when N1 lands; gzip budget keeps 70 KB headroom. Lazy-loading the story JSON remains available |
 | A second gameplay authority emerges anyway | The specification's facade invites it | §2.1 is a contract, not a preference. An architecture test should assert that `narrative/` exposes no `save`, no generator and no clock of its own |
 | The event-log migration corrupts saves | It changes what a save is | Additive field, `#[serde(default)]`, a committed v15 fixture before the bump, and `content:version:check` |
 | Content mass outruns verification | The system needs 10× the current content | Tools before content (N2); strict lint; `narr schema` as agent context |
@@ -547,8 +560,10 @@ driven through `SimulationClient`. No channel layer is needed.
 
 ## 11. Known gaps
 
-- The N0 spike has not run, so the ink layer's feasibility and its WASM cost
-  are both unmeasured. Every milestone after N1 is conditional on it.
+- The N0 spike is done; see [its findings](add-narrative-bladeink-spike.md).
+  What it did not measure: the cost of the `story` module's real surface
+  (externals, tag routing, flow management) on top of the runtime, and any
+  per-step timing, which has nothing to measure until N3.
 - The entity graph has no content yet. The lore it binds to is addressed by
   path rather than by a front-matter id; that decision is now made and recorded
   in the brick contract.

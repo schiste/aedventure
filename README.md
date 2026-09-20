@@ -142,6 +142,7 @@ verification. The gameplay ladder is `npm run verify`; the full gate is
 - [Lore, Engine, and Content: The Three Bricks](docs/lore-engine-content-bricks.md)
 - [Narrative System Specification](docs/narrative-system-specification.md)
 - [ADD Narrative System Implementation Plan](docs/add-narrative-system-plan.md)
+- [N0 bladeink Feasibility Spike](docs/add-narrative-bladeink-spike.md)
 - [Story and Content Engine Contract](docs/story-content-engine.md)
 - [Domain-Neutral Engine Boundary](docs/engine-boundary.md)
 - [Global Product and Technical Specification](docs/customer-virtual-office-platform-spec.md)
