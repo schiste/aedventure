@@ -1,5 +1,20 @@
 use serde::{Deserialize, Serialize};
 
+use crate::game_data::BlockerKind;
+use crate::state::GameEvent;
+
+/// Stable catalog identifier for the reason a command was rejected.
+pub type BlockerId = BlockerKind;
+
+/// The authoritative result of applying one command to the simulation.
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct CommandOutcome {
+    pub accepted: bool,
+    pub blocker: Option<BlockerId>,
+    pub events: Vec<GameEvent>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum GameCommand {
     ChooseStoryOption {

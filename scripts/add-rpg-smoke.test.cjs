@@ -447,7 +447,7 @@ async function assertBootAndRenderTextContract(page, consoleErrors) {
       state.storyAgent?.activeArc === "pre_arrival" &&
       state.storyAgent?.currentBlocker?.kind === "first_playable" &&
       state.storyAgent?.availableCommands?.length > 0 &&
-      state.storyAgent?.commandAuthority?.availability === "domain_state_projection" &&
+      state.storyAgent?.commandAuthority?.availability === "rust_runtime" &&
       state.storyAgent?.commandAuthority?.runtimeExecution === "rust_runtime" &&
       state.storyAgent?.commandIds?.length === state.storyAgent.availableCommands.length &&
       state.storyAgent?.nextBeatCandidates?.length > 0 &&

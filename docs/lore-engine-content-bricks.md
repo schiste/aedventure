@@ -145,7 +145,7 @@ reorganization.
 | Lore is separate from the game | Yes | `lore/` is 389 tracked files with its own Python tooling and its own site build; nothing in `apps/` or `crates/` reads it |
 | Engine is free of authored material | Yes | Every `crates/add-core/src/game_data/catalog/*.rs` is `@generated`; hand-written rules live in `simulation.rs` and `game_data.rs` |
 | Content compiles into the engine | Yes | `scripts/build-add-content.cjs` with a `--check` drift mode and a golden catalog snapshot |
-| Content does not reimplement engine rules | Mostly | `packages/add-domain/test/architecture.test.js` enforces the renderer boundary; availability evaluation is still a TypeScript projection, self-labelled `typescript_projection_pending_rust_explain` |
+| Content does not reimplement engine rules | Yes | `packages/add-domain/test/architecture.test.js` enforces the renderer boundary; command availability now consumes Rust outcomes and catalog-owned `BlockerDef` labels |
 | Lore links to content | Yes, one-way | `content/lore-refs.ts` cites lore by path; `npm run lore:refs:check` resolves every link and reports both coverage gaps |
 | Boundary is machine-checked | **Partial** | Renderer direction and content drift are checked; brick direction is not |
 

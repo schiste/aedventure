@@ -1,10 +1,13 @@
-use crate::command::GameCommand;
+use std::collections::BTreeMap;
+
+use crate::command::{BlockerId, CommandOutcome, GameCommand};
 use crate::game_data::{
-    BalanceSnapshot, COST_ITEM_SKIN, Condition, ConstructionOptionDef, CostDef, CostItemDef,
-    CrystalTrack, EffectDef, ExpeditionRiskDef, ExpeditionTargetDef, FLAG_BASE_FIRE_PIT_BUILT,
-    FLAG_BASE_MIX_CONSOLE_BUILT, FLAG_BASE_RESEARCH_BOOTH_BUILT, FLAG_BASE_RESONANCE_CHAMBER_BUILT,
-    FLAG_BASE_STUDIO_RESTORE_UNLOCKED, FLAG_BASE_STUDIO_RESTORED, FLAG_BASE_TUTORIAL_EXPLORED,
-    FLAG_BASE_TUTORIAL_INVESTIGATED, FLAG_BASE_WATER_COLLECTION_UNLOCKED, FLAG_BASE_WORKSHOP_BUILT,
+    BalanceSnapshot, BlockerKind, COST_ITEM_SKIN, Condition, ConstructionOptionDef, CostDef,
+    CostItemDef, CrystalTrack, EffectDef, ExpeditionRiskDef, ExpeditionTargetDef,
+    FLAG_BASE_FIRE_PIT_BUILT, FLAG_BASE_MIX_CONSOLE_BUILT, FLAG_BASE_RESEARCH_BOOTH_BUILT,
+    FLAG_BASE_RESONANCE_CHAMBER_BUILT, FLAG_BASE_STUDIO_RESTORE_UNLOCKED,
+    FLAG_BASE_STUDIO_RESTORED, FLAG_BASE_TUTORIAL_EXPLORED, FLAG_BASE_TUTORIAL_INVESTIGATED,
+    FLAG_BASE_WATER_COLLECTION_UNLOCKED, FLAG_BASE_WORKSHOP_BUILT,
     FLAG_CRYSTAL_REMOVING_MOSS_COMPLETED, FLAG_CRYSTAL_REMOVING_MOSS_UNLOCKED,
     FLAG_HERO_FORCED_RETURN_ACTIVE, FLAG_HERO_OUTSIDE_BUBBLE, FLAG_HERO_RECOVERING_AT_STUDIO,
     HeroExposureDef, HeroTrack, ItemEffectKind, PerkStat, ProcessingTrack,
@@ -15,10 +18,10 @@ use crate::game_data::{
     RequirementDef, ResonanceEffectDef, ResonanceRecipeDef, ResonanceTuningTrackDef, RoleSlotPool,
     STATION_MIX_CONSOLE, STATION_RESEARCH_BOOTH, STATION_RESONANCE_CHAMBER, STATION_WORKSHOP,
     STORY_BEAT_ENTER_THE_BUBBLE, STORY_BEAT_FIRST_GLIMPSE, STORY_BEAT_ROAD_TO_BASE, TileFeature,
-    balance_snapshot, construction_option_def, creature_def, expedition_target_def, item_def,
-    objective_def, objectives, perk_def, processing_recipe_def, recruit_cost_for_index,
-    resonance_recipe_def, role_def, station_def, stations, story_beat_def, story_beats, tile_def,
-    world_action_def,
+    balance_snapshot, construction_option_def, construction_options, creature_def,
+    expedition_target_def, expedition_targets, item_def, objective_def, objectives, perk_def,
+    processing_recipe_def, recruit_cost_for_index, resonance_recipe_def, role_def, roles,
+    station_def, stations, story_beat_def, story_beats, tile_def, world_action_def, world_actions,
 };
 use crate::state::{
     CombatJob, CombatLogEntry, ConstructionJob, CrystalTuningTrackState, ExpeditionJob,
@@ -50,6 +53,9 @@ const ECHO_SCAR_STAT_FLOOR: f64 = 0.7;
 #[derive(Debug, Clone)]
 pub struct Simulation {
     state: GameState,
+    /// The blocker for the command currently being applied. This is ephemeral
+    /// and deliberately lives outside `GameState` so it cannot leak into saves.
+    command_blocker: Option<BlockerId>,
     /// Dev-time balance overrides (dotted camelCase path -> value). Ephemeral:
     /// not persisted in saves, applied over the baseline to produce
     /// `effective_balance`.
@@ -113,6 +119,7 @@ impl Simulation {
 
         let mut simulation = Self {
             state,
+            command_blocker: None,
             balance_overrides: std::collections::BTreeMap::new(),
             effective_balance: balance_snapshot(),
         };
@@ -144,9 +151,10 @@ impl Simulation {
         &mut self.state
     }
 
-    pub fn apply(&mut self, command: GameCommand) {
+    pub fn apply(&mut self, command: GameCommand) -> CommandOutcome {
         // `events` reflects only what this command/tick produced.
         self.state.events.clear();
+        self.command_blocker = None;
         match command {
             GameCommand::ChooseStoryOption { beat_id, option_id } => {
                 self.choose_story_option(&beat_id, &option_id)
@@ -214,6 +222,123 @@ impl Simulation {
                 self.refresh_narrative_state();
             }
         }
+
+        CommandOutcome {
+            accepted: self.command_blocker.is_none(),
+            blocker: self.command_blocker,
+            events: self.state.events.clone(),
+        }
+    }
+
+    /// Evaluate a command against a copy of the current state without
+    /// changing this simulation. UI availability is therefore the same Rust
+    /// command path that executes the eventual player action.
+    pub fn command_outcome(&self, command: GameCommand) -> CommandOutcome {
+        let mut simulation = self.clone();
+        simulation.apply(command)
+    }
+
+    /// Outcomes for the stable command IDs exposed by the ADD command picker.
+    /// The map is derived on demand from the authoritative command handlers;
+    /// it is not persisted state.
+    pub fn command_availability(&self) -> BTreeMap<String, CommandOutcome> {
+        let mut outcomes = BTreeMap::new();
+
+        if let Some(active_beat_id) = self.state.narrative.active_beat_id.as_deref()
+            && let Some(beat) = story_beat_def(active_beat_id)
+        {
+            for choice in beat.choices {
+                outcomes.insert(
+                    format!("story-choice:{}:{}", beat.id, choice.id),
+                    self.command_outcome(GameCommand::ChooseStoryOption {
+                        beat_id: beat.id.to_string(),
+                        option_id: choice.id.to_string(),
+                    }),
+                );
+            }
+        }
+
+        for action in world_actions() {
+            outcomes.insert(
+                format!("world-action:{}", action.id),
+                self.command_outcome(GameCommand::StartWorldAction {
+                    action_id: action.id.to_string(),
+                }),
+            );
+        }
+
+        for option in construction_options() {
+            outcomes.insert(
+                format!("construction:{}", option.id),
+                self.command_outcome(GameCommand::StartConstruction {
+                    option_id: option.id.to_string(),
+                }),
+            );
+        }
+
+        outcomes.insert(
+            "recruitment:survivor-cave".to_string(),
+            self.command_outcome(GameCommand::RecruitFromSurvivorCave),
+        );
+        for seconds in [60.0, 120.0] {
+            outcomes.insert(
+                format!("wait:{seconds:.0}"),
+                self.command_outcome(GameCommand::Tick { seconds }),
+            );
+        }
+
+        let hero_assignment = if self.state.roster.hero_assigned {
+            ("unassign", false)
+        } else {
+            ("assign", true)
+        };
+        outcomes.insert(
+            format!("base:hero:{}", hero_assignment.0),
+            self.command_outcome(GameCommand::SetHeroAssigned {
+                assigned: hero_assignment.1,
+            }),
+        );
+        for role in roles() {
+            outcomes.insert(
+                format!("base:hero-role:{}", role.id),
+                self.command_outcome(GameCommand::SetHeroRole {
+                    role_id: role.id.to_string(),
+                }),
+            );
+            let max_crew = role
+                .max_crew_slots
+                .unwrap_or(self.state.roster.total_crew)
+                .min(self.state.roster.total_crew);
+            for crew in 0..=max_crew {
+                outcomes.insert(
+                    format!("base:crew:{}:{crew}", role.id),
+                    self.command_outcome(GameCommand::SetRoleCrew {
+                        role_id: role.id.to_string(),
+                        crew,
+                    }),
+                );
+            }
+        }
+
+        // Keep the broader catalog available to non-picker consumers as they
+        // migrate to the same authority.
+        for target in expedition_targets() {
+            outcomes.insert(
+                format!("expedition:{}", target.id),
+                self.command_outcome(GameCommand::StartExpedition {
+                    target_id: target.id.to_string(),
+                    assigned_crew: target.required_crew,
+                }),
+            );
+        }
+
+        outcomes
+    }
+
+    fn reject(&mut self, blocker: BlockerId) {
+        if self.command_blocker.is_none() {
+            self.command_blocker = Some(blocker);
+        }
     }
 
     fn move_hero_to(&mut self, q: i8, r: i8) {
@@ -227,11 +352,13 @@ impl Simulation {
             self.push_note(format!(
                 "Hero movement ignored: hex {q},{r} is outside the map."
             ));
+            self.reject(BlockerKind::Inaccessible);
             return;
         };
 
         if !self.hex_is_open(&destination) || destination.state == HexVisualState::Blocked {
             self.push_note(format!("Hero movement ignored: hex {q},{r} is blocked."));
+            self.reject(BlockerKind::Occluded);
             return;
         }
 
@@ -242,6 +369,7 @@ impl Simulation {
     fn set_hero_assigned(&mut self, assigned: bool) {
         if assigned && self.hero_locked_by_survival() {
             self.push_note("Hero cannot be assigned while forced return or recovery is active.");
+            self.reject(BlockerKind::Busy);
             return;
         }
         self.state.roster.hero_assigned = assigned;
@@ -256,14 +384,17 @@ impl Simulation {
     fn set_hero_role(&mut self, role_id: &str) {
         if self.hero_locked_by_survival() {
             self.push_note("Hero cannot switch roles during forced return or recovery.");
+            self.reject(BlockerKind::Busy);
             return;
         }
         if role_def(role_id).is_none() {
             self.push_note(format!("Unknown Hero role: {role_id}."));
+            self.reject(BlockerKind::Inaccessible);
             return;
         }
         if !self.role_available(role_id) {
             self.push_note(format!("{} is not unlocked yet.", self.role_label(role_id)));
+            self.reject(BlockerKind::MissingRequirement);
             return;
         }
         self.state.roster.hero_role_id = role_id.to_string();
@@ -275,14 +406,17 @@ impl Simulation {
     fn set_role_crew(&mut self, role_id: &str, crew: u8) {
         let Some(role) = role_def(role_id) else {
             self.push_note(format!("Unknown crew role: {role_id}."));
+            self.reject(BlockerKind::Inaccessible);
             return;
         };
         if !role.crew_allowed {
             self.push_note(format!("{} cannot receive crew assignments.", role.label));
+            self.reject(BlockerKind::MissingRequirement);
             return;
         }
         if !self.role_available(role_id) {
             self.push_note(format!("{} is not unlocked yet.", role.label));
+            self.reject(BlockerKind::MissingRequirement);
             return;
         }
         let requested = crew;
@@ -308,14 +442,17 @@ impl Simulation {
     fn set_station_enabled(&mut self, station_id: &str, enabled: bool) {
         let Some(def) = station_def(station_id) else {
             self.push_note(format!("Unknown station: {station_id}."));
+            self.reject(BlockerKind::Inaccessible);
             return;
         };
         if !def.manual_power {
             self.push_note(format!("{} cannot be toggled manually.", def.label));
+            self.reject(BlockerKind::OfflineDisabled);
             return;
         }
         if !self.requirements_met(def.requirements) {
             self.push_note(format!("{} is not built yet.", def.label));
+            self.reject(BlockerKind::MissingRequirement);
             return;
         }
 
@@ -361,19 +498,28 @@ impl Simulation {
     fn choose_story_option(&mut self, beat_id: &str, option_id: &str) {
         let Some(active_beat_id) = self.state.narrative.active_beat_id.as_deref() else {
             self.push_note("There is no active story beat right now.");
+            self.reject(BlockerKind::MissingRequirement);
             return;
         };
         if active_beat_id != beat_id {
             self.push_note("Finish the current story beat before making another choice.");
+            self.reject(BlockerKind::Busy);
             return;
         }
 
         let Some(beat) = story_beat_def(beat_id) else {
             self.push_note(format!("Unknown story beat: {beat_id}."));
+            self.reject(BlockerKind::Inaccessible);
             return;
         };
         let Some(choice) = beat.choices.iter().find(|choice| choice.id == option_id) else {
             self.push_note(format!("Unknown story choice: {option_id}."));
+            self.reject(BlockerKind::Inaccessible);
+            return;
+        };
+        if self.state.narrative.choice_by_beat.contains_key(beat_id) {
+            self.push_note("A choice has already been made for this story beat.");
+            self.reject(BlockerKind::Busy);
             return;
         };
 
@@ -418,10 +564,12 @@ impl Simulation {
     fn start_world_action(&mut self, action_id: &str) {
         let Some(action_def) = world_action_def(action_id) else {
             self.push_note(format!("Unknown world action: {action_id}."));
+            self.reject(BlockerKind::Inaccessible);
             return;
         };
         if self.hero_locked_by_survival() {
             self.push_note("Hero is not ready for world actions while survival lock is active.");
+            self.reject(BlockerKind::Busy);
             return;
         }
         if !self.story_action_allowed(action_id) {
@@ -429,6 +577,7 @@ impl Simulation {
         }
         if self.state.active_world_action.is_some() {
             self.push_note("A world action is already in progress.");
+            self.reject(BlockerKind::Busy);
             return;
         }
         if self.state.active_construction.is_some()
@@ -436,10 +585,12 @@ impl Simulation {
             && self.hero_on_role(ROLE_CONSTRUCTION)
         {
             self.push_note("The Hero is building. Reassign them before starting a world action.");
+            self.reject(BlockerKind::Busy);
             return;
         }
         if !self.requirements_met(action_def.requirements) {
             self.push_note(format!("{} is not available yet.", action_def.label));
+            self.reject(BlockerKind::MissingRequirement);
             return;
         }
 
@@ -463,14 +614,17 @@ impl Simulation {
     fn start_construction(&mut self, option_id: &str) {
         let Some(option_def) = construction_option_def(option_id) else {
             self.push_note(format!("Unknown construction option: {option_id}."));
+            self.reject(BlockerKind::Inaccessible);
             return;
         };
         if self.state.active_construction.is_some() {
             self.push_note("Construction already in progress.");
+            self.reject(BlockerKind::Busy);
             return;
         }
         if !self.requirements_met(option_def.requirements) {
             self.push_note(format!("{} is not available yet.", option_def.label));
+            self.reject(BlockerKind::MissingRequirement);
             return;
         }
 
@@ -496,6 +650,7 @@ impl Simulation {
                             self.resource_label(resource_id),
                             amount
                         ));
+                        self.reject(BlockerKind::MissingResource);
                         return;
                     }
                     self.spend_resource(resource_id, amount);
@@ -507,6 +662,7 @@ impl Simulation {
                             .then_some((self.cost_item_label(item.item_id), item.amount))
                     }) {
                         self.push_note(format!("Not enough {}: need {:.0}.", label, amount));
+                        self.reject(BlockerKind::MissingResource);
                         return;
                     }
                     self.commit_cost_items(costs);
@@ -537,14 +693,17 @@ impl Simulation {
             self.push_note(
                 "Recruitment is locked until the bubble reaches the Survivor Cave window.",
             );
+            self.reject(BlockerKind::ReachLocked);
             return;
         }
         if !self.state.base.studio_restored {
             self.push_note("Recruitment requires The Studio to be restored.");
+            self.reject(BlockerKind::MissingRequirement);
             return;
         }
         if !self.state.base.fire_pit_built {
             self.push_note("Recruitment requires a built Fire Pit.");
+            self.reject(BlockerKind::MissingRequirement);
             return;
         }
 
@@ -554,6 +713,7 @@ impl Simulation {
                 "Not enough Vibes to recruit: need {:.0}, have {:.1}.",
                 cost, self.state.resources.vibes
             ));
+            self.reject(BlockerKind::MissingResource);
             return;
         }
 
@@ -594,14 +754,17 @@ impl Simulation {
     fn start_processing(&mut self, recipe_id: &str) {
         let Some(recipe_def) = processing_recipe_def(recipe_id) else {
             self.push_note(format!("Unknown processing recipe: {recipe_id}."));
+            self.reject(BlockerKind::Inaccessible);
             return;
         };
         if !self.requirements_met(recipe_def.requirements) {
             self.push_note(format!("{} is not available yet.", recipe_def.label));
+            self.reject(BlockerKind::MissingRequirement);
             return;
         }
         if self.processing_track_level_for_recipe(recipe_id) >= recipe_def.max_level {
             self.push_note(format!("{} is already maxed.", recipe_def.label));
+            self.reject(BlockerKind::BlockedAtCap);
             return;
         }
         if self
@@ -614,6 +777,7 @@ impl Simulation {
                 "{} is already processing a recipe.",
                 self.station_label(recipe_def.station_id)
             ));
+            self.reject(BlockerKind::Busy);
             return;
         }
         if !self.station_powered(recipe_def.station_id) {
@@ -621,6 +785,7 @@ impl Simulation {
                 "{} must be powered before processing can start.",
                 self.station_label(recipe_def.station_id)
             ));
+            self.reject(BlockerKind::MissingPower);
             return;
         }
 
@@ -635,6 +800,7 @@ impl Simulation {
                         self.resource_label(resource_id),
                         amount
                     ));
+                    self.reject(BlockerKind::MissingResource);
                     return;
                 }
                 self.spend_resource(resource_id, amount);
@@ -645,6 +811,7 @@ impl Simulation {
                         .then_some((self.cost_item_label(item.item_id), item.amount))
                 }) {
                     self.push_note(format!("Not enough {}: need {:.0}.", label, amount));
+                    self.reject(BlockerKind::MissingResource);
                     return;
                 }
                 self.commit_cost_items(costs);
@@ -652,6 +819,7 @@ impl Simulation {
             CostDef::TimeOnly => {}
             CostDef::DrainPerWorkerSecond { .. } => {
                 self.push_note("Processing recipes do not support per-worker drains yet.");
+                self.reject(BlockerKind::OfflineDisabled);
                 return;
             }
         }
@@ -680,6 +848,7 @@ impl Simulation {
     fn start_resonance_recipe(&mut self, recipe_id: &str) {
         let Some(recipe_def) = resonance_recipe_def(recipe_id) else {
             self.push_note(format!("Unknown resonance recipe: {recipe_id}."));
+            self.reject(BlockerKind::Inaccessible);
             return;
         };
 
@@ -693,6 +862,7 @@ impl Simulation {
                 "{} is already running resonance work.",
                 self.station_label(recipe_def.station_id)
             ));
+            self.reject(BlockerKind::Busy);
             return;
         }
 
@@ -702,6 +872,7 @@ impl Simulation {
                 self.station_label(recipe_def.station_id),
                 recipe_def.label
             ));
+            self.reject(BlockerKind::MissingPower);
             return;
         }
 
@@ -716,6 +887,7 @@ impl Simulation {
                 recipe_def.label,
                 missing.amount
             ));
+            self.reject(BlockerKind::MissingResource);
             return;
         }
 
@@ -745,6 +917,7 @@ impl Simulation {
             self.push_note(format!(
                 "Unknown station specialization target: {station_id}."
             ));
+            self.reject(BlockerKind::Inaccessible);
             return;
         }
         self.state
@@ -763,6 +936,7 @@ impl Simulation {
     fn start_expedition(&mut self, target_id: &str, assigned_crew: u16) {
         let Some(target_def) = expedition_target_def(target_id) else {
             self.push_note(format!("Unknown expedition target: {target_id}."));
+            self.reject(BlockerKind::Inaccessible);
             return;
         };
 
@@ -771,10 +945,12 @@ impl Simulation {
                 "{} requires the Studio to be restored.",
                 target_def.label
             ));
+            self.reject(BlockerKind::MissingRequirement);
             return;
         }
         if target_def.support.requires_fire_pit && !self.state.base.fire_pit_built {
             self.push_note(format!("{} requires a built Fire Pit.", target_def.label));
+            self.reject(BlockerKind::MissingRequirement);
             return;
         }
         if self.state.bubble.reach_from_base < target_def.required_bubble_reach {
@@ -784,6 +960,7 @@ impl Simulation {
                 target_def.required_bubble_reach,
                 self.state.bubble.reach_from_base
             ));
+            self.reject(BlockerKind::ReachLocked);
             return;
         }
         if assigned_crew < target_def.required_crew {
@@ -791,6 +968,7 @@ impl Simulation {
                 "{} requires {} crew.",
                 target_def.label, target_def.required_crew
             ));
+            self.reject(BlockerKind::MissingStaff);
             return;
         }
 
@@ -801,6 +979,7 @@ impl Simulation {
                 "{} needs {} free crew; only {} free.",
                 target_def.label, assigned_crew, available
             ));
+            self.reject(BlockerKind::MissingStaff);
             return;
         }
 
@@ -1465,10 +1644,12 @@ impl Simulation {
     /// No-op if the inventory does not hold that quantity.
     fn drop_item(&mut self, key: String, item_id: String, qty: u32) {
         if qty == 0 {
+            self.reject(BlockerKind::MissingResource);
             return;
         }
         let held = self.state.inventory.get(&item_id).copied().unwrap_or(0);
         if held < qty {
+            self.reject(BlockerKind::MissingResource);
             return;
         }
         match held - qty {
@@ -1489,9 +1670,11 @@ impl Simulation {
     fn use_item(&mut self, item_id: &str) {
         let held = self.state.inventory.get(item_id).copied().unwrap_or(0);
         if held == 0 {
+            self.reject(BlockerKind::MissingResource);
             return;
         }
         let Some(effect) = item_def(item_id).and_then(|def| def.use_effect) else {
+            self.reject(BlockerKind::Inaccessible);
             return;
         };
         match held - 1 {
@@ -1514,6 +1697,7 @@ impl Simulation {
     /// `max_stack`) and clear the pile. No-op when nothing is there.
     fn pick_up_location(&mut self, key: &str) {
         let Some(pile) = self.state.dropped_items.remove(key) else {
+            self.reject(BlockerKind::Inaccessible);
             return;
         };
         for (item_id, qty) in pile {
@@ -2565,6 +2749,7 @@ impl Simulation {
                         "Choose how to approach {} before starting it.",
                         active_beat.label
                     ));
+                    self.reject(BlockerKind::MissingRequirement);
                     return false;
                 }
                 true
@@ -2574,6 +2759,7 @@ impl Simulation {
                     "Finish {} before starting a different world action.",
                     active_beat.label
                 ));
+                self.reject(BlockerKind::Busy);
                 false
             }
             _ => true,
@@ -2617,12 +2803,15 @@ impl Simulation {
     /// and a perk point is available. No-op otherwise.
     fn acquire_perk(&mut self, perk_id: &str) {
         if self.has_perk(perk_id) || self.perk_points_available() == 0 {
+            self.reject(BlockerKind::BlockedAtCap);
             return;
         }
         let Some(def) = perk_def(perk_id) else {
+            self.reject(BlockerKind::Inaccessible);
             return;
         };
         if !def.requires.iter().all(|req| self.has_perk(req)) {
+            self.reject(BlockerKind::MissingRequirement);
             return;
         }
         self.state.acquired_perks.insert(perk_id.to_string());
@@ -3018,6 +3207,7 @@ impl Simulation {
         let mut probe = balance_snapshot();
         if !crate::tuning::apply_balance_override(&mut probe, path, value) {
             self.push_note(format!("Unknown balance path: {path}."));
+            self.reject(BlockerKind::Inaccessible);
             return;
         }
         self.balance_overrides.insert(path.to_string(), value);
@@ -3692,6 +3882,7 @@ impl Simulation {
         if let Some(reason) = self.unaffordable_effect_reason(effects) {
             self.push_note(reason.clone());
             self.push_event(crate::state::GameEvent::EffectRejected { reason });
+            self.reject(BlockerKind::MissingResource);
             return;
         }
         for effect in effects {
@@ -4033,17 +4224,21 @@ impl Simulation {
     fn engage(&mut self, creature_id: &str, key: String, loot_item: Option<String>, loot_qty: u32) {
         if self.state.active_combat.is_some() {
             self.push_note("The Hero is already in a fight.");
+            self.reject(BlockerKind::Busy);
             return;
         }
         if self.hero_locked_by_survival() {
             self.push_note("The Hero cannot fight during forced return or recovery.");
+            self.reject(BlockerKind::Busy);
             return;
         }
         if self.state.cleared_locations.contains(&key) {
+            self.reject(BlockerKind::Busy);
             return;
         }
         let Some(creature) = creature_def(creature_id) else {
             self.push_note(format!("Unknown creature: {creature_id}."));
+            self.reject(BlockerKind::Inaccessible);
             return;
         };
         let stats = self.hero_stats();

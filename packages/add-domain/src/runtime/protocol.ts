@@ -349,6 +349,8 @@ export interface SimulationSnapshot {
   catalogVersion: number
   /** Structured events from the last applied command/tick (ephemeral, not saved). */
   events: AddGameEvent[]
+  /** Rust-evaluated outcomes keyed by the stable command-picker ID. */
+  commandAvailability: CommandAvailabilitySnapshot
   /** The in-progress auto-battler skirmish, or null when not fighting. */
   activeCombat: CombatJobSnapshot | null
   clockSeconds: number
@@ -385,6 +387,16 @@ export interface SimulationSnapshot {
   /** Items dropped on the ground: `${mapId}:${x}:${y}` -> (item id -> qty). */
   droppedItems: Record<string, Record<string, number>>
 }
+
+export type BlockerId = BlockerDef['kind']
+
+export interface CommandOutcomeSnapshot {
+  accepted: boolean
+  blocker: BlockerId | null
+  events: AddGameEvent[]
+}
+
+export type CommandAvailabilitySnapshot = Record<string, CommandOutcomeSnapshot>
 
 export interface ResourceDef {
   id: string

@@ -7,7 +7,7 @@ pub mod state;
 pub mod topology;
 pub mod tuning;
 
-pub use command::GameCommand;
+pub use command::{BlockerId, CommandOutcome, GameCommand};
 pub use game_data::{
     AccessRuleDef, AccessRuleKind, BalanceSnapshot, BlockerDef, BlockerKind, BubbleBalance,
     CapBehavior, CatalogSnapshot, ConstructionGroup, ConstructionOptionDef, CostDef, CreatureDef,
@@ -53,8 +53,8 @@ mod tests {
     use std::collections::HashSet;
 
     use super::{
-        DEFAULT_TOTAL_CREW, ForcedReturnPhase, ForcedReturnState, GameCommand, GameState,
-        HeroLocationState, HexCoordState, RecruitTravel, Simulation,
+        BlockerKind, DEFAULT_TOTAL_CREW, ForcedReturnPhase, ForcedReturnState, GameCommand,
+        GameState, HeroLocationState, HexCoordState, RecruitTravel, Simulation,
         StationSpecializationPathState, StationState, export_save,
         game_data::{
             CONSTRUCTION_OUTPUT, CONSTRUCTION_REMOVING_MOSS, CONSTRUCTION_STORAGE, Condition,
@@ -128,10 +128,13 @@ mod tests {
         let mut simulation = Simulation::new();
         // The opening choice completes the road beat; the selector then activates
         // the next beat, firing a BeatActivated event this frame.
-        simulation.apply(GameCommand::ChooseStoryOption {
+        let outcome = simulation.apply(GameCommand::ChooseStoryOption {
             beat_id: STORY_BEAT_ROAD_TO_BASE.to_string(),
             option_id: "story.choice.road.follow_signal".to_string(),
         });
+        assert!(outcome.accepted);
+        assert_eq!(outcome.blocker, None);
+        assert_eq!(outcome.events, simulation.state().events);
         assert!(
             simulation
                 .state()
@@ -141,6 +144,30 @@ mod tests {
             "a story choice should surface a BeatActivated event, got {:?}",
             simulation.state().events
         );
+    }
+
+    #[test]
+    fn rejected_command_returns_catalog_blocker() {
+        let mut simulation = Simulation::new();
+        let outcome = simulation.apply(GameCommand::StartWorldAction {
+            action_id: WORLD_ACTION_EXPLORE_BASE.to_string(),
+        });
+
+        assert!(!outcome.accepted);
+        assert_eq!(outcome.blocker, Some(BlockerKind::Busy));
+        assert!(outcome.events.is_empty());
+    }
+
+    #[test]
+    fn command_availability_uses_the_same_handlers() {
+        let simulation = Simulation::new();
+        let outcomes = simulation.command_availability();
+        let explore = outcomes
+            .get(&format!("world-action:{WORLD_ACTION_EXPLORE_BASE}"))
+            .expect("world action should be exposed to the command picker");
+
+        assert!(!explore.accepted);
+        assert_eq!(explore.blocker, Some(BlockerKind::Busy));
     }
 
     #[test]

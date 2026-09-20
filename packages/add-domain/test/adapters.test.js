@@ -366,6 +366,7 @@ assert.equal(storyProgression.telemetrySummary.activeBeatId, "story.beat.road_to
 assert.equal(ui.storyProgression.telemetrySummary.primaryActionSource, "first_playable")
 
 const availableCommands = selectAddAvailableCommands(snapshot, catalog)
+assert.equal(availableCommands.authority.availability, "rust_runtime")
 assert.ok(availableCommands.commands.every((command) => command.workerRequest?.type))
 assert.equal(availableCommands.telemetrySummary.total, availableCommands.commands.length)
 assert.equal(availableCommands.enabledCommands.every((command) => command.enabled), true)
@@ -616,6 +617,11 @@ function createCatalogFixture() {
 function createSnapshotFixture() {
   return {
     schemaVersion: 1,
+    commandAvailability: {
+      "world-action:world_action.explore_base": outcome(true),
+      "world-action:world_action.hero_only": outcome(false, "missing_requirement"),
+      "construction:project.restore_studio": outcome(false, "missing_resource"),
+    },
     clockSeconds: 42,
     resources: {
       bassline: 12,
@@ -692,6 +698,10 @@ function createSnapshotFixture() {
     activeWorldAction: null,
     notes: ["Fixture snapshot"],
   }
+}
+
+function outcome(accepted, blocker = null) {
+  return { accepted, blocker, events: [] }
 }
 
 function resource(id, label, category, baseCap) {

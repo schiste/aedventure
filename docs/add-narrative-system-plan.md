@@ -251,12 +251,12 @@ a stale build-info makes `tsc -b` skip the rebuild forever. This currently
 fails `npm run verify`, `agent:verify:*` and `npm run check`. A subsystem of
 this size cannot be built against a verification ladder that does not run.
 
-**P1 — structured command results.** `Simulation::apply` returns `()`; command
-rejections are prose notes. The narrative system needs to know *why* a gate
-refused in order to satisfy the specification's principle 7 ("explainable on
-demand"). Returning `CommandOutcome { accepted, blocker, events }` is on the
-critical path for `narr explain`, and doing it before the narrative module is
-written is far cheaper than retrofitting it after.
+**P1 — structured command results.** `Simulation::apply` returns
+`CommandOutcome { accepted, blocker, events }`, with `blocker` using the stable
+`BlockerKind` catalog IDs. The WASM boundary exposes the same result and the
+command picker consumes the Rust outcome plus catalog-owned blocker labels, so
+the narrative system can satisfy specification principle 7 ("explainable on
+demand") without a second TypeScript gate evaluator.
 
 ## 4. Implementation plan
 
