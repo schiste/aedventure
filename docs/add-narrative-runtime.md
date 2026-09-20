@@ -139,6 +139,39 @@ beat, or when ink never offers an authored choice — which would leave effects
 in the catalog the player can never trigger. The runtime invariants that need
 the runtime to prove stay as Rust tests.
 
+## Standing (N3a)
+
+The eleven axes, the impact pipeline and the event log. What the engine owns
+versus what content owns:
+
+| Concern | Owner |
+| --- | --- |
+| Axes, tiers, bands, derived constructs, saturation, inheritance rules | `crates/add-core/src/narrative/{standing,graph,log}.rs` |
+| Which entities exist and who they belong to | `packages/add-content/src/content/narrative-entities.ts` |
+| What each act does, and at which tier and scope | `packages/add-content/src/content/narrative-acts.ts` |
+| Which canon subject an entity stands for | `content/lore-refs.ts` |
+
+**Nothing is stored.** Standing is folded from the log on read. That is the
+specification's principle 2, and it is what lets a tuning change take effect on
+an existing save: the same history simply folds to different numbers. The save
+carries events, and the committed scenario asserts it carries no scores.
+
+**One act, three distances.** An impact's `scope` resolves against the act's
+target — `Target`, `ParentOf(Target)`, `FactionOf(Target)` — and
+`inheritance_weight` attenuates once per level by the group's kind. So helping
+one survivor reaches them fully, their crew at 0.4, and the faction beyond
+that more weakly still. Impacts never travel sideways or downward.
+
+**Writers pick tiers, never numbers.** An act declares a tier and a sign; the
+pipeline applies negativity per axis (integrity 2.5, goodwill 2.0), intent,
+cost, need and repetition (0.7^n), clamps the product to 0.1–4, then folds with
+saturation.
+
+**`npm run narr:explain -- <entity> <axis> --save <path>`** prints every
+contribution with each factor's input and the running score. The trace comes
+from the same fold that produces the number, so an explanation cannot disagree
+with what it explains.
+
 ## Focused verification
 
 | Check | Command |
@@ -150,6 +183,25 @@ the runtime to prove stay as Rust tests.
 | WASM stays inside budget | `npm run qa:add-rpg:size:built` |
 
 ## Known gaps
+
+**N3 is half done.** This is N3a — the graph, the log, the axes and the
+pipeline. N3b is still open and deliberately not stubbed:
+
+- **Values (§5B).** The Schwartz circle, value profiles, the `Values` sign that
+  lets one act read as virtue to one group and betrayal to another, generated
+  deviants, and hypocrisy. Nothing here reads `alignment` through a verdict yet;
+  it moves by a fixed sign.
+- **Decay.** Impacts have tier half-lives in the specification. Today every
+  contribution is permanent, so an old slight weighs what it did on the day.
+- **Ledgers.** `debt` and `grievance` accumulate but do not settle, sour or
+  ruminate.
+- **Association, stance, black-sheep, honour.** None of the observer-side
+  modifiers that need more than one entity's history.
+- Standing is not yet on the agent report's diagnostics channel, so scenario
+  checkpoints assert on the log rather than on scores; the Rust acceptance test
+  asserts the scores directly.
+- Nothing gates on standing in authored content yet, so "changes available
+  options" is proven at the engine level rather than through a story gate.
 
 - **Fuzz coverage reaches 5 of 12 beats.** 10,000 runs finish clean, but every
   run ends at the step budget rather than exhausting the story, because the

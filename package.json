@@ -26,6 +26,7 @@
     "narr:fuzz": "cargo run --quiet --release -p add-scenario-runner -- fuzz",
     "narr:fuzz:gate": "cargo run --quiet --release -p add-scenario-runner -- fuzz --runs 10000",
     "narr:schema": "cargo run --quiet -p add-scenario-runner -- schema",
+    "narr:explain": "cargo run --quiet -p add-scenario-runner -- explain",
     "docs:check": "node scripts/check-add-capability-map.cjs",
     "generated:check": "node scripts/check-generated-files.cjs",
     "lore:check": "python3 tools/lore_check.py",

@@ -162,6 +162,12 @@ impl Simulation {
             GameCommand::ChooseInkChoice { beat_id, index } => {
                 self.choose_ink_choice(&beat_id, index as usize)
             }
+            GameCommand::EmitAct {
+                act_id,
+                target,
+                cost,
+                need,
+            } => self.emit_act(&act_id, target.as_deref(), cost, need),
             GameCommand::CompletePreArrivalRoute => self.complete_pre_arrival_route(),
             GameCommand::SetHeroAssigned { assigned } => self.set_hero_assigned(assigned),
             GameCommand::SetHeroRole { role_id } => self.set_hero_role(&role_id),
@@ -2677,6 +2683,30 @@ impl Simulation {
             self.state.narrative.active_beat_id = Some(beat_id);
             return;
         }
+    }
+
+    /// Record an act in the narrative log. Validation is deliberate: an
+    /// unknown act or an unknown target would put an event in the log that no
+    /// fold can interpret, which is worse than refusing it.
+    fn emit_act(&mut self, act_id: &str, target: Option<&str>, cost: f64, need: f64) {
+        let Some(act) = crate::game_data::narrative_act_def(act_id) else {
+            self.push_note(format!("Unknown act: {act_id}."));
+            self.reject(BlockerKind::Inaccessible);
+            return;
+        };
+        if let Some(target_id) = target {
+            if crate::game_data::narrative_entity_def(target_id).is_none() {
+                self.push_note(format!("Unknown narrative entity: {target_id}."));
+                self.reject(BlockerKind::Inaccessible);
+                return;
+            }
+        }
+        let tick = self.state.clock_seconds;
+        let mut event = crate::narrative::event_for(act, target, tick);
+        event.cost = cost.clamp(0.6, 2.0);
+        event.need = need.clamp(1.0, 2.0);
+        self.state.narrative.log.append(event);
+        self.push_note(format!("{} was noted.", act.label));
     }
 
     /// Build the ink runtime from the current save. Constructed on demand

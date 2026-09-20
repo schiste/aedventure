@@ -23,6 +23,10 @@ fn run() -> Result<(), String> {
             argv.next();
             return run_fuzz(argv.collect());
         }
+        Some("explain") => {
+            argv.next();
+            return run_explain(argv.collect());
+        }
         Some("schema") => {
             println!("{}", stable_json_string(&narrative_schema()));
             return Ok(());
@@ -113,5 +117,54 @@ fn run_fuzz(arguments: Vec<String>) -> Result<(), String> {
             report.failures.len()
         ));
     }
+    Ok(())
+}
+
+/// Print the full product behind one entity's score on one axis: every event
+/// that contributed, each factor with its input, and the running score. The
+/// trace comes from the same fold that produces the number, so an explanation
+/// can never disagree with the score it explains.
+fn run_explain(arguments: Vec<String>) -> Result<(), String> {
+    let mut save_path: Option<PathBuf> = None;
+    let mut entity = None;
+    let mut axis_name = None;
+    let mut index = 0;
+    while index < arguments.len() {
+        match arguments[index].as_str() {
+            "--save" => {
+                index += 1;
+                save_path = arguments.get(index).map(PathBuf::from);
+            }
+            value if entity.is_none() => entity = Some(value.to_string()),
+            value if axis_name.is_none() => axis_name = Some(value.to_string()),
+            other => return Err(format!("unexpected argument `{other}`")),
+        }
+        index += 1;
+    }
+
+    let entity = entity.ok_or_else(|| "usage: explain <entity-id> <axis> [--save <path>]".to_string())?;
+    let axis_name = axis_name.ok_or_else(|| "an axis is required".to_string())?;
+    let axis = add_core::narrative::Axis::from_str(&axis_name)
+        .ok_or_else(|| format!("unknown axis `{axis_name}`"))?;
+
+    let state = match save_path {
+        Some(path) => {
+            let raw = fs::read_to_string(&path)
+                .map_err(|error| format!("{}: {error}", path.display()))?;
+            add_core::import_save(&raw).map_err(|error| error.to_string())?
+        }
+        None => add_core::GameState::new(),
+    };
+
+    let (score, traces) = state.narrative.log.explain(&entity, axis);
+    let report = serde_json::json!({
+        "contract": "add_standing_explain_v1",
+        "entity": entity,
+        "axis": axis.as_str(),
+        "score": score,
+        "band": add_core::narrative::Band::of(score).as_str(),
+        "contributions": traces,
+    });
+    println!("{}", stable_json_string(&report));
     Ok(())
 }

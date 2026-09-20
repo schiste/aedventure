@@ -32,6 +32,7 @@ export interface LoreRef {
  */
 export const LORE_LINKED_FAMILIES: readonly string[] = [
   "area",
+  "narrative_entity",
   "creature",
   "dungeon",
   "item",
@@ -43,6 +44,24 @@ export const LORE_LINKED_FAMILIES: readonly string[] = [
 ]
 
 export const LORE_REFS: readonly LoreRef[] = [
+  {
+    contentId: "entity.sleepless",
+    loreRef: "lore/factions/sleepless_in_decibels/README.md",
+    note: "The Telegram group the faction descends from.",
+  },
+  {
+    contentId: "entity.sleepless.sounding_five",
+    loreRef: "lore/factions/sleepless_in_decibels/telegram_archives/channels/sounding_five/README.md",
+    note: "The private channel that became the inner crew.",
+  },
+  {
+    contentId: "entity.vell",
+    loreRef: "lore/characters/sleepless_members/david_chen_tiredintoulouse.md",
+  },
+  {
+    contentId: "entity.joren",
+    loreRef: "lore/characters/sleepless_members/kaylee_lindquist_the_raver.md",
+  },
   {
     contentId: "structure.base",
     loreRef: "lore/locations/touraine/studio_echo.md",

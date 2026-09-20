@@ -24,6 +24,8 @@ const CATALOG_SPECS = [
   spec("entitySchemas", "entity_schema", "content/entity-schemas.js", "ENTITY_SCHEMAS", "packages/add-content/src/content/entity-schemas.ts", "crates/add-core/src/game_data/catalog/entity_schemas.rs", { identity: false }),
   spec("items", "item", "content/items.js", "ITEMS", "packages/add-content/src/content/items.ts", "crates/add-core/src/game_data/catalog/items.rs"),
   spec("perks", "perk", "content/perks.js", "PERKS", "packages/add-content/src/content/perks.ts", "crates/add-core/src/game_data/catalog/perks.rs"),
+  spec("narrativeEntities", "narrative_entity", "content/narrative-entities.js", "NARRATIVE_ENTITIES", "packages/add-content/src/content/narrative-entities.ts", "crates/add-core/src/game_data/catalog/narrative_entities.rs"),
+  spec("narrativeActs", "narrative_act", "content/narrative-acts.js", "NARRATIVE_ACTS", "packages/add-content/src/content/narrative-acts.ts", "crates/add-core/src/game_data/catalog/narrative_acts.rs"),
   spec("creatures", "creature", "content/creatures.js", "CREATURES", "packages/add-content/src/content/creatures.ts", "crates/add-core/src/game_data/catalog/creatures.rs"),
   spec("encounterTables", "encounter", "content/encounter-tables.js", "ENCOUNTER_TABLES", "packages/add-content/src/content/encounter-tables.ts", null, { generated: false }),
   spec("lootTables", "loot_table", "content/loot-tables.js", "LOOT_TABLES", "packages/add-content/src/content/loot-tables.ts", null, { generated: false }),

@@ -559,6 +559,12 @@ pub struct NarrativeState {
     /// the runtime rebuilds it by replaying instead of storing it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ink_scene: Option<crate::narrative::InkScene>,
+    /// Append-only history of consequential acts. The source of truth for
+    /// standing: scores are folded from this on read, never stored, so a
+    /// tuning change takes effect on an existing save without rewriting it.
+    /// Distinct from `GameState.events`, which is cleared every command.
+    #[serde(default)]
+    pub log: crate::narrative::NarrativeLog,
 }
 
 impl NarrativeState {
@@ -570,6 +576,7 @@ impl NarrativeState {
             qualities: BTreeMap::new(),
             activated_beat_ids: BTreeSet::new(),
             ink_scene: None,
+            log: crate::narrative::NarrativeLog::default(),
         }
     }
 }

@@ -91,6 +91,8 @@ const perks = content("perks")
 const items = content("items")
 const creatures = content("creatures")
 const objectives = content("objectives")
+const narrativeEntities = content("narrative-entities")
+const narrativeActs = content("narrative-acts")
 const contentVersion = content("content-version")
 const encounterTables = content("encounter-tables")
 const lootTables = content("loot-tables")
@@ -873,6 +875,62 @@ const FILES = [
                 { name: "kind", kind: "enum", rustEnum: "ItemEffectKind" },
                 { name: "amount", kind: "f64" },
               ],
+            },
+          ],
+        },
+      },
+    ],
+  },
+  {
+    sourceModule: "packages/add-content/src/content/narrative-entities.ts",
+    rustPath: "crates/add-core/src/game_data/catalog/narrative_entities.rs",
+    consts: [
+      {
+        entries: narrativeEntities.NARRATIVE_ENTITIES,
+        spec: {
+          constName: "NARRATIVE_ENTITIES",
+          rustType: "NarrativeEntityDef",
+          visibility: VIS,
+          fields: [
+            { name: "id", kind: "string" },
+            { name: "label", kind: "string" },
+            { name: "kind", kind: "enum", rustEnum: "GroupKind" },
+            { name: "parent", kind: "option", inner: "string" },
+            { name: "rank", kind: "u64" },
+            { name: "influence", kind: "f64" },
+          ],
+        },
+      },
+    ],
+  },
+  {
+    sourceModule: "packages/add-content/src/content/narrative-acts.ts",
+    rustPath: "crates/add-core/src/game_data/catalog/narrative_acts.rs",
+    consts: [
+      {
+        entries: narrativeActs.NARRATIVE_ACTS,
+        spec: {
+          constName: "NARRATIVE_ACTS",
+          rustType: "NarrativeActDef",
+          visibility: VIS,
+          fields: [
+            { name: "id", kind: "string" },
+            { name: "label", kind: "string" },
+            { name: "intent", kind: "string" },
+            {
+              name: "impacts",
+              kind: "array",
+              element: {
+                name: "impact",
+                kind: "struct",
+                structType: "ActImpactDef",
+                fields: [
+                  { name: "scope", kind: "string" },
+                  { name: "axis", kind: "string" },
+                  { name: "tier", kind: "string" },
+                  { name: "sign", kind: "i64" },
+                ],
+              },
             },
           ],
         },

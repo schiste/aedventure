@@ -1,0 +1,40 @@
+{
+  "id": "standing-three-distances",
+  "seed": "fixture-seed",
+  "commands": [
+    {
+      "type": "EmitAct",
+      "actId": "act.share_scarce_water",
+      "target": "entity.vell",
+      "cost": 2.0,
+      "need": 1.8
+    },
+    {
+      "type": "EmitAct",
+      "actId": "act.clear_nearby_threat",
+      "target": "entity.vell"
+    },
+    {
+      "type": "EmitAct",
+      "actId": "act.break_a_promise",
+      "target": "entity.joren"
+    }
+  ],
+  "checkpoints": [
+    {
+      "id": "dialogue-act-logged",
+      "after": 1,
+      "state": { "narrative": { "log": { "nextId": 1 } } }
+    },
+    {
+      "id": "gameplay-act-logged",
+      "after": 2,
+      "state": { "narrative": { "log": { "nextId": 2 } } }
+    },
+    {
+      "id": "all-three-logged",
+      "after": 3,
+      "state": { "narrative": { "log": { "nextId": 3 } } }
+    }
+  ]
+}

@@ -381,6 +381,15 @@ their group will do for the hero, hours later, without any number being shown.
 options for an individual, a sub-faction peer and a faction stranger, at three
 different strengths, proven by a committed scenario with checkpoints.
 
+**Status: N3a done, N3b open.** The milestone was too large for one pass, so it
+was split rather than half-delivered. N3a landed the entity graph, the event
+log, the eleven axes, derived constructs, the impact pipeline, `EmitAct`,
+`narr explain`, and the first entities bound by `loreRef` to the Sleepless in
+Decibels lore. The three-distance acceptance holds, proven by
+`standing-three-distances`. N3b is values (§5B), decay, ledger settlement and
+the observer-side modifiers; see the known gaps in
+[the runtime contract](add-narrative-runtime.md).
+
 ### N4 — Knowledge, witnesses, rumor
 
 *Player outcome:* the same act, witnessed or unwitnessed, leads to different

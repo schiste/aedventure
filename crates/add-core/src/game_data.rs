@@ -2758,3 +2758,60 @@ pub fn recruit_cost_for_index(index: u16) -> f64 {
 
     (good_vibes_opt_per_tick * 60.0 * minutes).ceil()
 }
+
+
+// --- Narrative entities and acts (N3) ---------------------------------------
+//
+// Authored in packages/add-content and generated into the catalog files below.
+// The rules that consume them live in crates/add-core/src/narrative/.
+
+pub use crate::narrative::graph::GroupKind;
+
+/// One node of the entity graph.
+#[derive(Debug, Clone, Copy, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct NarrativeEntityDef {
+    pub id: &'static str,
+    pub label: &'static str,
+    pub kind: GroupKind,
+    pub parent: Option<&'static str>,
+    pub rank: u64,
+    pub influence: f64,
+}
+
+/// Where one impact of an act lands, and how hard.
+#[derive(Debug, Clone, Copy, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ActImpactDef {
+    /// `Target`, `ParentOf(Target)`, `FactionOf(Target)`, or an entity id.
+    pub scope: &'static str,
+    pub axis: &'static str,
+    pub tier: &'static str,
+    pub sign: i64,
+}
+
+/// What an act does. Tiers only: the pipeline computes amounts.
+#[derive(Debug, Clone, Copy, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct NarrativeActDef {
+    pub id: &'static str,
+    pub label: &'static str,
+    pub intent: &'static str,
+    pub impacts: &'static [ActImpactDef],
+}
+
+pub fn narrative_entities() -> &'static [NarrativeEntityDef] {
+    catalog::NARRATIVE_ENTITIES
+}
+
+pub fn narrative_entity_def(id: &str) -> Option<&'static NarrativeEntityDef> {
+    catalog::NARRATIVE_ENTITIES.iter().find(|entity| entity.id == id)
+}
+
+pub fn narrative_acts() -> &'static [NarrativeActDef] {
+    catalog::NARRATIVE_ACTS
+}
+
+pub fn narrative_act_def(id: &str) -> Option<&'static NarrativeActDef> {
+    catalog::NARRATIVE_ACTS.iter().find(|act| act.id == id)
+}

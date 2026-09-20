@@ -35,3 +35,8 @@ pub(super) use ui_elements::UI_ELEMENTS;
 pub(super) use version::{
     CONTENT_CATALOG_VERSION, CONTENT_SAVE_SCHEMA_VERSION, CONTENT_SCHEMA_VERSION,
 };
+
+mod narrative_entities;
+mod narrative_acts;
+pub(in crate::game_data) use narrative_acts::NARRATIVE_ACTS;
+pub(in crate::game_data) use narrative_entities::NARRATIVE_ENTITIES;

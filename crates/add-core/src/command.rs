@@ -21,6 +21,17 @@ pub enum GameCommand {
         beat_id: String,
         option_id: String,
     },
+    /// Record a consequential act. Dialogue and gameplay both arrive here, so
+    /// clearing a nest and promising a survivor water land in one log and move
+    /// standing by the same pipeline.
+    EmitAct {
+        act_id: String,
+        target: Option<String>,
+        /// Cost to the Hero, 0.6 to 2.0. Amplifies help only.
+        cost: f64,
+        /// How badly the target needed it, 1.0 to 2.0.
+        need: f64,
+    },
     /// Take a choice presented by the ink scene for `beat_id`. Ink resolves
     /// which authored choice id that was; its effects come from the catalog.
     ChooseInkChoice {

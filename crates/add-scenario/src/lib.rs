@@ -52,6 +52,17 @@ pub enum ScenarioCommand {
         #[serde(rename = "optionId", alias = "option_id")]
         option_id: String,
     },
+    /// Record a consequential act in the narrative log.
+    EmitAct {
+        #[serde(rename = "actId", alias = "act_id")]
+        act_id: String,
+        #[serde(default)]
+        target: Option<String>,
+        #[serde(default = "one")]
+        cost: f64,
+        #[serde(default = "one")]
+        need: f64,
+    },
     /// Take a choice the ink scene presented, by its index.
     ChooseInkChoice {
         #[serde(rename = "beatId", alias = "beat_id")]
@@ -178,6 +189,9 @@ impl ScenarioCommand {
             }
             Self::ChooseInkChoice { beat_id, index } => {
                 GameCommand::ChooseInkChoice { beat_id, index }
+            }
+            Self::EmitAct { act_id, target, cost, need } => {
+                GameCommand::EmitAct { act_id, target, cost, need }
             }
             Self::CompletePreArrivalRoute => GameCommand::CompletePreArrivalRoute,
             Self::SetHeroAssigned { assigned } => GameCommand::SetHeroAssigned { assigned },
@@ -963,4 +977,9 @@ pub fn narrative_schema() -> serde_json::Value {
         "fuzzPolicies": fuzz::Policy::ALL.iter().map(|p| p.as_str()).collect::<Vec<_>>(),
         "commands": ["ChooseStoryOption", "ChooseInkChoice", "StartWorldAction", "Tick"],
     })
+}
+
+
+fn one() -> f64 {
+    1.0
 }
