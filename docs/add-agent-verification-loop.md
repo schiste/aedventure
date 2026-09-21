@@ -65,7 +65,29 @@ The documented verification ladder has three levels:
 - `npm run verify` is gameplay verification: WASM, TypeScript, content,
   `cargo test -p add-core`, and package tests.
 - `npm run check` runs `npm run verify` first, then the full target-stack,
-  browser, renderer, and infrastructure checks.
+  browser, renderer, and infrastructure checks. It is what the `pre-push` hook
+  runs.
+
+### Running verification concurrently
+
+Two gates in one checkout cannot run at the same time. They rebuild shared
+outputs in place — the wasm bindings directory, the TypeScript build info, the
+vite bundle — so each overwrites the other's outputs mid-run and one dies on a
+file the other just replaced. The `pre-push` hook therefore takes a lock keyed
+to the worktree: a second push waits for the first to finish rather than
+corrupting it, reclaims the lock if the holder died, and gives up after
+`AEDVENTURE_CI_LOCK_WAIT` seconds (default 1800). It is easy to hit this
+without meaning to — a scripted push racing one typed by hand.
+
+Gates in *different* worktrees do run concurrently, which is the broker's
+normal mode. That is safe as long as no build step writes to a path shared
+across checkouts. `os.tmpdir()` is exactly such a path, and
+`scripts/build-add-content.concurrency.test.cjs` guards the one case where a
+generator got it wrong: any scratch file there needs a name unique per process,
+or agents in unrelated worktrees will break each other's builds.
+
+Both failure modes present as an intermittently failing gate rather than as an
+obvious collision, so suspect concurrency before suspecting a flaky test.
 
 `agent:verify:types` and `agent:verify:gate` remain compatibility profiles
 for callers that need those names. `agent:task` remains available for task

@@ -13,6 +13,7 @@ const fs = require("node:fs")
 const os = require("node:os")
 const path = require("node:path")
 const { execFileSync } = require("node:child_process")
+const crypto = require("node:crypto")
 
 const ROOT = path.resolve(__dirname, "..")
 const CHECK = process.argv.includes("--check")
@@ -1109,7 +1110,16 @@ function generate(file) {
   const raw = [header, "", file.preamble === false ? null : PREAMBLE, file.preamble === false ? null : "", blocks]
     .filter((part) => part !== null)
     .join("\n")
-  const tmp = path.join(os.tmpdir(), `add-content-${path.basename(file.rustPath)}`)
+  // The scratch path must be unique per process. `os.tmpdir()` is shared by
+  // every process on the machine, so a name derived only from the catalog file
+  // collides across concurrent builds — including builds in different worktrees
+  // or different checkouts entirely. Two runs then interleave write/rustfmt/
+  // read/unlink on one path and the loser dies with ENOENT, which is what made
+  // the local CI gate look intermittently flaky rather than broken.
+  const tmp = path.join(
+    os.tmpdir(),
+    `add-content-${process.pid}-${crypto.randomBytes(6).toString("hex")}-${path.basename(file.rustPath)}`,
+  )
   fs.writeFileSync(tmp, raw)
   try {
     execFileSync(rustfmt, ["--edition", RUST_EDITION, tmp], {
@@ -1117,6 +1127,7 @@ function generate(file) {
     })
   } catch (err) {
     console.error(`[content:build] rustfmt failed for ${file.rustPath}:\n${err.stderr || err}`)
+    // Deliberately left in place: it is the only copy of what rustfmt rejected.
     console.error(`[content:build] raw left at ${tmp}`)
     throw err
   }

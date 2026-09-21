@@ -3,5 +3,49 @@
 # verification run before the browser, renderer, and infrastructure checks.
 # Bypass with git push --no-verify.
 set -e
+
+# Serialise the gate per checkout.
+#
+# The gate rebuilds shared outputs in place — the wasm bindings directory, the
+# TypeScript build info, the vite bundle. Two gates in one checkout therefore
+# overwrite each other's outputs mid-run and one dies on a file the other just
+# replaced, which reads as a flaky hook rather than as the collision it is. It
+# is easy to hit without meaning to: a scripted push (the Aethyme broker's
+# delivery, say) racing a push typed by hand.
+#
+# The key is the worktree, not the repository, because each worktree builds
+# into its own tree and so may run its gate independently.
+LOCK_KEY=$(printf '%s' "$(git rev-parse --show-toplevel)" | cksum | cut -d' ' -f1)
+LOCK_DIR="${TMPDIR:-/tmp}/aedventure-local-ci-${LOCK_KEY}.lock"
+LOCK_WAIT_SECONDS=${AEDVENTURE_CI_LOCK_WAIT:-1800}
+
+release_lock() {
+  rm -rf "$LOCK_DIR"
+}
+
+waited=0
+while ! mkdir "$LOCK_DIR" 2>/dev/null; do
+  holder=$(cat "$LOCK_DIR/pid" 2>/dev/null || echo "")
+  # A lock whose owner is gone was left by an interrupted run; reclaim it
+  # rather than making the next push wait out the full timeout for a corpse.
+  if [ -z "$holder" ] || ! kill -0 "$holder" 2>/dev/null; then
+    echo "[pre-push] reclaiming a stale local CI lock (owner ${holder:-unknown} is gone)"
+    rm -rf "$LOCK_DIR"
+    continue
+  fi
+  if [ "$waited" -ge "$LOCK_WAIT_SECONDS" ]; then
+    echo "[pre-push] another local CI run (pid $holder) has held the lock for ${waited}s; giving up." >&2
+    echo "[pre-push] wait for it to finish, or push with --no-verify if you know the gate passed." >&2
+    exit 1
+  fi
+  if [ "$waited" -eq 0 ]; then
+    echo "[pre-push] another local CI run (pid $holder) is in progress; waiting for it..."
+  fi
+  sleep 5
+  waited=$((waited + 5))
+done
+trap release_lock EXIT INT TERM
+echo $$ > "$LOCK_DIR/pid"
+
 echo "[pre-push] full local CI: npm run check"
 npm run check

@@ -12,7 +12,7 @@
     "assets:build": "node scripts/build-internal-office-atlas.cjs",
     "assets:check": "npm --workspace @aedventure/asset-registry run build && node scripts/build-internal-office-atlas.cjs --check && node scripts/verify-internal-assets.cjs",
     "content:build": "npm --workspace @aedventure/game-content run build && node scripts/build-add-content.cjs && node scripts/add-content-fixtures.cjs --write",
-    "content:check": "npm --workspace @aedventure/game-content run build && npm --workspace @aedventure/add-content run build && node scripts/add-content-validator.test.cjs && node scripts/add-content-tools.test.cjs && node scripts/add-content-version-check.cjs && node scripts/build-add-content.cjs --check && node scripts/add-content-fixtures.cjs --check && node scripts/narrative-lint.cjs",
+    "content:check": "npm --workspace @aedventure/game-content run build && npm --workspace @aedventure/add-content run build && node scripts/add-content-validator.test.cjs && node scripts/add-content-tools.test.cjs && node scripts/build-add-content.concurrency.test.cjs && node scripts/add-content-version-check.cjs && node scripts/build-add-content.cjs --check && node scripts/add-content-fixtures.cjs --check && node scripts/narrative-lint.cjs",
     "content:graph": "npm --workspace @aedventure/add-content run build && node scripts/add-content-tools.cjs graph",
     "content:validate": "npm --workspace @aedventure/add-content run build && node scripts/add-content-tools.cjs validate && node scripts/add-content-version-check.cjs",
     "content:fixtures": "npm --workspace @aedventure/add-content run build && node scripts/add-content-fixtures.cjs --write",
