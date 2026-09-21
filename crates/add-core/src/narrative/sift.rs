@@ -70,7 +70,7 @@ impl SiftResult {
     }
 }
 
-fn act_has_kind(act_id: &str, kind: &str) -> bool {
+pub(crate) fn act_has_kind(act_id: &str, kind: &str) -> bool {
     crate::game_data::narrative_act_def(act_id)
         .is_some_and(|act| act.kinds.iter().any(|candidate| *candidate == kind))
 }

@@ -559,14 +559,50 @@ false pass. `npm run narr:budgets` measures and judges; the numbers live in
 `performance/add-budgets.json`, and the Rust bench only measures, so the gate
 cannot drift from the figures it claims to enforce.
 
-**Not built, and honestly outstanding:**
+**Compaction and coalescing are now built.**
 
-- **Log compaction and act coalescing.** Both are N7 deliverables. They were not
-  needed to meet the budgets, because the quadratic defects above were the
-  actual cost, but `standing_cold` — the first read after an act, once the cache
-  is invalidated — is 15.4 ms at 50,000 events and has no §10 budget of its own.
-  That is the number compaction would address, and it is the honest reason to
-  still want it.
+*Coalescing* (§10: "ten thefts in one hour against the same group become one
+event with a count") merges identical acts inside a one-hour window into a
+single entry carrying a count. It changes how repeats are stored, not what they
+are worth: a coalesced entry is folded once per occurrence it stands for, each
+with its own repetition step, and
+`a_coalesced_burst_is_worth_what_its_occurrences_were_worth` holds the two to
+exact equality. Getting that equality required folding whole occurrences in
+authored order rather than all of one impact's occurrences together —
+`act.break_a_promise` carries two impacts on `integrity`, and because `fold`
+saturates, the two orders disagreed by 0.12%. Acts differing in target, intent,
+secrecy, witnesses or declared causes never merge, because each of those changes
+what the act does.
+
+*Compaction* folds history older than 360 days into per-observer baselines and
+drops the knowledge that went with it. It is a summary and loses two things: a
+folded contribution stops decaying, and the observer context it was folded under
+is frozen. Both are bounded by only folding what has already largely decayed —
+360 days is four half-lives of the longest tier. The residual is measured rather
+than asserted: over a two-year log, **61 of 120 entries folded and the worst
+standing changed by 0.0047 points**, against a Mid band 35 points wide. Events
+an arc could still need are kept whatever their age.
+
+Compaction folds 67% of the log and roughly halves a cold standing read: 2,136
+us to 974 us at 5,000 events, and 27,067 us to 15,435 us at 50,000. Every §10
+budget still holds at full scale. Repetition counts are carried forward, so
+folding away an old habit does not make the next act feel like the first.
+
+It runs on the rumour boundary, behind a single comparison against the oldest
+event, so a log with nothing old enough pays almost nothing to skip it.
+
+**A content decision now limits it.** `arc.broken_oath` has no expiry, so every
+`act.swear_an_oath` is a first-slot candidate forever and can never be folded.
+Only a prefix of the log can be folded — the baseline is a running score — so
+one early oath pins everything after it: against current content, compaction
+folds 5 entries out of 5,000 rather than 3,357. Giving that pattern an expiry
+would unlock it, and that is a design judgement about whether a broken oath can
+ever stop mattering, not something to change silently. The alternative is to
+separate score-folding from sift-retention, keeping pinned events for the sifter
+while their contribution goes into the baseline.
+
+**Still outstanding:**
+
 - **`narr calibrate` and `narr diff-tuning`.** Not started.
 - **1,000 entities.** Only the event-count half of the acceptance criterion is
   actually measured. The entity graph is a compile-time catalog, so a synthetic

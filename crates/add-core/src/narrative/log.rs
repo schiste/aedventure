@@ -48,6 +48,22 @@ pub struct NarrativeEvent {
     /// never listed by authored dialogue.
     #[serde(default)]
     pub witnesses: Vec<String>,
+    /// How many times this act happened, when repeats were coalesced into one
+    /// entry. One for an ordinary event.
+    ///
+    /// §10: "ten thefts in one hour against the same group become one event
+    /// with a count, so the log records behavior, not button presses." Gameplay
+    /// emits acts far faster than dialogue does, and a log of identical
+    /// button-presses is both larger and less true — what happened is that the
+    /// Hero robbed them repeatedly, not that a button moved eleven times.
+    #[serde(default = "one")]
+    pub count: u32,
+}
+
+/// serde default for [`NarrativeEvent::count`]: an event that does not say
+/// otherwise happened once. Saves written before coalescing have no field.
+fn one() -> u32 {
+    1
 }
 
 /// One resolved contribution to one entity's view of the Hero.
@@ -55,6 +71,9 @@ pub struct NarrativeEvent {
 #[serde(rename_all = "camelCase")]
 pub struct ImpactTrace {
     pub event_id: u64,
+    /// Occurrences this entry stands for. Above one, `delta` is their total.
+    #[serde(default = "one")]
+    pub count: u32,
     pub act_id: String,
     pub scope: String,
     pub axis: Axis,
@@ -96,6 +115,9 @@ pub struct NarrativeLog {
     /// and its cooldown can be read from the log rather than tracked apart.
     #[serde(default)]
     pub fired_reactions: Vec<crate::narrative::react::FiredReaction>,
+    /// What the events folded away by [`NarrativeLog::compact`] left behind.
+    #[serde(default)]
+    pub compaction: Compaction,
     /// Memoised scores, keyed by the exact inputs that produce them.
     ///
     /// Folding one axis walks the whole log, and callers query in bursts: the
@@ -124,6 +146,7 @@ impl PartialEq for NarrativeLog {
             && self.next_id == other.next_id
             && self.knowledge == other.knowledge
             && self.fired_reactions == other.fired_reactions
+            && self.compaction == other.compaction
     }
 }
 
@@ -137,8 +160,69 @@ impl Clone for NarrativeLog {
             next_id: self.next_id,
             knowledge: self.knowledge.clone(),
             fired_reactions: self.fired_reactions.clone(),
+            compaction: self.compaction.clone(),
             standing_cache: Default::default(),
         }
+    }
+}
+
+/// The residue of events that have been folded away.
+///
+/// §10: "Compaction: fully decayed impacts and dead rumors are folded into
+/// per-node baselines." A log only grows, and every score is derived by
+/// replaying it, so without this the cost of a cold read grows with the length
+/// of the game. Compaction replaces a prefix of the log with what that prefix
+/// was worth.
+///
+/// This is a summary, not a lossless encoding, and the two ways it loses are
+/// worth naming. A folded contribution stops decaying, and the observer context
+/// it was folded under is frozen. Both are bounded by only ever compacting
+/// events old enough that what decays has already decayed — see
+/// [`NarrativeLog::COMPACTION_HORIZON_DAYS`] — and
+/// `compaction_preserves_what_the_log_was_worth` measures the residual error
+/// rather than trusting this paragraph.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Compaction {
+    /// Score the folded-away events contributed, per observer and axis.
+    pub baselines: Vec<(String, Axis, f64)>,
+    /// Repetition counts carried forward, as (act, scope, count).
+    ///
+    /// Without these, folding away a prefix would make the acts that follow it
+    /// land at full strength again: the tenth theft would count as the first.
+    pub seen: Vec<(String, String, u32)>,
+    /// Events at or before this tick have been folded away.
+    pub through_tick: f64,
+    /// How many events have been folded away, for reporting.
+    pub folded: usize,
+}
+
+impl Compaction {
+    /// Nothing has been folded away, so every lookup below is a no-op. Checked
+    /// first because these are called inside the fold's inner loop, and an
+    /// uncompacted log is the common case.
+    fn is_empty(&self) -> bool {
+        self.baselines.is_empty() && self.seen.is_empty()
+    }
+
+    fn baseline(&self, observer_id: &str, axis: Axis) -> f64 {
+        if self.baselines.is_empty() {
+            return 0.0;
+        }
+        self.baselines
+            .iter()
+            .find(|(id, entry_axis, _)| id == observer_id && *entry_axis == axis)
+            .map_or(0.0, |(_, _, score)| *score)
+    }
+
+    fn seen_for(&self, act_id: &str, scope: &str) -> u32 {
+        if self.seen.is_empty() {
+            return 0;
+        }
+        self.seen
+            .iter()
+            .find(|(act, entry_scope, _)| act == act_id && entry_scope == scope)
+            .map_or(0, |(_, _, count)| *count)
     }
 }
 
@@ -180,13 +264,184 @@ fn expressed(act: &NarrativeActDef) -> Vec<(Value, f64)> {
 }
 
 impl NarrativeLog {
+    /// How close together two identical acts must be to become one entry.
+    ///
+    /// One in-game hour. Long enough to absorb a burst of the same gameplay
+    /// action, short enough that two deliberate acts an afternoon apart stay
+    /// two events with their own ticks and their own decay.
+    pub const COALESCE_WINDOW_SECONDS: f64 = 60.0 * 60.0;
+
     pub fn append(&mut self, mut event: NarrativeEvent) -> u64 {
+        if let Some(id) = self.coalesce(&event) {
+            return id;
+        }
         event.id = self.next_id;
         self.next_id += 1;
         let id = event.id;
         self.seed_knowledge(&event, id);
         self.events.push(event);
         id
+    }
+
+    /// Fold a repeat into the entry it repeats, and report that entry's id.
+    ///
+    /// Only the most recent event is considered: acts arrive in tick order, so
+    /// anything earlier is separated by something else, and merging across that
+    /// would reorder history — which matters, because saturation is
+    /// order-dependent.
+    ///
+    /// An event is a repeat only when everything that distinguishes it is
+    /// equal. Differing secrecy, witnesses or declared causes make it a
+    /// different event with different consequences, so those never merge.
+    fn coalesce(&mut self, incoming: &NarrativeEvent) -> Option<u64> {
+        let last = self.events.last_mut()?;
+        if last.act_id != incoming.act_id
+            || last.target != incoming.target
+            || last.intent != incoming.intent
+            || last.secrecy != incoming.secrecy
+            || last.witnesses != incoming.witnesses
+            || !incoming.causes.is_empty()
+            || (incoming.tick - last.tick) > Self::COALESCE_WINDOW_SECONDS
+            || incoming.tick < last.tick
+        {
+            return None;
+        }
+        // Cost and need are per-occurrence weights; the merged entry carries
+        // the mean so a coalesced burst is not silently reweighted by whichever
+        // occurrence happened to arrive last.
+        let previous = last.count as f64;
+        let total = previous + 1.0;
+        last.cost = (last.cost * previous + incoming.cost) / total;
+        last.need = (last.need * previous + incoming.need) / total;
+        last.count = last.count.saturating_add(1);
+        // The entry keeps its original tick: the burst is one thing that
+        // started then, and moving the tick would restart its decay.
+        Some(last.id)
+    }
+
+    /// How old an event must be before it may be folded away.
+    ///
+    /// The longest half-life in the tier table is 90 days, so at 360 days a
+    /// decaying contribution has halved four times and retains about 6% of its
+    /// original weight; by the time anything is compacted, what fades has
+    /// largely faded. Ledger axes never decay and are carried in the baseline
+    /// at full value, which is exact for them.
+    pub const COMPACTION_HORIZON_DAYS: f64 = 360.0;
+
+    /// Fold away everything older than the horizon, keeping what it was worth.
+    ///
+    /// Returns how many entries were folded. Safe to call repeatedly; each call
+    /// folds only what has aged past the horizon since the last one.
+    ///
+    /// Events that could still complete an arc are kept regardless of age. A
+    /// pattern with no expiry — `arc.broken_oath` has none — can be answered
+    /// years later, and folding away the oath would erase the arc rather than
+    /// summarise it.
+    pub fn compact(&mut self, now_tick: f64) -> usize {
+        let cutoff = now_tick - Self::COMPACTION_HORIZON_DAYS * GAME_DAY_SECONDS;
+        // Cheap rejection first. This runs on every rumour boundary, and the
+        // work below walks the log; doing that each tick to discover there is
+        // nothing to fold would cost more than compaction saves. Events are
+        // appended in tick order, so if the oldest is not past the horizon then
+        // nothing is.
+        if self.events.first().is_none_or(|event| event.tick > cutoff) {
+            return 0;
+        }
+        let protected = self.sift_relevant_ids();
+
+        let foldable = |event: &NarrativeEvent| {
+            event.tick <= cutoff && !protected.contains(&event.id)
+        };
+        // Only a prefix may be folded: the baseline is a running score, so it
+        // cannot represent events with unfolded events before them.
+        let fold_upto = self
+            .events
+            .iter()
+            .position(|event| !foldable(event))
+            .unwrap_or(self.events.len());
+        if fold_upto == 0 {
+            return 0;
+        }
+
+        // Compute what the prefix was worth, before removing it. Every observer
+        // and axis, because any of them may be asked for later.
+        let observers: Vec<&'static str> = crate::game_data::narrative_entities()
+            .iter()
+            .map(|entity| entity.id)
+            .collect();
+        let tail = self.events.split_off(fold_upto);
+        let folded = self.events.len();
+
+        let mut baselines = Vec::new();
+        for observer in &observers {
+            let context = self.observer_context(observer, now_tick);
+            for axis in Axis::ALL {
+                let score = self.fold_axis(observer, axis, now_tick, Some(context)).0;
+                if score != 0.0 {
+                    baselines.push(((*observer).to_string(), axis, score));
+                }
+            }
+        }
+
+        // Carry the repetition counts forward.
+        let mut seen: Vec<(String, String, u32)> = Vec::new();
+        for event in &self.events {
+            let Some(act) = narrative_act_def(&event.act_id) else {
+                continue;
+            };
+            let mut counted: Vec<&str> = Vec::new();
+            for impact in act.impacts {
+                let Some(scope) = Self::resolve_scope(impact.scope, event) else {
+                    continue;
+                };
+                if counted.contains(&scope) {
+                    continue;
+                }
+                counted.push(scope);
+                let occurrences = event.count.max(1);
+                match seen
+                    .iter_mut()
+                    .find(|(act_id, entry, _)| act_id == &event.act_id && entry == scope)
+                {
+                    Some(entry) => entry.2 = entry.2.saturating_add(occurrences),
+                    None => seen.push((event.act_id.clone(), scope.to_string(), occurrences)),
+                }
+            }
+        }
+
+        // Dead rumours go with the events they were about: nobody can learn or
+        // repeat something the log no longer holds.
+        let folded_ids: Vec<u64> = self.events.iter().map(|event| event.id).collect();
+        self.knowledge.forget_all(&folded_ids);
+
+        self.compaction = Compaction {
+            baselines,
+            seen,
+            through_tick: cutoff,
+            folded: self.compaction.folded + folded,
+        };
+        self.events = tail;
+        self.standing_cache.borrow_mut().clear();
+        folded
+    }
+
+    /// Events that must survive compaction because an arc could still need
+    /// them: the first slot of a pattern that never expires.
+    fn sift_relevant_ids(&self) -> Vec<u64> {
+        let mut ids = Vec::new();
+        for pattern in crate::game_data::sift_patterns() {
+            if pattern.expires_after_days > 0.0 {
+                continue;
+            }
+            for event in &self.events {
+                if event.target.is_some()
+                    && crate::narrative::sift::act_has_kind(&event.act_id, pattern.first_kind)
+                {
+                    ids.push(event.id);
+                }
+            }
+        }
+        ids
     }
 
     /// Who knows an event the moment it happens, from its secrecy.
@@ -293,7 +548,9 @@ impl NarrativeLog {
         now_tick: f64,
         context: Option<(f64, f64)>,
     ) -> (f64, Vec<ImpactTrace>) {
-        let mut score = 0.0;
+        // Everything folded away already contributed; the walk below continues
+        // from there rather than from nothing.
+        let mut score = self.compaction.baseline(observer_id, axis);
         let mut traces = Vec::new();
         // Prior occurrences of (act, scope), accumulated as the walk proceeds.
         // Counted over every impact of every event, not only those on the axis
@@ -306,6 +563,16 @@ impl NarrativeLog {
             let Some(act) = narrative_act_def(&event.act_id) else {
                 continue;
             };
+            // A coalesced entry stands for `count` occurrences. They are folded
+            // one whole occurrence at a time — every impact of the act, in
+            // authored order, then the next occurrence — because that is the
+            // order the separate events they replaced would have folded in, and
+            // `fold` saturates, so the order changes the answer. Folding all of
+            // one impact's occurrences before moving to the next impact drifts:
+            // `act.break_a_promise` carries two impacts on integrity, and the
+            // two orders disagreed by 0.12%.
+            let occurrences = event.count.max(1);
+            for occurrence in 0..occurrences {
             for impact in act.impacts {
                 if Axis::from_str(impact.axis) != Some(axis) {
                     continue;
@@ -354,9 +621,14 @@ impl NarrativeLog {
                 };
                 // Cost and need only amplify help, never harm.
                 let cost = if negative { 1.0 } else { event.cost };
-                let repetition = Self::repetition_decay(
-                    seen_counts.get(&(event.act_id.as_str(), scope)).copied().unwrap_or(0),
-                );
+                let seen = seen_counts
+                    .get(&(event.act_id.as_str(), scope))
+                    .copied()
+                    // Repeats folded away still count against repetition, or
+                    // compacting would make an old habit feel new.
+                    .unwrap_or_else(|| self.compaction.seen_for(&event.act_id, scope))
+                    + occurrence;
+                let repetition = Self::repetition_decay(seen);
 
                 // Observer amplifiers. Neutral on the closeness/belonging
                 // passes themselves, which is what `context: None` means.
@@ -386,21 +658,30 @@ impl NarrativeLog {
                     _ => 1.0,
                 };
 
-                let modifiers = clamp_modifiers(
-                    negativity
-                        * event.intent.factor()
-                        * cost
-                        * event.need
-                        * repetition
-                        * closeness
-                        * belonging
-                        * values_verdict.abs().max(if impact.sign == 0 { 0.0 } else { 1.0 }),
-                );
+                // Held apart from the repetition step so a coalesced entry can
+                // apply a different step per occurrence without recomputing
+                // everything else.
+                let unrepeated_modifiers = negativity
+                    * event.intent.factor()
+                    * cost
+                    * event.need
+                    * closeness
+                    * belonging
+                    * values_verdict.abs().max(if impact.sign == 0 { 0.0 } else { 1.0 });
+                let modifiers = clamp_modifiers(unrepeated_modifiers * repetition);
                 let delta = effective_sign * tier.base() * modifiers * inheritance * decay * fidelity;
                 score = fold(score, delta);
 
+                // One trace per impact, not per occurrence: a coalesced entry is
+                // one thing that happened `count` times, and `narr explain`
+                // should read that way. Only the first occurrence emits it.
+                if occurrence > 0 {
+                    continue;
+                }
+
                 traces.push(ImpactTrace {
                     event_id: event.id,
+                    count: event.count,
                     act_id: event.act_id.clone(),
                     scope: scope.to_string(),
                     axis,
@@ -423,6 +704,8 @@ impl NarrativeLog {
                 });
             }
 
+            }
+
             // Record what this event landed on, after its own impacts have been
             // scored against the prior counts. Distinct scopes only: the rescan
             // this replaces counted each earlier *event* once, however many of
@@ -436,7 +719,14 @@ impl NarrativeLog {
                     continue;
                 }
                 counted.push(scope);
-                *seen_counts.entry((event.act_id.as_str(), scope)).or_insert(0) += 1;
+                if !self.compaction.is_empty() {
+                    let carried = self.compaction.seen_for(&event.act_id, scope);
+                    seen_counts.entry((event.act_id.as_str(), scope)).or_insert(carried);
+                }
+                // A coalesced entry advances the repetition count by every
+                // occurrence it stands for, so later acts are damped exactly as
+                // they would have been had the repeats stayed separate.
+                *seen_counts.entry((event.act_id.as_str(), scope)).or_insert(0) += event.count.max(1);
             }
         }
 
@@ -507,6 +797,7 @@ pub fn event_for(act: &NarrativeActDef, target: Option<&str>, tick: f64) -> Narr
         secrecy: Secrecy::from_str(act.secrecy).unwrap_or_default(),
         causes: Vec::new(),
         witnesses: Vec::new(),
+        count: 1,
     }
 }
 
@@ -644,6 +935,199 @@ mod tests {
 
 #[cfg(test)]
 mod values_and_decay_tests {
+    use super::*;
+
+    const TARGET: &str = "entity.vell";
+
+    fn burst(log: &mut NarrativeLog, act_id: &str, times: usize, spacing: f64) {
+        let act = narrative_act_def(act_id).expect("act exists");
+        for step in 0..times {
+            let mut event = event_for(act, Some(TARGET), step as f64 * spacing);
+            event.secrecy = Secrecy::Public;
+            log.append(event);
+        }
+    }
+
+    /// Coalescing changes how the log stores repeats, not what they are worth.
+    ///
+    /// Ten thefts in an hour become one entry with a count of ten. The entry is
+    /// folded once per occurrence it stands for, each with its own repetition
+    /// step, so the standing it produces matches the ten separate events it
+    /// replaced. Without this the feature would quietly retune the game.
+    #[test]
+    fn a_coalesced_burst_is_worth_what_its_occurrences_were_worth() {
+        // Far enough apart to stay separate: one entry per act.
+        let mut separate = NarrativeLog::default();
+        burst(&mut separate, "act.break_a_promise", 10, NarrativeLog::COALESCE_WINDOW_SECONDS * 2.0);
+
+        // Close enough to merge: one entry standing for ten.
+        let mut coalesced = NarrativeLog::default();
+        burst(&mut coalesced, "act.break_a_promise", 10, 1.0);
+
+        assert_eq!(coalesced.events.len(), 1, "the burst should be one entry");
+        assert_eq!(coalesced.events[0].count, 10);
+        assert_eq!(separate.events.len(), 10, "spaced acts must stay separate");
+
+        // Read both at the moment the last act lands, so decay plays no part in
+        // the comparison: the spaced log's events are older and would otherwise
+        // have faded by different amounts.
+        let merged = coalesced.standing(TARGET, Axis::Integrity, 0.0);
+        let apart = {
+            let mut same_tick = NarrativeLog::default();
+            let act = narrative_act_def("act.break_a_promise").expect("act");
+            for _ in 0..10 {
+                let mut event = event_for(act, Some(TARGET), 0.0);
+                event.secrecy = Secrecy::Public;
+                // Distinct causes keep them from merging without moving them in
+                // time, isolating coalescing from every other variable.
+                event.causes = vec![u64::MAX];
+                same_tick.append(event);
+            }
+            same_tick.standing(TARGET, Axis::Integrity, 0.0)
+        };
+
+        assert!(
+            (merged - apart).abs() < 1e-9,
+            "coalesced {merged} should equal the separate occurrences {apart}",
+        );
+        assert!(merged < 0.0, "ten broken promises should cost integrity");
+    }
+
+    /// Compaction summarises; it must not retune.
+    ///
+    /// A long history is folded away and every entity's standing on every axis
+    /// is compared before and after. The error is reported, not assumed: the
+    /// two ways compaction loses information — a folded contribution stops
+    /// decaying, and the context it was folded under is frozen — are only
+    /// acceptable if they stay small, and the only way to know is to measure.
+    #[test]
+    fn compaction_preserves_what_the_log_was_worth() {
+        let mut log = NarrativeLog::default();
+        // No oaths: `arc.broken_oath` never expires, so every oath is pinned in
+        // the log and the prefix stops at the first one. Measuring the error
+        // over four folded events would prove very little, and the pinning has
+        // its own test below.
+        let acts = [
+            "act.break_a_promise",
+            "act.share_scarce_water",
+            "act.spare_a_life",
+            "act.aid_the_hero",
+        ];
+        let targets = ["entity.vell", "entity.joren"];
+
+        // Two years of history, spaced so nothing coalesces.
+        for step in 0..120 {
+            let act = narrative_act_def(acts[step % acts.len()]).expect("act exists");
+            let mut event = event_for(
+                act,
+                Some(targets[step % targets.len()]),
+                step as f64 * GAME_DAY_SECONDS * 6.0,
+            );
+            event.secrecy = Secrecy::Public;
+            log.append(event);
+        }
+
+        let now = 120.0 * GAME_DAY_SECONDS * 6.0;
+        let before: Vec<(String, Axis, f64)> = crate::game_data::narrative_entities()
+            .iter()
+            .flat_map(|entity| {
+                Axis::ALL
+                    .into_iter()
+                    .map(move |axis| (entity.id.to_string(), axis, 0.0))
+            })
+            .map(|(id, axis, _)| {
+                let score = log.standing(&id, axis, now);
+                (id, axis, score)
+            })
+            .collect();
+
+        let events_before = log.events.len();
+        let folded = log.compact(now);
+        assert!(folded > 0, "a two-year log should have something to fold");
+        assert!(
+            log.events.len() < events_before,
+            "compaction should shorten the log: {events_before} -> {}",
+            log.events.len(),
+        );
+
+        let mut worst = 0.0_f64;
+        let mut worst_where = String::new();
+        for (id, axis, expected) in &before {
+            let actual = log.standing(id, *axis, now);
+            let error = (actual - expected).abs();
+            if error > worst {
+                worst = error;
+                worst_where = format!("{id} {axis:?}: {expected} -> {actual}");
+            }
+        }
+
+        // A standing point is the unit the bands are cut in — the Mid band is
+        // 35 points wide — so a worst-case drift under one point cannot move
+        // any entity across a band edge, which is what gameplay reads.
+        println!("COMPACTION: {events_before} -> {} events, folded {folded}, worst error {worst} ({worst_where})", log.events.len());
+        assert!(
+            worst < 1.0,
+            "compaction changed standing by {worst} ({worst_where}); it is meant to summarise, not retune",
+        );
+    }
+
+    /// An oath that has never been answered survives compaction.
+    #[test]
+    fn compaction_keeps_events_an_arc_could_still_need() {
+        let mut log = NarrativeLog::default();
+        let oath = narrative_act_def("act.swear_an_oath").expect("act exists");
+        let mut event = event_for(oath, Some("entity.vell"), 0.0);
+        event.secrecy = Secrecy::Public;
+        log.append(event);
+
+        // Far beyond the horizon, so only its arc relevance can save it.
+        let now = NarrativeLog::COMPACTION_HORIZON_DAYS * GAME_DAY_SECONDS * 3.0;
+        log.compact(now);
+
+        assert_eq!(
+            log.events.len(),
+            1,
+            "arc.broken_oath never expires, so the oath must outlive compaction",
+        );
+    }
+
+    /// Acts that differ in anything consequential are not repeats.
+    #[test]
+    fn only_identical_acts_in_the_same_window_merge() {
+        let act = narrative_act_def("act.break_a_promise").expect("act");
+
+        let mut different_target = NarrativeLog::default();
+        let mut first = event_for(act, Some(TARGET), 0.0);
+        first.secrecy = Secrecy::Public;
+        different_target.append(first);
+        let mut second = event_for(act, Some("entity.joren"), 1.0);
+        second.secrecy = Secrecy::Public;
+        different_target.append(second);
+        assert_eq!(different_target.events.len(), 2, "a different target is a different event");
+
+        let mut different_secrecy = NarrativeLog::default();
+        let mut public = event_for(act, Some(TARGET), 0.0);
+        public.secrecy = Secrecy::Public;
+        different_secrecy.append(public);
+        let mut secret = event_for(act, Some(TARGET), 1.0);
+        secret.secrecy = Secrecy::Secret;
+        different_secrecy.append(secret);
+        assert_eq!(
+            different_secrecy.events.len(),
+            2,
+            "who saw it changes what it does, so it cannot merge",
+        );
+
+        let mut late = NarrativeLog::default();
+        let mut early = event_for(act, Some(TARGET), 0.0);
+        early.secrecy = Secrecy::Public;
+        late.append(early);
+        let mut hours_later = event_for(act, Some(TARGET), NarrativeLog::COALESCE_WINDOW_SECONDS + 1.0);
+        hours_later.secrecy = Secrecy::Public;
+        late.append(hours_later);
+        assert_eq!(late.events.len(), 2, "beyond the window they are two acts");
+    }
+
     use super::*;
     use crate::narrative::standing::GAME_DAY_SECONDS;
 

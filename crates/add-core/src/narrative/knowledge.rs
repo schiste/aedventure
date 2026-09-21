@@ -101,6 +101,21 @@ impl KnowledgeBase {
         self.by_entity.get(entity_id).map_or(0, |events| events.len())
     }
 
+    /// Drop everything anyone knew about these events.
+    ///
+    /// Called by compaction: an event that is no longer in the log cannot be
+    /// learned, repeated or forgotten, so holding knowledge of it would keep
+    /// the rumour tables growing after the events themselves were summarised.
+    pub fn forget_all(&mut self, event_ids: &[u64]) {
+        if event_ids.is_empty() {
+            return;
+        }
+        for events in self.by_entity.values_mut() {
+            events.retain(|event_id, _| !event_ids.contains(event_id));
+        }
+        self.by_entity.retain(|_, events| !events.is_empty());
+    }
+
     pub fn knows(&self, entity_id: &str, event_id: u64) -> bool {
         self.by_entity
             .get(entity_id)

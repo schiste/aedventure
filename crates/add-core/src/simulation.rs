@@ -1364,6 +1364,11 @@ impl Simulation {
         let seed = self.state.rng_seed;
         let now = self.state.clock_seconds;
         self.state.narrative.log.advance_rumour(now, seed);
+        // Summarise history that has aged past the horizon. Cheap to attempt —
+        // it folds nothing until something is old enough — and it keeps the
+        // cost of a cold standing read from growing with the length of the
+        // game. Run on the rumour boundary so it never lands mid-turn.
+        self.state.narrative.log.compact(now);
         // Reactions run after rumour, so a character acts when they *hear*,
         // not when it happened.
         crate::narrative::react::run(&mut self.state.narrative.log, now);

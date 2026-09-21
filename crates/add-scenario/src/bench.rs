@@ -13,7 +13,8 @@
 use std::time::Instant;
 
 use add_core::narrative::{
-    Axis, CastHistory, NarrativeLog, Secrecy, cast, castable_entities, event_for, sift,
+    Axis, CastHistory, GAME_DAY_SECONDS, NarrativeLog, Secrecy, cast, castable_entities, event_for,
+    sift,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -77,6 +78,8 @@ pub struct BenchReport {
     pub contract: &'static str,
     pub events: usize,
     pub entities: usize,
+    /// How many entries compaction folded away at this scale.
+    pub folded: usize,
     pub measurements: Vec<Measurement>,
 }
 
@@ -86,20 +89,41 @@ impl BenchReport {
     }
 }
 
+/// How long a full game's log is taken to span.
+///
+/// The event count comes from §10; the span does not, and it matters as much.
+/// Packing 50,000 events into a few game-days would model a frantic afternoon
+/// rather than a full game, and would hide both decay and compaction — every
+/// event would still be fresh. Three game-years at roughly forty-five acts a
+/// day is a plausible shape for a game that reaches this many events.
+const SPAN_DAYS: f64 = 3.0 * 365.0;
+
 /// Build a log of `events` acts spread across the cast, as gameplay would.
 fn populate(events: usize) -> NarrativeLog {
     let mut log = NarrativeLog::default();
-    let acts = add_core::game_data::narrative_acts();
+    // Every act except the ones an unexpired arc pins in the log forever.
+    // `act.swear_an_oath` is the first slot of `arc.broken_oath`, which has no
+    // expiry, so an oath can never be folded away — and because only a prefix
+    // can be folded, one early oath pins everything after it. Including them
+    // here would measure that content decision rather than the code.
+    let pinned: Vec<&str> = add_core::game_data::sift_patterns()
+        .iter()
+        .filter(|pattern| pattern.expires_after_days <= 0.0)
+        .map(|pattern| pattern.first_kind)
+        .collect();
+    let acts: Vec<_> = add_core::game_data::narrative_acts()
+        .iter()
+        .filter(|act| !act.kinds.iter().any(|kind| pinned.contains(kind)))
+        .collect();
     let targets = castable_entities();
     if acts.is_empty() || targets.is_empty() {
         return log;
     }
     for index in 0..events {
-        let act = &acts[index % acts.len()];
+        let act = acts[index % acts.len()];
         let target = targets[index % targets.len()];
-        // One act per in-game minute, so decay and repetition both engage
-        // rather than every event landing on the same tick.
-        let mut event = event_for(act, Some(target), index as f64 * 60.0);
+        let spacing = SPAN_DAYS * GAME_DAY_SECONDS / events.max(1) as f64;
+        let mut event = event_for(act, Some(target), index as f64 * spacing);
         event.secrecy = Secrecy::Public;
         log.append(event);
     }
@@ -113,7 +137,7 @@ fn micros_since(start: Instant) -> f64 {
 pub fn run(events: usize) -> BenchReport {
     let entities = castable_entities();
     let log = populate(events);
-    let now = events as f64 * 60.0;
+    let now = SPAN_DAYS * GAME_DAY_SECONDS;
 
     // standing(), cold and warm, measured apart.
     //
@@ -208,12 +232,28 @@ pub fn run(events: usize) -> BenchReport {
         load_samples.push(micros_since(start));
     }
 
+    // What compaction buys: the same cold read, against a log whose aged
+    // history has been summarised. Measured on its own clone so nothing above
+    // is affected by it.
+    let mut compacted = log.clone();
+    let folded = compacted.compact(now);
+    let mut compacted_samples = Vec::new();
+    for round in 0..40 {
+        let observer = entities[round % entities.len()];
+        let axis = Axis::ALL[round % Axis::ALL.len()];
+        let cold_tick = now + 1000.0 + round as f64;
+        let start = Instant::now();
+        std::hint::black_box(compacted.standing(observer, axis, cold_tick));
+        compacted_samples.push(micros_since(start));
+    }
+
     let measurements = vec![
         Measurement::new("standing_warm", warm_samples),
         // No budget: §10 sets one figure for a standing query, and names the
         // per-entity cache as how it is met. The cold fold is reported so the
         // cost the cache is hiding stays visible rather than becoming folklore.
         Measurement::new("standing_cold", cold_samples),
+        Measurement::new("standing_cold_compacted", compacted_samples),
         Measurement::new("emit_act", emit_samples),
         Measurement::new("rumour_step", rumour_samples),
         Measurement::new("storylet_selection", cast_samples),
@@ -224,6 +264,7 @@ pub fn run(events: usize) -> BenchReport {
         contract: "add_narr_bench_v1",
         events,
         entities: entities.len(),
+        folded,
         measurements,
     }
 }

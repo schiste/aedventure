@@ -25,7 +25,7 @@ pub use cast::{CastHistory, Casting, FALLBACK_KNOT, cast, castable_entities};
 pub use graph::{GroupKind, ancestry, inheritance_weight};
 pub use knowledge::{Knowledge, KnowledgeBase, Secrecy};
 pub use log::{ImpactTrace, NarrativeEvent, NarrativeLog, event_for};
-pub use standing::{Axis, Band, Derived, Intent, Tier, derive, fold};
+pub use standing::{Axis, Band, Derived, GAME_DAY_SECONDS, Intent, Tier, derive, fold};
 pub use values::{Profile, Value, verdict};
 pub use react::{FiredReaction, MAX_CHAIN_DEPTH};
 pub use sift::{ArcMatch, SiftResult, sift, sift_append};
