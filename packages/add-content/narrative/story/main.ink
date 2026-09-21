@@ -26,3 +26,23 @@ From the ridge, you finally see it: a broken complex wrapped in a thin blue halo
     ~ chosen = "story.choice.glimpse.scan_ruins"
     The outer shell is wrecked, but the center still breathes. The Base might be dying, not dead. # speaker:narrator
     -> DONE
+
+// --- Storylets -------------------------------------------------------------
+//
+// Knots written for ROLES, not named characters. Rust casts them and enters
+// them by name with the chosen entities as arguments, so one knot covers every
+// pair that fits. Role constraints live in narrative-storylets.ts, never in
+// ink conditionals, so tools can analyse what is castable.
+
+=== sl_two_survivors_talk(x, y) ===
+{x} and {y} are talking when you come in. They stop. # speaker:narrator # mood:quiet
+-> DONE
+
+=== sl_wronged_and_witness(x, y) ===
+{x} does not look up. {y} watches you both, and says nothing. # speaker:narrator # mood:tense
+-> DONE
+
+// The guarantee that a hub never stalls.
+=== sl_quiet_hour ===
+For once, nobody needs anything. # speaker:narrator # mood:quiet
+-> DONE

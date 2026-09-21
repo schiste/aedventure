@@ -95,6 +95,7 @@ const narrativeEntities = content("narrative-entities")
 const narrativeActs = content("narrative-acts")
 const narrativePatterns = content("narrative-patterns")
 const narrativeReactions = content("narrative-reactions")
+const narrativeStorylets = content("narrative-storylets")
 const contentVersion = content("content-version")
 const encounterTables = content("encounter-tables")
 const lootTables = content("loot-tables")
@@ -995,6 +996,42 @@ const FILES = [
             { name: "emit_act", kind: "string" },
             { name: "emit_target", kind: "string" },
             { name: "cooldown_days", kind: "f64" },
+          ],
+        },
+      },
+    ],
+  },
+  {
+    sourceModule: "packages/add-content/src/content/narrative-storylets.ts",
+    rustPath: "crates/add-core/src/game_data/catalog/storylets.rs",
+    consts: [
+      {
+        entries: narrativeStorylets.STORYLETS,
+        spec: {
+          constName: "STORYLETS",
+          rustType: "StoryletDef",
+          visibility: VIS,
+          fields: [
+            { name: "id", kind: "string" },
+            { name: "knot", kind: "string" },
+            {
+              name: "roles",
+              kind: "array",
+              element: {
+                name: "role",
+                kind: "struct",
+                structType: "StoryletRoleDef",
+                fields: [
+                  { name: "name", kind: "string" },
+                  { name: "axis", kind: "string" },
+                  { name: "at_least", kind: "string" },
+                  { name: "at_most", kind: "string" },
+                ],
+              },
+            },
+            { name: "base_salience", kind: "i64" },
+            { name: "cooldown_days", kind: "f64" },
+            { name: "trigger_arc", kind: "string" },
           ],
         },
       },

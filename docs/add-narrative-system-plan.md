@@ -458,6 +458,45 @@ has history with.
 *Accepted when:* one two-role storylet fires with at least five distinct casts
 across fuzz runs, and no hub stalls.
 
+**Status: done.** Two storylets, two knots, **forty distinct casts** across a
+300-run campaign, no stalls. Each newly-seen cast is actually entered in ink and
+must play lines, so "no hub stalls" is verified by the scene rendering rather
+than inferred from the knot's name existing.
+
+Three things worth recording, because each was a defect coverage caught and
+correctness tests did not:
+
+1. **The first caster produced exactly one distinct cast in 400 runs.** It
+   returned the first entity that fits, and the candidate list never changes
+   order, so every scene was about the same two people — while passing every
+   unit test. Candidates are now ranked by shared history (the role's axis, or
+   the strongest feeling in any direction for an unconstrained role), which is
+   what makes one knot into many scenes. `committed_scenarios` pins this with an
+   assertion that fails under the old ordering.
+2. **The ink compiler recorded `sl_x(a, b)` as a knot name**, signature and all.
+   Invisible while every knot was parameterless; it would have surfaced as a hub
+   that could never enter its own storylet. A knot's name is now its identifier.
+3. **The fuzzer never emitted acts**, so the narrative log was always empty and
+   every candidate had identical history. Casting coverage was measuring a world
+   in which nothing had happened. The fuzzer now emits acts, which also puts the
+   N4/N5 pipeline under fuzz for the first time; `replay` learned `EmitAct` so a
+   recorded failure stays reproducible.
+
+The role gate is keyed on `integrity`, not `grievance`: repeated identical acts
+decay by repetition, so grievance plateaus below its own `high` band, while a
+pattern of broken promises drives integrity down hard. "Someone who no longer
+believes the Hero's word" is also the more legible cast for a writer.
+
+The coverage report now names content holes as well as engine faults, and on
+current content it finds three: `arc.mercy_repaid` is never matched under fuzz
+(the fuzzer emits acts without causal links, so the chain rarely forms — the
+committed scenario covers it), and **`affection`, `dominance` and `belonging`
+are axes no act in the catalog moves.** That last is dead standing: the writer
+can ask about it and nothing in the game can change it. It is an authoring gap,
+recorded here rather than papered over.
+
+`narr reach` is not built; it joins `narr graph` as a recorded gap.
+
 ### N7 — Scale and hardening
 
 *Player outcome:* the game stays fast as the world fills.

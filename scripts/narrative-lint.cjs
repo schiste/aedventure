@@ -26,6 +26,16 @@ function loadBeats() {
   return require(distPath).STORY_BEATS
 }
 
+function loadStorylets() {
+  const distPath = path.join(ROOT, "packages/add-content/dist/content/narrative-storylets.js")
+  if (!fs.existsSync(distPath)) return []
+  return require(distPath).STORYLETS ?? []
+}
+
+// The knot a hub falls back to when nothing can be cast. Mirrors
+// narrative::FALLBACK_KNOT; it belongs to no beat and no storylet by design.
+const FALLBACK_KNOT = "sl_quiet_hour"
+
 const knotForBeat = (beatId) => beatId.replace(/[.-]/g, "_")
 
 function parseInk(file) {
@@ -34,9 +44,16 @@ function parseInk(file) {
   let current = null
   for (const [lineNumber, raw] of text.split("\n").entries()) {
     const line = raw.trim()
-    const heading = /^===+\s*([A-Za-z0-9_]+)\s*=*$/.exec(line)
+    // A storylet knot is parameterised: `=== sl_x(a, b) ===`. Before N6 this
+    // regex required a bare identifier, so every parameterised knot was skipped
+    // silently — the lint reported 2 knots where the file held 5.
+    const heading = /^===+\s*([A-Za-z0-9_]+)\s*(\(([^)]*)\))?\s*=*$/.exec(line)
     if (heading) {
-      current = { name: heading[1], line: lineNumber + 1, chosen: [], choices: 0 }
+      const params = (heading[3] ?? "")
+        .split(",")
+        .map((param) => param.trim())
+        .filter(Boolean)
+      current = { name: heading[1], params, line: lineNumber + 1, chosen: [], choices: 0 }
       knots.push(current)
       continue
     }
@@ -50,7 +67,9 @@ function parseInk(file) {
 
 function main() {
   const beats = loadBeats()
+  const storylets = loadStorylets()
   const byKnot = new Map(beats.map((beat) => [knotForBeat(beat.id), beat]))
+  const storyletByKnot = new Map(storylets.map((storylet) => [storylet.knot, storylet]))
   const errors = []
   const files = fs
     .readdirSync(STORY_DIR)
@@ -62,9 +81,26 @@ function main() {
     const rel = path.relative(ROOT, path.join(STORY_DIR, name))
     for (const knot of parseInk(path.join(STORY_DIR, name))) {
       knotCount += 1
+      // Since N6 a knot can be reached two ways: a beat names it, or a storylet
+      // does. The fallback is reachable by construction.
+      const storylet = storyletByKnot.get(knot.name)
+      if (storylet) {
+        // A knot whose arity disagrees with its roles would fail at the moment
+        // the caster tries to enter it, which is the worst time to find out.
+        if (knot.params.length !== storylet.roles.length) {
+          errors.push(
+            `${rel}:${knot.line} knot \`${knot.name}\` takes ${knot.params.length} parameter(s) but ` +
+              `${storylet.id} declares ${storylet.roles.length} role(s)`,
+          )
+        }
+        continue
+      }
+      if (knot.name === FALLBACK_KNOT) continue
       const beat = byKnot.get(knot.name)
       if (!beat) {
-        errors.push(`${rel}:${knot.line} knot \`${knot.name}\` names no story beat`)
+        errors.push(
+          `${rel}:${knot.line} knot \`${knot.name}\` is named by no story beat and no storylet`,
+        )
         continue
       }
       // A choice that records nothing would present an option that cannot
@@ -101,6 +137,7 @@ function main() {
     ok: errors.length === 0,
     inkFiles: files.length,
     knots: knotCount,
+    storyletKnots: storylets.map((storylet) => storylet.knot).sort(),
     inkBackedBeats: [...byKnot.keys()].filter((knot) =>
       files.some((name) => parseInk(path.join(STORY_DIR, name)).some((k) => k.name === knot)),
     ),
@@ -112,7 +149,9 @@ function main() {
   } else {
     console.log("ADD Narrative Lint")
     console.log(`Status: ${report.ok ? "OK" : "BROKEN"}`)
-    console.log(`Ink files: ${report.inkFiles}, knots: ${report.knots}`)
+    console.log(
+      `Ink files: ${report.inkFiles}, knots: ${report.knots}, storylet knots: ${report.storyletKnots.length}`,
+    )
     console.log(`Ink-backed beats: ${report.inkBackedBeats.join(", ") || "none"}`)
     for (const error of errors) console.error(`  ERROR ${error}`)
   }

@@ -11,6 +11,7 @@
 //! simulation's seed through ink's `SEED_RANDOM`, and time never enters here.
 //! See `docs/add-narrative-system-plan.md` §2.1.
 
+pub mod cast;
 pub mod graph;
 pub mod knowledge;
 pub mod log;
@@ -20,6 +21,7 @@ pub mod standing;
 pub mod story;
 pub mod values;
 
+pub use cast::{CastHistory, Casting, FALLBACK_KNOT, cast, castable_entities};
 pub use graph::{GroupKind, ancestry, inheritance_weight};
 pub use knowledge::{Knowledge, KnowledgeBase, Secrecy};
 pub use log::{ImpactTrace, NarrativeEvent, NarrativeLog, event_for};

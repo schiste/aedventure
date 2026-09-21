@@ -2869,3 +2869,31 @@ pub struct ReactionDef {
 pub fn reactions() -> &'static [ReactionDef] {
     catalog::REACTIONS
 }
+
+
+/// One role a storylet casts.
+#[derive(Debug, Clone, Copy, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct StoryletRoleDef {
+    pub name: &'static str,
+    /// Axis the role is chosen on; empty means "anyone".
+    pub axis: &'static str,
+    pub at_least: &'static str,
+    pub at_most: &'static str,
+}
+
+/// A knot written for roles rather than named characters.
+#[derive(Debug, Clone, Copy, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct StoryletDef {
+    pub id: &'static str,
+    pub knot: &'static str,
+    pub roles: &'static [StoryletRoleDef],
+    pub base_salience: i64,
+    pub cooldown_days: f64,
+    pub trigger_arc: &'static str,
+}
+
+pub fn storylets() -> &'static [StoryletDef] {
+    catalog::STORYLETS
+}

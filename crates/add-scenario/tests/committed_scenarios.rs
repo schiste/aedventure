@@ -265,3 +265,35 @@ fn mercy_repaid_is_detected_and_names_its_subject() {
         .expect("the aid was logged");
     assert!(aid.causes.contains(&0), "the aid should name the mercy: {:?}", aid.causes);
 }
+
+/// N6 acceptance: a cast follows the history the player actually built. The
+/// scenario wrongs one specific survivor; the caster must then lead with that
+/// survivor rather than with whoever the catalog happens to list first.
+#[test]
+fn casting_leads_with_the_person_the_player_has_history_with() {
+    let run = run_scenario_file(&repo_path(
+        "scenarios/add/narrative/storylet-cast-follows-history.json",
+    ))
+    .expect("committed casting scenario should pass");
+    let state = add_core::import_save(&run.final_save).expect("save loads");
+
+    let available = add_core::narrative::castable_entities();
+    let casting = add_core::narrative::cast(
+        &state.narrative.log,
+        &state.narrative.arcs,
+        &state.narrative.cast_history,
+        &available,
+        state.clock_seconds,
+    );
+
+    assert_eq!(
+        casting.roles.first().map(String::as_str),
+        Some("entity.joren"),
+        "the wronged survivor should lead the cast, not the catalog's first entry: {casting:?}",
+    );
+    assert!(
+        add_core::narrative::all_knots().contains(&casting.knot.as_str()),
+        "the cast knot must exist in ink or the hub stalls: {}",
+        casting.knot,
+    );
+}

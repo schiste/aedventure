@@ -570,11 +570,17 @@ pub struct NarrativeState {
     /// without either re-running the sifter.
     #[serde(default)]
     pub arcs: crate::narrative::SiftResult,
+    /// When each storylet last fired, so cooldowns survive a save. Unlike
+    /// `arcs`, this cannot be derived from the log: the log records what the
+    /// player did, not what the game chose to show them about it.
+    #[serde(default)]
+    pub cast_history: crate::narrative::CastHistory,
 }
 
 impl NarrativeState {
     pub fn new() -> Self {
         Self {
+            cast_history: crate::narrative::CastHistory::default(),
             active_beat_id: None,
             completed_beat_ids: Vec::new(),
             choice_by_beat: BTreeMap::new(),

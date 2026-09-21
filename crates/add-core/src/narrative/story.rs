@@ -124,6 +124,26 @@ impl NarrativeStory {
         self.story.save_state().ok()
     }
 
+    /// Enter a cast storylet, passing the chosen entities as knot arguments.
+    /// N0 proved `choose_path_string` takes arguments, so §8 casting works as
+    /// the specification describes it rather than through a dispatch knot.
+    pub fn enter_storylet(&mut self, knot: &str, roles: &[String]) -> Result<InkScene, String> {
+        let args: Vec<ValueType> = roles
+            .iter()
+            .map(|role| {
+                let label = crate::game_data::narrative_entity_def(role)
+                    .map(|entity| entity.label)
+                    .unwrap_or(role.as_str());
+                ValueType::new::<&str>(label)
+            })
+            .collect();
+        let args = if args.is_empty() { None } else { Some(&args) };
+        self.story
+            .choose_path_string(knot, true, args)
+            .map_err(|error| format!("{error:?}"))?;
+        self.collect(knot)
+    }
+
     /// Enter a beat's knot and collect everything up to its choices.
     pub fn enter_beat(&mut self, beat_id: &str) -> Result<InkScene, String> {
         self.set_chosen("");
@@ -306,15 +326,61 @@ mod tests {
     }
 
     #[test]
-    fn every_ink_knot_names_a_real_story_beat() {
-        // A knot whose beat does not exist is prose the game can never show.
+    fn every_ink_knot_is_reachable_from_content() {
+        // A knot nothing points at is prose the game can never show. Since N6
+        // there are two ways in: a story beat names its knot, or a storylet
+        // does. The fallback is reachable by construction.
         for knot in MAIN_INK_KNOTS {
+            if *knot == crate::narrative::FALLBACK_KNOT {
+                continue;
+            }
             let beat_id = knot.replacen("story_beat_", "story.beat.", 1);
+            if story_beat_def(&beat_id).is_some() {
+                continue;
+            }
             assert!(
-                story_beat_def(&beat_id).is_some(),
-                "ink knot {knot} has no story beat {beat_id}",
+                crate::game_data::storylets()
+                    .iter()
+                    .any(|storylet| storylet.knot == *knot),
+                "ink knot {knot} is named by no story beat and no storylet",
             );
         }
+    }
+
+    #[test]
+    fn every_storylet_knot_exists_in_ink() {
+        // The other direction: a storylet naming a missing knot would stall a
+        // hub at runtime, so it fails the build instead.
+        for storylet in crate::game_data::storylets() {
+            assert!(
+                MAIN_INK_KNOTS.contains(&storylet.knot),
+                "storylet {} names missing knot {}",
+                storylet.id,
+                storylet.knot,
+            );
+        }
+    }
+
+    #[test]
+    fn a_cast_storylet_names_the_people_it_was_cast_with() {
+        // The multiplier: one knot, a scene about whoever fits.
+        let mut narrative = NarrativeStory::new(1).expect("story loads");
+        let roles = vec!["entity.vell".to_string(), "entity.joren".to_string()];
+        let scene = narrative
+            .enter_storylet("sl_two_survivors_talk", &roles)
+            .expect("storylet entered");
+        let text = scene.lines.first().map(|line| line.text.clone()).unwrap_or_default();
+        assert!(text.contains("David Chen"), "the scene should name its cast: {text}");
+        assert!(text.contains("Kaylee"), "both roles should appear: {text}");
+    }
+
+    #[test]
+    fn the_fallback_knot_always_plays() {
+        let mut narrative = NarrativeStory::new(1).expect("story loads");
+        let scene = narrative
+            .enter_storylet(crate::narrative::FALLBACK_KNOT, &[])
+            .expect("the fallback must never fail");
+        assert!(!scene.lines.is_empty());
     }
 
     #[test]

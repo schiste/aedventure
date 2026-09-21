@@ -1,0 +1,45 @@
+{
+  "id": "storylet-cast-follows-history",
+  "seed": "fixture-seed",
+  "commands": [
+    {
+      "type": "EmitAct",
+      "actId": "act.break_a_promise",
+      "target": "entity.joren",
+      "secrecy": "public"
+    },
+    {
+      "type": "Tick",
+      "seconds": 3600
+    },
+    {
+      "type": "EmitAct",
+      "actId": "act.break_a_promise",
+      "target": "entity.joren",
+      "secrecy": "public"
+    },
+    {
+      "type": "Tick",
+      "seconds": 3600
+    },
+    {
+      "type": "EmitAct",
+      "actId": "act.break_a_promise",
+      "target": "entity.joren",
+      "secrecy": "public"
+    }
+  ],
+  "checkpoints": [
+    {
+      "id": "three-broken-promises-and-a-reaction",
+      "after": 5,
+      "state": {
+        "narrative": {
+          "log": {
+            "nextId": 4
+          }
+        }
+      }
+    }
+  ]
+}

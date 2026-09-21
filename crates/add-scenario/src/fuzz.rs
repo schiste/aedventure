@@ -88,6 +88,12 @@ pub struct Coverage {
     pub beats_seen: BTreeSet<String>,
     pub choices_taken: BTreeSet<String>,
     pub ink_knots_entered: BTreeSet<String>,
+    /// Distinct castings, as `storylet.id -> role+role`. A storylet is only
+    /// worth its authoring cost if it produces many of these from one knot,
+    /// so the count is the measure of the multiplier §8 promises.
+    pub storylet_casts: BTreeSet<String>,
+    pub acts_emitted: BTreeSet<String>,
+    pub patterns_matched: BTreeSet<String>,
 }
 
 /// The campaign result, shaped for `--json` consumption.
@@ -100,6 +106,14 @@ pub struct FuzzReport {
     pub beats_never_seen: Vec<String>,
     pub choices_never_taken: Vec<String>,
     pub ink_knots_never_entered: Vec<String>,
+    pub storylets_never_cast: Vec<String>,
+    pub acts_never_emitted: Vec<String>,
+    pub patterns_never_matched: Vec<String>,
+    /// Axes no act in the catalog moves. A static hole: standing the writer can
+    /// ask about but nothing in the game can ever change.
+    pub axes_no_act_moves: Vec<String>,
+    /// Distinct casts per storylet, the multiplier made visible.
+    pub casts_per_storylet: BTreeMap<String, usize>,
     pub outcomes: BTreeMap<String, usize>,
     pub status: &'static str,
 }
@@ -147,6 +161,93 @@ pub fn run_once(seed: u64, policy: Policy, max_steps: usize, coverage: &mut Cove
             return FuzzRun { seed, policy, steps, outcome: RunOutcome::Exhausted, commands };
         };
         coverage.beats_seen.insert(beat_id.clone());
+
+        // Emit an act now and then, so runs diverge in standing rather than
+        // only in which choices they took. Without this the narrative log stays
+        // empty, every candidate has identical history, and casting can only
+        // ever produce the catalog's first pairing — the fuzzer would report
+        // full coverage of a world nothing had happened in.
+        if rng.below(3) == 0 {
+            let acts = add_core::game_data::narrative_acts();
+            let targets = add_core::narrative::castable_entities();
+            if !acts.is_empty() && !targets.is_empty() {
+                let act = &acts[rng.below(acts.len())];
+                let target = targets[rng.below(targets.len())];
+                let command = GameCommand::EmitAct {
+                    act_id: act.id.to_string(),
+                    target: Some(target.to_string()),
+                    cost: 1.0,
+                    need: 1.0,
+                    secrecy: None,
+                    witnesses: Vec::new(),
+                    causes: Vec::new(),
+                };
+                if simulation.apply(command).accepted {
+                    coverage.acts_emitted.insert(act.id.to_string());
+                    commands.push(json!({
+                        "type": "EmitAct",
+                        "actId": act.id,
+                        "target": target,
+                    }));
+                }
+            }
+        }
+
+        // What a hub would show right now, given everything the player has
+        // done. Recorded every step because the answer changes as standing
+        // moves, which is exactly the coverage worth measuring.
+        {
+            let state = simulation.state();
+            let available = add_core::narrative::castable_entities();
+            let casting = add_core::narrative::cast(
+                &state.narrative.log,
+                &state.narrative.arcs,
+                &state.narrative.cast_history,
+                &available,
+                state.clock_seconds,
+            );
+            for matched in &state.narrative.arcs.matches {
+                coverage.patterns_matched.insert(matched.pattern_id.clone());
+            }
+
+            let key = format!("{} -> {}", casting.storylet_id, casting.roles.join("+"));
+            // Only play a cast the campaign has not played before: the cost is
+            // then bounded by the number of distinct casts, not by steps, and
+            // replaying an identical cast proves nothing new.
+            if coverage.storylet_casts.insert(key) {
+                let played = add_core::narrative::NarrativeStory::new(seed)
+                    .and_then(|mut story| story.enter_storylet(&casting.knot, &casting.roles));
+                match played {
+                    Ok(scene) if !scene.lines.is_empty() => {
+                        coverage.ink_knots_entered.insert(casting.knot.clone());
+                    }
+                    Ok(_) => {
+                        return FuzzRun {
+                            seed,
+                            policy,
+                            steps,
+                            outcome: RunOutcome::DeadEnd(format!(
+                                "storylet `{}` cast but played no lines: a stalled hub",
+                                casting.storylet_id
+                            )),
+                            commands,
+                        };
+                    }
+                    Err(error) => {
+                        return FuzzRun {
+                            seed,
+                            policy,
+                            steps,
+                            outcome: RunOutcome::DeadEnd(format!(
+                                "storylet `{}` could not be entered: {error}",
+                                casting.storylet_id
+                            )),
+                            commands,
+                        };
+                    }
+                }
+            }
+        }
 
         let ink_scene = simulation.state().narrative.ink_scene.clone();
         let ink = ink_scene.filter(|scene| scene.beat_id == beat_id);
@@ -345,10 +446,48 @@ pub fn run_campaign(runs: usize, max_steps: usize) -> FuzzReport {
             }
         }
     }
+    // This metric means "authored prose nothing can reach". The hub fallback is
+    // reachable by construction — it plays precisely when nothing else
+    // qualifies, which a campaign of castable storylets never produces — so its
+    // absence here is not a coverage hole. `story::tests` plays it directly.
     let ink_knots_never_entered = add_core::narrative::all_knots()
         .iter()
+        .filter(|knot| **knot != add_core::narrative::FALLBACK_KNOT)
         .filter(|knot| !coverage.ink_knots_entered.contains(**knot))
         .map(|knot| knot.to_string())
+        .collect();
+
+    let mut casts_per_storylet: BTreeMap<String, usize> = BTreeMap::new();
+    for cast in &coverage.storylet_casts {
+        let id = cast.split(" -> ").next().unwrap_or(cast);
+        *casts_per_storylet.entry(id.to_string()).or_insert(0) += 1;
+    }
+    let storylets_never_cast = add_core::game_data::storylets()
+        .iter()
+        .filter(|storylet| !casts_per_storylet.contains_key(storylet.id))
+        .map(|storylet| storylet.id.to_string())
+        .collect();
+
+    let acts_never_emitted = add_core::game_data::narrative_acts()
+        .iter()
+        .filter(|act| !coverage.acts_emitted.contains(act.id))
+        .map(|act| act.id.to_string())
+        .collect();
+    let patterns_never_matched = add_core::game_data::sift_patterns()
+        .iter()
+        .filter(|pattern| !coverage.patterns_matched.contains(pattern.id))
+        .map(|pattern| pattern.id.to_string())
+        .collect();
+    // Static, not play-derived: an axis no act moves is dead standing however
+    // long the campaign runs, so the catalog is the only evidence needed.
+    let axes_no_act_moves = add_core::narrative::Axis::ALL
+        .into_iter()
+        .filter(|axis| {
+            !add_core::game_data::narrative_acts().iter().any(|act| {
+                act.impacts.iter().any(|impact| impact.axis == axis.as_str())
+            })
+        })
+        .map(|axis| axis.as_str().to_string())
         .collect();
 
     let status = if failures.is_empty() { "passed" } else { "failed" };
@@ -359,6 +498,11 @@ pub fn run_campaign(runs: usize, max_steps: usize) -> FuzzReport {
         coverage,
         beats_never_seen,
         choices_never_taken,
+        storylets_never_cast,
+        casts_per_storylet,
+        acts_never_emitted,
+        patterns_never_matched,
+        axes_no_act_moves,
         ink_knots_never_entered,
         outcomes,
         status,
@@ -393,6 +537,20 @@ pub fn replay(commands: &[Value]) -> Result<String, String> {
             "StartWorldAction" => {
                 simulation.apply(GameCommand::StartWorldAction {
                     action_id: string_field(command, "actionId")?,
+                });
+            }
+            "EmitAct" => {
+                simulation.apply(GameCommand::EmitAct {
+                    act_id: string_field(command, "actId")?,
+                    target: command
+                        .get("target")
+                        .and_then(Value::as_str)
+                        .map(str::to_string),
+                    cost: 1.0,
+                    need: 1.0,
+                    secrecy: None,
+                    witnesses: Vec::new(),
+                    causes: Vec::new(),
                 });
             }
             other => return Err(format!("replay does not know command `{other}`")),
@@ -472,5 +630,34 @@ mod tests {
         let second = run_once(99, Policy::Uniform, 60, &mut b);
         assert_eq!(first.commands, second.commands);
         assert_eq!(first.steps, second.steps);
+    }
+
+    #[test]
+    fn casting_produces_many_distinct_casts() {
+        // The measure of §8's multiplier, and a regression guard with teeth:
+        // the first version of the caster returned the first entity that fit,
+        // which passed every other test while producing exactly ONE distinct
+        // cast across 400 runs. Coverage, not correctness, caught that.
+        let report = run_campaign(120, 60);
+        assert!(report.ok(), "campaign failed: {:?}", report.failures);
+        assert!(
+            report.coverage.storylet_casts.len() >= 5,
+            "only {} distinct cast(s); one knot should tell many scenes: {:?}",
+            report.coverage.storylet_casts.len(),
+            report.coverage.storylet_casts,
+        );
+        assert!(
+            report.storylets_never_cast.is_empty(),
+            "storylets nothing ever cast: {:?}",
+            report.storylets_never_cast,
+        );
+    }
+
+    #[test]
+    fn a_hub_never_stalls_under_fuzz() {
+        // Every casting the campaign produced names a knot ink can enter;
+        // run_once turns a miss into a DeadEnd, so a pass here is the proof.
+        let report = run_campaign(60, 40);
+        assert_eq!(report.outcomes.get("dead_end"), None, "a hub stalled");
     }
 }

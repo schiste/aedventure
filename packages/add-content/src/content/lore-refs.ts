@@ -63,6 +63,21 @@ export const LORE_REFS: readonly LoreRef[] = [
     loreRef: "lore/characters/sleepless_members/kaylee_lindquist_the_raver.md",
   },
   {
+    contentId: "entity.decibella",
+    loreRef: "lore/factions/sleepless_in_decibels/telegram_archives/private/naptimeinja_x_decibella/README.md",
+    note: "Her voice is archived in the private channels; no standalone page yet.",
+  },
+  {
+    contentId: "entity.cribrocker",
+    loreRef: "lore/factions/sleepless_in_decibels/telegram_archives/private/cribrocker_x_decibella/README.md",
+    note: "As above: the archives are the canon source for this handle.",
+  },
+  {
+    contentId: "entity.naptimeninja",
+    loreRef: "lore/factions/sleepless_in_decibels/telegram_archives/private/naptimeinja_x_cribrocker/README.md",
+    note: "As above.",
+  },
+  {
     contentId: "structure.base",
     loreRef: "lore/locations/touraine/studio_echo.md",
     note: "Studio Echo is the Hero's Base settlement.",

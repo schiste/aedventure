@@ -46,3 +46,6 @@ pub(in crate::game_data) use sift_patterns::SIFT_PATTERNS;
 
 mod reactions;
 pub(in crate::game_data) use reactions::REACTIONS;
+
+mod storylets;
+pub(in crate::game_data) use storylets::STORYLETS;

@@ -26,8 +26,8 @@ Run `npm run docs:check` after changing this map or the routing documents.
 | A beat's prose, choice wording, or scene flow | Authored ink | `packages/add-content/narrative/story/*.ink` and the [narrative runtime contract](add-narrative-runtime.md) | `npm run content:check` |
 | A world fact, character history, place, faction, name, or canon status | Lore brick | `lore/` and the [three-brick contract](lore-engine-content-bricks.md) | `npm run lore:check` |
 | The lore link tying a content ID to the canon subject it implements | Content brick | `packages/add-content/src/content/lore-refs.ts` | `npm run lore:refs:check` |
-| Narrative standing, acts, knowledge, rumor, sifting, or storylet casting | Rust simulation | `crates/add-core/src/narrative/` and the [narrative plan](add-narrative-system-plan.md) | `cargo test -p add-core` (planned) |
-| A narrative entity, act, relationship state, sifting pattern, storylet sidecar, or `.ink` scene | Authored ADD content | `packages/add-content/src/content/narrative/` and `packages/add-runtime-client/narrative/story/` | `npm run content:check` (planned) |
+| Narrative standing, acts, knowledge, rumor, sifting, or storylet casting | Rust simulation | `crates/add-core/src/narrative/` and the [narrative plan](add-narrative-system-plan.md) | `cargo test -p add-core` |
+| A narrative entity, act, relationship state, sifting pattern, storylet sidecar, or `.ink` scene | Authored ADD content | `packages/add-content/src/content/narrative-*.ts` and `packages/add-content/narrative/story/main.ink` | `npm run content:check` |
 | Neutral square/hex topology, world, input, protocol, or renderer behavior | Shared engine | `packages/game-*` and `apps/engine-sandbox/` | `npm run agent:verify:types` then the relevant engine smoke |
 | Office auth, rooms, media, tenant maps, or server policy | Office/platform lane | `apps/web/`, `apps/api/`, `apps/world-server/`, `apps/media-gateway/` | `npm run smoke:office` |
 | Historical ADD or SkyOffice comparison | Legacy reference | `legacy/add/` or `legacy/skyoffice-original/` | `npm run check:legacy` when SkyOffice is involved |
@@ -196,11 +196,12 @@ These are gaps, not reasons to create a second ADD app:
   but the generated lore-side back-index is not built, 5 content IDs are linked
   against 38 unlinked in lore-linked families, and 344 lore subjects have no
   implementing content;
-- the narrative system (standing, acts, values, knowledge, rumor, sifting,
-  storylet casting, ink) is specified and planned but not implemented; there is
-  no persistent event log and no named-NPC entity graph today. See the
-  [narrative plan](add-narrative-system-plan.md) for the milestone order and
-  its two runtime prerequisites.
+- the narrative system is implemented through N6: a persistent event log, a
+  named-NPC entity graph, standing across 11 axes, values, knowledge and rumour,
+  causal sifting, authored reactions, ink-backed scenes, and parameterised
+  storylets with role casting. What remains is N7 (scale and hardening) plus two
+  recorded tool gaps, `narr graph` and `narr reach`. See the
+  [narrative plan](add-narrative-system-plan.md) for milestone status.
 
 The factual implemented-versus-not-yet inventory remains
 [ADD Systems Parity Audit](add-systems-parity-audit.md). This map tells an

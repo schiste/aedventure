@@ -34,6 +34,10 @@ fn render(sources: &[String]) -> Result<String, String> {
             .lines()
             .filter_map(|line| line.trim().strip_prefix("==="))
             .map(|rest| rest.trim_matches(|c: char| c == '=' || c.is_whitespace()))
+            // A parameterised knot (`=== sl_x(a, b) ===`, used by storylet
+            // casting) is named by its identifier, not its signature; the
+            // runtime enters it by that name and passes arguments separately.
+            .map(|name| name.split('(').next().unwrap_or(name).trim_end())
             .filter(|name| !name.is_empty())
             .collect();
         knots.sort_unstable();

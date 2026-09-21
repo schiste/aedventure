@@ -86,6 +86,38 @@ export const NARRATIVE_ENTITIES: readonly NarrativeEntityDef[] = [
       ["security", -0.6],
     ],
   },
+  {
+    id: "entity.decibella",
+    label: "Sarah Chen (@DeciBella)",
+    kind: "individual",
+    parent: "entity.sleepless.sounding_five",
+    rank: 2,
+    influence: 0.5,
+    values: [],
+  },
+  {
+    id: "entity.cribrocker",
+    label: "@CribRocker",
+    kind: "individual",
+    parent: "entity.sleepless.sounding_five",
+    rank: 1,
+    influence: 0.2,
+    // Cautious even by the faction's standards: the one who wanted the doors shut.
+    values: [
+      ["security", 1.0],
+      ["conformity", 0.7],
+      ["universalism", -0.9],
+    ],
+  },
+  {
+    id: "entity.naptimeninja",
+    label: "@NapTimeNinja",
+    kind: "individual",
+    parent: "entity.sleepless.sounding_five",
+    rank: 2,
+    influence: 0.4,
+    values: [],
+  },
 ]
 
 export function narrativeEntityById(id: string): NarrativeEntityDef | undefined {
