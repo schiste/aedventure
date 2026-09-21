@@ -184,13 +184,18 @@ impl Clone for NarrativeLog {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Compaction {
-    /// Score the folded-away events contributed, per observer and axis.
-    pub baselines: Vec<(String, Axis, f64)>,
-    /// Repetition counts carried forward, as (act, scope, count).
+    /// Score the folded-away events contributed, keyed `entity|axis`.
+    ///
+    /// A map rather than a list because it is read inside the fold, once per
+    /// query: scanning a list costs nothing with a handful of characters and
+    /// dominates everything at a thousand, where it made a compacted load
+    /// slower than an uncompacted one.
+    pub baselines: std::collections::BTreeMap<String, f64>,
+    /// Repetition counts carried forward, keyed `act|scope`.
     ///
     /// Without these, folding away a prefix would make the acts that follow it
     /// land at full strength again: the tenth theft would count as the first.
-    pub seen: Vec<(String, String, u32)>,
+    pub seen: std::collections::BTreeMap<String, u32>,
     /// Events at or before this tick have been folded away.
     pub through_tick: f64,
     /// How many events have been folded away, for reporting.
@@ -210,9 +215,17 @@ impl Compaction {
             return 0.0;
         }
         self.baselines
-            .iter()
-            .find(|(id, entry_axis, _)| id == observer_id && *entry_axis == axis)
-            .map_or(0.0, |(_, _, score)| *score)
+            .get(&Self::axis_key(observer_id, axis))
+            .copied()
+            .unwrap_or(0.0)
+    }
+
+    fn axis_key(observer_id: &str, axis: Axis) -> String {
+        format!("{observer_id}|{}", axis.as_str())
+    }
+
+    fn scope_key(act_id: &str, scope: &str) -> String {
+        format!("{act_id}|{scope}")
     }
 
     fn seen_for(&self, act_id: &str, scope: &str) -> u32 {
@@ -220,9 +233,9 @@ impl Compaction {
             return 0;
         }
         self.seen
-            .iter()
-            .find(|(act, entry_scope, _)| act == act_id && entry_scope == scope)
-            .map_or(0, |(_, _, count)| *count)
+            .get(&Self::scope_key(act_id, scope))
+            .copied()
+            .unwrap_or(0)
     }
 }
 
@@ -372,19 +385,19 @@ impl NarrativeLog {
         let tail = self.events.split_off(fold_upto);
         let folded = self.events.len();
 
-        let mut baselines = Vec::new();
+        let mut baselines = std::collections::BTreeMap::new();
         for observer in &observers {
             let context = self.observer_context(observer, now_tick);
             for axis in Axis::ALL {
                 let score = self.fold_axis(observer, axis, now_tick, Some(context)).0;
                 if score != 0.0 {
-                    baselines.push(((*observer).to_string(), axis, score));
+                    baselines.insert(Compaction::axis_key(observer, axis), score);
                 }
             }
         }
 
         // Carry the repetition counts forward.
-        let mut seen: Vec<(String, String, u32)> = Vec::new();
+        let mut seen: std::collections::BTreeMap<String, u32> = std::collections::BTreeMap::new();
         for event in &self.events {
             let Some(act) = narrative_act_def(&event.act_id) else {
                 continue;
@@ -399,13 +412,9 @@ impl NarrativeLog {
                 }
                 counted.push(scope);
                 let occurrences = event.count.max(1);
-                match seen
-                    .iter_mut()
-                    .find(|(act_id, entry, _)| act_id == &event.act_id && entry == scope)
-                {
-                    Some(entry) => entry.2 = entry.2.saturating_add(occurrences),
-                    None => seen.push((event.act_id.clone(), scope.to_string(), occurrences)),
-                }
+                let key = Compaction::scope_key(&event.act_id, scope);
+                let entry = seen.entry(key).or_insert(0);
+                *entry = entry.saturating_add(occurrences);
             }
         }
 
@@ -469,20 +478,27 @@ impl NarrativeLog {
                 }
             }
             Secrecy::Public => {
-                // Everyone under any scope the act touches.
+                // Recorded once at each scope the act touches, not on every
+                // member of those scopes.
+                //
+                // §10: "Public events are stored once at the scope node instead
+                // of on every member, which keeps memory flat when a faction of
+                // 200 learns something at once." Writing it to every member
+                // instead made a public act cost one entry per entity in the
+                // world, and left rumour re-checking all of them every boundary
+                // to rediscover that they already knew. Membership is what the
+                // ancestry walk in `knows` is for.
                 let Some(act) = narrative_act_def(&event.act_id) else { return };
-                let scopes: Vec<String> = act
+                let mut scopes: Vec<&str> = act
                     .impacts
                     .iter()
                     .filter_map(|impact| Self::resolve_scope(impact.scope, event))
-                    .map(str::to_string)
                     .collect();
-                for entity in crate::game_data::narrative_entities() {
-                    let chain = super::graph::ancestry(entity.id);
-                    if scopes.iter().any(|scope| chain.contains(&scope.as_str())) {
-                        self.knowledge
-                            .learn(entity.id, id, Knowledge::first_hand(event.tick));
-                    }
+                scopes.sort_unstable();
+                scopes.dedup();
+                for scope in scopes {
+                    self.knowledge
+                        .learn(scope, id, Knowledge::first_hand(event.tick));
                 }
             }
         }

@@ -6,6 +6,7 @@
 
 pub mod bench;
 pub mod calibrate;
+pub mod population;
 pub mod tuning;
 pub mod fuzz;
 

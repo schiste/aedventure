@@ -74,6 +74,20 @@ pub const FIDELITY_FLOOR: f64 = 0.2;
 /// Rumour advances on fixed tick boundaries, so an offline gap produces the
 /// same spread as playing through it.
 pub const RUMOUR_INTERVAL_SECONDS: f64 = 6.0 * 60.0;
+
+/// How many peers one entity can tell at a single boundary.
+///
+/// Without a cap, everyone in a group tells everyone else, so a step costs the
+/// square of the group's size: at a thousand entities a single boundary took 87
+/// milliseconds against a 5 millisecond budget, and priming a three-year game
+/// took six minutes.
+///
+/// A cap is also the truer model. People do not tell two hundred acquaintances
+/// anything; they tell the few they saw today, and it reaches the rest through
+/// them. Which peers those are rotates deterministically with the tick, so news
+/// still reaches the whole group over several boundaries — more slowly, which
+/// is how rumour actually travels.
+pub const GOSSIP_FANOUT: usize = 8;
 /// Base chance one tie passes something on in a single step.
 pub const GOSSIP_CHANCE: f64 = 0.45;
 /// News older than this stops travelling regardless of fidelity.
@@ -116,23 +130,41 @@ impl KnowledgeBase {
         self.by_entity.retain(|_, events| !events.is_empty());
     }
 
+    /// Does this entity know, in their own right or through a group they
+    /// belong to?
+    ///
+    /// A public act is recorded once at the scope it touched, so membership is
+    /// resolved here by walking up the graph rather than by copying the event
+    /// onto every member when it happens.
     pub fn knows(&self, entity_id: &str, event_id: u64) -> bool {
-        self.by_entity
-            .get(entity_id)
-            .is_some_and(|events| events.contains_key(&event_id))
+        self.holder_of(entity_id, event_id).is_some()
+    }
+
+    /// The nearest holder of this knowledge: the entity itself, or the closest
+    /// ancestor that holds it.
+    fn holder_of(&self, entity_id: &str, event_id: u64) -> Option<&Knowledge> {
+        if let Some(knowledge) = self.by_entity.get(entity_id).and_then(|e| e.get(&event_id)) {
+            return Some(knowledge);
+        }
+        let mut current = crate::game_data::narrative_entity_def(entity_id);
+        while let Some(entity) = current {
+            let Some(parent_id) = entity.parent else {
+                return None;
+            };
+            if let Some(knowledge) = self.by_entity.get(parent_id).and_then(|e| e.get(&event_id)) {
+                return Some(knowledge);
+            }
+            current = crate::game_data::narrative_entity_def(parent_id);
+        }
+        None
     }
 
     pub fn fidelity(&self, entity_id: &str, event_id: u64) -> Option<f64> {
-        self.by_entity
-            .get(entity_id)
-            .and_then(|events| events.get(&event_id))
-            .map(|knowledge| knowledge.fidelity)
+        self.holder_of(entity_id, event_id).map(|k| k.fidelity)
     }
 
     pub fn heard_first_hand(&self, entity_id: &str, event_id: u64) -> bool {
-        self.by_entity
-            .get(entity_id)
-            .and_then(|events| events.get(&event_id))
+        self.holder_of(entity_id, event_id)
             .is_some_and(|knowledge| knowledge.hops == 0)
     }
 
@@ -172,20 +204,43 @@ impl KnowledgeBase {
     /// Ties an entity can talk to: its group, and everyone sharing that group.
     /// Rumour follows contact, not sentiment — rivals in one band gossip
     /// constantly.
-    fn ties(entity_id: &str) -> Vec<&'static str> {
-        let Some(entity) = crate::game_data::narrative_entity_def(entity_id) else {
-            return Vec::new();
-        };
-        let Some(parent_id) = entity.parent else {
-            return Vec::new();
-        };
-        let mut ties = vec![parent_id];
-        for candidate in crate::game_data::narrative_entities() {
-            if candidate.parent == Some(parent_id) && candidate.id != entity_id {
-                ties.push(candidate.id);
+    /// Who an entity would tell: the group it belongs to, and everyone else in
+    /// that group.
+    ///
+    /// Read from an index built once rather than by scanning the whole
+    /// population per call. The scan it replaces was O(entities) *and*
+    /// allocated, and `step` called it once per teller per known event — at a
+    /// thousand entities that is three hundred thousand scans of a thousand
+    /// entities for a single rumour boundary.
+    fn ties(entity_id: &str) -> &'static [&'static str] {
+        static INDEX: std::sync::OnceLock<
+            std::collections::HashMap<&'static str, Vec<&'static str>>,
+        > = std::sync::OnceLock::new();
+
+        let index = INDEX.get_or_init(|| {
+            let mut by_parent: std::collections::HashMap<&'static str, Vec<&'static str>> =
+                std::collections::HashMap::new();
+            for entity in crate::game_data::narrative_entities() {
+                if let Some(parent_id) = entity.parent {
+                    by_parent.entry(parent_id).or_default().push(entity.id);
+                }
             }
-        }
-        ties
+
+            let mut ties = std::collections::HashMap::new();
+            for entity in crate::game_data::narrative_entities() {
+                let Some(parent_id) = entity.parent else {
+                    continue;
+                };
+                let mut listeners = vec![parent_id];
+                if let Some(siblings) = by_parent.get(parent_id) {
+                    listeners.extend(siblings.iter().filter(|id| **id != entity.id));
+                }
+                ties.insert(entity.id, listeners);
+            }
+            ties
+        });
+
+        index.get(entity_id).map(Vec::as_slice).unwrap_or(&[])
     }
 
     /// Advance rumour to `now_tick` on fixed boundaries. Idempotent: calling
@@ -207,6 +262,32 @@ impl KnowledgeBase {
             if self.is_silenced(teller_id) {
                 continue;
             }
+            // §10: "Only entities holding spreadable, recent knowledge are
+            // visited." Someone with nothing fresh to pass on is skipped before
+            // their listeners are looked up at all.
+            let has_fresh_news = events.iter().any(|(_, knowledge)| {
+                knowledge.fidelity > FIDELITY_FLOOR
+                    && (tick - knowledge.learned_at).max(0.0) / GAME_DAY_SECONDS <= RECENCY_DAYS
+            });
+            if !has_fresh_news {
+                continue;
+            }
+            // Depends only on the teller, so it is resolved once rather than
+            // once per event they know.
+            let all_listeners = Self::ties(teller_id);
+            // A rotating window, so the cap bounds the work per boundary
+            // without permanently cutting anyone out of earshot.
+            let offset = if all_listeners.is_empty() {
+                0
+            } else {
+                (deterministic_roll(seed, tick, teller_id, "", 0) * all_listeners.len() as f64)
+                    as usize
+                    % all_listeners.len()
+            };
+            let reach = all_listeners.len().min(GOSSIP_FANOUT);
+            let listeners: Vec<&'static str> = (0..reach)
+                .map(|step| all_listeners[(offset + step) % all_listeners.len()])
+                .collect();
             for (event_id, knowledge) in events {
                 if knowledge.fidelity <= FIDELITY_FLOOR {
                     continue;
@@ -216,7 +297,7 @@ impl KnowledgeBase {
                     continue;
                 }
                 let recency = 1.0 - (age_days / RECENCY_DAYS);
-                for listener_id in Self::ties(teller_id) {
+                for listener_id in listeners.iter().copied() {
                     if self.knows(listener_id, *event_id) {
                         continue;
                     }

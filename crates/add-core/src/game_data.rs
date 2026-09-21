@@ -2814,8 +2814,42 @@ pub struct NarrativeActDef {
     pub impacts: &'static [ActImpactDef],
 }
 
+/// A population installed at runtime, replacing the authored cast.
+///
+/// The authored catalog is a handful of named characters, which is the right
+/// shape for the game's content and the wrong shape for asking whether the
+/// system holds at the 500 to 1,000 entities §10 sizes for. §11's `narr
+/// generate` describes producing individuals from each group's rules and the
+/// world seed rather than authoring them one by one, so the runtime has to be
+/// able to hold entities that never came from a content file.
+///
+/// Installed once, before anything reads the graph, and never by the game —
+/// only by tooling. After installation the lookup path is exactly what it was:
+/// a slice and an index built once, with no lock on the hot path, because the
+/// entity table is read once per event inside the fold.
+static POPULATION: OnceLock<Vec<NarrativeEntityDef>> = OnceLock::new();
+
+/// Replace the authored cast with a generated population.
+///
+/// Refused once anything has read the graph: the id index is built on first
+/// use, so a later swap would leave lookups answering from a table that is no
+/// longer the one in force. Failing loudly is the only safe answer — silently
+/// half-swapping the world is the sort of thing that shows up as an
+/// unreproducible benchmark result days later.
+pub fn install_generated_population(entities: Vec<NarrativeEntityDef>) -> Result<(), String> {
+    if NARRATIVE_ENTITY_INDEX.get().is_some() {
+        return Err("the entity graph has already been read; install before any lookup".into());
+    }
+    POPULATION
+        .set(entities)
+        .map_err(|_| "a population has already been installed".to_string())
+}
+
 pub fn narrative_entities() -> &'static [NarrativeEntityDef] {
-    catalog::NARRATIVE_ENTITIES
+    POPULATION
+        .get()
+        .map(Vec::as_slice)
+        .unwrap_or(catalog::NARRATIVE_ENTITIES)
 }
 
 /// Id-to-definition indexes for the narrative catalogs.
@@ -2824,10 +2858,12 @@ pub fn narrative_entities() -> &'static [NarrativeEntityDef] {
 /// log — folding standing, sifting, casting. A linear scan there multiplies the
 /// log length by the catalog length, which is the difference between a query
 /// costing microseconds and costing milliseconds. Built once, on first use.
+static NARRATIVE_ENTITY_INDEX: OnceLock<HashMap<&'static str, &'static NarrativeEntityDef>> =
+    OnceLock::new();
+
 fn narrative_entity_index() -> &'static HashMap<&'static str, &'static NarrativeEntityDef> {
-    static INDEX: OnceLock<HashMap<&'static str, &'static NarrativeEntityDef>> = OnceLock::new();
-    INDEX.get_or_init(|| {
-        catalog::NARRATIVE_ENTITIES
+    NARRATIVE_ENTITY_INDEX.get_or_init(|| {
+        narrative_entities()
             .iter()
             .map(|entity| (entity.id, entity))
             .collect()

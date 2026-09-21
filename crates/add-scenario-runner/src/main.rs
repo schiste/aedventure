@@ -201,6 +201,7 @@ fn run_calibrate(arguments: Vec<String>) -> Result<(), String> {
 /// Measure the §10 narrative budgets at full scale.
 fn run_bench(arguments: Vec<String>) -> Result<(), String> {
     let mut events = add_scenario::bench::FULL_SCALE_EVENTS;
+    let mut entities = 0usize;
     let mut iterator = arguments.iter();
     while let Some(argument) = iterator.next() {
         match argument.as_str() {
@@ -210,8 +211,19 @@ fn run_bench(arguments: Vec<String>) -> Result<(), String> {
                     .and_then(|value| value.parse().ok())
                     .ok_or_else(|| "--events needs a number".to_string())?;
             }
+            "--entities" => {
+                entities = iterator
+                    .next()
+                    .and_then(|value| value.parse().ok())
+                    .ok_or_else(|| "--entities needs a number".to_string())?;
+            }
             other => return Err(format!("unknown bench option `{other}`")),
         }
+    }
+
+    // Before anything reads the graph, or the installation is refused.
+    if entities > 0 {
+        add_scenario::population::install(entities, 1)?;
     }
 
     let report = add_scenario::bench::run(events);

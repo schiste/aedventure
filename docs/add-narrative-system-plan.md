@@ -648,6 +648,59 @@ staleness as a consequence.
 The output is consequences, not numbers, as §11 asks: softening the top three
 tiers reports "entity.vell goodwill very_high -> high", not a table of deltas.
 
+**The 1,000-entity half of the acceptance criterion is now measured.**
+
+`narr bench --entities 1000` generates a population from the authored groups'
+rules and a seed — §11's `narr generate` in miniature — and installs it before
+anything reads the graph. Every authored character is kept with its own id, so
+committed scenarios and authored content are unaffected; the generated members
+hang off the real groups with their group's value profile, deviated.
+
+It could not be run at all at first: 1,000 entities did not finish a benchmark
+in fifteen minutes, and neither did 50 events. Instrumenting the phases rather
+than guessing showed the whole cost in one place — **rumour, at 384 seconds,
+against milliseconds for everything else.** Three defects, each invisible at a
+cast of five:
+
+1. **`ties()` scanned the whole population and allocated**, and was called once
+   per teller per known event — 300,000 scans of 1,000 entities for a single
+   boundary. It is an index now, and resolved once per teller.
+2. **Public events were written to every entity.** §10 says they belong at the
+   scope node, read through membership, and it is right: one public act cost one
+   entry per entity in the world, and rumour then re-checked all of them every
+   boundary to rediscover they already knew.
+3. **Everyone told everyone.** A generated group of 333 members means a step
+   costs the square of the group. Fan-out is capped at 8 peers on a rotating
+   window, which bounds the work and is the truer model — people tell the few
+   they saw today, and it reaches the rest through them, more slowly.
+
+Compaction's own lookups were a fourth: `baselines` and `seen` were lists,
+scanned inside the fold. Fine at five characters, and at a thousand they made a
+compacted load *slower* than an uncompacted one. They are maps now.
+
+At 998 entities and 2,000 events, four of the five budgets hold:
+
+| Operation | At 1,000 entities | Budget |
+| --- | --- | --- |
+| `standing` (warm) | 0.1 us | 50 us |
+| `emit_act` | 0.2 us | 500 us |
+| `rumour_step` | 4,238 us | 5,000 us |
+| `storylet_selection` | 2,827 us | 5,000 us |
+| `load_replay` | 27,075,362 us | 2,000,000 us |
+
+`rumour_step` passes with little room, and is the first thing to watch if the
+population grows again.
+
+**`load_replay` misses, and what that means depends on what a load is.** The
+figure above folds every entity on every axis, which is the worst case and not
+what the engine does: standing is derived on demand and cached, so a load pays
+for the scores it is about to show. `load_replay_present_only`, the eight people
+in a scene, is **91,076 us** — well inside the budget. Both are reported rather
+than one replacing the other, because the eager figure is what §10's budget is
+written against, and redefining a measurement after watching it fail is how a
+budget stops meaning anything. Closing the eager case honestly would need the
+per-entity cache to survive a save, which is a design change, not a tuning one.
+
 **Still outstanding:**
 - **1,000 entities.** Only the event-count half of the acceptance criterion is
   actually measured. The entity graph is a compile-time catalog, so a synthetic

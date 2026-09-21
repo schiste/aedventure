@@ -257,6 +257,28 @@ pub fn run(events: usize) -> BenchReport {
         load_uncompacted_samples.push(micros_since(start));
     }
 
+    // What opening a save actually costs.
+    //
+    // The figures above fold every entity on every axis, which is the worst
+    // case and not what the engine does: standing is derived on demand and
+    // cached, so a load pays for the scores it is about to show — the people in
+    // the scene — not for all eleven axes of every stranger in the world. Both
+    // are reported rather than replacing one with the other, because the eager
+    // figure is the one §10's budget is written against and redefining a
+    // measurement after watching it fail is how a budget stops meaning anything.
+    let present: Vec<&str> = entities.iter().take(8).copied().collect();
+    let mut load_present_samples = Vec::new();
+    for _ in 0..2 {
+        let fresh = compacted.clone();
+        let start = Instant::now();
+        for observer in &present {
+            for axis in Axis::ALL {
+                std::hint::black_box(fresh.standing(observer, axis, now));
+            }
+        }
+        load_present_samples.push(micros_since(start));
+    }
+
     let measurements = vec![
         Measurement::new("standing_warm", warm_samples),
         // No budget: §10 sets one figure for a standing query, and names the
@@ -269,6 +291,7 @@ pub fn run(events: usize) -> BenchReport {
         Measurement::new("storylet_selection", cast_samples),
         Measurement::new("load_replay", load_samples),
         Measurement::new("load_replay_uncompacted", load_uncompacted_samples),
+        Measurement::new("load_replay_present_only", load_present_samples),
     ];
 
     BenchReport {
