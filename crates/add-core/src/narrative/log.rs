@@ -82,7 +82,7 @@ pub struct ImpactTrace {
 }
 
 /// Append-only history. Small and flat on purpose: compaction belongs to N7.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NarrativeLog {
     pub events: Vec<NarrativeEvent>,
@@ -96,6 +96,64 @@ pub struct NarrativeLog {
     /// and its cooldown can be read from the log rather than tracked apart.
     #[serde(default)]
     pub fired_reactions: Vec<crate::narrative::react::FiredReaction>,
+    /// Memoised scores, keyed by the exact inputs that produce them.
+    ///
+    /// Folding one axis walks the whole log, and callers query in bursts: the
+    /// caster asks for eleven axes across every candidate at a single tick, and
+    /// the UI asks again for each entity it draws. Those repeats are bit-for-bit
+    /// identical, so they are answered from here.
+    ///
+    /// Derived state, never persisted, and not part of the log's identity —
+    /// hence `skip`, and the hand-written `PartialEq` and `Clone` below, which
+    /// ignore it. A stale answer is impossible by construction rather than by
+    /// discipline: the key carries the log length, the observer's knowledge
+    /// count and the tick, so anything that could change a score changes the
+    /// key. That is the specification's "invalidated when that entity learns an
+    /// event", expressed so that forgetting to invalidate cannot happen.
+    #[serde(skip)]
+    standing_cache: std::cell::RefCell<std::collections::HashMap<StandingKey, f64>>,
+}
+
+/// The cache is derived state, so it takes no part in equality: two logs with
+/// the same events and knowledge are the same log, whether or not either has
+/// answered a query yet. Scenario and determinism tests compare logs directly
+/// and would otherwise fail on nothing more than one of them having been read.
+impl PartialEq for NarrativeLog {
+    fn eq(&self, other: &Self) -> bool {
+        self.events == other.events
+            && self.next_id == other.next_id
+            && self.knowledge == other.knowledge
+            && self.fired_reactions == other.fired_reactions
+    }
+}
+
+/// A clone starts with an empty cache rather than copying one. The entries
+/// would still be valid — the key pins every input — but a clone is usually
+/// taken to diverge from the original, so carrying them costs more than it saves.
+impl Clone for NarrativeLog {
+    fn clone(&self) -> Self {
+        Self {
+            events: self.events.clone(),
+            next_id: self.next_id,
+            knowledge: self.knowledge.clone(),
+            fired_reactions: self.fired_reactions.clone(),
+            standing_cache: Default::default(),
+        }
+    }
+}
+
+/// Everything a folded score depends on. Two queries with equal keys must
+/// produce equal scores, so the key is the cache's correctness argument.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct StandingKey {
+    observer: String,
+    axis: Axis,
+    /// `f64` has no `Eq`, and ticks are compared for exact equality here, so
+    /// the bit pattern is the key. Any difference at all is a cache miss,
+    /// which is the safe direction.
+    tick_bits: u64,
+    events: usize,
+    knowledge: usize,
 }
 
 /// An observer's value profile: their own when authored, otherwise inherited
@@ -193,20 +251,16 @@ impl NarrativeLog {
 
     /// Repetition: 0.7^n over similar acts toward the same scope. Ten small
     /// gifts do not equal one sacrifice (habituation, diminishing returns).
-    fn repetition_factor(&self, upto: usize, act_id: &str, scope: &str) -> f64 {
-        let seen = self.events[..upto]
-            .iter()
-            .filter(|event| {
-                event.act_id == act_id
-                    && narrative_act_def(&event.act_id)
-                        .map(|act| {
-                            act.impacts
-                                .iter()
-                                .any(|impact| Self::resolve_scope(impact.scope, event) == Some(scope))
-                        })
-                        .unwrap_or(false)
-            })
-            .count();
+    /// The diminishing return on repeating the same act against the same scope:
+    /// the nth occurrence lands at 0.7^n of the first.
+    ///
+    /// `seen` is the number of *prior* occurrences, which `fold_axis` now
+    /// accumulates as it walks the log forward. It used to be counted by
+    /// rescanning every earlier event for every event, which made folding one
+    /// axis quadratic in the log: 12 million inner steps at 5,000 events and
+    /// 1.25 billion at the 50,000 the specification sizes for. The arithmetic
+    /// is unchanged — only how often the count is computed.
+    fn repetition_decay(seen: u32) -> f64 {
         0.7_f64.powi(seen as i32)
     }
 
@@ -241,8 +295,14 @@ impl NarrativeLog {
     ) -> (f64, Vec<ImpactTrace>) {
         let mut score = 0.0;
         let mut traces = Vec::new();
+        // Prior occurrences of (act, scope), accumulated as the walk proceeds.
+        // Counted over every impact of every event, not only those on the axis
+        // being folded, because repetition is a property of the act landing on
+        // the scope at all — which is what the rescan it replaces also did.
+        let mut seen_counts: std::collections::HashMap<(&str, &str), u32> =
+            std::collections::HashMap::new();
 
-        for (index, event) in self.events.iter().enumerate() {
+        for event in self.events.iter() {
             let Some(act) = narrative_act_def(&event.act_id) else {
                 continue;
             };
@@ -294,7 +354,9 @@ impl NarrativeLog {
                 };
                 // Cost and need only amplify help, never harm.
                 let cost = if negative { 1.0 } else { event.cost };
-                let repetition = self.repetition_factor(index, &event.act_id, scope);
+                let repetition = Self::repetition_decay(
+                    seen_counts.get(&(event.act_id.as_str(), scope)).copied().unwrap_or(0),
+                );
 
                 // Observer amplifiers. Neutral on the closeness/belonging
                 // passes themselves, which is what `context: None` means.
@@ -360,13 +422,41 @@ impl NarrativeLog {
                     score_after: score,
                 });
             }
+
+            // Record what this event landed on, after its own impacts have been
+            // scored against the prior counts. Distinct scopes only: the rescan
+            // this replaces counted each earlier *event* once, however many of
+            // its impacts touched the scope.
+            let mut counted: Vec<&str> = Vec::new();
+            for impact in act.impacts {
+                let Some(scope) = Self::resolve_scope(impact.scope, event) else {
+                    continue;
+                };
+                if counted.contains(&scope) {
+                    continue;
+                }
+                counted.push(scope);
+                *seen_counts.entry((event.act_id.as_str(), scope)).or_insert(0) += 1;
+            }
         }
 
         (score, traces)
     }
 
     pub fn standing(&self, observer_id: &str, axis: Axis, now_tick: f64) -> f64 {
-        self.explain(observer_id, axis, now_tick).0
+        let key = StandingKey {
+            observer: observer_id.to_string(),
+            axis,
+            tick_bits: now_tick.to_bits(),
+            events: self.events.len(),
+            knowledge: self.knowledge.len_for(observer_id),
+        };
+        if let Some(hit) = self.standing_cache.borrow().get(&key) {
+            return *hit;
+        }
+        let score = self.explain(observer_id, axis, now_tick).0;
+        self.standing_cache.borrow_mut().insert(key, score);
+        score
     }
 
     pub fn band(&self, observer_id: &str, axis: Axis, now_tick: f64) -> Band {

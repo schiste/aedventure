@@ -4,6 +4,7 @@
 //! rules and state transitions, while this crate owns the test/replay format,
 //! canonical comparison, and diagnostics around those transitions.
 
+pub mod bench;
 pub mod fuzz;
 
 use add_core::{GameCommand, GameState, Simulation, StationSpecializationPathState};

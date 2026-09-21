@@ -508,6 +508,74 @@ recorded here rather than papered over.
 *Accepted when:* the specification's §10 budgets hold at 1,000 entities and
 50,000 events, measured by the existing trace harness.
 
+**Status: budgets hold; compaction and the tuning tools are not built.**
+
+At 50,000 events every §10 budget passes. Four algorithmic defects were in the
+way, each found by measuring rather than by reading:
+
+| Operation | Before | After | Budget |
+| --- | --- | --- | --- |
+| `standing` (warm) | 14,221 us | 0.17 us | 50 us |
+| `emit_act` | 56,480 us | 0.58 us | 500 us |
+| `rumour_step` | 754 us | 960 us | 5,000 us |
+| `storylet_selection` | 3,160,697 us | 7.46 us | 5,000 us |
+| `load_replay` | — | 1,039,116 us | 2,000,000 us |
+
+1. **`repetition_factor` rescanned every earlier event for every event**, making
+   one axis fold quadratic in the log: 12 million inner steps at 5,000 events,
+   1.25 billion at 50,000. It is now accumulated in the single forward pass the
+   fold already makes. The arithmetic is unchanged.
+2. **The sifter paired every event with every other event**, for every pattern,
+   on every act emitted. It now buckets by subject — both slots must name the
+   same subject, so pairs can only form within a bucket — and `emit_act` extends
+   the previous result instead of re-sifting, since the new event can only
+   complete a pattern as its second slot.
+3. **Casting recomputed a candidate's salience inside a sort comparator**, twice
+   per comparison and again at every backtracking step, each call being up to
+   eleven full log scans. This was mine, introduced in N6, and it is why
+   storylet selection took three seconds. Ranking is now computed once per role.
+4. **The catalog lookups were linear scans** called once per event inside those
+   loops, multiplying log length by catalog length. They are indexed now.
+
+Two further changes came out of the measuring rather than the optimising:
+
+- **An arc now completes once per subject.** A pattern with no expiry — and
+  `arc.broken_oath` has none — matched every qualifying pair, so the match list
+  grew quadratically *inside the save*. Nothing reads more than whether an arc
+  completed and for whom.
+- **Both sift paths now cite the same pair.** They searched candidate firsts in
+  opposite directions, so for a subject with several qualifying firsts they
+  named different events for the same arc. A save records those ids and
+  `narr explain` shows them to a writer, so this was a real divergence and not
+  a formality; `the_two_paths_cite_the_same_pair_when_several_firsts_qualify`
+  pins it, and failed before the fix.
+
+*Measuring on a shared machine.* The first full run reported every figure 5 to
+10 times slower than the previous one, with no code change between them: the
+load average was 22, because this repository is built for concurrent agents.
+The budgets are therefore judged on the **fastest** sample, which is the one
+least contaminated by preemption and a true lower bound — it cannot produce a
+false pass. `npm run narr:budgets` measures and judges; the numbers live in
+`performance/add-budgets.json`, and the Rust bench only measures, so the gate
+cannot drift from the figures it claims to enforce.
+
+**Not built, and honestly outstanding:**
+
+- **Log compaction and act coalescing.** Both are N7 deliverables. They were not
+  needed to meet the budgets, because the quadratic defects above were the
+  actual cost, but `standing_cold` — the first read after an act, once the cache
+  is invalidated — is 15.4 ms at 50,000 events and has no §10 budget of its own.
+  That is the number compaction would address, and it is the honest reason to
+  still want it.
+- **`narr calibrate` and `narr diff-tuning`.** Not started.
+- **1,000 entities.** Only the event-count half of the acceptance criterion is
+  actually measured. The entity graph is a compile-time catalog, so a synthetic
+  population cannot be injected at runtime: unknown ids resolve to nothing,
+  inheritance returns zero and the fold exits early, which would report a
+  flatteringly fast number for a world that does not exist. The measured cast is
+  the authored one. Reaching the stated scale needs either `narr generate` from
+  §11 or an entity graph passed as data rather than read from a global.
+
 N1 to N3 are the minimum for a vertical slice. N4 is the first point where the
 system feels different from a conventional reputation bar.
 

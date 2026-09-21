@@ -28,7 +28,7 @@ pub use log::{ImpactTrace, NarrativeEvent, NarrativeLog, event_for};
 pub use standing::{Axis, Band, Derived, Intent, Tier, derive, fold};
 pub use values::{Profile, Value, verdict};
 pub use react::{FiredReaction, MAX_CHAIN_DEPTH};
-pub use sift::{ArcMatch, SiftResult, sift};
+pub use sift::{ArcMatch, SiftResult, sift, sift_append};
 pub use story::{InkChoice, InkLine, InkScene, NarrativeStory, beat_has_knot};
 
 /// The ink knot that renders a story beat, by convention `story.beat.x` ->

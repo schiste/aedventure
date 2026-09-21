@@ -116,10 +116,10 @@ fn solve(
     available: &[&str],
     now: f64,
 ) -> Option<Vec<String>> {
-    fn recurse(
+    fn recurse<'a>(
         log: &NarrativeLog,
         storylet: &StoryletDef,
-        available: &[&str],
+        ranked_per_role: &[Vec<&'a str>],
         now: f64,
         index: usize,
         chosen: &mut Vec<String>,
@@ -128,14 +128,8 @@ fn solve(
             return true;
         }
         let role = &storylet.roles[index];
-        // Most history first, id as the tie-break so casting stays deterministic.
-        let mut ranked: Vec<&str> = available.to_vec();
-        ranked.sort_by(|a, b| {
-            candidate_salience(log, b, role.axis, now)
-                .cmp(&candidate_salience(log, a, role.axis, now))
-                .then(a.cmp(b))
-        });
-        for candidate in &ranked {
+        let ranked = &ranked_per_role[index];
+        for candidate in ranked {
             if chosen.iter().any(|taken| taken == *candidate) {
                 continue;
             }
@@ -143,7 +137,7 @@ fn solve(
                 continue;
             }
             chosen.push((*candidate).to_string());
-            if recurse(log, storylet, available, now, index + 1, chosen) {
+            if recurse(log, storylet, ranked_per_role, now, index + 1, chosen) {
                 return true;
             }
             chosen.pop();
@@ -151,8 +145,30 @@ fn solve(
         false
     }
 
+    // Rank each role's candidates once, before the search.
+    //
+    // A candidate's salience depends only on the role's axis and the log, so it
+    // is constant for the whole solve. Computing it inside a sort comparator
+    // re-ran it twice per comparison, and re-sorting at every backtracking step
+    // multiplied that again — each call being up to eleven full scans of the
+    // event log. Hoisting it out is what takes storylet selection from seconds
+    // to microseconds; the ordering it produces is identical.
+    let ranked_per_role: Vec<Vec<&str>> = storylet
+        .roles
+        .iter()
+        .map(|role| {
+            let mut scored: Vec<(i64, &str)> = available
+                .iter()
+                .map(|candidate| (candidate_salience(log, candidate, role.axis, now), *candidate))
+                .collect();
+            // Most history first, id as the tie-break so casting stays deterministic.
+            scored.sort_by(|a, b| b.0.cmp(&a.0).then(a.1.cmp(b.1)));
+            scored.into_iter().map(|(_, candidate)| candidate).collect()
+        })
+        .collect();
+
     let mut chosen = Vec::new();
-    recurse(log, storylet, available, now, 0, &mut chosen).then_some(chosen)
+    recurse(log, storylet, &ranked_per_role, now, 0, &mut chosen).then_some(chosen)
 }
 
 /// Pick the most salient storylet that can be cast right now.

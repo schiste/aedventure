@@ -92,6 +92,15 @@ pub struct KnowledgeBase {
 }
 
 impl KnowledgeBase {
+    /// How many events this entity knows of.
+    ///
+    /// Used as a cheap version stamp for the standing cache: an entity's score
+    /// can only move when the log grows or when that entity learns something,
+    /// and learning is only ever an insertion here.
+    pub fn len_for(&self, entity_id: &str) -> usize {
+        self.by_entity.get(entity_id).map_or(0, |events| events.len())
+    }
+
     pub fn knows(&self, entity_id: &str, event_id: u64) -> bool {
         self.by_entity
             .get(entity_id)

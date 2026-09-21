@@ -74,7 +74,9 @@
     "smoke:add-rpg": "npm --workspace @aedventure/add-rpg run smoke",
     "smoke:add-rpg:built": "node scripts/add-rpg-smoke.test.cjs",
     "smoke:frontend": "npm run smoke:office:built",
-    "narr:lint": "npm --workspace @aedventure/add-content run build && node scripts/narrative-lint.cjs"
+    "narr:lint": "npm --workspace @aedventure/add-content run build && node scripts/narrative-lint.cjs",
+    "narr:bench": "cargo run --quiet --release -p add-scenario-runner -- bench",
+    "narr:budgets": "node scripts/narr-bench-check.cjs"
   },
   "devDependencies": {
     "playwright": "^1.60.0",

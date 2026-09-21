@@ -1367,7 +1367,11 @@ impl Simulation {
         // Reactions run after rumour, so a character acts when they *hear*,
         // not when it happened.
         crate::narrative::react::run(&mut self.state.narrative.log, now);
-        self.state.narrative.arcs = crate::narrative::sift(&self.state.narrative.log);
+        // Extend the existing result rather than re-sifting the whole log:
+        // the new event is the newest, so it can only complete a pattern as the
+        // second slot. `extending_a_result_agrees_with_sifting_the_whole_log`
+        // pins the two paths together.
+        crate::narrative::sift_append(&mut self.state.narrative.arcs, &self.state.narrative.log);
         self.state.resources.bassline_cap = self.bassline_cap();
         self.state.resources.chorus_cap = self.chorus_cap();
         self.state.resources.harmonics_cap = self.harmonics_cap();
@@ -2748,7 +2752,11 @@ impl Simulation {
             .filter(|id| crate::game_data::narrative_entity_def(id).is_some())
             .collect();
         self.state.narrative.log.append(event);
-        self.state.narrative.arcs = crate::narrative::sift(&self.state.narrative.log);
+        // Extend the existing result rather than re-sifting the whole log:
+        // the new event is the newest, so it can only complete a pattern as the
+        // second slot. `extending_a_result_agrees_with_sifting_the_whole_log`
+        // pins the two paths together.
+        crate::narrative::sift_append(&mut self.state.narrative.arcs, &self.state.narrative.log);
         self.push_note(format!("{} was noted.", act.label));
     }
 

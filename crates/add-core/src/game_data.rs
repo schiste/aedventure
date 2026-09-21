@@ -1,3 +1,6 @@
+use std::collections::HashMap;
+use std::sync::OnceLock;
+
 use serde::Serialize;
 
 use crate::topology::{AxialBounds, Landmark, MapCell, MapDefinition, TerrainRegion};
@@ -2815,16 +2818,42 @@ pub fn narrative_entities() -> &'static [NarrativeEntityDef] {
     catalog::NARRATIVE_ENTITIES
 }
 
+/// Id-to-definition indexes for the narrative catalogs.
+///
+/// These three are looked up once per event inside loops that walk the entire
+/// log — folding standing, sifting, casting. A linear scan there multiplies the
+/// log length by the catalog length, which is the difference between a query
+/// costing microseconds and costing milliseconds. Built once, on first use.
+fn narrative_entity_index() -> &'static HashMap<&'static str, &'static NarrativeEntityDef> {
+    static INDEX: OnceLock<HashMap<&'static str, &'static NarrativeEntityDef>> = OnceLock::new();
+    INDEX.get_or_init(|| {
+        catalog::NARRATIVE_ENTITIES
+            .iter()
+            .map(|entity| (entity.id, entity))
+            .collect()
+    })
+}
+
 pub fn narrative_entity_def(id: &str) -> Option<&'static NarrativeEntityDef> {
-    catalog::NARRATIVE_ENTITIES.iter().find(|entity| entity.id == id)
+    narrative_entity_index().get(id).copied()
 }
 
 pub fn narrative_acts() -> &'static [NarrativeActDef] {
     catalog::NARRATIVE_ACTS
 }
 
+fn narrative_act_index() -> &'static HashMap<&'static str, &'static NarrativeActDef> {
+    static INDEX: OnceLock<HashMap<&'static str, &'static NarrativeActDef>> = OnceLock::new();
+    INDEX.get_or_init(|| {
+        catalog::NARRATIVE_ACTS
+            .iter()
+            .map(|act| (act.id, act))
+            .collect()
+    })
+}
+
 pub fn narrative_act_def(id: &str) -> Option<&'static NarrativeActDef> {
-    catalog::NARRATIVE_ACTS.iter().find(|act| act.id == id)
+    narrative_act_index().get(id).copied()
 }
 
 
@@ -2847,8 +2876,18 @@ pub fn sift_patterns() -> &'static [SiftPatternDef] {
     catalog::SIFT_PATTERNS
 }
 
+fn sift_pattern_index() -> &'static HashMap<&'static str, &'static SiftPatternDef> {
+    static INDEX: OnceLock<HashMap<&'static str, &'static SiftPatternDef>> = OnceLock::new();
+    INDEX.get_or_init(|| {
+        catalog::SIFT_PATTERNS
+            .iter()
+            .map(|pattern| (pattern.id, pattern))
+            .collect()
+    })
+}
+
 pub fn sift_pattern_def(id: &str) -> Option<&'static SiftPatternDef> {
-    catalog::SIFT_PATTERNS.iter().find(|pattern| pattern.id == id)
+    sift_pattern_index().get(id).copied()
 }
 
 

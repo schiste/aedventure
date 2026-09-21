@@ -27,6 +27,10 @@ fn run() -> Result<(), String> {
             argv.next();
             return run_explain(argv.collect());
         }
+        Some("bench") => {
+            argv.next();
+            return run_bench(argv.collect());
+        }
         Some("schema") => {
             println!("{}", stable_json_string(&narrative_schema()));
             return Ok(());
@@ -124,6 +128,29 @@ fn run_fuzz(arguments: Vec<String>) -> Result<(), String> {
 /// that contributed, each factor with its input, and the running score. The
 /// trace comes from the same fold that produces the number, so an explanation
 /// can never disagree with the score it explains.
+/// Measure the §10 narrative budgets at full scale.
+fn run_bench(arguments: Vec<String>) -> Result<(), String> {
+    let mut events = add_scenario::bench::FULL_SCALE_EVENTS;
+    let mut iterator = arguments.iter();
+    while let Some(argument) = iterator.next() {
+        match argument.as_str() {
+            "-n" | "--events" => {
+                events = iterator
+                    .next()
+                    .and_then(|value| value.parse().ok())
+                    .ok_or_else(|| "--events needs a number".to_string())?;
+            }
+            other => return Err(format!("unknown bench option `{other}`")),
+        }
+    }
+
+    let report = add_scenario::bench::run(events);
+    // Measurements only. `scripts/narr-bench-check.cjs` applies the budgets
+    // from performance/add-budgets.json and decides the verdict.
+    println!("{}", stable_json_string(&report.to_value()));
+    Ok(())
+}
+
 fn run_explain(arguments: Vec<String>) -> Result<(), String> {
     let mut save_path: Option<PathBuf> = None;
     let mut entity = None;
