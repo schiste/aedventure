@@ -5,6 +5,8 @@
 //! canonical comparison, and diagnostics around those transitions.
 
 pub mod bench;
+pub mod calibrate;
+pub mod tuning;
 pub mod fuzz;
 
 use add_core::{GameCommand, GameState, Simulation, StationSpecializationPathState};

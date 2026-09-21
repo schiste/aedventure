@@ -76,7 +76,9 @@
     "smoke:frontend": "npm run smoke:office:built",
     "narr:lint": "npm --workspace @aedventure/add-content run build && node scripts/narrative-lint.cjs",
     "narr:bench": "cargo run --quiet --release -p add-scenario-runner -- bench",
-    "narr:budgets": "node scripts/narr-bench-check.cjs"
+    "narr:budgets": "node scripts/narr-bench-check.cjs",
+    "narr:calibrate": "cargo run --quiet --release -p add-scenario-runner -- calibrate",
+    "narr:diff-tuning": "cargo run --quiet --release -p add-scenario-runner -- diff-tuning"
   },
   "devDependencies": {
     "playwright": "^1.60.0",

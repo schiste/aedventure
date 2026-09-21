@@ -31,6 +31,14 @@ fn run() -> Result<(), String> {
             argv.next();
             return run_bench(argv.collect());
         }
+        Some("calibrate") => {
+            argv.next();
+            return run_calibrate(argv.collect());
+        }
+        Some("diff-tuning") => {
+            argv.next();
+            return run_diff_tuning(argv.collect());
+        }
         Some("schema") => {
             println!("{}", stable_json_string(&narrative_schema()));
             return Ok(());
@@ -128,6 +136,68 @@ fn run_fuzz(arguments: Vec<String>) -> Result<(), String> {
 /// that contributed, each factor with its input, and the running score. The
 /// trace comes from the same fold that produces the number, so an explanation
 /// can never disagree with the score it explains.
+/// Replay a fixed corpus under two tunings and report what it changes.
+fn run_diff_tuning(arguments: Vec<String>) -> Result<(), String> {
+    let mut paths: Vec<PathBuf> = Vec::new();
+    let mut runs = 6usize;
+    let mut iterator = arguments.iter();
+    while let Some(argument) = iterator.next() {
+        match argument.as_str() {
+            "--runs" => {
+                runs = iterator
+                    .next()
+                    .and_then(|value| value.parse().ok())
+                    .ok_or_else(|| "--runs needs a number".to_string())?;
+            }
+            other if other.starts_with('-') => {
+                return Err(format!("unknown diff-tuning option `{other}`"));
+            }
+            value => paths.push(PathBuf::from(value)),
+        }
+    }
+    if paths.len() != 2 {
+        return Err("usage: diff-tuning <before.json> <after.json> [--runs <n>]".to_string());
+    }
+
+    let before = add_scenario::tuning::Tuning::load(&paths[0])?;
+    let after = add_scenario::tuning::Tuning::load(&paths[1])?;
+    // A fixed corpus: the same seeds every time, so a reported consequence is
+    // the tuning's and not the sample's.
+    let log = add_scenario::calibrate::play(runs, 60);
+    let report = add_scenario::tuning::diff(&log, &before, &after, runs);
+    println!("{}", stable_json_string(&report.to_value()));
+    Ok(())
+}
+
+/// Report how the tuning spreads characters across the bands.
+fn run_calibrate(arguments: Vec<String>) -> Result<(), String> {
+    let mut acts = 400usize;
+    let mut strict = false;
+    let mut iterator = arguments.iter();
+    while let Some(argument) = iterator.next() {
+        match argument.as_str() {
+            "-n" | "--acts" => {
+                acts = iterator
+                    .next()
+                    .and_then(|value| value.parse().ok())
+                    .ok_or_else(|| "--acts needs a number".to_string())?;
+            }
+            // Off by default: a dead axis is a finding for a writer to weigh,
+            // not a broken build. `--strict` is for a caller that has decided
+            // otherwise.
+            "--strict" => strict = true,
+            other => return Err(format!("unknown calibrate option `{other}`")),
+        }
+    }
+
+    let report = add_scenario::calibrate::run(acts);
+    println!("{}", stable_json_string(&report.to_value()));
+    if strict && !report.ok() {
+        return Err("calibration flagged an axis or an act".to_string());
+    }
+    Ok(())
+}
+
 /// Measure the §10 narrative budgets at full scale.
 fn run_bench(arguments: Vec<String>) -> Result<(), String> {
     let mut events = add_scenario::bench::FULL_SCALE_EVENTS;

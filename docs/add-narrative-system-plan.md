@@ -617,9 +617,38 @@ follows each pattern's own window, and
 `an_arc_s_first_slot_is_kept_exactly_as_long_as_it_could_be_answered` pins both
 halves: kept while the arc can still be answered, folded once it cannot.
 
-**Still outstanding:**
+**`narr calibrate` and `narr diff-tuning` are built.**
 
-- **`narr calibrate` and `narr diff-tuning`.** Not started.
+`npm run narr:calibrate` runs the fuzzer and reports, per axis, the share of
+*met* characters in each band at 25, 50 and 100 percent of a playthrough, then
+flags what §5A says to flag: an axis with more than 70% still in `mid` at the
+end (dead), more than 30% at an extreme (runaway), and acts whose modifiers hit
+the 0.1 or 4 clamp more than rarely. It drives the real fuzzer rather than a
+loop over the act catalog, and the difference is not academic: a uniform loop
+reported `competence` and `debt` as dead axes, which the fuzzer shows spreading
+properly. Unmet characters are excluded, or the size of the cast would read as a
+dead axis.
+
+On current content it finds seven dead axes — `affection`, `dominance`,
+`closeness`, `dependence`, `grievance`, `belonging`, `alignment` — two runaway
+ones, `goodwill` and `integrity`, and four acts clamping, worst
+`act.share_scarce_water` at 38% of its impacts. These are findings for a writer
+to weigh, so the command reports them and exits zero unless given `--strict`.
+
+`npm run narr:diff-tuning <before.json> <after.json>` replays a fixed corpus of
+seeded playthroughs and reports which bands and which storylet gates flip. Both
+tunings are applied to the *traces* of a single replay rather than by running
+the engine twice, so the two see exactly the same playthroughs;
+`an_unchanged_tuning_reproduces_the_engine_exactly` holds that re-derivation to
+the engine's own answer, without which every reported flip would be an artefact
+of the re-derivation. `tuning/current.json` is the committed baseline and a test
+pins it to the engine's defaults, so it cannot drift and start reporting its own
+staleness as a consequence.
+
+The output is consequences, not numbers, as §11 asks: softening the top three
+tiers reports "entity.vell goodwill very_high -> high", not a table of deltas.
+
+**Still outstanding:**
 - **1,000 entities.** Only the event-count half of the acceptance criterion is
   actually measured. The entity graph is a compile-time catalog, so a synthetic
   population cannot be injected at runtime: unknown ids resolve to nothing,
