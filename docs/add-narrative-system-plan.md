@@ -591,15 +591,31 @@ folding away an old habit does not make the next act feel like the first.
 It runs on the rumour boundary, behind a single comparison against the oldest
 event, so a log with nothing old enough pays almost nothing to skip it.
 
-**A content decision now limits it.** `arc.broken_oath` has no expiry, so every
-`act.swear_an_oath` is a first-slot candidate forever and can never be folded.
-Only a prefix of the log can be folded — the baseline is a running score — so
-one early oath pins everything after it: against current content, compaction
-folds 5 entries out of 5,000 rather than 3,357. Giving that pattern an expiry
-would unlock it, and that is a design judgement about whether a broken oath can
-ever stop mattering, not something to change silently. The alternative is to
-separate score-folding from sift-retention, keeping pinned events for the sifter
-while their contribution goes into the baseline.
+**`arc.broken_oath` now expires after a year.** It previously had no expiry,
+which meant every `act.swear_an_oath` stayed a first-slot candidate forever and
+could never be folded; because only a prefix can be folded, one early oath
+pinned everything after it and compaction folded 5 entries out of 5,000. With
+the expiry it folds 3,337 — the same 67% the rest of the catalog reaches.
+
+A year was chosen against `arc.mercy_repaid`'s 90 days: an oath should hang over
+the Hero far longer than a favour, but a pattern that never expires is not
+"important forever", it is a pattern whose evidence can never be summarised.
+
+Giving every pattern an expiry also moved the load budget onto firmer ground.
+§10 names compaction as *how* that budget is met, and compaction runs on the
+rumour boundary, so a save holding 50,000 events has been compacted throughout
+play — an uncompacted log that size is not a state the game produces. Measured
+both ways at full scale: **767,587 us compacted against the 2,000,000 us budget,
+and 1,720,134 us uncompacted**, the latter reported without a budget. The
+uncompacted figure had already breached once, at 2,070,818 us, which is how
+close that path runs to the line.
+
+The retention rule was wrong for expiring patterns and is now fixed. It kept
+first-slot events only for patterns that never expire, so with an expiry set an
+oath could have been folded away while it was still breakable. Retention now
+follows each pattern's own window, and
+`an_arc_s_first_slot_is_kept_exactly_as_long_as_it_could_be_answered` pins both
+halves: kept while the arc can still be answered, folded once it cannot.
 
 **Still outstanding:**
 

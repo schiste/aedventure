@@ -48,6 +48,13 @@ function main() {
 
   const rows = []
   for (const measurement of report.measurements) {
+    // A measurement with no samples reports zero, which would satisfy any
+    // budget without measuring anything. Treat it as a broken benchmark rather
+    // than a pass — the same vacuous-success trap as a test that asserts over
+    // an empty collection.
+    if (!measurement.samples) {
+      throw new Error(`benchmark produced no samples for \`${measurement.operation}\``)
+    }
     const budget = budgets.operations[measurement.operation]?.max ?? null
     const observed = measurement[statistic]
     rows.push({

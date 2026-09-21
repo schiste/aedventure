@@ -42,7 +42,14 @@ export const SIFT_PATTERNS: readonly SiftPatternDef[] = [
     firstKind: "oath",
     secondKind: "forbidden",
     minGapDays: 0,
-    expiresAfterDays: 0,
+    // A year. An oath should hang over the Hero far longer than a favour does
+    // — `arc.mercy_repaid` expires after 90 days — but not forever: a pattern
+    // that never expires pins its first slot in the log for good, because the
+    // engine must keep every oath in case one is finally broken. That stops
+    // history from ever being summarised. A year is long enough that breaking
+    // an oath still lands as a betrayal of that promise, and short enough that
+    // a game's early oaths eventually settle.
+    expiresAfterDays: 365,
     requiresCause: false,
   },
 ]

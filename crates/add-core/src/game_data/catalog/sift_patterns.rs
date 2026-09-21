@@ -19,7 +19,7 @@ pub(in crate::game_data) const SIFT_PATTERNS: &[SiftPatternDef] = &[
         first_kind: "oath",
         second_kind: "forbidden",
         min_gap_days: 0.0,
-        expires_after_days: 0.0,
+        expires_after_days: 365.0,
         requires_cause: false,
     },
 ];

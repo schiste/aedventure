@@ -101,20 +101,10 @@ const SPAN_DAYS: f64 = 3.0 * 365.0;
 /// Build a log of `events` acts spread across the cast, as gameplay would.
 fn populate(events: usize) -> NarrativeLog {
     let mut log = NarrativeLog::default();
-    // Every act except the ones an unexpired arc pins in the log forever.
-    // `act.swear_an_oath` is the first slot of `arc.broken_oath`, which has no
-    // expiry, so an oath can never be folded away — and because only a prefix
-    // can be folded, one early oath pins everything after it. Including them
-    // here would measure that content decision rather than the code.
-    let pinned: Vec<&str> = add_core::game_data::sift_patterns()
-        .iter()
-        .filter(|pattern| pattern.expires_after_days <= 0.0)
-        .map(|pattern| pattern.first_kind)
-        .collect();
-    let acts: Vec<_> = add_core::game_data::narrative_acts()
-        .iter()
-        .filter(|act| !act.kinds.iter().any(|kind| pinned.contains(kind)))
-        .collect();
+    // Every authored act. A pattern with no expiry would pin its first slot in
+    // the log forever and this would have to exclude those acts to measure
+    // anything; every pattern now expires, so the whole catalog can play.
+    let acts: Vec<_> = add_core::game_data::narrative_acts().iter().collect();
     let targets = castable_entities();
     if acts.is_empty() || targets.is_empty() {
         return log;
@@ -216,22 +206,6 @@ pub fn run(events: usize) -> BenchReport {
 
     // Load: rebuilding every score from the log, which is what a save costs on
     // open because raw scores are deliberately never persisted.
-    let mut load_samples = Vec::new();
-    for _ in 0..2 {
-        // A clone starts with an empty cache, which is the point: opening a
-        // save rebuilds every score from the log, because raw scores are
-        // deliberately never persisted. Reusing the warmed log here would
-        // measure the cache and report a load that never happens.
-        let fresh = log.clone();
-        let start = Instant::now();
-        for observer in &entities {
-            for axis in Axis::ALL {
-                std::hint::black_box(fresh.standing(observer, axis, now));
-            }
-        }
-        load_samples.push(micros_since(start));
-    }
-
     // What compaction buys: the same cold read, against a log whose aged
     // history has been summarised. Measured on its own clone so nothing above
     // is affected by it.
@@ -247,6 +221,42 @@ pub fn run(events: usize) -> BenchReport {
         compacted_samples.push(micros_since(start));
     }
 
+    // Two loads: the save the game actually writes, and the same log with
+    // nothing folded.
+    //
+    // §10 names compaction as *how* the load budget is met, and compaction runs
+    // on the rumour boundary, so a save that reached this many events has been
+    // compacted throughout play — an uncompacted log of 50,000 events is not a
+    // state the game produces. The uncompacted figure is still reported,
+    // without a budget, so the cost compaction is removing stays visible.
+    let mut load_samples = Vec::new();
+    for _ in 0..2 {
+        let fresh = compacted.clone();
+        let start = Instant::now();
+        for observer in &entities {
+            for axis in Axis::ALL {
+                std::hint::black_box(fresh.standing(observer, axis, now));
+            }
+        }
+        load_samples.push(micros_since(start));
+    }
+
+    let mut load_uncompacted_samples = Vec::new();
+    for _ in 0..2 {
+        // A clone starts with an empty cache, which is the point: opening a
+        // save rebuilds every score from the log, because raw scores are
+        // deliberately never persisted. Reusing the warmed log here would
+        // measure the cache and report a load that never happens.
+        let fresh = log.clone();
+        let start = Instant::now();
+        for observer in &entities {
+            for axis in Axis::ALL {
+                std::hint::black_box(fresh.standing(observer, axis, now));
+            }
+        }
+        load_uncompacted_samples.push(micros_since(start));
+    }
+
     let measurements = vec![
         Measurement::new("standing_warm", warm_samples),
         // No budget: §10 sets one figure for a standing query, and names the
@@ -258,6 +268,7 @@ pub fn run(events: usize) -> BenchReport {
         Measurement::new("rumour_step", rumour_samples),
         Measurement::new("storylet_selection", cast_samples),
         Measurement::new("load_replay", load_samples),
+        Measurement::new("load_replay_uncompacted", load_uncompacted_samples),
     ];
 
     BenchReport {

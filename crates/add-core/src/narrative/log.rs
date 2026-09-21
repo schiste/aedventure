@@ -347,7 +347,7 @@ impl NarrativeLog {
         if self.events.first().is_none_or(|event| event.tick > cutoff) {
             return 0;
         }
-        let protected = self.sift_relevant_ids();
+        let protected = self.sift_relevant_ids(now_tick);
 
         let foldable = |event: &NarrativeEvent| {
             event.tick <= cutoff && !protected.contains(&event.id)
@@ -426,19 +426,30 @@ impl NarrativeLog {
     }
 
     /// Events that must survive compaction because an arc could still need
-    /// them: the first slot of a pattern that never expires.
-    fn sift_relevant_ids(&self) -> Vec<u64> {
+    /// them: a pattern's first slot, while that pattern could still be answered.
+    ///
+    /// The window is the pattern's own expiry. A pattern that never expires
+    /// protects its first slot for good, which is why one is so costly: every
+    /// oath ever sworn would stay in the log, and because only a prefix can be
+    /// folded, the oldest one pins everything after it.
+    fn sift_relevant_ids(&self, now_tick: f64) -> Vec<u64> {
         let mut ids = Vec::new();
         for pattern in crate::game_data::sift_patterns() {
-            if pattern.expires_after_days > 0.0 {
-                continue;
-            }
             for event in &self.events {
-                if event.target.is_some()
-                    && crate::narrative::sift::act_has_kind(&event.act_id, pattern.first_kind)
+                if event.target.is_none()
+                    || !crate::narrative::sift::act_has_kind(&event.act_id, pattern.first_kind)
                 {
-                    ids.push(event.id);
+                    continue;
                 }
+                if pattern.expires_after_days > 0.0 {
+                    let age_days = (now_tick - event.tick).max(0.0) / GAME_DAY_SECONDS;
+                    // Past its expiry nothing can complete this arc from it, so
+                    // it is free to be folded away like any other history.
+                    if age_days > pattern.expires_after_days {
+                        continue;
+                    }
+                }
+                ids.push(event.id);
             }
         }
         ids
@@ -1071,23 +1082,51 @@ mod values_and_decay_tests {
         );
     }
 
-    /// An oath that has never been answered survives compaction.
+    /// An arc's first slot survives compaction while that arc can still be
+    /// answered, and only while.
+    ///
+    /// Both halves matter. Folding away an oath that could still be broken
+    /// would erase the arc rather than summarise it; keeping one that can no
+    /// longer be answered pins the log forever, because only a prefix can be
+    /// folded. `arc.broken_oath` expires after a year, so the year is the line.
     #[test]
-    fn compaction_keeps_events_an_arc_could_still_need() {
-        let mut log = NarrativeLog::default();
+    fn an_arc_s_first_slot_is_kept_exactly_as_long_as_it_could_be_answered() {
         let oath = narrative_act_def("act.swear_an_oath").expect("act exists");
+        let expiry_days = crate::game_data::sift_pattern_def("arc.broken_oath")
+            .expect("pattern exists")
+            .expires_after_days;
+        assert!(
+            expiry_days > 0.0,
+            "this test is about the expiry; without one there is nothing to check",
+        );
+
+        // Old enough to compact, young enough to still be broken.
+        let mut answerable = NarrativeLog::default();
         let mut event = event_for(oath, Some("entity.vell"), 0.0);
         event.secrecy = Secrecy::Public;
-        log.append(event);
-
-        // Far beyond the horizon, so only its arc relevance can save it.
-        let now = NarrativeLog::COMPACTION_HORIZON_DAYS * GAME_DAY_SECONDS * 3.0;
-        log.compact(now);
-
+        answerable.append(event);
+        let within = (NarrativeLog::COMPACTION_HORIZON_DAYS + 1.0) * GAME_DAY_SECONDS;
+        assert!(
+            within / GAME_DAY_SECONDS <= expiry_days,
+            "the horizon must fall inside the expiry for this case to exist",
+        );
+        answerable.compact(within);
         assert_eq!(
-            log.events.len(),
+            answerable.events.len(),
             1,
-            "arc.broken_oath never expires, so the oath must outlive compaction",
+            "an oath that could still be broken must outlive compaction",
+        );
+
+        // Past the expiry: nothing can complete the arc from it any more.
+        let mut expired = NarrativeLog::default();
+        let mut event = event_for(oath, Some("entity.vell"), 0.0);
+        event.secrecy = Secrecy::Public;
+        expired.append(event);
+        expired.compact((expiry_days + 1.0) * GAME_DAY_SECONDS);
+        assert_eq!(
+            expired.events.len(),
+            0,
+            "once the arc can no longer be answered the oath is ordinary history",
         );
     }
 
