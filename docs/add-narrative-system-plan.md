@@ -381,7 +381,14 @@ their group will do for the hero, hours later, without any number being shown.
 options for an individual, a sub-faction peer and a faction stranger, at three
 different strengths, proven by a committed scenario with checkpoints.
 
-**Status: N3a done, N3b open.** The milestone was too large for one pass, so it
+**Status: done.** N3b added the Schwartz value circle, decay by tier half-life,
+and the closeness and black-sheep amplifiers, so one act now reads as virtue to
+one group and betrayal to another with nothing scripted to disagree. What
+remains of §5/§5B — ledger settlement, association, stance, hypocrisy,
+generated deviants — is recorded in the runtime contract's known gaps; most of
+it depends on knowledge or NPC-to-NPC edges, which are N4.
+
+**N3a:** The milestone was too large for one pass, so it
 was split rather than half-delivered. N3a landed the entity graph, the event
 log, the eleven axes, derived constructs, the impact pipeline, `EmitAct`,
 `narr explain`, and the first entities bound by `loreRef` to the Sleepless in

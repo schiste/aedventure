@@ -2777,6 +2777,9 @@ pub struct NarrativeEntityDef {
     pub parent: Option<&'static str>,
     pub rank: u64,
     pub influence: f64,
+    /// Relative value priorities, centred on load. Empty means "inherit the
+    /// group's", so only characters who differ need one.
+    pub values: &'static [(&'static str, f64)],
 }
 
 /// Where one impact of an act lands, and how hard.
@@ -2797,6 +2800,9 @@ pub struct NarrativeActDef {
     pub id: &'static str,
     pub label: &'static str,
     pub intent: &'static str,
+    /// The values this act expresses, weights summing to 1. A `sign: 0` impact
+    /// takes its sign and strength from how each observer reads these.
+    pub expresses: &'static [(&'static str, f64)],
     pub impacts: &'static [ActImpactDef],
 }
 

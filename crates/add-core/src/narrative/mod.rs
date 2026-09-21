@@ -15,10 +15,12 @@ pub mod graph;
 pub mod log;
 pub mod standing;
 pub mod story;
+pub mod values;
 
 pub use graph::{GroupKind, ancestry, inheritance_weight};
 pub use log::{ImpactTrace, NarrativeEvent, NarrativeLog, event_for};
 pub use standing::{Axis, Band, Derived, Intent, Tier, derive, fold};
+pub use values::{Profile, Value, verdict};
 pub use story::{InkChoice, InkLine, InkScene, NarrativeStory, beat_has_knot};
 
 /// The ink knot that renders a story beat, by convention `story.beat.x` ->

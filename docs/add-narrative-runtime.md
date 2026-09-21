@@ -172,6 +172,43 @@ contribution with each factor's input and the running score. The trace comes
 from the same fold that produces the number, so an explanation cannot disagree
 with what it explains.
 
+## Values, decay and observer modifiers (N3b)
+
+**The value circle (§5B).** Schwartz's ten values on a circle, held as relative
+priorities that sum to zero — what drives behaviour is what someone ranks
+*above* what. An act declares the values it *expresses*; an impact with
+`sign: 0` takes its sign and strength from how each observer reads them,
+scaled by the group's tightness.
+
+This is what lets one act read as virtue to one group and betrayal to another
+with nothing scripted to disagree. Sharing scarce water expresses
+universalism; the Sleepless in Decibels put security and their own first, so
+the faction reads the same generosity as resources given away:
+
+```
+entity.sleepless | alignment | score -4.67 | band mid
+  act.share_scarce_water  tier=moderate verdict=-0.29 decay=1.00 -> -4.67
+```
+
+The person helped is still grateful. Values change how a group *reads* an act,
+not whether help was help.
+
+**Profiles are inherited unless authored.** Only a character who differs needs
+one, and a low-fit member is where the Hero finds a dissenter — `values_fit`
+is the correlation between an individual's priorities and their group's.
+
+**Decay.** Each contribution fades by its tier's half-life in game days
+(Trivial 3, Minor 10, Moderate 30, Major 120), computed at read time from the
+event's tick. `Severe` and `Defining` never fade, and neither do the ledger
+axes: debt and grievance settle through acts, not through time. What decays is
+the contribution, so an old kindness still counts a little years later.
+
+**Observer amplifiers.** Closeness raises what lands on a close bond.
+Belonging applies the black-sheep rule: being one of them buys the benefit of
+the doubt on small slips and a harsher fall on big ones. Both are themselves
+folded axes, so they are computed in a first pass with the amplifiers neutral —
+one extra bounded pass, which keeps them from being self-referential.
+
 ## Focused verification
 
 | Check | Command |
@@ -184,19 +221,22 @@ with what it explains.
 
 ## Known gaps
 
-**N3 is half done.** This is N3a — the graph, the log, the axes and the
-pipeline. N3b is still open and deliberately not stubbed:
+**N3 is done; parts of §5 and §5B remain.** The graph, the log, the axes, the
+pipeline, the value circle, decay and the observer amplifiers are in. Still
+open, and deliberately not stubbed:
 
-- **Values (§5B).** The Schwartz circle, value profiles, the `Values` sign that
-  lets one act read as virtue to one group and betrayal to another, generated
-  deviants, and hypocrisy. Nothing here reads `alignment` through a verdict yet;
-  it moves by a fixed sign.
-- **Decay.** Impacts have tier half-lives in the specification. Today every
-  contribution is permanent, so an old slight weighs what it did on the day.
-- **Ledgers.** `debt` and `grievance` accumulate but do not settle, sour or
-  ruminate.
-- **Association, stance, black-sheep, honour.** None of the observer-side
-  modifiers that need more than one entity's history.
+- **Ledger settlement.** `debt` and `grievance` accumulate but do not settle,
+  sour after 60 days, or ruminate in honour-bound groups. `settles_by` is not
+  modelled.
+- **Association.** Judging the Hero by the company he keeps needs NPC-to-NPC
+  edges, which do not exist yet.
+- **Stance** (admiration, envy, pity, contempt) and the BIAS-map behavioural
+  scripts that hang off it.
+- **Hypocrisy.** Detecting two faces needs the Hero's revealed profile per
+  observer, which needs knowledge — so it follows N4 rather than N3.
+- **Generated deviants.** Profiles are hand-authored; `narr generate`,
+  deviation rates and concealment are not built.
+- **Honour and audience.** No tier escalation for public slights.
 - Standing is not yet on the agent report's diagnostics channel, so scenario
   checkpoints assert on the log rather than on scores; the Rust acceptance test
   asserts the scores directly.

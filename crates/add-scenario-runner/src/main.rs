@@ -156,12 +156,14 @@ fn run_explain(arguments: Vec<String>) -> Result<(), String> {
         None => add_core::GameState::new(),
     };
 
-    let (score, traces) = state.narrative.log.explain(&entity, axis);
+    let now = state.clock_seconds;
+    let (score, traces) = state.narrative.log.explain(&entity, axis, now);
     let report = serde_json::json!({
         "contract": "add_standing_explain_v1",
         "entity": entity,
         "axis": axis.as_str(),
         "score": score,
+        "atTick": now,
         "band": add_core::narrative::Band::of(score).as_str(),
         "contributions": traces,
     });

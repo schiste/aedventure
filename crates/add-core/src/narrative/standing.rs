@@ -122,6 +122,18 @@ impl Tier {
         }
     }
 
+    /// Half-life in game days. Minor slights fade; a betrayal is permanent.
+    /// `None` means the contribution never decays.
+    pub fn half_life_days(self) -> Option<f64> {
+        match self {
+            Tier::Trivial => Some(3.0),
+            Tier::Minor => Some(10.0),
+            Tier::Moderate => Some(30.0),
+            Tier::Major => Some(120.0),
+            Tier::Severe | Tier::Defining => None,
+        }
+    }
+
     pub fn from_str(value: &str) -> Option<Tier> {
         Some(match value {
             "trivial" => Tier::Trivial,
@@ -289,6 +301,10 @@ pub fn fold(score: f64, delta: f64) -> f64 {
     };
     (score + delta * headroom).clamp(-100.0, 100.0)
 }
+
+/// One game day in clock seconds. The engine runs one game minute per runtime
+/// second (see `selectAddWorldTimeForClockSeconds`), so a day is 1,440.
+pub const GAME_DAY_SECONDS: f64 = 24.0 * 60.0;
 
 /// Clamp on the product of every modifier, so no stack of them can turn a
 /// slight into a catastrophe or erase a betrayal.

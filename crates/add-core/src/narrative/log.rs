@@ -11,7 +11,10 @@
 use serde::{Deserialize, Serialize};
 
 use super::graph::inheritance_weight;
-use super::standing::{Axis, Band, Derived, Intent, Tier, clamp_modifiers, derive, fold};
+use super::standing::{
+    Axis, Band, Derived, GAME_DAY_SECONDS, Intent, Tier, clamp_modifiers, derive, fold,
+};
+use super::values::{Profile, Value, verdict};
 use crate::game_data::{NarrativeActDef, narrative_act_def};
 
 /// One consequential thing the Hero did.
@@ -49,6 +52,14 @@ pub struct ImpactTrace {
     pub cost: f64,
     pub need: f64,
     pub repetition: f64,
+    /// Closeness amplifier: kindness and betrayal land harder in close bonds.
+    pub closeness: f64,
+    /// Belonging: black sheep punished harder, small slips forgiven.
+    pub belonging: f64,
+    /// Values verdict, for `sign: values` impacts. Can flip the sign.
+    pub values: f64,
+    /// Decay already applied, 1.0 when the contribution is permanent.
+    pub decay: f64,
     pub inheritance: f64,
     pub clamped_modifiers: f64,
     pub delta: f64,
@@ -61,6 +72,29 @@ pub struct ImpactTrace {
 pub struct NarrativeLog {
     pub events: Vec<NarrativeEvent>,
     pub next_id: u64,
+}
+
+/// An observer's value profile: their own when authored, otherwise inherited
+/// from the group they belong to, so a member without a hand-written profile
+/// still reads acts the way their group does.
+fn profile_for(entity_id: &str) -> Profile {
+    let mut current = crate::game_data::narrative_entity_def(entity_id);
+    while let Some(entity) = current {
+        let profile = Profile::from_pairs(entity.values);
+        if !profile.is_empty() {
+            return profile;
+        }
+        current = entity.parent.and_then(crate::game_data::narrative_entity_def);
+    }
+    Profile::default()
+}
+
+/// The values an act expresses, resolved from authored strings.
+fn expressed(act: &NarrativeActDef) -> Vec<(Value, f64)> {
+    act.expresses
+        .iter()
+        .filter_map(|(name, weight)| Value::from_str(name).map(|value| (value, *weight)))
+        .collect()
 }
 
 impl NarrativeLog {
@@ -117,7 +151,31 @@ impl NarrativeLog {
     /// of every contribution. The trace is what `narr explain` prints, and it
     /// is produced by the same code path that produces the score, so an
     /// explanation can never disagree with the number.
-    pub fn explain(&self, observer_id: &str, axis: Axis) -> (f64, Vec<ImpactTrace>) {
+    /// Closeness and belonging are themselves folded axes, so they are
+    /// computed first with the observer modifiers neutral. One extra pass,
+    /// bounded, and it keeps the amplifiers from being self-referential.
+    fn observer_context(&self, observer_id: &str, now_tick: f64) -> (f64, f64) {
+        let closeness = self
+            .fold_axis(observer_id, Axis::Closeness, now_tick, None)
+            .0;
+        let belonging = self
+            .fold_axis(observer_id, Axis::Belonging, now_tick, None)
+            .0;
+        (closeness, belonging)
+    }
+
+    pub fn explain(&self, observer_id: &str, axis: Axis, now_tick: f64) -> (f64, Vec<ImpactTrace>) {
+        let context = self.observer_context(observer_id, now_tick);
+        self.fold_axis(observer_id, axis, now_tick, Some(context))
+    }
+
+    fn fold_axis(
+        &self,
+        observer_id: &str,
+        axis: Axis,
+        now_tick: f64,
+        context: Option<(f64, f64)>,
+    ) -> (f64, Vec<ImpactTrace>) {
         let mut score = 0.0;
         let mut traces = Vec::new();
 
@@ -140,7 +198,26 @@ impl NarrativeLog {
                     continue;
                 };
 
-                let negative = impact.sign < 0;
+                // `sign: 0` means Values: the sign and strength come from how
+                // this observer reads the act, so one authored impact yields
+                // many verdicts.
+                let values_verdict = if impact.sign == 0 {
+                    let profile = profile_for(observer_id);
+                    let raw = verdict(&profile, &expressed(act));
+                    raw * (0.5 + profile.tightness())
+                } else {
+                    1.0
+                };
+                let effective_sign = if impact.sign == 0 {
+                    if values_verdict >= 0.0 { 1.0 } else { -1.0 }
+                } else {
+                    impact.sign as f64
+                };
+                if impact.sign == 0 && values_verdict.abs() < 1e-9 {
+                    continue;
+                }
+
+                let negative = effective_sign < 0.0;
                 let negativity = if negative {
                     axis.negativity()
                 } else {
@@ -150,10 +227,45 @@ impl NarrativeLog {
                 let cost = if negative { 1.0 } else { event.cost };
                 let repetition = self.repetition_factor(index, &event.act_id, scope);
 
+                // Observer amplifiers. Neutral on the closeness/belonging
+                // passes themselves, which is what `context: None` means.
+                let (closeness_score, belonging_score) = context.unwrap_or((0.0, 0.0));
+                let closeness = 1.0 + 0.5 * closeness_score.max(0.0) / 100.0;
+                let belonging = if belonging_score >= 25.0 && negative {
+                    // Black sheep (Marques): being one of them buys the benefit
+                    // of the doubt on small things and a harsher fall on big ones.
+                    if matches!(tier, Tier::Major | Tier::Severe | Tier::Defining) {
+                        1.5
+                    } else {
+                        0.7
+                    }
+                } else {
+                    1.0
+                };
+
+                // Decay is applied to the contribution, not the score, so an
+                // old kindness still counts a little years later. Ledger axes
+                // never fade: they settle through acts instead.
+                let decay = match tier.half_life_days() {
+                    Some(days) if !axis.is_ledger() => {
+                        let elapsed_days =
+                            ((now_tick - event.tick).max(0.0)) / GAME_DAY_SECONDS;
+                        0.5_f64.powf(elapsed_days / days)
+                    }
+                    _ => 1.0,
+                };
+
                 let modifiers = clamp_modifiers(
-                    negativity * event.intent.factor() * cost * event.need * repetition,
+                    negativity
+                        * event.intent.factor()
+                        * cost
+                        * event.need
+                        * repetition
+                        * closeness
+                        * belonging
+                        * values_verdict.abs().max(if impact.sign == 0 { 0.0 } else { 1.0 }),
                 );
-                let delta = (impact.sign as f64) * tier.base() * modifiers * inheritance;
+                let delta = effective_sign * tier.base() * modifiers * inheritance * decay;
                 score = fold(score, delta);
 
                 traces.push(ImpactTrace {
@@ -168,6 +280,10 @@ impl NarrativeLog {
                     cost,
                     need: event.need,
                     repetition,
+                    closeness,
+                    belonging,
+                    values: values_verdict,
+                    decay,
                     inheritance,
                     clamped_modifiers: modifiers,
                     delta,
@@ -179,20 +295,42 @@ impl NarrativeLog {
         (score, traces)
     }
 
-    pub fn standing(&self, observer_id: &str, axis: Axis) -> f64 {
-        self.explain(observer_id, axis).0
+    pub fn standing(&self, observer_id: &str, axis: Axis, now_tick: f64) -> f64 {
+        self.explain(observer_id, axis, now_tick).0
     }
 
-    pub fn band(&self, observer_id: &str, axis: Axis) -> Band {
-        Band::of(self.standing(observer_id, axis))
+    pub fn band(&self, observer_id: &str, axis: Axis, now_tick: f64) -> Band {
+        Band::of(self.standing(observer_id, axis, now_tick))
     }
 
-    pub fn derived(&self, observer_id: &str, kind: Derived) -> f64 {
-        derive(kind, &|axis| self.standing(observer_id, axis))
+    pub fn derived(&self, observer_id: &str, kind: Derived, now_tick: f64) -> f64 {
+        derive(kind, &|axis| self.standing(observer_id, axis, now_tick))
     }
 
-    pub fn derived_band(&self, observer_id: &str, kind: Derived) -> Band {
-        Band::of(self.derived(observer_id, kind))
+    pub fn derived_band(&self, observer_id: &str, kind: Derived, now_tick: f64) -> Band {
+        Band::of(self.derived(observer_id, kind, now_tick))
+    }
+
+    /// How well an individual's values match the group they belong to. Drives
+    /// how much of the group's view they inherit: a dissident barely cares.
+    pub fn values_fit(entity_id: &str) -> f64 {
+        let Some(entity) = crate::game_data::narrative_entity_def(entity_id) else {
+            return 0.0;
+        };
+        let Some(parent_id) = entity.parent else {
+            return 0.0;
+        };
+        let own = Profile::from_pairs(entity.values);
+        let group = profile_for(parent_id);
+        if own.is_empty() || group.is_empty() {
+            return 0.0;
+        }
+        own.fit(&group)
+    }
+
+    /// The value an observer would name if asked what the Hero stands for.
+    pub fn sees_hero_as(&self, observer_id: &str) -> Option<Value> {
+        profile_for(observer_id).strongest()
     }
 }
 
@@ -230,7 +368,7 @@ mod tests {
     #[test]
     fn helping_someone_raises_their_goodwill() {
         let log = log_with(HELP, VELL);
-        let score = log.standing(VELL, Axis::Goodwill);
+        let score = log.standing(VELL, Axis::Goodwill, 0.0);
         assert!(score > 0.0, "goodwill was {score}");
     }
 
@@ -239,9 +377,9 @@ mod tests {
         // The acceptance shape for N3: the target, a peer in the same
         // sub-faction, and a stranger elsewhere in the faction.
         let log = log_with(HELP, VELL);
-        let target = log.standing(VELL, Axis::Goodwill);
-        let peer = log.standing(PEER, Axis::Goodwill);
-        let stranger = log.standing(FACTION, Axis::Goodwill);
+        let target = log.standing(VELL, Axis::Goodwill, 0.0);
+        let peer = log.standing(PEER, Axis::Goodwill, 0.0);
+        let stranger = log.standing(FACTION, Axis::Goodwill, 0.0);
 
         assert!(
             target > peer && peer > stranger,
@@ -252,8 +390,8 @@ mod tests {
 
     #[test]
     fn a_broken_promise_costs_integrity_far_more_than_help_gains_goodwill() {
-        let helped = log_with(HELP, VELL).standing(VELL, Axis::Goodwill);
-        let betrayed = log_with(BETRAY, VELL).standing(VELL, Axis::Integrity);
+        let helped = log_with(HELP, VELL).standing(VELL, Axis::Goodwill, 0.0);
+        let betrayed = log_with(BETRAY, VELL).standing(VELL, Axis::Integrity, 0.0);
         assert!(betrayed < 0.0, "integrity should fall: {betrayed}");
         assert!(
             betrayed.abs() > helped,
@@ -266,9 +404,9 @@ mod tests {
         let act = narrative_act_def(HELP).expect("act");
         let mut log = NarrativeLog::default();
         log.append(event_for(act, Some(VELL), 0.0));
-        let first = log.standing(VELL, Axis::Goodwill);
+        let first = log.standing(VELL, Axis::Goodwill, 0.0);
         log.append(event_for(act, Some(VELL), 1.0));
-        let second = log.standing(VELL, Axis::Goodwill);
+        let second = log.standing(VELL, Axis::Goodwill, 0.0);
 
         let first_gain = first;
         let second_gain = second - first;
@@ -291,7 +429,7 @@ mod tests {
         costly.append(event);
 
         assert!(
-            costly.standing(VELL, Axis::Goodwill) > cheap.standing(VELL, Axis::Goodwill),
+            costly.standing(VELL, Axis::Goodwill, 0.0) > cheap.standing(VELL, Axis::Goodwill, 0.0),
             "a costly gift in real need should land harder",
         );
     }
@@ -299,7 +437,7 @@ mod tests {
     #[test]
     fn the_explanation_and_the_score_come_from_one_code_path() {
         let log = log_with(HELP, VELL);
-        let (score, traces) = log.explain(VELL, Axis::Goodwill);
+        let (score, traces) = log.explain(VELL, Axis::Goodwill, 0.0);
         assert!(!traces.is_empty());
         assert_eq!(
             traces.last().map(|trace| trace.score_after),
@@ -311,8 +449,8 @@ mod tests {
     #[test]
     fn an_empty_log_leaves_everyone_neutral() {
         let log = NarrativeLog::default();
-        assert_eq!(log.standing(VELL, Axis::Goodwill), 0.0);
-        assert_eq!(log.band(VELL, Axis::Goodwill), Band::Mid);
+        assert_eq!(log.standing(VELL, Axis::Goodwill, 0.0), 0.0);
+        assert_eq!(log.band(VELL, Axis::Goodwill, 0.0), Band::Mid);
     }
 
     #[test]
@@ -322,8 +460,120 @@ mod tests {
         let rebuilt: NarrativeLog =
             serde_json::from_str(&serde_json::to_string(&log).unwrap()).unwrap();
         assert_eq!(
-            log.standing(VELL, Axis::Goodwill),
-            rebuilt.standing(VELL, Axis::Goodwill),
+            log.standing(VELL, Axis::Goodwill, 0.0),
+            rebuilt.standing(VELL, Axis::Goodwill, 0.0),
         );
+    }
+}
+
+#[cfg(test)]
+mod values_and_decay_tests {
+    use super::*;
+    use crate::narrative::standing::GAME_DAY_SECONDS;
+
+    const VELL: &str = "entity.vell";
+    const JOREN: &str = "entity.joren";
+    const FACTION: &str = "entity.sleepless";
+    const HELP: &str = "act.share_scarce_water";
+    const BETRAY: &str = "act.break_a_promise";
+
+    fn log_with(act_id: &str, target: &str) -> NarrativeLog {
+        let mut log = NarrativeLog::default();
+        let act = narrative_act_def(act_id).expect("act exists");
+        log.append(event_for(act, Some(target), 0.0));
+        log
+    }
+
+    #[test]
+    fn a_universalist_act_offends_a_security_first_faction() {
+        // Sharing scarce water with an outsider expresses universalism. The
+        // Sleepless put safety and their own first, so the faction reads the
+        // same generosity as resources given away. Nothing scripted this
+        // disagreement: it falls out of the circle.
+        let log = log_with(HELP, VELL);
+        let alignment = log.standing(FACTION, Axis::Alignment, 0.0);
+        assert!(
+            alignment < 0.0,
+            "the faction should read outsider-generosity as against them: {alignment}",
+        );
+    }
+
+    #[test]
+    fn the_same_act_still_earns_goodwill_from_the_person_it_helped() {
+        // Values change how a group reads an act, not whether help was help.
+        let log = log_with(HELP, VELL);
+        assert!(log.standing(VELL, Axis::Goodwill, 0.0) > 0.0);
+    }
+
+    #[test]
+    fn a_deviant_reads_the_world_differently_from_her_group() {
+        // Joren's own profile is authored and low-fit; Vell inherits the
+        // faction's. The same act therefore lands differently on each.
+        let fit = NarrativeLog::values_fit(JOREN);
+        assert!(fit < 0.0, "Joren should not fit the Sleepless: {fit}");
+
+        let log = log_with(HELP, VELL);
+        let joren = log.standing(JOREN, Axis::Alignment, 0.0);
+        let faction = log.standing(FACTION, Axis::Alignment, 0.0);
+        assert!(
+            joren > faction,
+            "the deviant should judge it less harshly than her faction: {joren} vs {faction}",
+        );
+    }
+
+    #[test]
+    fn a_minor_slight_fades_while_a_betrayal_does_not() {
+        let help = log_with(HELP, VELL);
+        let fresh = help.standing(VELL, Axis::Goodwill, 0.0);
+        let stale = help.standing(VELL, Axis::Goodwill, 400.0 * GAME_DAY_SECONDS);
+        assert!(stale < fresh, "a Major kindness should fade: {stale} vs {fresh}");
+        assert!(stale > 0.0, "but it should still count a little: {stale}");
+    }
+
+    #[test]
+    fn ledger_axes_never_decay() {
+        // Debt and grievance settle through acts, not through time.
+        let help = log_with(HELP, VELL);
+        let now = help.standing(VELL, Axis::Debt, 0.0);
+        let much_later = help.standing(VELL, Axis::Debt, 10_000.0 * GAME_DAY_SECONDS);
+        assert!((now - much_later).abs() < 1e-9, "{now} vs {much_later}");
+        assert!(now > 0.0);
+    }
+
+    #[test]
+    fn a_severe_impact_is_permanent() {
+        assert_eq!(Tier::Severe.half_life_days(), None);
+        assert_eq!(Tier::Defining.half_life_days(), None);
+        assert!(Tier::Minor.half_life_days().unwrap() < Tier::Major.half_life_days().unwrap());
+    }
+
+    #[test]
+    fn closeness_amplifies_what_lands_on_a_close_bond() {
+        // Two identical logs; one preceded by shared history that raises
+        // closeness. The later act should land harder on the closer bond.
+        let plain = log_with(BETRAY, VELL).standing(VELL, Axis::Integrity, 0.0);
+
+        let mut close = NarrativeLog::default();
+        let help = narrative_act_def(HELP).expect("act");
+        for _ in 0..2 {
+            close.append(event_for(help, Some(VELL), 0.0));
+        }
+        let before = close.standing(VELL, Axis::Integrity, 0.0);
+        close.append(event_for(narrative_act_def(BETRAY).expect("act"), Some(VELL), 0.0));
+        let after = close.standing(VELL, Axis::Integrity, 0.0) - before;
+
+        // Both are negative; the closer one should be at least as heavy.
+        assert!(after <= plain + 1e-9, "betrayal should not land lighter on a close bond: {after} vs {plain}");
+    }
+
+    #[test]
+    fn the_trace_reports_every_new_factor() {
+        let log = log_with(HELP, VELL);
+        let (_, traces) = log.explain(FACTION, Axis::Alignment, 0.0);
+        let trace = traces.first().expect("a values impact reached the faction");
+        assert!(trace.values.abs() > 0.0, "the verdict should be recorded");
+        assert!(trace.decay > 0.0 && trace.decay <= 1.0);
+        assert!(trace.closeness >= 1.0);
+        assert!(trace.belonging > 0.0);
     }
 }

@@ -128,6 +128,16 @@ try {
   process.exit(1)
 }
 
+
+// Value-priority pairs emit as a Rust slice of (&str, f64) tuples: the shape
+// the narrative profile loader takes. Authored as [name, weight] pairs so the
+// content stays readable as an ordered list of priorities.
+function toRustPairs(pairs) {
+  const items = (pairs ?? [])
+    .map(([name, weight]) => `("${name}", ${Number(weight).toFixed(4)})`)
+    .join(", ")
+  return `&[${items}]`
+}
 const VIS = "pub(in crate::game_data)"
 // Balance is all-numeric; helper for the many f64 fields (from defaults to camelCase).
 const f64s = (...names) => names.map((name) => ({ name, kind: "f64" }))
@@ -898,6 +908,7 @@ const FILES = [
             { name: "parent", kind: "option", inner: "string" },
             { name: "rank", kind: "u64" },
             { name: "influence", kind: "f64" },
+            { name: "values", kind: "raw", render: toRustPairs },
           ],
         },
       },
@@ -917,6 +928,7 @@ const FILES = [
             { name: "id", kind: "string" },
             { name: "label", kind: "string" },
             { name: "intent", kind: "string" },
+            { name: "expresses", kind: "raw", render: toRustPairs },
             {
               name: "impacts",
               kind: "array",

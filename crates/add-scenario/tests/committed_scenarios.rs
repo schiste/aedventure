@@ -146,19 +146,20 @@ fn standing_reaches_three_distances_from_the_log() {
 
     let state = add_core::import_save(&run.final_save).expect("save loads");
     let log = &state.narrative.log;
+    let now = state.clock_seconds;
 
     // The dialogue act: generosity toward Vell.
-    let target = log.standing("entity.vell", Axis::Goodwill);
-    let peer = log.standing("entity.joren", Axis::Goodwill);
-    let stranger = log.standing("entity.sleepless", Axis::Goodwill);
+    let target = log.standing("entity.vell", Axis::Goodwill, now);
+    let peer = log.standing("entity.joren", Axis::Goodwill, now);
+    let stranger = log.standing("entity.sleepless", Axis::Goodwill, now);
     assert!(
         target > peer && peer > stranger && stranger >= 0.0,
         "goodwill should fall off with distance: {target} / {peer} / {stranger}",
     );
 
     // The gameplay act: competence spreads the same way.
-    let competence_target = log.standing("entity.vell", Axis::Competence);
-    let competence_faction = log.standing("entity.sleepless", Axis::Competence);
+    let competence_target = log.standing("entity.vell", Axis::Competence, now);
+    let competence_faction = log.standing("entity.sleepless", Axis::Competence, now);
     assert!(
         competence_target > competence_faction && competence_faction > 0.0,
         "competence should reach the faction weakly: {competence_target} / {competence_faction}",
@@ -166,11 +167,11 @@ fn standing_reaches_three_distances_from_the_log() {
 
     // The broken promise landed on Joren, not on Vell.
     assert!(
-        log.standing("entity.joren", Axis::Integrity) < 0.0,
+        log.standing("entity.joren", Axis::Integrity, now) < 0.0,
         "the promise was broken to Joren",
     );
     assert_eq!(
-        log.band("entity.vell", Axis::Integrity),
+        log.band("entity.vell", Axis::Integrity, now),
         Band::Mid,
         "Vell has no reason to doubt the Hero's word",
     );

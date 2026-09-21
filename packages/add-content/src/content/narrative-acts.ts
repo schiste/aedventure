@@ -31,6 +31,12 @@ export interface NarrativeActDef {
   readonly id: string
   readonly label: string
   readonly intent: ActIntent
+  /**
+   * Values this act expresses, weights summing to 1. An impact with `sign: 0`
+   * takes its sign and strength from how each observer reads them, so one act
+   * reads as virtue to one group and betrayal to another.
+   */
+  readonly expresses: readonly (readonly [string, number])[]
   readonly impacts: readonly ActImpactDef[]
 }
 
@@ -40,11 +46,13 @@ export const NARRATIVE_ACTS: readonly NarrativeActDef[] = [
     id: "act.share_scarce_water",
     label: "Share scarce water",
     intent: "deliberate",
+    expresses: [["universalism", 1.0]],
     impacts: [
       { scope: "Target", axis: "goodwill", tier: "major", sign: 1 },
       { scope: "Target", axis: "debt", tier: "moderate", sign: 1 },
       { scope: "ParentOf(Target)", axis: "goodwill", tier: "moderate", sign: 1 },
-      { scope: "FactionOf(Target)", axis: "alignment", tier: "minor", sign: 1 },
+      // sign 0: the faction judges this by its own values, not by fiat.
+      { scope: "FactionOf(Target)", axis: "alignment", tier: "moderate", sign: 0 },
     ],
   },
   {
@@ -52,6 +60,7 @@ export const NARRATIVE_ACTS: readonly NarrativeActDef[] = [
     id: "act.clear_nearby_threat",
     label: "Clear a nearby threat",
     intent: "deliberate",
+    expresses: [["security", 0.6], ["benevolence", 0.4]],
     impacts: [
       { scope: "Target", axis: "competence", tier: "moderate", sign: 1 },
       { scope: "ParentOf(Target)", axis: "competence", tier: "moderate", sign: 1 },
@@ -64,6 +73,7 @@ export const NARRATIVE_ACTS: readonly NarrativeActDef[] = [
     id: "act.break_a_promise",
     label: "Break a promise",
     intent: "deliberate",
+    expresses: [],
     impacts: [
       { scope: "Target", axis: "integrity", tier: "major", sign: -1 },
       { scope: "Target", axis: "grievance", tier: "moderate", sign: 1 },

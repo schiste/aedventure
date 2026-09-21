@@ -214,6 +214,7 @@ export function hashUnit(value: string): number {
 export type RustFieldKind =
   | "string"
   | "idConst"
+  | "raw"
   | "f64"
   | "i64"
   | "u64"
@@ -254,6 +255,9 @@ export interface RustFieldSpec {
   readonly tagField?: string
   /** For "taggedEnum": tag value -> Rust variant. */
   readonly variants?: Readonly<Record<string, RustVariantSpec>>
+  /** For "raw": render the field value to Rust source directly. Used where a
+   * shape has no general spec, such as a slice of (&str, f64) tuples. */
+  readonly render?: (value: unknown) => string
   /** For "struct": the Rust struct type name. */
   readonly structType?: string
   /** For "struct": the struct's fields. */
@@ -344,6 +348,8 @@ function rustFieldValue(spec: RustFieldSpec, raw: unknown): string {
       }
       return `${spec.rustEnum}::${variant.variant}`
     }
+    case "raw":
+      return spec.render ? spec.render(raw) : String(raw)
     case "struct": {
       const obj = (raw ?? {}) as Record<string, unknown>
       const fields = spec.fields ?? []

@@ -11,6 +11,13 @@ pub(in crate::game_data) const NARRATIVE_ENTITIES: &[NarrativeEntityDef] = &[
         parent: None,
         rank: 0,
         influence: 0.0,
+        values: &[
+            ("security", 0.9000),
+            ("benevolence", 0.6000),
+            ("conformity", 0.4000),
+            ("universalism", -0.7000),
+            ("stimulation", -0.5000),
+        ],
     },
     NarrativeEntityDef {
         id: "entity.sleepless.sounding_five",
@@ -19,6 +26,7 @@ pub(in crate::game_data) const NARRATIVE_ENTITIES: &[NarrativeEntityDef] = &[
         parent: Some("entity.sleepless"),
         rank: 3,
         influence: 0.6,
+        values: &[],
     },
     NarrativeEntityDef {
         id: "entity.vell",
@@ -27,6 +35,7 @@ pub(in crate::game_data) const NARRATIVE_ENTITIES: &[NarrativeEntityDef] = &[
         parent: Some("entity.sleepless.sounding_five"),
         rank: 3,
         influence: 0.7,
+        values: &[],
     },
     NarrativeEntityDef {
         id: "entity.joren",
@@ -35,5 +44,12 @@ pub(in crate::game_data) const NARRATIVE_ENTITIES: &[NarrativeEntityDef] = &[
         parent: Some("entity.sleepless.sounding_five"),
         rank: 1,
         influence: 0.3,
+        values: &[
+            ("stimulation", 0.9000),
+            ("hedonism", 0.7000),
+            ("self_direction", 0.5000),
+            ("conformity", -0.8000),
+            ("security", -0.6000),
+        ],
     },
 ];
