@@ -31,6 +31,21 @@ pub enum GameCommand {
         cost: f64,
         /// How badly the target needed it, 1.0 to 2.0.
         need: f64,
+        /// Override the act's default visibility when presence says otherwise.
+        secrecy: Option<String>,
+        /// Who saw it, beyond the target. The engine's perception supplies
+        /// this; authored dialogue never lists witnesses.
+        witnesses: Vec<String>,
+    },
+    /// Hand an entity an event at full fidelity: a confession, or proof.
+    Tell {
+        entity_id: String,
+        event_id: u64,
+    },
+    /// Stop an entity passing anything on. A witness bought, removed, or
+    /// simply persuaded.
+    Silence {
+        entity_id: String,
     },
     /// Take a choice presented by the ink scene for `beat_id`. Ink resolves
     /// which authored choice id that was; its effects come from the catalog.

@@ -929,6 +929,7 @@ const FILES = [
             { name: "label", kind: "string" },
             { name: "intent", kind: "string" },
             { name: "expresses", kind: "raw", render: toRustPairs },
+            { name: "secrecy", kind: "string" },
             {
               name: "impacts",
               kind: "array",

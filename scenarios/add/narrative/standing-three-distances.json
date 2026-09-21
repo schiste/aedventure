@@ -7,34 +7,55 @@
       "actId": "act.share_scarce_water",
       "target": "entity.vell",
       "cost": 2.0,
-      "need": 1.8
+      "need": 1.8,
+      "secrecy": "public"
     },
     {
       "type": "EmitAct",
       "actId": "act.clear_nearby_threat",
-      "target": "entity.vell"
+      "target": "entity.vell",
+      "secrecy": "public"
     },
     {
       "type": "EmitAct",
       "actId": "act.break_a_promise",
-      "target": "entity.joren"
+      "target": "entity.joren",
+      "secrecy": "public"
     }
   ],
   "checkpoints": [
     {
       "id": "dialogue-act-logged",
       "after": 1,
-      "state": { "narrative": { "log": { "nextId": 1 } } }
+      "state": {
+        "narrative": {
+          "log": {
+            "nextId": 1
+          }
+        }
+      }
     },
     {
       "id": "gameplay-act-logged",
       "after": 2,
-      "state": { "narrative": { "log": { "nextId": 2 } } }
+      "state": {
+        "narrative": {
+          "log": {
+            "nextId": 2
+          }
+        }
+      }
     },
     {
       "id": "all-three-logged",
       "after": 3,
-      "state": { "narrative": { "log": { "nextId": 3 } } }
+      "state": {
+        "narrative": {
+          "log": {
+            "nextId": 3
+          }
+        }
+      }
     }
   ]
 }

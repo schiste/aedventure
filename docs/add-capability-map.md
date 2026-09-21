@@ -40,6 +40,7 @@ the Rust runtime owns mutation and deterministic outcomes.
 
 | Capability | Command | What it proves |
 | --- | --- | --- |
+| Whether a secret stayed secret | `npm run scenario:add -- scenarios/add/narrative/broken-promise-secret.json` | An unwitnessed act changes no standing and reaches nobody |
 | Why an entity regards the Hero as it does | `npm run narr:explain -- <entity> <axis> --save <path>` | Every contributing event with each factor's input and the running score |
 | Narrative fuzz and coverage | `npm run narr:fuzz` or `npm run narr:fuzz:gate` | Policy-driven playthroughs find refused choices and dead ends, and name content nothing reaches |
 | Narrative vocabulary for agents | `npm run narr:schema` | Beats, choices, ink knots and commands as one JSON contract |

@@ -136,6 +136,10 @@ fn ink_first_glimpse_runs_headlessly() {
 /// N3 acceptance: one dialogue act and one gameplay act each reach an
 /// individual, a peer in the same crew, and a stranger elsewhere in the
 /// faction — at three different strengths, from one log, with nothing stored.
+///
+/// The acts are public so this isolates *reach*. Since N4, reach and knowledge
+/// are independent: `broken-promise-witnessed` / `-secret` cover the other
+/// half, where the same act costs everything or nothing depending on who saw.
 #[test]
 fn standing_reaches_three_distances_from_the_log() {
     use add_core::narrative::{Axis, Band};
@@ -179,4 +183,36 @@ fn standing_reaches_three_distances_from_the_log() {
     // Nothing is stored: the save carries events, not scores.
     assert!(run.final_save.contains("\"events\""));
     assert!(!run.final_save.contains("\"goodwill\":"));
+}
+
+/// N4 acceptance: a committed pair differing only in whether anyone saw it.
+/// The secret costs nothing; the witnessed one costs the Hero his word, and a
+/// crewmate who only heard about it reacts measurably more weakly.
+#[test]
+fn witnessed_and_secret_promises_diverge() {
+    use add_core::narrative::Axis;
+
+    let witnessed = run_scenario_file(&repo_path("scenarios/add/narrative/broken-promise-witnessed.json"))
+        .expect("witnessed scenario should pass");
+    let secret = run_scenario_file(&repo_path("scenarios/add/narrative/broken-promise-secret.json"))
+        .expect("secret scenario should pass");
+
+    let seen = add_core::import_save(&witnessed.final_save).expect("save loads");
+    let unseen = add_core::import_save(&secret.final_save).expect("save loads");
+    let now = seen.clock_seconds;
+
+    let seen_integrity = seen.narrative.log.standing("entity.vell", Axis::Integrity, now);
+    let unseen_integrity = unseen.narrative.log.standing("entity.vell", Axis::Integrity, now);
+
+    assert!(seen_integrity < 0.0, "a witnessed broken promise should cost: {seen_integrity}");
+    assert_eq!(
+        unseen_integrity, 0.0,
+        "an unwitnessed one should cost nothing at all: {unseen_integrity}",
+    );
+
+    // The two runs are identical but for secrecy, so the logs match in length.
+    assert_eq!(seen.narrative.log.events.len(), unseen.narrative.log.events.len());
+
+    // Nobody can have heard what nobody saw.
+    assert!(!unseen.narrative.log.knowledge.anyone_knows("entity.sleepless", 0));
 }

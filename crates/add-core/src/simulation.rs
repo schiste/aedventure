@@ -167,7 +167,21 @@ impl Simulation {
                 target,
                 cost,
                 need,
-            } => self.emit_act(&act_id, target.as_deref(), cost, need),
+                secrecy,
+                witnesses,
+            } => self.emit_act(
+                &act_id,
+                target.as_deref(),
+                cost,
+                need,
+                secrecy.as_deref(),
+                witnesses,
+            ),
+            GameCommand::Tell {
+                entity_id,
+                event_id,
+            } => self.tell(&entity_id, event_id),
+            GameCommand::Silence { entity_id } => self.silence(&entity_id),
             GameCommand::CompletePreArrivalRoute => self.complete_pre_arrival_route(),
             GameCommand::SetHeroAssigned { assigned } => self.set_hero_assigned(assigned),
             GameCommand::SetHeroRole { role_id } => self.set_hero_role(&role_id),
@@ -1343,6 +1357,11 @@ impl Simulation {
         }
 
         self.state.clock_seconds += safe_seconds;
+        // Rumour advances on fixed tick boundaries, so a long offline gap
+        // spreads exactly what playing through would have spread.
+        let seed = self.state.rng_seed;
+        let now = self.state.clock_seconds;
+        self.state.narrative.log.advance_rumour(now, seed);
         self.state.resources.bassline_cap = self.bassline_cap();
         self.state.resources.chorus_cap = self.chorus_cap();
         self.state.resources.harmonics_cap = self.harmonics_cap();
@@ -2688,7 +2707,15 @@ impl Simulation {
     /// Record an act in the narrative log. Validation is deliberate: an
     /// unknown act or an unknown target would put an event in the log that no
     /// fold can interpret, which is worse than refusing it.
-    fn emit_act(&mut self, act_id: &str, target: Option<&str>, cost: f64, need: f64) {
+    fn emit_act(
+        &mut self,
+        act_id: &str,
+        target: Option<&str>,
+        cost: f64,
+        need: f64,
+        secrecy: Option<&str>,
+        witnesses: Vec<String>,
+    ) {
         let Some(act) = crate::game_data::narrative_act_def(act_id) else {
             self.push_note(format!("Unknown act: {act_id}."));
             self.reject(BlockerKind::Inaccessible);
@@ -2705,8 +2732,45 @@ impl Simulation {
         let mut event = crate::narrative::event_for(act, target, tick);
         event.cost = cost.clamp(0.6, 2.0);
         event.need = need.clamp(1.0, 2.0);
+        if let Some(value) = secrecy.and_then(crate::narrative::Secrecy::from_str) {
+            event.secrecy = value;
+        }
+        event.witnesses = witnesses
+            .into_iter()
+            .filter(|id| crate::game_data::narrative_entity_def(id).is_some())
+            .collect();
         self.state.narrative.log.append(event);
         self.push_note(format!("{} was noted.", act.label));
+    }
+
+    /// Hand an entity an event at full fidelity. Scripted confessions and
+    /// hard proof both arrive this way, bypassing rumour.
+    fn tell(&mut self, entity_id: &str, event_id: u64) {
+        if crate::game_data::narrative_entity_def(entity_id).is_none() {
+            self.push_note(format!("Unknown narrative entity: {entity_id}."));
+            self.reject(BlockerKind::Inaccessible);
+            return;
+        }
+        if event_id >= self.state.narrative.log.next_id {
+            self.push_note("That has not happened.");
+            self.reject(BlockerKind::Inaccessible);
+            return;
+        }
+        let tick = self.state.clock_seconds;
+        self.state.narrative.log.knowledge.learn(
+            entity_id,
+            event_id,
+            crate::narrative::Knowledge::first_hand(tick),
+        );
+    }
+
+    fn silence(&mut self, entity_id: &str) {
+        if crate::game_data::narrative_entity_def(entity_id).is_none() {
+            self.push_note(format!("Unknown narrative entity: {entity_id}."));
+            self.reject(BlockerKind::Inaccessible);
+            return;
+        }
+        self.state.narrative.log.knowledge.silence(entity_id);
     }
 
     /// Build the ink runtime from the current save. Constructed on demand

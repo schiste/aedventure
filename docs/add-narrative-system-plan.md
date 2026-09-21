@@ -412,6 +412,15 @@ scenes days later. Secrets become mechanically real.
 presence diverges, and a distant faction reacts measurably more weakly than a
 close one.
 
+**Status: done.** `broken-promise-witnessed` and `-secret` differ in one field
+and diverge completely: the witnessed promise costs the Hero his word, the
+secret one costs nothing and nobody can have heard it. Fidelity falls 0.7 per
+retelling, so hearsay weighs less than a witness. Rumour advances on fixed tick
+boundaries from the save's seed, and a test asserts one long offline gap
+spreads exactly what many short steps do. This also forced a useful separation:
+the N3 reach scenario now marks its acts `public`, because reach and knowledge
+are independent and a reach test should not fail for a knowledge reason.
+
 ### N5 — Causality, sifting, reactions
 
 *Player outcome:* a character refers to something the player did, by name, and

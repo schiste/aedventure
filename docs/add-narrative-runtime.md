@@ -209,6 +209,41 @@ the doubt on small slips and a harsher fall on big ones. Both are themselves
 folded axes, so they are computed in a first pass with the amplifiers neutral —
 one extra bounded pass, which keeps them from being self-referential.
 
+## Knowledge, witnesses and rumour (N4)
+
+Blast radius is the product of two independent things: **scope** — who would
+care — and **knowledge** — who has heard. An impact moves an entity's standing
+only if that entity knows the event, and only as far as it trusts the account
+it holds. That is what makes a secret mechanically real rather than a fiction
+the numbers ignore.
+
+| Secrecy | Who knows at once |
+| --- | --- |
+| `public` | everyone under any scope the act touches |
+| `witnessed` | the target, plus whoever the engine reports as present |
+| `secret` | nobody. The act changes nothing until it leaks |
+
+The committed pair `broken-promise-witnessed` and `broken-promise-secret`
+differ in exactly one field. The witnessed promise costs the Hero his word;
+the secret one costs **nothing at all**, and no one in the faction can have
+heard what nobody saw.
+
+**Fidelity.** First-hand is 1.0; each retelling multiplies by 0.7 and stops
+below 0.2. An impact is scaled by the hearer's fidelity, so a crewmate who
+only heard about it reacts measurably more weakly than the witness. A
+first-hand account later *upgrades* what someone holds, never downgrades it,
+which is how proof works.
+
+**Spread is deterministic.** Rumour advances on fixed tick boundaries inside
+the tick path, and every roll comes from the save's seed and the identities
+involved — never wall-clock, never hash-map order. One long offline gap
+therefore spreads exactly what playing through would have spread, and a test
+asserts that directly.
+
+**`Tell` and `Silence`.** A confession or hard proof hands an entity an event
+at full fidelity, bypassing rumour. Silencing a witness stops them passing
+anything on — buy the only witness and it stays contained.
+
 ## Focused verification
 
 | Check | Command |
@@ -233,7 +268,14 @@ open, and deliberately not stubbed:
 - **Stance** (admiration, envy, pity, contempt) and the BIAS-map behavioural
   scripts that hang off it.
 - **Hypocrisy.** Detecting two faces needs the Hero's revealed profile per
-  observer, which needs knowledge — so it follows N4 rather than N3.
+  observer. Knowledge now exists, so this is unblocked; the profile itself is
+  not built.
+- **Witnesses are not yet supplied by the engine's perception.** `EmitAct`
+  accepts a witness list, but nothing in the gameplay path fills it from who
+  was actually present, so gameplay acts default to their authored secrecy.
+- **Ties are structural only.** Rumour follows group membership; the explicit
+  NPC-to-NPC edges of §5 do not exist, so a spy in another faction cannot
+  carry news across.
 - **Generated deviants.** Profiles are hand-authored; `narr generate`,
   deviation rates and concealment are not built.
 - **Honour and audience.** No tier escalation for public slights.

@@ -1,0 +1,20 @@
+{
+  "id": "broken-promise-witnessed",
+  "seed": "fixture-seed",
+  "commands": [
+    {
+      "type": "EmitAct",
+      "actId": "act.break_a_promise",
+      "target": "entity.vell",
+      "secrecy": "witnessed"
+    },
+    { "type": "Tick", "seconds": 4320 }
+  ],
+  "checkpoints": [
+    {
+      "id": "act-logged",
+      "after": 1,
+      "state": { "narrative": { "log": { "nextId": 1 } } }
+    }
+  ]
+}

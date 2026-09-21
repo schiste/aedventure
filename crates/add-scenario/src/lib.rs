@@ -62,6 +62,22 @@ pub enum ScenarioCommand {
         cost: f64,
         #[serde(default = "one")]
         need: f64,
+        #[serde(default)]
+        secrecy: Option<String>,
+        #[serde(default)]
+        witnesses: Vec<String>,
+    },
+    /// Hand an entity an event at full fidelity.
+    Tell {
+        #[serde(rename = "entityId", alias = "entity_id")]
+        entity_id: String,
+        #[serde(rename = "eventId", alias = "event_id")]
+        event_id: u64,
+    },
+    /// Stop an entity passing anything on.
+    Silence {
+        #[serde(rename = "entityId", alias = "entity_id")]
+        entity_id: String,
     },
     /// Take a choice the ink scene presented, by its index.
     ChooseInkChoice {
@@ -190,9 +206,11 @@ impl ScenarioCommand {
             Self::ChooseInkChoice { beat_id, index } => {
                 GameCommand::ChooseInkChoice { beat_id, index }
             }
-            Self::EmitAct { act_id, target, cost, need } => {
-                GameCommand::EmitAct { act_id, target, cost, need }
+            Self::EmitAct { act_id, target, cost, need, secrecy, witnesses } => {
+                GameCommand::EmitAct { act_id, target, cost, need, secrecy, witnesses }
             }
+            Self::Tell { entity_id, event_id } => GameCommand::Tell { entity_id, event_id },
+            Self::Silence { entity_id } => GameCommand::Silence { entity_id },
             Self::CompletePreArrivalRoute => GameCommand::CompletePreArrivalRoute,
             Self::SetHeroAssigned { assigned } => GameCommand::SetHeroAssigned { assigned },
             Self::SetHeroRole { role_id } => GameCommand::SetHeroRole { role_id },

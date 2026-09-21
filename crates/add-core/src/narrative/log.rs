@@ -14,6 +14,7 @@ use super::graph::inheritance_weight;
 use super::standing::{
     Axis, Band, Derived, GAME_DAY_SECONDS, Intent, Tier, clamp_modifiers, derive, fold,
 };
+use super::knowledge::{KnowledgeBase, Knowledge, Secrecy};
 use super::values::{Profile, Value, verdict};
 use crate::game_data::{NarrativeActDef, narrative_act_def};
 
@@ -35,6 +36,13 @@ pub struct NarrativeEvent {
     pub cost: f64,
     /// How badly the target needed it, 1.0 to 2.0.
     pub need: f64,
+    /// How visible it was when it happened.
+    #[serde(default)]
+    pub secrecy: Secrecy,
+    /// Who was present, beyond the target. Supplied by the engine's presence,
+    /// never listed by authored dialogue.
+    #[serde(default)]
+    pub witnesses: Vec<String>,
 }
 
 /// One resolved contribution to one entity's view of the Hero.
@@ -60,6 +68,8 @@ pub struct ImpactTrace {
     pub values: f64,
     /// Decay already applied, 1.0 when the contribution is permanent.
     pub decay: f64,
+    /// How reliably this observer holds the event. 1.0 first-hand.
+    pub fidelity: f64,
     pub inheritance: f64,
     pub clamped_modifiers: f64,
     pub delta: f64,
@@ -72,6 +82,11 @@ pub struct ImpactTrace {
 pub struct NarrativeLog {
     pub events: Vec<NarrativeEvent>,
     pub next_id: u64,
+    /// Who has heard what. Stored rather than derived: rumour is a
+    /// time-ordered stochastic process, so replaying it on every standing read
+    /// would mean re-running the whole spread each time.
+    #[serde(default)]
+    pub knowledge: KnowledgeBase,
 }
 
 /// An observer's value profile: their own when authored, otherwise inherited
@@ -102,8 +117,47 @@ impl NarrativeLog {
         event.id = self.next_id;
         self.next_id += 1;
         let id = event.id;
+        self.seed_knowledge(&event, id);
         self.events.push(event);
         id
+    }
+
+    /// Who knows an event the moment it happens, from its secrecy.
+    fn seed_knowledge(&mut self, event: &NarrativeEvent, id: u64) {
+        match event.secrecy {
+            // Nobody but the Hero. Until it leaks it changes nothing.
+            Secrecy::Secret => {}
+            Secrecy::Witnessed => {
+                if let Some(target) = event.target.as_deref() {
+                    self.knowledge.learn(target, id, Knowledge::first_hand(event.tick));
+                }
+                for witness in &event.witnesses {
+                    self.knowledge.learn(witness, id, Knowledge::first_hand(event.tick));
+                }
+            }
+            Secrecy::Public => {
+                // Everyone under any scope the act touches.
+                let Some(act) = narrative_act_def(&event.act_id) else { return };
+                let scopes: Vec<String> = act
+                    .impacts
+                    .iter()
+                    .filter_map(|impact| Self::resolve_scope(impact.scope, event))
+                    .map(str::to_string)
+                    .collect();
+                for entity in crate::game_data::narrative_entities() {
+                    let chain = super::graph::ancestry(entity.id);
+                    if scopes.iter().any(|scope| chain.contains(&scope.as_str())) {
+                        self.knowledge
+                            .learn(entity.id, id, Knowledge::first_hand(event.tick));
+                    }
+                }
+            }
+        }
+    }
+
+    /// Advance rumour to `now_tick`. Called from the engine's tick path.
+    pub fn advance_rumour(&mut self, now_tick: f64, seed: u64) {
+        self.knowledge.advance(now_tick, seed);
     }
 
     /// Resolve `scope` for one impact of one event: `Target` means whoever the
@@ -194,6 +248,12 @@ impl NarrativeLog {
                 if inheritance <= 0.0 {
                     continue;
                 }
+                // §6: an impact moves an entity's standing only if that entity
+                // knows the event, and only as far as it trusts the account it
+                // holds. This is what makes a secret mechanically real.
+                let Some(fidelity) = self.knowledge.fidelity(observer_id, event.id) else {
+                    continue;
+                };
                 let Some(tier) = Tier::from_str(impact.tier) else {
                     continue;
                 };
@@ -265,7 +325,7 @@ impl NarrativeLog {
                         * belonging
                         * values_verdict.abs().max(if impact.sign == 0 { 0.0 } else { 1.0 }),
                 );
-                let delta = effective_sign * tier.base() * modifiers * inheritance * decay;
+                let delta = effective_sign * tier.base() * modifiers * inheritance * decay * fidelity;
                 score = fold(score, delta);
 
                 traces.push(ImpactTrace {
@@ -284,6 +344,7 @@ impl NarrativeLog {
                     belonging,
                     values: values_verdict,
                     decay,
+                    fidelity,
                     inheritance,
                     clamped_modifiers: modifiers,
                     delta,
@@ -344,6 +405,8 @@ pub fn event_for(act: &NarrativeActDef, target: Option<&str>, tick: f64) -> Narr
         intent: Intent::from_str(act.intent).unwrap_or(Intent::Deliberate),
         cost: 1.0,
         need: 1.0,
+        secrecy: Secrecy::from_str(act.secrecy).unwrap_or_default(),
+        witnesses: Vec::new(),
     }
 }
 
@@ -357,6 +420,19 @@ mod tests {
     const FACTION: &str = "entity.sleepless";
     const HELP: &str = "act.share_scarce_water";
     const BETRAY: &str = "act.break_a_promise";
+
+    /// Everyone in the affected scopes hears at once. Used where the test is
+    /// about how far an impact *reaches*, not about who heard it — the two are
+    /// independent since N4, and mixing them makes a reach test fail for a
+    /// knowledge reason.
+    fn public_log_with(act_id: &str, target: &str) -> NarrativeLog {
+        let mut log = NarrativeLog::default();
+        let act = narrative_act_def(act_id).expect("act exists");
+        let mut event = event_for(act, Some(target), 0.0);
+        event.secrecy = Secrecy::Public;
+        log.append(event);
+        log
+    }
 
     fn log_with(act_id: &str, target: &str) -> NarrativeLog {
         let mut log = NarrativeLog::default();
@@ -376,7 +452,7 @@ mod tests {
     fn one_act_reaches_three_distances_at_three_strengths() {
         // The acceptance shape for N3: the target, a peer in the same
         // sub-faction, and a stranger elsewhere in the faction.
-        let log = log_with(HELP, VELL);
+        let log = public_log_with(HELP, VELL);
         let target = log.standing(VELL, Axis::Goodwill, 0.0);
         let peer = log.standing(PEER, Axis::Goodwill, 0.0);
         let stranger = log.standing(FACTION, Axis::Goodwill, 0.0);
@@ -477,6 +553,19 @@ mod values_and_decay_tests {
     const HELP: &str = "act.share_scarce_water";
     const BETRAY: &str = "act.break_a_promise";
 
+    /// Everyone in the affected scopes hears at once. Used where the test is
+    /// about how far an impact *reaches*, not about who heard it — the two are
+    /// independent since N4, and mixing them makes a reach test fail for a
+    /// knowledge reason.
+    fn public_log_with(act_id: &str, target: &str) -> NarrativeLog {
+        let mut log = NarrativeLog::default();
+        let act = narrative_act_def(act_id).expect("act exists");
+        let mut event = event_for(act, Some(target), 0.0);
+        event.secrecy = Secrecy::Public;
+        log.append(event);
+        log
+    }
+
     fn log_with(act_id: &str, target: &str) -> NarrativeLog {
         let mut log = NarrativeLog::default();
         let act = narrative_act_def(act_id).expect("act exists");
@@ -490,7 +579,7 @@ mod values_and_decay_tests {
         // Sleepless put safety and their own first, so the faction reads the
         // same generosity as resources given away. Nothing scripted this
         // disagreement: it falls out of the circle.
-        let log = log_with(HELP, VELL);
+        let log = public_log_with(HELP, VELL);
         let alignment = log.standing(FACTION, Axis::Alignment, 0.0);
         assert!(
             alignment < 0.0,
@@ -512,7 +601,7 @@ mod values_and_decay_tests {
         let fit = NarrativeLog::values_fit(JOREN);
         assert!(fit < 0.0, "Joren should not fit the Sleepless: {fit}");
 
-        let log = log_with(HELP, VELL);
+        let log = public_log_with(HELP, VELL);
         let joren = log.standing(JOREN, Axis::Alignment, 0.0);
         let faction = log.standing(FACTION, Axis::Alignment, 0.0);
         assert!(
@@ -568,12 +657,96 @@ mod values_and_decay_tests {
 
     #[test]
     fn the_trace_reports_every_new_factor() {
-        let log = log_with(HELP, VELL);
+        let log = public_log_with(HELP, VELL);
         let (_, traces) = log.explain(FACTION, Axis::Alignment, 0.0);
         let trace = traces.first().expect("a values impact reached the faction");
         assert!(trace.values.abs() > 0.0, "the verdict should be recorded");
         assert!(trace.decay > 0.0 && trace.decay <= 1.0);
         assert!(trace.closeness >= 1.0);
         assert!(trace.belonging > 0.0);
+    }
+}
+
+#[cfg(test)]
+mod knowledge_tests {
+    use super::*;
+    use crate::narrative::knowledge::RUMOUR_INTERVAL_SECONDS;
+
+    const VELL: &str = "entity.vell";
+    const JOREN: &str = "entity.joren";
+    const FACTION: &str = "entity.sleepless";
+    const BETRAY: &str = "act.break_a_promise";
+
+    fn broken_promise(secrecy: Secrecy) -> NarrativeLog {
+        let mut log = NarrativeLog::default();
+        let act = narrative_act_def(BETRAY).expect("act exists");
+        let mut event = event_for(act, Some(VELL), 0.0);
+        event.secrecy = secrecy;
+        log.append(event);
+        log
+    }
+
+    #[test]
+    fn a_secret_changes_nothing_at_all() {
+        // The headline of §6: blast radius is scope AND knowledge. A promise
+        // broken with nobody watching costs the Hero exactly nothing.
+        let log = broken_promise(Secrecy::Secret);
+        assert_eq!(log.standing(VELL, Axis::Integrity, 0.0), 0.0);
+        assert_eq!(log.standing(FACTION, Axis::Integrity, 0.0), 0.0);
+        assert!(!log.knowledge.anyone_knows(FACTION, 0));
+    }
+
+    #[test]
+    fn the_same_act_witnessed_costs_the_hero_his_word() {
+        let log = broken_promise(Secrecy::Witnessed);
+        let target = log.standing(VELL, Axis::Integrity, 0.0);
+        assert!(target < 0.0, "the person promised should know: {target}");
+    }
+
+    #[test]
+    fn witnessed_and_secret_diverge_for_the_same_act() {
+        let witnessed = broken_promise(Secrecy::Witnessed).standing(VELL, Axis::Integrity, 0.0);
+        let secret = broken_promise(Secrecy::Secret).standing(VELL, Axis::Integrity, 0.0);
+        assert!(witnessed < secret, "{witnessed} should be worse than {secret}");
+    }
+
+    #[test]
+    fn a_secret_told_later_lands_in_full() {
+        let mut log = broken_promise(Secrecy::Secret);
+        assert_eq!(log.standing(VELL, Axis::Integrity, 0.0), 0.0);
+        log.knowledge
+            .learn(VELL, 0, crate::narrative::Knowledge::first_hand(100.0));
+        assert!(
+            log.standing(VELL, Axis::Integrity, 100.0) < 0.0,
+            "a confession should cost what the act always would have",
+        );
+    }
+
+    #[test]
+    fn a_distant_hearer_reacts_more_weakly_than_the_witness() {
+        // Fidelity falls with every retelling, so the same event weighs less
+        // the further it travels.
+        let mut log = broken_promise(Secrecy::Witnessed);
+        log.advance_rumour(600.0 * RUMOUR_INTERVAL_SECONDS, 9);
+        assert!(log.knowledge.knows(JOREN, 0), "a crewmate should have heard by now");
+
+        let witness = log.standing(VELL, Axis::Integrity, 0.0).abs();
+        let hearsay = log.standing(JOREN, Axis::Integrity, 0.0).abs();
+        assert!(hearsay > 0.0, "the crewmate should have formed a view");
+        assert!(
+            hearsay < witness,
+            "hearsay {hearsay} should weigh less than the witness's {witness}",
+        );
+        assert!(log.knowledge.heard_first_hand(VELL, 0));
+        assert!(!log.knowledge.heard_first_hand(JOREN, 0));
+    }
+
+    #[test]
+    fn silencing_the_only_witness_keeps_it_contained() {
+        let mut log = broken_promise(Secrecy::Witnessed);
+        log.knowledge.silence(VELL);
+        log.advance_rumour(1000.0 * RUMOUR_INTERVAL_SECONDS, 9);
+        assert!(!log.knowledge.knows(JOREN, 0), "a silenced witness spreads nothing");
+        assert!(log.standing(JOREN, Axis::Integrity, 0.0) == 0.0);
     }
 }

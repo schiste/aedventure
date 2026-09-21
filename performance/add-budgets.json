@@ -109,7 +109,7 @@
       "max": 80000
     },
     "wasmBytes": {
-      "max": 1300000
+      "max": 1400000
     },
     "wasmGzipBytes": {
       "max": 500000

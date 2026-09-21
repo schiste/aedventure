@@ -2803,6 +2803,9 @@ pub struct NarrativeActDef {
     /// The values this act expresses, weights summing to 1. A `sign: 0` impact
     /// takes its sign and strength from how each observer reads these.
     pub expresses: &'static [(&'static str, f64)],
+    /// Default visibility: `public`, `witnessed` or `secret`. A caller may
+    /// override it per occurrence when the engine's presence says otherwise.
+    pub secrecy: &'static str,
     pub impacts: &'static [ActImpactDef],
 }
 

@@ -37,6 +37,13 @@ export interface NarrativeActDef {
    * reads as virtue to one group and betrayal to another.
    */
   readonly expresses: readonly (readonly [string, number])[]
+  /**
+   * Default visibility. `witnessed` is the honest default: the target knows,
+   * and so does whoever the engine reports as present. `public` means the
+   * whole affected scope hears at once; `secret` means nobody does, and the
+   * act changes nothing until it leaks.
+   */
+  readonly secrecy: "public" | "witnessed" | "secret"
   readonly impacts: readonly ActImpactDef[]
 }
 
@@ -47,6 +54,7 @@ export const NARRATIVE_ACTS: readonly NarrativeActDef[] = [
     label: "Share scarce water",
     intent: "deliberate",
     expresses: [["universalism", 1.0]],
+    secrecy: "witnessed",
     impacts: [
       { scope: "Target", axis: "goodwill", tier: "major", sign: 1 },
       { scope: "Target", axis: "debt", tier: "moderate", sign: 1 },
@@ -61,6 +69,7 @@ export const NARRATIVE_ACTS: readonly NarrativeActDef[] = [
     label: "Clear a nearby threat",
     intent: "deliberate",
     expresses: [["security", 0.6], ["benevolence", 0.4]],
+    secrecy: "public",
     impacts: [
       { scope: "Target", axis: "competence", tier: "moderate", sign: 1 },
       { scope: "ParentOf(Target)", axis: "competence", tier: "moderate", sign: 1 },
@@ -74,6 +83,8 @@ export const NARRATIVE_ACTS: readonly NarrativeActDef[] = [
     label: "Break a promise",
     intent: "deliberate",
     expresses: [],
+    // A promise is broken in private. It costs nothing until someone hears.
+    secrecy: "witnessed",
     impacts: [
       { scope: "Target", axis: "integrity", tier: "major", sign: -1 },
       { scope: "Target", axis: "grievance", tier: "moderate", sign: 1 },

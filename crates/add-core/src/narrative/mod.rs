@@ -12,12 +12,14 @@
 //! See `docs/add-narrative-system-plan.md` §2.1.
 
 pub mod graph;
+pub mod knowledge;
 pub mod log;
 pub mod standing;
 pub mod story;
 pub mod values;
 
 pub use graph::{GroupKind, ancestry, inheritance_weight};
+pub use knowledge::{Knowledge, KnowledgeBase, Secrecy};
 pub use log::{ImpactTrace, NarrativeEvent, NarrativeLog, event_for};
 pub use standing::{Axis, Band, Derived, Intent, Tier, derive, fold};
 pub use values::{Profile, Value, verdict};

@@ -9,6 +9,7 @@ pub(in crate::game_data) const NARRATIVE_ACTS: &[NarrativeActDef] = &[
         label: "Share scarce water",
         intent: "deliberate",
         expresses: &[("universalism", 1.0000)],
+        secrecy: "witnessed",
         impacts: &[
             ActImpactDef {
                 scope: "Target",
@@ -41,6 +42,7 @@ pub(in crate::game_data) const NARRATIVE_ACTS: &[NarrativeActDef] = &[
         label: "Clear a nearby threat",
         intent: "deliberate",
         expresses: &[("security", 0.6000), ("benevolence", 0.4000)],
+        secrecy: "public",
         impacts: &[
             ActImpactDef {
                 scope: "Target",
@@ -73,6 +75,7 @@ pub(in crate::game_data) const NARRATIVE_ACTS: &[NarrativeActDef] = &[
         label: "Break a promise",
         intent: "deliberate",
         expresses: &[],
+        secrecy: "witnessed",
         impacts: &[
             ActImpactDef {
                 scope: "Target",
