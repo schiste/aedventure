@@ -691,15 +691,33 @@ At 998 entities and 2,000 events, four of the five budgets hold:
 `rumour_step` passes with little room, and is the first thing to watch if the
 population grows again.
 
-**`load_replay` misses, and what that means depends on what a load is.** The
-figure above folds every entity on every axis, which is the worst case and not
-what the engine does: standing is derived on demand and cached, so a load pays
-for the scores it is about to show. `load_replay_present_only`, the eight people
-in a scene, is **91,076 us** — well inside the budget. Both are reported rather
-than one replacing the other, because the eager figure is what §10's budget is
-written against, and redefining a measurement after watching it fail is how a
-budget stops meaning anything. Closing the eager case honestly would need the
-per-entity cache to survive a save, which is a design change, not a tuning one.
+**`load_replay` now holds too: the cache survives a save.** The save folds
+every character once and writes the scores in; the load turns them into cache
+entries and drops the field. Opening a save went from **27,075,362 us to 801
+us** — the last budget, and the whole table now passes at a thousand entities.
+
+Raw scores are still not state. §10 is explicit that they are derived from the
+log so scores and history cannot drift apart, and this does not change that.
+Every entry is checked against the world that produced it — the tick, the length
+of the log, that observer's knowledge count — and, crucially, the content
+version. §10: "If world data changed (retuned amounts, new entities), replay the
+log against the new act definitions." A cache that outlived a retune would
+defeat exactly that, and silently: the game would show scores from the old
+tuning and nothing would look wrong. `a_saved_score_from_different_content_is_refolded`
+plants an absurd value under a bumped stamp and requires it to be ignored.
+
+The field is cleared once its contents are in the cache, so a loaded state is
+identical to one that was never saved. That is not tidiness: the save round-trip
+check compares the two, and it caught the first version of this, where a state
+that had been through a save differed from a played one by carrying a cache in
+its identity.
+
+The cost moved to the save, and moving work somewhere less closely watched is
+not the same as removing it, so both ends are measured. A save taken mid-play
+costs **19,454 us**, because a game that has been asking for standings already
+has them memoised for the current tick. A save taken on a log nothing has read
+costs **8,812,407 us**, which is the worst case and the number to watch if
+saving is ever moved somewhere that has not just been playing.
 
 **Still outstanding:**
 - **1,000 entities.** Only the event-count half of the acceptance criterion is

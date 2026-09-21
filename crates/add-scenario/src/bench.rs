@@ -229,9 +229,39 @@ pub fn run(events: usize) -> BenchReport {
     // compacted throughout play — an uncompacted log of 50,000 events is not a
     // state the game produces. The uncompacted figure is still reported,
     // without a budget, so the cost compaction is removing stays visible.
+    // The save folds every standing once and writes them in, so this measures
+    // a load of a save the game would actually have written. The cost moved to
+    // the save is measured too, below: moving work somewhere less visible is
+    // not the same as removing it.
+    let mut saved = compacted.clone();
+    let start = Instant::now();
+    saved.warm_for_save(now);
+    let save_warm_cold_us = micros_since(start);
+
+    // The same save from a log that has been played rather than just loaded.
+    //
+    // A game reaching a save point has been asking for standings all along, so
+    // the scores for the current tick are already memoised and the save mostly
+    // collects them. The cold figure above is a save taken on a log nothing has
+    // read, which is the worst case and not the usual one — both are reported,
+    // because moving work to a place that is measured less carefully is not the
+    // same as removing it.
+    let mut played = compacted.clone();
+    for entity in &entities {
+        for axis in Axis::ALL {
+            std::hint::black_box(played.standing(entity, axis, now));
+        }
+    }
+    let start = Instant::now();
+    played.warm_for_save(now);
+    let save_warm_played_us = micros_since(start);
+
     let mut load_samples = Vec::new();
     for _ in 0..2 {
-        let fresh = compacted.clone();
+        // What a load does: take what the save carried into the cache, then
+        // answer the queries that follow.
+        let mut fresh = saved.clone();
+        fresh.hydrate_from_save();
         let start = Instant::now();
         for observer in &entities {
             for axis in Axis::ALL {
@@ -292,6 +322,8 @@ pub fn run(events: usize) -> BenchReport {
         Measurement::new("load_replay", load_samples),
         Measurement::new("load_replay_uncompacted", load_uncompacted_samples),
         Measurement::new("load_replay_present_only", load_present_samples),
+        Measurement::new("save_warm_scores_cold", vec![save_warm_cold_us]),
+        Measurement::new("save_warm_scores_in_play", vec![save_warm_played_us]),
     ];
 
     BenchReport {

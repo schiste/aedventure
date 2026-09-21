@@ -51,6 +51,10 @@ pub fn export_save(state: &GameState) -> Result<String, serde_json::Error> {
     // that somehow contained them would ignore them on load).
     let mut state = state.clone();
     state.events.clear();
+    // Fold every standing once, here, so opening the save does not have to.
+    // Saving happens on a boundary; loading happens while someone waits.
+    let now = state.clock_seconds;
+    state.narrative.log.warm_for_save(now);
     serde_json::to_string_pretty(&state)
 }
 
@@ -61,6 +65,9 @@ pub fn export_save(state: &GameState) -> Result<String, serde_json::Error> {
 pub fn import_save(raw: &str) -> Result<GameState, SaveError> {
     let mut value: Value = serde_json::from_str(raw)?;
     migrate_value(&mut value)?;
-    let state = serde_json::from_value(value)?;
+    let mut state: GameState = serde_json::from_value(value)?;
+    // Turn what the save carried into cache entries and drop it, so a loaded
+    // state is indistinguishable from one that was never saved.
+    state.narrative.log.hydrate_from_save();
     Ok(state)
 }

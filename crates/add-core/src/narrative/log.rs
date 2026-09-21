@@ -118,6 +118,10 @@ pub struct NarrativeLog {
     /// What the events folded away by [`NarrativeLog::compact`] left behind.
     #[serde(default)]
     pub compaction: Compaction,
+    /// Scores carried across a save, so opening one does not re-fold the log
+    /// for every character before the first frame.
+    #[serde(default)]
+    pub warm_scores: WarmScores,
     /// Memoised scores, keyed by the exact inputs that produce them.
     ///
     /// Folding one axis walks the whole log, and callers query in bursts: the
@@ -161,9 +165,53 @@ impl Clone for NarrativeLog {
             knowledge: self.knowledge.clone(),
             fired_reactions: self.fired_reactions.clone(),
             compaction: self.compaction.clone(),
+            // Carried, unlike the in-memory memo: these are validated on every
+            // read, so a clone cannot make them stale in a way a read misses.
+            warm_scores: self.warm_scores.clone(),
             standing_cache: Default::default(),
         }
     }
+}
+
+/// Folded scores written into the save, with everything needed to know whether
+/// they are still true.
+///
+/// Raw scores are deliberately not persisted as state — §10 is explicit that
+/// they are derived from the log so that scores and history can never drift
+/// apart — and this does not change that. It is a cache: every entry is checked
+/// against the world that produced it, and anything that could have changed the
+/// answer throws it away and re-folds.
+///
+/// The content stamp is the one that matters. §10: "If world data changed
+/// (retuned amounts, new entities), replay the log against the new act
+/// definitions. Scores update to the new tuning; history stays intact." A cache
+/// that outlived a retune would defeat exactly that, and quietly — the game
+/// would show scores from the old tuning with no sign anything was wrong.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WarmScores {
+    /// The content catalog these were folded under.
+    pub catalog_version: u16,
+    /// The tick they were taken at. A score is only true for its own moment,
+    /// because decay is continuous.
+    pub tick_bits: u64,
+    /// How long the log was. One more event and every score may have moved.
+    pub events: usize,
+    /// Every entity that was folded, and how much it knew at the time.
+    ///
+    /// Presence is what makes absence meaningful below: an entity listed here
+    /// was folded on every axis, so an axis missing from `entries` is a score
+    /// of zero rather than a score nobody took. Storing the zeros instead would
+    /// be eleven entries per entity, almost all of them zero, for a thousand
+    /// strangers — and leaving them out without this made every zero re-fold on
+    /// load, which is the expensive case, because reaching zero means walking
+    /// the whole log to find nothing.
+    ///
+    /// The count is per observer because invalidation is: one character
+    /// learning something does not move anyone else's score.
+    pub knowledge: std::collections::BTreeMap<String, usize>,
+    /// `entity|axis` to score, for the scores that are not zero.
+    pub entries: std::collections::BTreeMap<String, f64>,
 }
 
 /// The residue of events that have been folded away.
@@ -760,6 +808,108 @@ impl NarrativeLog {
         (score, traces)
     }
 
+    /// Move what the save carried into the in-memory cache, and drop it.
+    ///
+    /// Called once, on load. The scores become ordinary cache entries, so every
+    /// read after this is the same code path as a read in a game that never
+    /// saved — there is no second lookup on the hot path, and no way for a
+    /// stale entry to be consulted by one reader and not another.
+    ///
+    /// Clearing the field afterwards is what keeps a save honest: a loaded
+    /// state is then identical to the state that was saved, which
+    /// `save_round_trip_is_a_replay_command` checks. Leaving it populated would
+    /// make a state that has been through a save differ from one that has not,
+    /// by carrying a cache in its identity.
+    pub fn hydrate_from_save(&mut self) {
+        let warm = std::mem::take(&mut self.warm_scores);
+        if warm.knowledge.is_empty()
+            || warm.catalog_version != crate::game_data::CONTENT_CATALOG_VERSION
+            || warm.events != self.events.len()
+        {
+            return;
+        }
+
+        let mut cache = self.standing_cache.borrow_mut();
+        for (observer_id, saved_knowledge) in &warm.knowledge {
+            if *saved_knowledge != self.knowledge.len_for(observer_id) {
+                continue;
+            }
+            for axis in Axis::ALL {
+                let score = warm
+                    .entries
+                    .get(&Self::warm_key(observer_id, axis))
+                    .copied()
+                    .unwrap_or(0.0);
+                cache.insert(
+                    StandingKey {
+                        observer: observer_id.clone(),
+                        axis,
+                        tick_bits: warm.tick_bits,
+                        events: warm.events,
+                        knowledge: *saved_knowledge,
+                    },
+                    score,
+                );
+            }
+        }
+    }
+
+    /// A score written into the save, if it is still true.
+    ///
+    /// Every condition the in-memory key encodes is checked here too, plus the
+    /// content stamp, because a save can outlive the content it was made under
+    /// in a way a running process cannot.
+    fn warm_score(&self, observer_id: &str, axis: Axis, now_tick: f64) -> Option<f64> {
+        let warm = &self.warm_scores;
+        if warm.knowledge.is_empty()
+            || warm.catalog_version != crate::game_data::CONTENT_CATALOG_VERSION
+            || warm.events != self.events.len()
+            || warm.tick_bits != now_tick.to_bits()
+        {
+            return None;
+        }
+        // Not folded into this save: nothing can be assumed about it.
+        let saved_knowledge = warm.knowledge.get(observer_id)?;
+        if *saved_knowledge != self.knowledge.len_for(observer_id) {
+            return None;
+        }
+        Some(
+            warm.entries
+                .get(&Self::warm_key(observer_id, axis))
+                .copied()
+                .unwrap_or(0.0),
+        )
+    }
+
+    fn warm_key(observer_id: &str, axis: Axis) -> String {
+        format!("{observer_id}|{}", axis.as_str())
+    }
+
+    /// Fold every character's standing and write it into the save.
+    ///
+    /// Called when exporting. The cost is paid by the save, which happens on a
+    /// boundary, rather than by the load, which happens while someone waits.
+    pub fn warm_for_save(&mut self, now_tick: f64) {
+        let mut entries = std::collections::BTreeMap::new();
+        let mut knowledge = std::collections::BTreeMap::new();
+        for entity in crate::game_data::narrative_entities() {
+            knowledge.insert(entity.id.to_string(), self.knowledge.len_for(entity.id));
+            for axis in Axis::ALL {
+                let score = self.standing(entity.id, axis, now_tick);
+                if score != 0.0 {
+                    entries.insert(Self::warm_key(entity.id, axis), score);
+                }
+            }
+        }
+        self.warm_scores = WarmScores {
+            catalog_version: crate::game_data::CONTENT_CATALOG_VERSION,
+            tick_bits: now_tick.to_bits(),
+            events: self.events.len(),
+            knowledge,
+            entries,
+        };
+    }
+
     pub fn standing(&self, observer_id: &str, axis: Axis, now_tick: f64) -> f64 {
         let key = StandingKey {
             observer: observer_id.to_string(),
@@ -1143,6 +1293,112 @@ mod values_and_decay_tests {
             expired.events.len(),
             0,
             "once the arc can no longer be answered the oath is ordinary history",
+        );
+    }
+
+    /// A warm score is used when it is still true, and the save carries one.
+    #[test]
+    fn a_saved_score_is_reused_after_a_load() {
+        let mut log = NarrativeLog::default();
+        let act = narrative_act_def("act.break_a_promise").expect("act exists");
+        let mut event = event_for(act, Some("entity.vell"), 0.0);
+        event.secrecy = Secrecy::Public;
+        log.append(event);
+
+        let now = GAME_DAY_SECONDS;
+        let expected = log.standing("entity.vell", Axis::Integrity, now);
+        log.warm_for_save(now);
+        assert!(!log.warm_scores.entries.is_empty(), "the save should carry scores");
+
+        // A clone drops the in-memory memo, so anything answered afterwards
+        // came from what the save carried.
+        let mut loaded = log.clone();
+        assert!(loaded.standing_cache.borrow().is_empty());
+        loaded.hydrate_from_save();
+        assert!(
+            !loaded.standing_cache.borrow().is_empty(),
+            "the saved scores should become cache entries",
+        );
+        assert!(
+            loaded.warm_scores.entries.is_empty(),
+            "and the field should be cleared, so a loaded state matches a played one",
+        );
+        assert_eq!(loaded.standing("entity.vell", Axis::Integrity, now), expected);
+    }
+
+    /// Retuned content must throw the saved scores away.
+    ///
+    /// §10: "If world data changed (retuned amounts, new entities), replay the
+    /// log against the new act definitions. Scores update to the new tuning;
+    /// history stays intact." A cache that outlived a retune would defeat that
+    /// silently — the game would show scores from the old tuning and nothing
+    /// would look wrong. The planted value is deliberately absurd so that using
+    /// it would be unmistakable.
+    #[test]
+    fn a_saved_score_from_different_content_is_refolded() {
+        let mut log = NarrativeLog::default();
+        let act = narrative_act_def("act.break_a_promise").expect("act exists");
+        let mut event = event_for(act, Some("entity.vell"), 0.0);
+        event.secrecy = Secrecy::Public;
+        log.append(event);
+
+        let now = GAME_DAY_SECONDS;
+        let honest = log.standing("entity.vell", Axis::Integrity, now);
+        log.warm_for_save(now);
+
+        let mut stale = log.clone();
+        stale.warm_scores.catalog_version =
+            crate::game_data::CONTENT_CATALOG_VERSION.wrapping_add(1);
+        for entry in stale.warm_scores.entries.values_mut() {
+            *entry = 999.0;
+        }
+        stale.hydrate_from_save();
+
+        assert!(
+            stale.standing_cache.borrow().is_empty(),
+            "scores folded under different content must not be adopted",
+        );
+        assert_eq!(
+            stale.standing("entity.vell", Axis::Integrity, now),
+            honest,
+            "a score folded under different content must be recomputed, not trusted",
+        );
+    }
+
+    /// The guards are per observer and per moment, not global.
+    #[test]
+    fn a_saved_score_is_refused_once_anything_could_have_moved_it() {
+        let mut log = NarrativeLog::default();
+        let act = narrative_act_def("act.break_a_promise").expect("act exists");
+        let mut event = event_for(act, Some("entity.vell"), 0.0);
+        event.secrecy = Secrecy::Public;
+        log.append(event);
+        let now = GAME_DAY_SECONDS;
+        log.warm_for_save(now);
+
+        // A different moment: decay has moved on, so the adopted entry cannot
+        // answer for it.
+        let mut loaded = log.clone();
+        loaded.hydrate_from_save();
+        let key_count = loaded.standing_cache.borrow().len();
+        assert!(key_count > 0);
+        let later = loaded.standing("entity.vell", Axis::Integrity, now + GAME_DAY_SECONDS);
+        assert!(
+            loaded.standing_cache.borrow().len() > key_count,
+            "a later tick must be folded afresh rather than answered from the save",
+        );
+        let _ = later;
+
+        // One more event, and every score may have moved.
+        let mut grown = log.clone();
+        let mut another = event_for(act, Some("entity.vell"), now);
+        another.secrecy = Secrecy::Public;
+        another.causes = vec![u64::MAX];
+        grown.append(another);
+        grown.hydrate_from_save();
+        assert!(
+            grown.standing_cache.borrow().is_empty(),
+            "a longer log must invalidate what was saved",
         );
     }
 
