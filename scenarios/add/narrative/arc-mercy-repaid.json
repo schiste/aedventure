@@ -1,0 +1,34 @@
+{
+  "id": "arc-mercy-repaid",
+  "seed": "fixture-seed",
+  "commands": [
+    {
+      "type": "EmitAct",
+      "actId": "act.spare_a_life",
+      "target": "entity.vell",
+      "secrecy": "public"
+    },
+    { "type": "Tick", "seconds": 14400 },
+    {
+      "type": "EmitAct",
+      "actId": "act.aid_the_hero",
+      "target": "entity.vell",
+      "secrecy": "public",
+      "causes": [0]
+    }
+  ],
+  "checkpoints": [
+    {
+      "id": "mercy-shown",
+      "after": 1,
+      "state": { "narrative": { "log": { "nextId": 1 } } }
+    },
+    {
+      "id": "arc-complete",
+      "after": 3,
+      "state": {
+        "narrative": { "arcs": { "matches": [{ "patternId": "arc.mercy_repaid" }] } }
+      }
+    }
+  ]
+}

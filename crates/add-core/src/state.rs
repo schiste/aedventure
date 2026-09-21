@@ -565,6 +565,11 @@ pub struct NarrativeState {
     /// Distinct from `GameState.events`, which is cleared every command.
     #[serde(default)]
     pub log: crate::narrative::NarrativeLog,
+    /// Arcs the log currently recognises. Derived from the log, carried on the
+    /// snapshot so dialogue and the browser can name what the player built
+    /// without either re-running the sifter.
+    #[serde(default)]
+    pub arcs: crate::narrative::SiftResult,
 }
 
 impl NarrativeState {
@@ -577,6 +582,7 @@ impl NarrativeState {
             activated_beat_ids: BTreeSet::new(),
             ink_scene: None,
             log: crate::narrative::NarrativeLog::default(),
+            arcs: crate::narrative::SiftResult::default(),
         }
     }
 }

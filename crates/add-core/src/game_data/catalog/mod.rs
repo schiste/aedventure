@@ -40,3 +40,9 @@ mod narrative_entities;
 mod narrative_acts;
 pub(in crate::game_data) use narrative_acts::NARRATIVE_ACTS;
 pub(in crate::game_data) use narrative_entities::NARRATIVE_ENTITIES;
+
+mod sift_patterns;
+pub(in crate::game_data) use sift_patterns::SIFT_PATTERNS;
+
+mod reactions;
+pub(in crate::game_data) use reactions::REACTIONS;

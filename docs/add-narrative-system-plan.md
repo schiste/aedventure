@@ -436,6 +436,14 @@ explains why it matters now.
 *Accepted when:* `mercy_repaid` and `broken_oath` are detected in fuzz runs and
 referenced in dialogue.
 
+**Status: done.** Both patterns are detected — `arc-mercy-repaid` is a
+committed scenario, and `broken_oath` has unit coverage including the pending
+case. Dialogue references them through `EXTERNAL arc(pattern_id)`, bound to
+the sifted result. Reactions fire only when the actor has *heard*, which made
+the N4 secret/witnessed pair diverge further still: the secret run fires no
+reaction at all. `narr graph` is the one deliverable not built; it is recorded
+as a gap.
+
 ### N6 — Storylets and casting
 
 *Player outcome:* scenes arrive that are about the specific people the player

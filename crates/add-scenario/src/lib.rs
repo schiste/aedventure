@@ -66,6 +66,9 @@ pub enum ScenarioCommand {
         secrecy: Option<String>,
         #[serde(default)]
         witnesses: Vec<String>,
+        /// Earlier event ids this act happened because of.
+        #[serde(default)]
+        causes: Vec<u64>,
     },
     /// Hand an entity an event at full fidelity.
     Tell {
@@ -206,8 +209,8 @@ impl ScenarioCommand {
             Self::ChooseInkChoice { beat_id, index } => {
                 GameCommand::ChooseInkChoice { beat_id, index }
             }
-            Self::EmitAct { act_id, target, cost, need, secrecy, witnesses } => {
-                GameCommand::EmitAct { act_id, target, cost, need, secrecy, witnesses }
+            Self::EmitAct { act_id, target, cost, need, secrecy, witnesses, causes } => {
+                GameCommand::EmitAct { act_id, target, cost, need, secrecy, witnesses, causes }
             }
             Self::Tell { entity_id, event_id } => GameCommand::Tell { entity_id, event_id },
             Self::Silence { entity_id } => GameCommand::Silence { entity_id },

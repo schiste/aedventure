@@ -36,6 +36,8 @@ pub enum GameCommand {
         /// Who saw it, beyond the target. The engine's perception supplies
         /// this; authored dialogue never lists witnesses.
         witnesses: Vec<String>,
+        /// Earlier events this one happened because of.
+        causes: Vec<u64>,
     },
     /// Hand an entity an event at full fidelity: a confession, or proof.
     Tell {

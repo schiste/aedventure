@@ -8,11 +8,16 @@
 //
 // Knots are entered by name from Rust, never diverted to from here.
 
+// Rust answers this from the sifted log: did the player actually build that
+// arc? Dialogue may ask; it may never compute.
+EXTERNAL arc(pattern_id)
+
 VAR chosen = ""
 VAR ink_seed = 0
 
 === story_beat_first_glimpse ===
 From the ridge, you finally see it: a broken complex wrapped in a thin blue halo. The Base is still standing for now. # speaker:narrator # mood:tense
+{ arc("arc.broken_oath"): You told them you would not do this. Someone down there remembers. # speaker:narrator # mood:tense }
 * [Study the lights]
     ~ chosen = "story.choice.glimpse.watch_lights"
     The light pulses in time with the hum. Someone built this place to keep something worse outside. # speaker:narrator

@@ -93,6 +93,8 @@ const creatures = content("creatures")
 const objectives = content("objectives")
 const narrativeEntities = content("narrative-entities")
 const narrativeActs = content("narrative-acts")
+const narrativePatterns = content("narrative-patterns")
+const narrativeReactions = content("narrative-reactions")
 const contentVersion = content("content-version")
 const encounterTables = content("encounter-tables")
 const lootTables = content("loot-tables")
@@ -927,6 +929,7 @@ const FILES = [
           fields: [
             { name: "id", kind: "string" },
             { name: "label", kind: "string" },
+            { name: "kinds", kind: "raw", render: (v) => `&[${(v ?? []).map((k) => `"${k}"`).join(", ")}]` },
             { name: "intent", kind: "string" },
             { name: "expresses", kind: "raw", render: toRustPairs },
             { name: "secrecy", kind: "string" },
@@ -945,6 +948,53 @@ const FILES = [
                 ],
               },
             },
+          ],
+        },
+      },
+    ],
+  },
+  {
+    sourceModule: "packages/add-content/src/content/narrative-patterns.ts",
+    rustPath: "crates/add-core/src/game_data/catalog/sift_patterns.rs",
+    consts: [
+      {
+        entries: narrativePatterns.SIFT_PATTERNS,
+        spec: {
+          constName: "SIFT_PATTERNS",
+          rustType: "SiftPatternDef",
+          visibility: VIS,
+          fields: [
+            { name: "id", kind: "string" },
+            { name: "label", kind: "string" },
+            { name: "first_kind", kind: "string" },
+            { name: "second_kind", kind: "string" },
+            { name: "min_gap_days", kind: "f64" },
+            { name: "expires_after_days", kind: "f64" },
+            { name: "requires_cause", kind: "bool" },
+          ],
+        },
+      },
+    ],
+  },
+  {
+    sourceModule: "packages/add-content/src/content/narrative-reactions.ts",
+    rustPath: "crates/add-core/src/game_data/catalog/reactions.rs",
+    consts: [
+      {
+        entries: narrativeReactions.REACTIONS,
+        spec: {
+          constName: "REACTIONS",
+          rustType: "ReactionDef",
+          visibility: VIS,
+          fields: [
+            { name: "id", kind: "string" },
+            { name: "label", kind: "string" },
+            { name: "when_act", kind: "string" },
+            { name: "actor", kind: "string" },
+            { name: "after_days", kind: "f64" },
+            { name: "emit_act", kind: "string" },
+            { name: "emit_target", kind: "string" },
+            { name: "cooldown_days", kind: "f64" },
           ],
         },
       },

@@ -30,6 +30,8 @@ export interface ActImpactDef {
 export interface NarrativeActDef {
   readonly id: string
   readonly label: string
+  /** Categories the sifter matches on, e.g. "mercy", "aid", "oath". */
+  readonly kinds: readonly string[]
   readonly intent: ActIntent
   /**
    * Values this act expresses, weights summing to 1. An impact with `sign: 0`
@@ -52,6 +54,7 @@ export const NARRATIVE_ACTS: readonly NarrativeActDef[] = [
     // A dialogue act: the Hero gives away water they cannot spare.
     id: "act.share_scarce_water",
     label: "Share scarce water",
+    kinds: ["aid", "generosity"],
     intent: "deliberate",
     expresses: [["universalism", 1.0]],
     secrecy: "witnessed",
@@ -67,6 +70,7 @@ export const NARRATIVE_ACTS: readonly NarrativeActDef[] = [
     // A gameplay act: the Hero clears a nest threatening the group.
     id: "act.clear_nearby_threat",
     label: "Clear a nearby threat",
+    kinds: ["aid", "violence"],
     intent: "deliberate",
     expresses: [["security", 0.6], ["benevolence", 0.4]],
     secrecy: "public",
@@ -78,9 +82,60 @@ export const NARRATIVE_ACTS: readonly NarrativeActDef[] = [
     ],
   },
   {
+    id: "act.spare_a_life",
+    label: "Spare a life",
+    kinds: ["mercy"],
+    intent: "deliberate",
+    expresses: [["benevolence", 0.7], ["universalism", 0.3]],
+    secrecy: "witnessed",
+    impacts: [
+      { scope: "Target", axis: "goodwill", tier: "severe", sign: 1 },
+      { scope: "Target", axis: "debt", tier: "major", sign: 1 },
+      { scope: "ParentOf(Target)", axis: "alignment", tier: "moderate", sign: 0 },
+    ],
+  },
+  {
+    // What a spared survivor does about it later.
+    id: "act.aid_the_hero",
+    label: "Aid the Hero",
+    kinds: ["aid"],
+    intent: "deliberate",
+    expresses: [["benevolence", 1.0]],
+    secrecy: "witnessed",
+    impacts: [
+      { scope: "Target", axis: "debt", tier: "moderate", sign: -1 },
+      { scope: "Target", axis: "closeness", tier: "moderate", sign: 1 },
+    ],
+  },
+  {
+    // What a wronged survivor does about it: tells their crew.
+    id: "act.denounce",
+    label: "Denounce the Hero",
+    kinds: ["denunciation"],
+    intent: "deliberate",
+    expresses: [["conformity", 0.6], ["security", 0.4]],
+    secrecy: "public",
+    impacts: [
+      { scope: "Target", axis: "integrity", tier: "moderate", sign: -1 },
+      { scope: "Target", axis: "goodwill", tier: "minor", sign: -1 },
+    ],
+  },
+  {
+    id: "act.swear_an_oath",
+    label: "Swear an oath",
+    kinds: ["oath"],
+    intent: "deliberate",
+    expresses: [["tradition", 0.5], ["conformity", 0.5]],
+    secrecy: "public",
+    impacts: [
+      { scope: "Target", axis: "closeness", tier: "minor", sign: 1 },
+    ],
+  },
+  {
     // The counterweight: a universal norm, judged the same by everyone.
     id: "act.break_a_promise",
     label: "Break a promise",
+    kinds: ["forbidden", "harm"],
     intent: "deliberate",
     expresses: [],
     // A promise is broken in private. It costs nothing until someone hears.
@@ -92,6 +147,10 @@ export const NARRATIVE_ACTS: readonly NarrativeActDef[] = [
     ],
   },
 ]
+
+// --- Acts the starter sifting patterns are written against -----------------
+
+export const NARRATIVE_ACTS_STORY: readonly NarrativeActDef[] = []
 
 export function narrativeActById(id: string): NarrativeActDef | undefined {
   return NARRATIVE_ACTS.find((act) => act.id === id)

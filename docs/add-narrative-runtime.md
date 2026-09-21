@@ -244,6 +244,47 @@ asserts that directly.
 at full fidelity, bypassing rumour. Silencing a witness stops them passing
 anything on — buy the only witness and it stays contained.
 
+## Causality, sifting and reactions (N5)
+
+**Causes.** An event names the earlier events it happened because of. That is
+what turns two things into an arc: sparing a life and being helped later are
+unrelated unless the second names the first.
+
+**Sifting.** A pattern is two act kinds on the same person, in order, with a
+minimum gap and an optional causal requirement. `arc.mercy_repaid` requires
+the link — otherwise it is only two things that happened. `arc.broken_oath`
+does not: swearing and then doing the forbidden thing *is* the story.
+
+A pattern whose first slot is filled but which has not closed is reported as
+**pending**, so a character can warn the Hero that a promise is about to be
+tested rather than only commenting once it is too late.
+
+Matching is a scan, not the specification's incremental matcher. At the
+current log size a scan is microseconds, and an incremental matcher is a cache
+that can disagree with the log. It becomes worth building when `narr fuzz`
+puts the scan on the profile, not before.
+
+**Reactions.** An authored rule says: when this act happens, and the actor has
+*heard about it*, they do that after this delay. The act they emit is a normal
+event, so it spreads, sifts and can trigger further reactions. Characters never
+act from free-running simulation; every NPC act traces back through a rule to
+something that happened.
+
+Reactions run after rumour on the tick path, so a character acts when they
+hear, not when it happened. The knowledge rule therefore drives the chain: the
+committed `broken-promise-secret` run fires **nothing**, because nobody has
+anything to react to, while `broken-promise-witnessed` has Vell denounce the
+Hero to his crew.
+
+Safety is by construction: a rule fires at most once per trigger, respects a
+cooldown, and one pass emits at most `MAX_CHAIN_DEPTH` (8) rounds however the
+content is written. Re-running at the same tick changes nothing.
+
+**Dialogue can name it.** Ink declares `EXTERNAL arc(pattern_id)`, bound in
+Rust to the already-sifted result — a closure over the matches, never over the
+log, so ink can ask what the player built but can never run the sifter itself.
+The first-glimpse scene gains a line only when `arc.broken_oath` matched.
+
 ## Focused verification
 
 | Check | Command |

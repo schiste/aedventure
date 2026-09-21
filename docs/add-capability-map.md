@@ -40,6 +40,7 @@ the Rust runtime owns mutation and deterministic outcomes.
 
 | Capability | Command | What it proves |
 | --- | --- | --- |
+| Whether an arc the player built is recognised | `npm run scenario:add -- scenarios/add/narrative/arc-mercy-repaid.json` | The sifter detects the arc, names who filled it, and dialogue can reference it |
 | Whether a secret stayed secret | `npm run scenario:add -- scenarios/add/narrative/broken-promise-secret.json` | An unwitnessed act changes no standing and reaches nobody |
 | Why an entity regards the Hero as it does | `npm run narr:explain -- <entity> <axis> --save <path>` | Every contributing event with each factor's input and the running score |
 | Narrative fuzz and coverage | `npm run narr:fuzz` or `npm run narr:fuzz:gate` | Policy-driven playthroughs find refused choices and dead ends, and name content nothing reaches |

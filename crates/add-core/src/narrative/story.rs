@@ -65,13 +65,44 @@ pub fn beat_has_knot(beat_id: &str) -> bool {
 }
 
 impl NarrativeStory {
+    /// Build a story that can answer `arc(...)` about what the player built.
+    ///
+    /// Bound as a closure over the already-sifted result rather than over the
+    /// log: ink is a presentation layer and must not be able to run the
+    /// sifter, or to see anything the fold has not already decided.
+    pub fn with_arcs(seed: u64, arcs: &crate::narrative::SiftResult) -> Result<Self, String> {
+        Self::build(seed, arcs.pattern_ids())
+    }
+
+    /// A story with no arcs matched. The external is still bound, because ink
+    /// declares it unconditionally and an unbound external is a load error.
     pub fn new(seed: u64) -> Result<Self, String> {
+        Self::build(seed, Vec::new())
+    }
+
+    fn build(seed: u64, matched: Vec<String>) -> Result<Self, String> {
         let mut story = Story::new(MAIN_INK_JSON).map_err(|error| format!("{error:?}"))?;
         // Ink has no Rust seed setter (N0 spike, Q3), so the seed crosses into
         // ink as a value. Clamping into i32 keeps ink's arithmetic defined.
         let ink_seed = (seed % (i32::MAX as u64)) as i32;
         story
             .set_variable(SEED_VAR, &ValueType::Int(ink_seed))
+            .map_err(|error| format!("{error:?}"))?;
+        story
+            .bind_external_function(
+                "arc",
+                move |_name: &str, args: &[ValueType]| {
+                    let wanted = match args.first() {
+                        Some(ValueType::String(value)) => value.string.clone(),
+                        _ => String::new(),
+                    };
+                    // lookahead_safe: pure, so ink may probe it freely.
+                    Ok(Some(ValueType::Bool(
+                        matched.iter().any(|id| *id == wanted),
+                    )))
+                },
+                true,
+            )
             .map_err(|error| format!("{error:?}"))?;
         Ok(Self { story })
     }
@@ -284,5 +315,32 @@ mod tests {
                 "ink knot {knot} has no story beat {beat_id}",
             );
         }
+    }
+
+    #[test]
+    fn dialogue_references_an_arc_the_player_actually_built() {
+        // N5's player outcome: a character refers to something the player did.
+        // Without the arc the line is absent; with it, the scene says so.
+        let mut without = NarrativeStory::new(1).expect("story loads");
+        let plain = without.enter_beat(BEAT).expect("beat entered");
+        assert!(
+            !plain.lines.iter().any(|line| line.text.contains("remembers")),
+            "the callback should not appear when no arc matched",
+        );
+
+        let mut arcs = crate::narrative::SiftResult::default();
+        arcs.matches.push(crate::narrative::ArcMatch {
+            pattern_id: "arc.broken_oath".to_string(),
+            roles: Default::default(),
+            event_ids: vec![0, 1],
+            completed_at: 0.0,
+        });
+        let mut with = NarrativeStory::with_arcs(1, &arcs).expect("story loads");
+        let scene = with.enter_beat(BEAT).expect("beat entered");
+        assert!(
+            scene.lines.iter().any(|line| line.text.contains("remembers")),
+            "the scene should acknowledge the broken oath: {:?}",
+            scene.lines,
+        );
     }
 }

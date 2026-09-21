@@ -2799,6 +2799,8 @@ pub struct ActImpactDef {
 pub struct NarrativeActDef {
     pub id: &'static str,
     pub label: &'static str,
+    /// Categories the sifter matches on.
+    pub kinds: &'static [&'static str],
     pub intent: &'static str,
     /// The values this act expresses, weights summing to 1. A `sign: 0` impact
     /// takes its sign and strength from how each observer reads these.
@@ -2823,4 +2825,47 @@ pub fn narrative_acts() -> &'static [NarrativeActDef] {
 
 pub fn narrative_act_def(id: &str) -> Option<&'static NarrativeActDef> {
     catalog::NARRATIVE_ACTS.iter().find(|act| act.id == id)
+}
+
+
+/// A sifting pattern: two act kinds on the same person, in order.
+#[derive(Debug, Clone, Copy, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct SiftPatternDef {
+    pub id: &'static str,
+    pub label: &'static str,
+    pub first_kind: &'static str,
+    pub second_kind: &'static str,
+    pub min_gap_days: f64,
+    /// 0 means the arc never goes cold.
+    pub expires_after_days: f64,
+    /// Whether the closing act must name the opening one among its causes.
+    pub requires_cause: bool,
+}
+
+pub fn sift_patterns() -> &'static [SiftPatternDef] {
+    catalog::SIFT_PATTERNS
+}
+
+pub fn sift_pattern_def(id: &str) -> Option<&'static SiftPatternDef> {
+    catalog::SIFT_PATTERNS.iter().find(|pattern| pattern.id == id)
+}
+
+
+/// An authored reaction: who does what, when, about which act.
+#[derive(Debug, Clone, Copy, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ReactionDef {
+    pub id: &'static str,
+    pub label: &'static str,
+    pub when_act: &'static str,
+    pub actor: &'static str,
+    pub after_days: f64,
+    pub emit_act: &'static str,
+    pub emit_target: &'static str,
+    pub cooldown_days: f64,
+}
+
+pub fn reactions() -> &'static [ReactionDef] {
+    catalog::REACTIONS
 }

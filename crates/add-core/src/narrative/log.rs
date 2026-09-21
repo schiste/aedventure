@@ -39,6 +39,11 @@ pub struct NarrativeEvent {
     /// How visible it was when it happened.
     #[serde(default)]
     pub secrecy: Secrecy,
+    /// Earlier events this one happened because of. Gating and causality are
+    /// the same bookkeeping: when a choice was offered because of something,
+    /// that something becomes its cause.
+    #[serde(default)]
+    pub causes: Vec<u64>,
     /// Who was present, beyond the target. Supplied by the engine's presence,
     /// never listed by authored dialogue.
     #[serde(default)]
@@ -87,6 +92,10 @@ pub struct NarrativeLog {
     /// would mean re-running the whole spread each time.
     #[serde(default)]
     pub knowledge: KnowledgeBase,
+    /// Reactions that have already fired, so a rule fires once per trigger
+    /// and its cooldown can be read from the log rather than tracked apart.
+    #[serde(default)]
+    pub fired_reactions: Vec<crate::narrative::react::FiredReaction>,
 }
 
 /// An observer's value profile: their own when authored, otherwise inherited
@@ -406,6 +415,7 @@ pub fn event_for(act: &NarrativeActDef, target: Option<&str>, tick: f64) -> Narr
         cost: 1.0,
         need: 1.0,
         secrecy: Secrecy::from_str(act.secrecy).unwrap_or_default(),
+        causes: Vec::new(),
         witnesses: Vec::new(),
     }
 }

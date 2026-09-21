@@ -210,9 +210,58 @@ fn witnessed_and_secret_promises_diverge() {
         "an unwitnessed one should cost nothing at all: {unseen_integrity}",
     );
 
-    // The two runs are identical but for secrecy, so the logs match in length.
-    assert_eq!(seen.narrative.log.events.len(), unseen.narrative.log.events.len());
+    // Since N5 the witnessed run produces MORE than the secret one: Vell
+    // hears, and denounces the Hero to his crew. The secret run produces
+    // nothing further, because nobody has anything to react to.
+    assert!(
+        seen.narrative.log.events.len() > unseen.narrative.log.events.len(),
+        "a witnessed betrayal should provoke a reaction the secret one cannot",
+    );
+    assert!(
+        seen.narrative
+            .log
+            .fired_reactions
+            .iter()
+            .any(|fired| fired.reaction_id == "reaction.vell_denounces_a_broken_promise"),
+        "Vell should have denounced the broken promise",
+    );
+    assert!(
+        unseen.narrative.log.fired_reactions.is_empty(),
+        "nothing can react to what nobody knows",
+    );
 
     // Nobody can have heard what nobody saw.
     assert!(!unseen.narrative.log.knowledge.anyone_knows("entity.sleepless", 0));
+}
+
+/// N5 acceptance: mercy_repaid is detected from a committed run, the arc names
+/// who filled its slot, and the causal link is what made it an arc rather than
+/// two unrelated things that happened.
+#[test]
+fn mercy_repaid_is_detected_and_names_its_subject() {
+    let run = run_scenario_file(&repo_path("scenarios/add/narrative/arc-mercy-repaid.json"))
+        .expect("committed arc scenario should pass");
+    let state = add_core::import_save(&run.final_save).expect("save loads");
+
+    assert!(
+        state.narrative.arcs.matched("arc.mercy_repaid"),
+        "the arc should be recognised: {:?}",
+        state.narrative.arcs,
+    );
+    assert_eq!(
+        state.narrative.arcs.role("arc.mercy_repaid", "x"),
+        Some("entity.vell"),
+        "dialogue needs to be able to name who repaid the mercy",
+    );
+
+    // The aid names the mercy among its causes. Without that link the sifter
+    // would see two acts, not an arc.
+    let aid = state
+        .narrative
+        .log
+        .events
+        .iter()
+        .find(|event| event.act_id == "act.aid_the_hero")
+        .expect("the aid was logged");
+    assert!(aid.causes.contains(&0), "the aid should name the mercy: {:?}", aid.causes);
 }

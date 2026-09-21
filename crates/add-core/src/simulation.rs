@@ -169,6 +169,7 @@ impl Simulation {
                 need,
                 secrecy,
                 witnesses,
+                causes,
             } => self.emit_act(
                 &act_id,
                 target.as_deref(),
@@ -176,6 +177,7 @@ impl Simulation {
                 need,
                 secrecy.as_deref(),
                 witnesses,
+                causes,
             ),
             GameCommand::Tell {
                 entity_id,
@@ -1362,6 +1364,10 @@ impl Simulation {
         let seed = self.state.rng_seed;
         let now = self.state.clock_seconds;
         self.state.narrative.log.advance_rumour(now, seed);
+        // Reactions run after rumour, so a character acts when they *hear*,
+        // not when it happened.
+        crate::narrative::react::run(&mut self.state.narrative.log, now);
+        self.state.narrative.arcs = crate::narrative::sift(&self.state.narrative.log);
         self.state.resources.bassline_cap = self.bassline_cap();
         self.state.resources.chorus_cap = self.chorus_cap();
         self.state.resources.harmonics_cap = self.harmonics_cap();
@@ -2715,6 +2721,7 @@ impl Simulation {
         need: f64,
         secrecy: Option<&str>,
         witnesses: Vec<String>,
+        causes: Vec<u64>,
     ) {
         let Some(act) = crate::game_data::narrative_act_def(act_id) else {
             self.push_note(format!("Unknown act: {act_id}."));
@@ -2735,11 +2742,13 @@ impl Simulation {
         if let Some(value) = secrecy.and_then(crate::narrative::Secrecy::from_str) {
             event.secrecy = value;
         }
+        event.causes = causes.into_iter().filter(|id| *id < self.state.narrative.log.next_id).collect();
         event.witnesses = witnesses
             .into_iter()
             .filter(|id| crate::game_data::narrative_entity_def(id).is_some())
             .collect();
         self.state.narrative.log.append(event);
+        self.state.narrative.arcs = crate::narrative::sift(&self.state.narrative.log);
         self.push_note(format!("{} was noted.", act.label));
     }
 
@@ -2778,7 +2787,9 @@ impl Simulation {
     /// `bladeink::Story` cannot. Beat changes and choices are rare compared to
     /// ticks, so this stays off the hot path; cache it here if the story grows.
     fn narrative_story(&self, beat_id: &str) -> Option<crate::narrative::NarrativeStory> {
-        let mut story = crate::narrative::NarrativeStory::new(self.state.rng_seed).ok()?;
+        let mut story =
+            crate::narrative::NarrativeStory::with_arcs(self.state.rng_seed, &self.state.narrative.arcs)
+                .ok()?;
         story.enter_beat(beat_id).ok()?;
         // Replay a choice already recorded for this beat, so a rebuilt story
         // stands exactly where the saved run left it.
@@ -2800,7 +2811,10 @@ impl Simulation {
             self.state.narrative.ink_scene = None;
             return;
         }
-        let mut story = match crate::narrative::NarrativeStory::new(self.state.rng_seed) {
+        let mut story = match crate::narrative::NarrativeStory::with_arcs(
+            self.state.rng_seed,
+            &self.state.narrative.arcs,
+        ) {
             Ok(story) => story,
             Err(error) => {
                 self.push_note(format!("The narrative runtime could not start: {error}"));
