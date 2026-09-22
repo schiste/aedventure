@@ -97,6 +97,18 @@ pub const RECENCY_DAYS: f64 = 30.0;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct KnowledgeBase {
+    /// Who knows what, as entity id to event id to what they hold.
+    ///
+    /// The inner map is keyed by event id, and those keys cross to the browser
+    /// as strings. `serde_wasm_bindgen`'s json-compatible serializer turns a map
+    /// into a JS object, and an object key must be a string — a `u64` key fails
+    /// with "Map key is not a string and cannot be an object key", taking the
+    /// whole snapshot with it.
+    ///
+    /// This was latent for as long as the log stayed empty in the browser, which
+    /// it did while nothing in authored content could emit an act. The first act
+    /// to fire would have broken the running game.
+    #[serde(with = "u64_key_map")]
     pub by_entity: BTreeMap<String, BTreeMap<u64, Knowledge>>,
     /// Entities that will no longer pass anything on: bought, removed, or
     /// simply told to keep quiet.
@@ -425,5 +437,107 @@ mod tests {
         assert!(base.anyone_knows(CREW, 1));
         assert!(base.anyone_knows("entity.sleepless", 1));
         assert!(!base.anyone_knows(JOREN, 1));
+    }
+}
+
+#[cfg(test)]
+mod boundary_tests {
+    use super::*;
+
+    /// Every map key that crosses to the browser has to be a string.
+    ///
+    /// `serde_wasm_bindgen`'s json-compatible serializer turns a map into a JS
+    /// object, and an object key must be a string: a `u64` key fails with "Map
+    /// key is not a string and cannot be an object key" and takes the whole
+    /// snapshot with it. This stayed invisible for as long as the log was empty
+    /// in the browser, which it was while no authored content could emit an
+    /// act — the first act to fire broke the running game, and the Rust tests
+    /// all passed because `serde_json` is happy to write a numeric key.
+    #[test]
+    fn knowledge_crosses_the_boundary_with_string_keys() {
+        let mut knowledge = KnowledgeBase::default();
+        knowledge.learn("entity.vell", 7, Knowledge::first_hand(0.0));
+
+        let json = serde_json::to_value(&knowledge).expect("serialises");
+        let events = json
+            .get("byEntity")
+            .and_then(|by| by.get("entity.vell"))
+            .and_then(serde_json::Value::as_object)
+            .expect("the entity's events should be an object");
+        assert!(
+            events.contains_key("7"),
+            "event ids must be string keys, got {events:?}",
+        );
+
+        // And the save still loads, which is the other half of the contract.
+        let restored: KnowledgeBase = serde_json::from_value(json).expect("round-trips");
+        assert!(restored.knows("entity.vell", 7));
+    }
+
+    /// Saves written before the keys became strings still load.
+    #[test]
+    fn a_save_with_numeric_keys_still_loads() {
+        let older = serde_json::json!({ "byEntity": { "entity.vell": { "7": {
+            "learnedAt": 0.0, "hops": 0, "fidelity": 1.0
+        } } }, "silenced": [], "lastStepTick": 0.0 });
+        let restored: KnowledgeBase = serde_json::from_value(older).expect("older save loads");
+        assert!(restored.knows("entity.vell", 7));
+    }
+}
+
+/// Event-id keys as strings, so the map can cross to the browser as an object.
+///
+/// Accepts numbers on the way back in as well as strings, so a save written
+/// before this change still loads.
+mod u64_key_map {
+    use std::collections::BTreeMap;
+
+    use serde::de::{Deserialize, Deserializer};
+    use serde::ser::{SerializeMap, Serializer};
+
+    use super::Knowledge;
+
+    type Outer = BTreeMap<String, BTreeMap<u64, Knowledge>>;
+
+    pub fn serialize<S>(value: &Outer, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut map = serializer.serialize_map(Some(value.len()))?;
+        for (entity_id, events) in value {
+            let stringed: BTreeMap<String, &Knowledge> = events
+                .iter()
+                .map(|(event_id, knowledge)| (event_id.to_string(), knowledge))
+                .collect();
+            map.serialize_entry(entity_id, &stringed)?;
+        }
+        map.end()
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Outer, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(serde::Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+        #[serde(untagged)]
+        enum Key {
+            Number(u64),
+            Text(String),
+        }
+
+        let raw = BTreeMap::<String, BTreeMap<Key, Knowledge>>::deserialize(deserializer)?;
+        let mut out = Outer::new();
+        for (entity_id, events) in raw {
+            let mut inner = BTreeMap::new();
+            for (key, knowledge) in events {
+                let event_id = match key {
+                    Key::Number(id) => id,
+                    Key::Text(text) => text.parse().map_err(serde::de::Error::custom)?,
+                };
+                inner.insert(event_id, knowledge);
+            }
+            out.insert(entity_id, inner);
+        }
+        Ok(out)
     }
 }
