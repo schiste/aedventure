@@ -31,6 +31,7 @@ ln -sfn "../../packages/game-world" "$ROOT_DIR/node_modules/@aedventure/game-wor
 ln -sfn "../../packages/add-protocol" "$ROOT_DIR/node_modules/@aedventure/add-protocol"
 ln -sfn "../../packages/add-content" "$ROOT_DIR/node_modules/@aedventure/add-content"
 ln -sfn "../../packages/add-presentation" "$ROOT_DIR/node_modules/@aedventure/add-presentation"
+ln -sfn "../../packages/add-ui" "$ROOT_DIR/node_modules/@aedventure/add-ui"
 ln -sfn "../../packages/add-runtime-client" "$ROOT_DIR/node_modules/@aedventure/add-runtime-client"
 ln -sfn "../../packages/game-assets" "$ROOT_DIR/node_modules/@aedventure/game-assets"
 ln -sfn "../../packages/game-map" "$ROOT_DIR/node_modules/@aedventure/game-map"

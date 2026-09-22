@@ -11,6 +11,9 @@
       "path": "../../packages/add-runtime-client"
     },
     {
+      "path": "../../packages/add-ui"
+    },
+    {
       "path": "../../packages/game-renderer-phaser"
     },
     {

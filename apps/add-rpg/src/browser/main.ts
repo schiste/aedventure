@@ -3,13 +3,25 @@ import {
   createMemo,
   createRoot,
   createSignal,
+  Index,
   onCleanup,
   onMount,
+  Show,
   untrack,
   type Accessor,
 } from "solid-js"
 import html from "solid-js/html"
 import { render } from "solid-js/web"
+import {
+  ConstructionControls,
+  InventoryList,
+  MapModeTabs,
+  ObjectiveSteps,
+  PerkControls,
+  ResourceList,
+  RoleControls,
+  WorldActionList,
+} from "@aedventure/add-ui"
 import {
   PROJECT_BUILD_FIRE_PIT,
   PROJECT_RESTORE_STUDIO,
@@ -727,35 +739,25 @@ function handleLiveTuningReset(): void {
   sendWorkerRequest({ type: "resetBalanceOverrides" })
 }
 
-/** Cached values, keyed by the data they were built from. */
-const rowCaches = new Map<string, { signature: string; rows: unknown }>()
-
 /**
- * Build a list of elements only when the data behind it actually changes.
+ * Render a list that keeps its DOM when the data behind it is replaced.
  *
- * These builders read `uiState()`, which is replaced on every snapshot — about
- * twenty-four times a second — so their rows were torn down and recreated at
+ * `uiState()` is a new object on every snapshot — about twenty-four times a
+ * second — so a list built with `.map()` tore down and recreated every row at
  * that rate even when nothing about them had changed. Recreated DOM is visible:
  * the contextual panel blinked, and anything mid-hover or mid-transition
  * flickered with it.
  *
- * While the signature is unchanged this returns the very same array of the very
- * same nodes, so Solid's insert sees no change and leaves the DOM alone. The
- * signature must therefore cover every field the rows render, or a change the
- * player should see would be cached away.
+ * `Index` keys by position rather than by identity, which is what these lists
+ * want: the array is rebuilt wholesale but its shape is stable, so each row
+ * keeps its element and only the values inside it update. Keying by identity
+ * (`For`) would recreate everything, because every snapshot brings new objects.
  *
- * Deliberately not a `createMemo`: several of these are called from other
- * builders rather than from a component, where there is no owner to hang a memo
- * on. One mechanism that works everywhere beats two that each work somewhere.
+ * This replaces a hand-written cache that compared a JSON signature of the
+ * data. That cache was `For` rebuilt badly: it had to be told, by hand and at
+ * every call site, every field the rows render, and a field left out of the
+ * signature was a change the player would never see.
  */
-function rowsBySignature<T>(key: string, signature: string, build: () => T): T {
-  const cached = rowCaches.get(key)
-  if (cached && cached.signature === signature) return cached.rows as T
-  const rows = build()
-  rowCaches.set(key, { signature, rows })
-  return rows
-}
-
 render(() => html`<${AddRpgApp} />`, requiredElement("app"))
 sendWorkerRequest({ type: "init" })
 
@@ -771,6 +773,11 @@ function AddRpgApp() {
   const mapLoadingDetail = createMemo(() =>
     ready() ? "Drawing the map" : "Starting the runtime",
   )
+  // A style string, not an object: `createMemo` dedupes by value, so an
+  // unchanged overlay stops writing the attribute at all. The object form was
+  // a new reference every frame and had to be cached by hand.
+  const dayNightStyle = createMemo(dayNightOverlayStyle)
+  const toxicityStyle = createMemo(toxicityHazeStyle)
   const dayNightPhase = createMemo(() => displayedWorldTime()?.daylightPhase ?? "day")
   const dayNightSeason = createMemo(() => displayedWorldTime()?.season ?? "spring")
   const travelRisk = createMemo(() => travelRiskState())
@@ -913,15 +920,13 @@ function AddRpgApp() {
             class="day-night-overlay"
             data-phase=${dayNightPhase}
             data-season=${dayNightSeason}
-            style=${() =>
-              rowsBySignature("day-night-style", JSON.stringify(dayNightOverlayStyle()), dayNightOverlayStyle)}
+            style=${dayNightStyle}
             aria-hidden="true"
           />
           <div
             class="toxicity-haze"
             data-risk=${travelRisk}
-            style=${() =>
-              rowsBySignature("toxicity-style", JSON.stringify(toxicityHazeStyle()), toxicityHazeStyle)}
+            style=${toxicityStyle}
             aria-hidden="true"
           />
           <div
@@ -947,7 +952,7 @@ function AddRpgApp() {
             aria-label="ADD map navigation and status"
           >
             <div class="map-mode-switcher" role="tablist" aria-label="ADD map mode">
-              ${() => rowsBySignature("map-modes", JSON.stringify(mapModeNavigationItems()), mapModeButtons)}
+              ${mapModeButtons}
             </div>
             <div class="status-stack" data-interface-answer="resources-time-status">
               <span class="status-pill" data-state=${statusStateMemo}>
@@ -1493,7 +1498,7 @@ function AddRpgApp() {
             <span class="small-chip">${() => `${uiState()?.resources.length ?? 0} tracked`}</span>
           </div>
           <div class="resource-list">
-            ${() => rowsBySignature("resources", JSON.stringify(uiState()?.resources.slice(0, 6) ?? []), resourceRows)}
+            ${resourceRows}
           </div>
         </section>
 
@@ -1569,7 +1574,7 @@ function AddRpgApp() {
             <span class="small-chip">${() => `${worldActions().filter((action) => action.enabled).length} ready`}</span>
           </div>
           <ul class="action-list">
-            ${() => rowsBySignature("action-list", JSON.stringify(worldActions().slice(0, 5)), actionRows)}
+            ${actionRows}
           </ul>
         </section>
       </aside>
@@ -1701,21 +1706,21 @@ function AddRpgApp() {
               </button>
             </div>
             <div class="quick-control-group" aria-label="First playable role controls">
-              ${() => rowsBySignature("role-controls", JSON.stringify(uiState()?.roleAssignments ?? []), roleQuickControls)}
+              ${roleQuickControls}
             </div>
             <div class="quick-control-group" aria-label="First playable construction controls">
-              ${() => rowsBySignature("construction-controls", JSON.stringify(uiState()?.constructionOptions ?? []), constructionQuickControls)}
+              ${constructionQuickControls}
             </div>
             <div class="quick-control-group" aria-label="Hero perk controls">
               <p class="quick-control-heading">
                 Perks
                 <span class="small-chip">${() => `${perkProgress()?.pointsAvailable ?? 0} pts`}</span>
               </p>
-              ${() => rowsBySignature("perk-controls", JSON.stringify(perkProgress() ?? null), perkQuickControls)}
+              ${perkQuickControls}
             </div>
             <div class="quick-control-group" aria-label="Hero inventory">
               <p class="quick-control-heading">Inventory</p>
-              ${() => rowsBySignature("inventory", JSON.stringify([inventoryItems(), heroDungeonCell() !== null]), inventoryRows)}
+              ${inventoryRows}
             </div>
             ${() => (lastError() ? html`<p class="error-line">${lastError()}</p>` : null)}
           </section>
@@ -2457,21 +2462,11 @@ function clampQuestPanelPosition(x: number, y: number): QuestPanelPosition {
   }
 }
 
-function resourceRows(): readonly unknown[] {
-  return (uiState()?.resources.slice(0, 6) ?? []).map(
-    (resource) => html`
-      <article class="resource-row">
-        <span>
-          ${resource.label}
-          ${() =>
-            resource.blocker
-              ? html`<small class="row-blocker">${resource.blocker}</small>`
-              : html`<small>${resource.source} -> ${resource.sink}</small>`}
-        </span>
-        <strong>${formatResource(resource.value)} / ${formatResource(resource.cap)}</strong>
-      </article>
-    `,
-  )
+function resourceRows(): unknown {
+  return ResourceList({
+    resources: () => uiState()?.resources.slice(0, 6) ?? [],
+    format: formatResource,
+  })
 }
 
 function adminStoryBrowserPanel(): unknown {
@@ -5808,7 +5803,7 @@ function objectivePanelBody(): unknown {
       ${() => firstPlayableCopy()}
     </p>
     <ol class="first-playable-list">
-      ${() => rowsBySignature("first-playable-steps", JSON.stringify(uiState()?.firstPlayable.steps ?? []), firstPlayableStepRows)}
+      ${firstPlayableStepRows}
     </ol>
   `
 }
@@ -5865,172 +5860,64 @@ function firstPlayableCopy(): string {
   return "Track first-arc progress here while the decision panel handles the next action."
 }
 
-function firstPlayableStepRows(): readonly unknown[] {
-  return (uiState()?.firstPlayable.steps ?? []).map(
-    (step) => html`
-      <li class=${step.active ? "active" : step.complete ? "complete" : ""}>
-        <span>${step.label}</span>
-        <small>${step.complete ? "Done" : step.active ? "Now" : "Next"}</small>
-      </li>
-    `,
-  )
+function firstPlayableStepRows(): unknown {
+  return ObjectiveSteps({ steps: () => uiState()?.firstPlayable.steps ?? [] })
 }
 
-function roleQuickControls(): readonly unknown[] {
-  const assignments = uiState()?.roleAssignments ?? []
-  return FIRST_PLAYABLE_ROLE_IDS.map((roleId) => {
-    const role = assignments.find((candidate) => candidate.id === roleId)
-    if (!role) return null
-    const shortName = roleShortLabel(role.id)
-    return html`
-      <article class="quick-control-row">
-        <span>
-          ${role.label}
-          <small>${role.lockedReason ?? `${role.crewAssigned} crew`}</small>
-        </span>
-        <div>
-          <button
-            id=${`assign-${slugForRole(role.id)}`}
-            type="button"
-            class="ghost-button"
-            onClick=${() => void setHeroRole(role.id)}
-            disabled=${() => !ready() || !role.available}
-          >
-            Hero
-          </button>
-          <button
-            id=${`crew-${slugForRole(role.id)}`}
-            type="button"
-            onClick=${() => void setRoleCrew(role.id, role.suggestedCrew)}
-            disabled=${() => !ready() || !role.available || role.suggestedCrew <= 0}
-          >
-            ${shortName} crew
-          </button>
-        </div>
-      </article>
-    `
-  }).filter(Boolean)
+function roleQuickControls(): unknown {
+  return RoleControls({
+    roleIds: () => FIRST_PLAYABLE_ROLE_IDS,
+    roleFor: (id) => uiState()?.roleAssignments.find((candidate) => candidate.id === id),
+    ready,
+    shortLabel: roleShortLabel,
+    elementId: slugForRole,
+    onAssignHero: (id) => void setHeroRole(id),
+    onAssignCrew: (id, crew) => void setRoleCrew(id, crew),
+  })
 }
 
-function constructionQuickControls(): readonly unknown[] {
-  const options = uiState()?.constructionOptions ?? []
-  return [PROJECT_RESTORE_STUDIO, PROJECT_BUILD_FIRE_PIT].map((optionId) => {
-    const option = options.find((candidate) => candidate.id === optionId)
-    if (!option) return null
-    return html`
-      <article class="quick-control-row">
-        <span>
-          ${option.label}
-          <small>${option.complete ? "Complete" : option.blockedReason ?? option.costLabel}</small>
-        </span>
-        <button
-          id=${constructionButtonId(option.id)}
-          type="button"
-          onClick=${() => void startConstruction(option.id)}
-          disabled=${() => !ready() || !option.enabled}
-        >
-          Start
-        </button>
-      </article>
-    `
-  }).filter(Boolean)
+function constructionQuickControls(): unknown {
+  return ConstructionControls({
+    optionIds: () => [PROJECT_RESTORE_STUDIO, PROJECT_BUILD_FIRE_PIT],
+    optionFor: (id) => uiState()?.constructionOptions.find((candidate) => candidate.id === id),
+    ready,
+    buttonId: constructionButtonId,
+    onStart: (id) => void startConstruction(id),
+  })
 }
 
-function perkQuickControls(): readonly unknown[] {
-  const progress = perkProgress()
-  if (!progress) return []
-  return progress.perks.map(
-    (perk) => html`
-      <article class="quick-control-row">
-        <span>
-          ${perk.label}
-          <small>${perk.acquired ? "Learned" : perk.lockedReason ?? perk.description ?? ""}</small>
-        </span>
-        <button
-          id=${`perk-${safeElementId(perk.id)}`}
-          type="button"
-          class="ghost-button"
-          onClick=${() => void acquirePerk(perk.id)}
-          disabled=${() => !ready() || !perk.available}
-        >
-          ${perk.acquired ? "Learned" : "Learn"}
-        </button>
-      </article>
-    `,
-  )
+function perkQuickControls(): unknown {
+  return PerkControls({
+    perks: () => perkProgress()?.perks ?? [],
+    ready,
+    elementId: safeElementId,
+    onAcquire: (id) => void acquirePerk(id),
+  })
 }
 
-function inventoryRows(): readonly unknown[] {
-  const items = inventoryItems()
-  if (items.length === 0) {
-    return [html`<p class="quick-control-empty"><small>Empty — scavenge to find scrap.</small></p>`]
-  }
-  // Items can only be dropped while in a dungeon (onto the Hero's cell).
-  const canDrop = heroDungeonCell() !== null
-  return items.map(
-    (item) => html`
-      <article class="quick-control-row">
-        <span>
-          ${item.label}
-          <small>${item.maxStack ? `${item.quantity}/${item.maxStack}` : `${item.quantity}`}</small>
-        </span>
-        <div>
-          ${item.usable
-            ? html`<button
-                id=${`use-${safeElementId(item.id)}`}
-                type="button"
-                onClick=${() => void handleUseItem(item.id)}
-                disabled=${() => !ready() || item.quantity <= 0}
-              >
-                Use
-              </button>`
-            : null}
-          <button
-            id=${`drop-${safeElementId(item.id)}`}
-            type="button"
-            class="ghost-button"
-            onClick=${() => void handleDropItem(item.id)}
-            disabled=${() => !ready() || !canDrop || item.quantity <= 0}
-          >
-            Drop
-          </button>
-        </div>
-      </article>
-    `,
-  )
+function inventoryRows(): unknown {
+  return InventoryList({
+    items: inventoryItems,
+    ready,
+    // Items can only be dropped while in a dungeon (onto the Hero's cell).
+    canDrop: () => heroDungeonCell() !== null,
+    elementId: safeElementId,
+    onUse: (id) => void handleUseItem(id),
+    onDrop: (id) => void handleDropItem(id),
+  })
 }
 
-function actionRows(): readonly unknown[] {
-  return worldActions()
-    .slice(0, 5)
-    .map(
-      (action) => html`
-        <li class=${action.enabled ? "" : "disabled"}>
-          <span>${action.label}</span>
-          <small>${action.blockedReason ?? (action.heroOnly ? "hero" : "crew")}</small>
-        </li>
-      `,
-    )
+function actionRows(): unknown {
+  return WorldActionList({ actions: () => worldActions().slice(0, 5) })
 }
 
-function mapModeButtons(): readonly unknown[] {
-  return mapModeNavigationItems().map(
-    (option) => html`
-      <button
-        id=${`map-mode-${option.id}`}
-        type="button"
-        data-action-id=${addQaMapModeActionId(option.id)}
-        class=${() => (mapMode() === option.id ? "map-mode-button active" : "map-mode-button")}
-        role="tab"
-        aria-selected=${() => mapMode() === option.id}
-        aria-label=${option.ariaLabel}
-        onClick=${() => switchMapModeFromTab(option.id)}
-      >
-        <span class="map-mode-label-full">${option.label}</span>
-        <span class="map-mode-label-short" aria-hidden="true">${option.shortLabel}</span>
-      </button>
-    `,
-  )
+function mapModeButtons(): unknown {
+  return MapModeTabs({
+    modes: mapModeNavigationItems,
+    current: mapMode,
+    actionId: addQaMapModeActionId,
+    onSelect: switchMapModeFromTab,
+  })
 }
 
 function mapModeNavigationItems(): readonly AddMapModeNavItem[] {
@@ -6202,20 +6089,17 @@ function cancelClockAnimation(): void {
   setClockAnimation(null)
 }
 
-function dayNightOverlayStyle(): Record<string, string> {
+function dayNightOverlayStyle(): string {
   const time = displayedWorldTime()
   const nightAlpha = time ? Math.min(0.58, time.nightRatio * 0.52) : 0
   const dawnAlpha =
     time?.daylightPhase === "dawn" || time?.daylightPhase === "dusk"
       ? Math.max(0.16, 0.32 * (1 - time.daylightRatio))
       : 0
-  return {
-    "--night-alpha": nightAlpha.toFixed(3),
-    "--dawn-alpha": dawnAlpha.toFixed(3),
-  }
+  return `--night-alpha:${nightAlpha.toFixed(3)};--dawn-alpha:${dawnAlpha.toFixed(3)}`
 }
 
-function toxicityHazeStyle(): Record<string, string> {
+function toxicityHazeStyle(): string {
   const survival = snapshot()?.heroSurvival
   const risk = currentTravelRisk()
   const baseAlpha = Math.min(0.34, (survival?.viralLoadRatio ?? 0) * 0.42)
@@ -6228,9 +6112,8 @@ function toxicityHazeStyle(): Record<string, string> {
           ? 0.06
           : 0
   const activeBoost = travelExperience()?.phase === "traveling" ? 0.08 : 0
-  return {
-    "--toxicity-alpha": Math.min(0.46, baseAlpha + riskAlpha + activeBoost).toFixed(3),
-  }
+  const alpha = Math.min(0.46, baseAlpha + riskAlpha + activeBoost)
+  return `--toxicity-alpha:${alpha.toFixed(3)}`
 }
 
 function daylightMeterStyle(): Record<string, string> {
