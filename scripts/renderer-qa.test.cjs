@@ -13,7 +13,7 @@ const { startDevelopmentServer } = require("./dev-http-host.cjs")
 const { assertAddRendererPhase5Contract } = require("./add-rpg-phase5.cjs")
 
 const ARTIFACT_DIR =
-  process.env.RENDERER_QA_ARTIFACT_DIR ?? join(tmpdir(), "aedventure-renderer-qa")
+  process.env.RENDERER_QA_ARTIFACT_DIR ?? join(tmpdir(), `aedventure-renderer-qa-${process.pid}`)
 const ENGINE_SANDBOX_APP_DIST_DIR = join(__dirname, "../apps/engine-sandbox/dist-app")
 const ADD_APP_DIST_DIR = join(__dirname, "../apps/add-rpg/dist-app")
 const ADD_TOPOLOGY_QA_FIXTURE_FILES = {

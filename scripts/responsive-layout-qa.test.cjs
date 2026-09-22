@@ -15,7 +15,7 @@ const VIEWPORTS = [
 
 const ARTIFACT_DIR =
   process.env.RESPONSIVE_QA_ARTIFACT_DIR ??
-  join(tmpdir(), "aedventure-responsive-qa")
+  join(tmpdir(), `aedventure-responsive-qa-${process.pid}`)
 
 const RESPONSIVE_INSPECTOR = String.raw`
 window.inspectResponsiveLayout = function inspectResponsiveLayout() {

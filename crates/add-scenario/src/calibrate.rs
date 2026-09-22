@@ -47,6 +47,14 @@ pub struct ClampReport {
     pub impacts: usize,
     pub clamped: usize,
     pub share: f64,
+    /// Times the modifiers were pushed below the floor, and above the ceiling.
+    ///
+    /// Which bound is hit says what to do about it: the floor means the act is
+    /// being damped into nothing, the ceiling means the tuning is asking for
+    /// more than the scale can hold. Reporting only a percentage left that
+    /// unanswerable without a debugger.
+    pub clamped_low: usize,
+    pub clamped_high: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -338,7 +346,7 @@ pub fn run(acts_to_play: usize) -> CalibrationReport {
     }
 
     // Clamp pressure, read from the same traces the score came from.
-    let mut per_act: BTreeMap<String, (usize, usize)> = BTreeMap::new();
+    let mut per_act: BTreeMap<String, (usize, usize, usize, usize)> = BTreeMap::new();
     for session in &directed {
         let Some(now) = session.events.last().map(|event| event.tick) else {
             continue;
@@ -346,12 +354,16 @@ pub fn run(acts_to_play: usize) -> CalibrationReport {
         for character in &characters {
         for axis in Axis::ALL {
             for trace in session.explain(character, axis, now).1 {
-                let entry = per_act.entry(trace.act_id.clone()).or_insert((0, 0));
+                let entry = per_act.entry(trace.act_id.clone()).or_insert((0, 0, 0, 0));
                 entry.0 += 1;
                 // Whether the clamp bit, read from the modifiers as they were
                 // before it, not guessed from how small the result ended up.
-                if trace.unclamped_modifiers < CLAMP_LOW || trace.unclamped_modifiers > CLAMP_HIGH {
+                if trace.unclamped_modifiers < CLAMP_LOW {
                     entry.1 += 1;
+                    entry.2 += 1;
+                } else if trace.unclamped_modifiers > CLAMP_HIGH {
+                    entry.1 += 1;
+                    entry.3 += 1;
                 }
             }
         }
@@ -359,9 +371,16 @@ pub fn run(acts_to_play: usize) -> CalibrationReport {
     }
     let mut clamped_acts: Vec<ClampReport> = per_act
         .into_iter()
-        .filter_map(|(act_id, (impacts, clamped))| {
+        .filter_map(|(act_id, (impacts, clamped, low, high))| {
             let share = share(clamped, impacts);
-            (share > CLAMP_RARELY).then_some(ClampReport { act_id, impacts, clamped, share })
+            (share > CLAMP_RARELY).then_some(ClampReport {
+                act_id,
+                impacts,
+                clamped,
+                share,
+                clamped_low: low,
+                clamped_high: high,
+            })
         })
         .collect();
     clamped_acts.sort_by(|a, b| b.share.partial_cmp(&a.share).unwrap_or(std::cmp::Ordering::Equal));
