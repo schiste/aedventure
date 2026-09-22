@@ -678,20 +678,45 @@ in a single step, and took affection with it. §5B weights negative impacts
 hardest, so **an equal count is not an equal effect** — the counterweights had to
 come in a tier lighter than the acts they answer.
 
-**Clamping is the one finding left, and it is not what it looks like.** Every act
-now hits the 0.1 or 4 modifier clamp somewhere between 14% and 72% of the time,
-where four acts did before. That is not the tier changes: it is the length of the
-playthrough being measured. Repetition damps the nth occurrence of an act by
-0.7^n, and 0.7^7 is 0.082, below the floor — so from the seventh repeat onward
-every further occurrence clamps. A 300-act playthrough repeats each of eighteen
-acts about seventeen times, which predicts around 59% clamped and is what the
-report shows. The earlier figure of four acts came from twenty-act sessions,
-where nothing repeated enough to reach the floor.
+**Clamping is fixed, and the cause was not the tiers.** Every act was hitting
+the 0.1 or 4 modifier clamp between 14% and 72% of the time. It is now one act
+of eighteen, `act.spare_a_life` at 16%, which is the ceiling genuinely binding
+on a `severe` act that cost and need are both amplifying — the clamp doing the
+job it was written for. Two separate faults were behind it.
 
-So the real finding is that **the seventh and the seventieth repetition of an act
-land identically**, because damping stops at the clamp. Whether that is right is
-a design question — it bounds grinding, and it also means a habit stops getting
-cheaper — and it is a tuning decision rather than a bug.
+*Repetition was inside the clamp.* The clamp exists so "no stack of them can
+turn a slight into a catastrophe or erase a betrayal", which is a statement
+about the **observer's** modifiers. Repetition is not one of those: it is a
+principled decay of an act the Hero has already done. Folded in before the
+clamp, `0.7^n` drove the whole product onto the 0.1 floor from the seventh
+repeat, so the clamp stopped being a guard and became the normal path — and
+§5A's "hits the clamp more than rarely" signal was dead, because everything hit
+it. It also meant the seventh and the seventieth repetition landed identically,
+which is not a diminishing return but a floor. The observer's modifiers are
+clamped, and repetition applies after: the guarantee is about one act's context,
+not about the tenth identical act, which is the thing that should be allowed to
+fade.
+
+*The repetition window was missing entirely.* §5A: "0.7 to the power of the
+number of similar acts toward the same scope **in the last 30 days**", and the
+tuning block says `repetition: (factor: 0.7, window: Days(30))`. The count ran
+over the whole log and never expired, so the seventieth theft of a three-year
+game was damped as though all seventy had happened in a week. This went unnoticed
+while the clamp floor was holding the result up; taking repetition out from under
+the clamp exposed it immediately, as three axes reading dead because every
+repeated act now decayed to nothing. With the window, habituation is about recent
+behaviour — which is what habituation is — and a habit resumed after a season
+lands afresh.
+
+One interaction fell out of it, caught by the compaction test: compaction carries
+a *lifetime* repetition count, which under a windowed rule damped surviving acts
+as though a year of history had happened last week. Folded-away repeats are no
+longer counted at all, which is exact rather than approximate — compaction only
+folds history at least a year old and the window looks back a month, so a folded
+event cannot be a recent repeat.
+
+With both fixed, no axis is dead, unmovable or runaway, and the clamp report is
+a signal again.
 
 **Three faults in calibrate itself surfaced on the way, each hidden by the last.**
 

@@ -96,6 +96,14 @@ pub struct ImpactTrace {
     pub fidelity: f64,
     pub inheritance: f64,
     pub clamped_modifiers: f64,
+    /// The observer modifiers before the clamp.
+    ///
+    /// Recorded so tooling can say whether the clamp actually bit, rather than
+    /// inferring it from a small final figure — which stopped being a reliable
+    /// signal once repetition was applied after the clamp, because a damped
+    /// repeat is small without anything having been clamped.
+    #[serde(default)]
+    pub unclamped_modifiers: f64,
     pub delta: f64,
     pub score_after: f64,
 }
@@ -594,6 +602,20 @@ impl NarrativeLog {
         0.7_f64.powi(seen as i32)
     }
 
+    /// How far back repetition looks.
+    ///
+    /// §5A: "0.7 to the power of the number of similar acts toward the same
+    /// scope **in the last 30 days**". The window was missing, so the count ran
+    /// over the whole log and never expired: the seventieth theft of a
+    /// three-year game was damped as though all seventy had happened in a week.
+    /// Over a long playthrough that drove every repeated act to nothing, which
+    /// is what made three axes read dead once repetition was no longer held up
+    /// by the modifier clamp.
+    ///
+    /// With the window, habituation is about recent behaviour — which is what
+    /// habituation is — and a habit resumed after a season lands afresh.
+    pub const REPETITION_WINDOW_DAYS: f64 = 30.0;
+
     /// Fold the log into one entity's score on one axis, and return the trace
     /// of every contribution. The trace is what `narr explain` prints, and it
     /// is produced by the same code path that produces the score, so an
@@ -627,11 +649,11 @@ impl NarrativeLog {
         // from there rather than from nothing.
         let mut score = self.compaction.baseline(observer_id, axis);
         let mut traces = Vec::new();
-        // Prior occurrences of (act, scope), accumulated as the walk proceeds.
-        // Counted over every impact of every event, not only those on the axis
-        // being folded, because repetition is a property of the act landing on
-        // the scope at all — which is what the rescan it replaces also did.
-        let mut seen_counts: std::collections::HashMap<(&str, &str), u32> =
+        // When each prior occurrence of (act, scope) happened, so the count can
+        // be limited to the window. Counted over every impact of every event,
+        // not only those on the axis being folded, because repetition is a
+        // property of the act landing on the scope at all.
+        let mut seen_ticks: std::collections::HashMap<(&str, &str), Vec<f64>> =
             std::collections::HashMap::new();
 
         for event in self.events.iter() {
@@ -696,13 +718,19 @@ impl NarrativeLog {
                 };
                 // Cost and need only amplify help, never harm.
                 let cost = if negative { 1.0 } else { event.cost };
-                let seen = seen_counts
+                let window_start =
+                    event.tick - Self::REPETITION_WINDOW_DAYS * GAME_DAY_SECONDS;
+                let recent = seen_ticks
                     .get(&(event.act_id.as_str(), scope))
-                    .copied()
-                    // Repeats folded away still count against repetition, or
-                    // compacting would make an old habit feel new.
-                    .unwrap_or_else(|| self.compaction.seen_for(&event.act_id, scope))
-                    + occurrence;
+                    .map(|ticks| ticks.iter().filter(|tick| **tick >= window_start).count() as u32)
+                    .unwrap_or(0);
+                // Folded-away repeats are deliberately not counted. Compaction
+                // only folds history at least a year old and the window looks
+                // back a month, so a folded event cannot be a recent repeat —
+                // and the count compaction carries is a lifetime total, which
+                // applied against a windowed rule damped surviving acts as
+                // though a year of history had happened last week.
+                let seen = recent + occurrence;
                 let repetition = Self::repetition_decay(seen);
 
                 // Observer amplifiers. Neutral on the closeness/belonging
@@ -743,7 +771,22 @@ impl NarrativeLog {
                     * closeness
                     * belonging
                     * values_verdict.abs().max(if impact.sign == 0 { 0.0 } else { 1.0 });
-                let modifiers = clamp_modifiers(unrepeated_modifiers * repetition);
+                // The clamp guards the *observer's* modifiers, which is what it
+                // was written for: "no stack of them can turn a slight into a
+                // catastrophe or erase a betrayal". Repetition is not one of
+                // those. It is a principled decay of an act the Hero has already
+                // done, and folding it in before the clamp meant `0.7^n` drove
+                // the whole product onto the 0.1 floor from the seventh repeat —
+                // so every act clamped most of the time, the clamp stopped being
+                // a guard and became the normal path, and §5A's "hits the clamp
+                // more than rarely" signal was dead. It also meant the seventh
+                // and the seventieth repetition landed identically, which is not
+                // a diminishing return, it is a floor.
+                //
+                // Clamped first, then damped: the guarantee is about one act's
+                // context, not about the tenth identical act, which is exactly
+                // the thing that should be allowed to fade to nothing.
+                let modifiers = clamp_modifiers(unrepeated_modifiers) * repetition;
                 let delta = effective_sign * tier.base() * modifiers * inheritance * decay * fidelity;
                 score = fold(score, delta);
 
@@ -774,6 +817,7 @@ impl NarrativeLog {
                     fidelity,
                     inheritance,
                     clamped_modifiers: modifiers,
+                    unclamped_modifiers: unrepeated_modifiers,
                     delta,
                     score_after: score,
                 });
@@ -794,14 +838,13 @@ impl NarrativeLog {
                     continue;
                 }
                 counted.push(scope);
-                if !self.compaction.is_empty() {
-                    let carried = self.compaction.seen_for(&event.act_id, scope);
-                    seen_counts.entry((event.act_id.as_str(), scope)).or_insert(carried);
+                // A coalesced entry advances the count by every occurrence it
+                // stands for, all at this entry's tick, so later acts are damped
+                // as they would have been had the repeats stayed separate.
+                let ticks = seen_ticks.entry((event.act_id.as_str(), scope)).or_default();
+                for _ in 0..event.count.max(1) {
+                    ticks.push(event.tick);
                 }
-                // A coalesced entry advances the repetition count by every
-                // occurrence it stands for, so later acts are damped exactly as
-                // they would have been had the repeats stayed separate.
-                *seen_counts.entry((event.act_id.as_str(), scope)).or_insert(0) += event.count.max(1);
             }
         }
 
@@ -1141,6 +1184,104 @@ mod values_and_decay_tests {
             "coalesced {merged} should equal the separate occurrences {apart}",
         );
         assert!(merged < 0.0, "ten broken promises should cost integrity");
+    }
+
+    /// Diminishing returns have to keep diminishing.
+    ///
+    /// Repetition used to be multiplied in before the modifier clamp, and
+    /// `0.7^7` is 0.082 — below the 0.1 floor. From the seventh repeat every
+    /// further occurrence landed on the floor, so the seventh and the
+    /// seventieth were worth exactly the same. That is not a diminishing
+    /// return; it is a subscription.
+    #[test]
+    fn the_seventieth_repetition_is_worth_less_than_the_seventh() {
+        let act = narrative_act_def("act.break_a_promise").expect("act exists");
+        let mut log = NarrativeLog::default();
+
+        let mut after = Vec::new();
+        for step in 0..70 {
+            let mut event = event_for(act, Some("entity.vell"), step as f64 * 3_600.0);
+            event.secrecy = Secrecy::Public;
+            // Distinct causes keep them from coalescing into one entry.
+            event.causes = vec![u64::MAX];
+            log.append(event);
+            after.push(log.standing("entity.vell", Axis::Integrity, 70.0 * 3_600.0));
+        }
+
+        let seventh_step = (after[6] - after[5]).abs();
+        let seventieth_step = (after[69] - after[68]).abs();
+        assert!(
+            seventieth_step < seventh_step,
+            "the 70th repeat moved {seventieth_step} and the 7th moved {seventh_step}; \
+             repetition stopped diminishing",
+        );
+        assert!(
+            seventieth_step < seventh_step * 0.5,
+            "the 70th repeat should be far weaker, not marginally: \
+             {seventieth_step} against {seventh_step}",
+        );
+    }
+
+    /// Habituation is about recent behaviour, so it expires.
+    ///
+    /// §5A counts "similar acts toward the same scope in the last 30 days". The
+    /// window was missing, so the count ran over the whole log: a habit resumed
+    /// after a year was damped as though it had never stopped, and over a long
+    /// playthrough every repeated act decayed to nothing.
+    #[test]
+    fn repetition_only_counts_the_last_thirty_days() {
+        let act = narrative_act_def("act.share_scarce_water").expect("act exists");
+        let window = NarrativeLog::REPETITION_WINDOW_DAYS * GAME_DAY_SECONDS;
+
+        let landing = |spacing: f64| {
+            let mut log = NarrativeLog::default();
+            let mut before = 0.0;
+            let mut last = 0.0;
+            for step in 0..6 {
+                let mut event = event_for(act, Some("entity.vell"), step as f64 * spacing);
+                event.secrecy = Secrecy::Public;
+                event.causes = vec![u64::MAX];
+                log.append(event);
+                let now = 5.0 * spacing;
+                let score = log.standing("entity.vell", Axis::Goodwill, now);
+                if step == 4 {
+                    before = score;
+                }
+                last = score;
+            }
+            (last - before).abs()
+        };
+
+        // Six kindnesses in a week: the sixth is heavily habituated.
+        let crowded = landing(GAME_DAY_SECONDS);
+        // The same six spread over a year: each one lands fresh.
+        let spaced = landing(window * 2.0);
+
+        assert!(
+            spaced > crowded * 2.0,
+            "a kindness after a long gap should land far harder than the sixth in a week: \
+             {spaced} against {crowded}",
+        );
+    }
+
+    /// And the clamp must still do the job it was written for.
+    #[test]
+    fn a_stack_of_modifiers_still_cannot_erase_an_act() {
+        // Cost and need are the caller-supplied multipliers; drive both to
+        // their floor and the act must still land.
+        let act = narrative_act_def("act.break_a_promise").expect("act exists");
+        let mut log = NarrativeLog::default();
+        let mut event = event_for(act, Some("entity.vell"), 0.0);
+        event.secrecy = Secrecy::Public;
+        event.cost = 0.0;
+        event.need = 0.0;
+        log.append(event);
+
+        let score = log.standing("entity.vell", Axis::Integrity, 0.0);
+        assert!(
+            score < 0.0,
+            "a betrayal with every modifier at its floor still has to cost something, got {score}",
+        );
     }
 
     /// Compaction summarises; it must not retune.

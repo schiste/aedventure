@@ -87,9 +87,9 @@ impl CalibrationReport {
     }
 }
 
-/// Modifier clamp bounds, mirroring `narrative::standing::clamp_modifiers`.
-const CLAMP_LOW: f64 = 0.1;
-const CLAMP_HIGH: f64 = 4.0;
+/// Modifier clamp bounds, from the engine rather than copied.
+const CLAMP_LOW: f64 = add_core::narrative::MODIFIER_CLAMP.0;
+const CLAMP_HIGH: f64 = add_core::narrative::MODIFIER_CLAMP.1;
 
 /// Has the player met this character? §5A counts "met characters", and the
 /// distinction matters: an unmet character is neutral on every axis, so
@@ -348,7 +348,9 @@ pub fn run(acts_to_play: usize) -> CalibrationReport {
             for trace in session.explain(character, axis, now).1 {
                 let entry = per_act.entry(trace.act_id.clone()).or_insert((0, 0));
                 entry.0 += 1;
-                if trace.clamped_modifiers <= CLAMP_LOW || trace.clamped_modifiers >= CLAMP_HIGH {
+                // Whether the clamp bit, read from the modifiers as they were
+                // before it, not guessed from how small the result ended up.
+                if trace.unclamped_modifiers < CLAMP_LOW || trace.unclamped_modifiers > CLAMP_HIGH {
                     entry.1 += 1;
                 }
             }
