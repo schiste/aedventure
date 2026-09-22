@@ -176,7 +176,7 @@ export const NARRATIVE_ACTS: readonly NarrativeActDef[] = [
     // takes something from someone in front of the people whose opinion they
     // live by.
     id: "act.mock_before_the_crew",
-    label: "Humiliate someone before their crew",
+    label: "Shout someone down in front of their crew",
     kinds: ["harm", "humiliation"],
     intent: "deliberate",
     expresses: [["power", 1.0]],
@@ -202,7 +202,7 @@ export const NARRATIVE_ACTS: readonly NarrativeActDef[] = [
     // are needed, or the axis only ever travels one way and the low bands are
     // as unreachable as the high ones were.
     id: "act.take_the_lead",
-    label: "Take command when nobody else will",
+    label: "Call the count when nobody else will",
     kinds: ["leadership"],
     intent: "deliberate",
     expresses: [["power", 0.6], ["security", 0.4]],
@@ -210,6 +210,9 @@ export const NARRATIVE_ACTS: readonly NarrativeActDef[] = [
     impacts: [
       { scope: "Target", axis: "dominance", tier: "major", sign: 1 },
       { scope: "Target", axis: "competence", tier: "moderate", sign: 1 },
+      // The cost, and the mirror of `defer_to_the_crew`: someone who calls the
+      // count is no longer one of the people keeping it.
+      { scope: "Target", axis: "belonging", tier: "moderate", sign: -1 },
       // `dependence` reached members only through their group before, which
       // costs it four fifths of its weight on the way down.
       { scope: "Target", axis: "dependence", tier: "major", sign: 1 },
@@ -218,7 +221,7 @@ export const NARRATIVE_ACTS: readonly NarrativeActDef[] = [
   },
   {
     id: "act.defer_to_the_crew",
-    label: "Stand down and follow",
+    label: "Drop back and follow the count",
     kinds: ["deference"],
     intent: "deliberate",
     expresses: [["conformity", 0.6], ["benevolence", 0.4]],
@@ -250,7 +253,7 @@ export const NARRATIVE_ACTS: readonly NarrativeActDef[] = [
     // Walking out is a `forbidden` act, so it also answers an oath: leaving is
     // how most oaths are actually broken.
     id: "act.walk_out_on_the_crew",
-    label: "Walk out when they needed you",
+    label: "Walk out mid-set",
     kinds: ["forbidden", "abandonment"],
     intent: "deliberate",
     expresses: [["self_direction", 1.0]],
@@ -279,7 +282,7 @@ export const NARRATIVE_ACTS: readonly NarrativeActDef[] = [
     // hardest, so one betrayal still outweighs several kept words. Recovery
     // being slow is the design; recovery being impossible was not.
     id: "act.keep_a_promise",
-    label: "Keep a promise at a cost",
+    label: "Keep your word through a sleepless night",
     kinds: ["promise_kept", "reciprocity"],
     intent: "deliberate",
     expresses: [["benevolence", 0.5], ["conformity", 0.5]],
@@ -294,7 +297,7 @@ export const NARRATIVE_ACTS: readonly NarrativeActDef[] = [
     // Owning a failure costs standing and buys back trust, which is the trade
     // that makes the axis a relationship rather than a verdict.
     id: "act.admit_a_fault",
-    label: "Admit a fault openly",
+    label: "Own the wrong note in front of everyone",
     kinds: ["confession"],
     intent: "deliberate",
     expresses: [["benevolence", 0.4], ["conformity", 0.3], ["universalism", 0.3]],
@@ -308,7 +311,7 @@ export const NARRATIVE_ACTS: readonly NarrativeActDef[] = [
   {
     // Nobody thanks you for it, and they believe you afterwards.
     id: "act.tell_an_unwelcome_truth",
-    label: "Tell an unwelcome truth",
+    label: "Say the thing nobody wants amplified",
     kinds: ["honesty"],
     intent: "deliberate",
     expresses: [["universalism", 0.6], ["self_direction", 0.4]],
@@ -323,7 +326,7 @@ export const NARRATIVE_ACTS: readonly NarrativeActDef[] = [
     // The counterweight goodwill was missing: being turned away is how a
     // survivor stops thinking well of you.
     id: "act.refuse_to_help",
-    label: "Refuse to help when you could",
+    label: "Leave someone to hold the night alone",
     kinds: ["refusal", "harm"],
     intent: "deliberate",
     expresses: [["power", 0.4], ["security", 0.6]],
@@ -343,7 +346,7 @@ export const NARRATIVE_ACTS: readonly NarrativeActDef[] = [
     // accumulated and two in five characters ended at the top of it — a grudge
     // that could be earned and never answered.
     id: "act.make_amends",
-    label: "Make amends for a wrong",
+    label: "Retune what you knocked out of true",
     kinds: ["reparation"],
     intent: "deliberate",
     expresses: [["benevolence", 0.6], ["conformity", 0.4]],
@@ -360,7 +363,7 @@ export const NARRATIVE_ACTS: readonly NarrativeActDef[] = [
     // Reckless: this is a judgement about the Hero's competence, and it lands
     // harder when the failure was avoidable.
     id: "act.fail_when_it_counted",
-    label: "Fail visibly when it counted",
+    label: "Drop the beat when it counted",
     kinds: ["failure"],
     intent: "reckless",
     expresses: [],

@@ -234,7 +234,7 @@ pub(in crate::game_data) const NARRATIVE_ACTS: &[NarrativeActDef] = &[
     },
     NarrativeActDef {
         id: "act.mock_before_the_crew",
-        label: "Humiliate someone before their crew",
+        label: "Shout someone down in front of their crew",
         kinds: &["harm", "humiliation"],
         intent: "deliberate",
         expresses: &[("power", 1.0000)],
@@ -280,7 +280,7 @@ pub(in crate::game_data) const NARRATIVE_ACTS: &[NarrativeActDef] = &[
     },
     NarrativeActDef {
         id: "act.take_the_lead",
-        label: "Take command when nobody else will",
+        label: "Call the count when nobody else will",
         kinds: &["leadership"],
         intent: "deliberate",
         expresses: &[("power", 0.6000), ("security", 0.4000)],
@@ -300,6 +300,12 @@ pub(in crate::game_data) const NARRATIVE_ACTS: &[NarrativeActDef] = &[
             },
             ActImpactDef {
                 scope: "Target",
+                axis: "belonging",
+                tier: "moderate",
+                sign: -1,
+            },
+            ActImpactDef {
+                scope: "Target",
                 axis: "dependence",
                 tier: "major",
                 sign: 1,
@@ -314,7 +320,7 @@ pub(in crate::game_data) const NARRATIVE_ACTS: &[NarrativeActDef] = &[
     },
     NarrativeActDef {
         id: "act.defer_to_the_crew",
-        label: "Stand down and follow",
+        label: "Drop back and follow the count",
         kinds: &["deference"],
         intent: "deliberate",
         expresses: &[("conformity", 0.6000), ("benevolence", 0.4000)],
@@ -370,7 +376,7 @@ pub(in crate::game_data) const NARRATIVE_ACTS: &[NarrativeActDef] = &[
     },
     NarrativeActDef {
         id: "act.walk_out_on_the_crew",
-        label: "Walk out when they needed you",
+        label: "Walk out mid-set",
         kinds: &["forbidden", "abandonment"],
         intent: "deliberate",
         expresses: &[("self_direction", 1.0000)],
@@ -416,7 +422,7 @@ pub(in crate::game_data) const NARRATIVE_ACTS: &[NarrativeActDef] = &[
     },
     NarrativeActDef {
         id: "act.keep_a_promise",
-        label: "Keep a promise at a cost",
+        label: "Keep your word through a sleepless night",
         kinds: &["promise_kept", "reciprocity"],
         intent: "deliberate",
         expresses: &[("benevolence", 0.5000), ("conformity", 0.5000)],
@@ -444,7 +450,7 @@ pub(in crate::game_data) const NARRATIVE_ACTS: &[NarrativeActDef] = &[
     },
     NarrativeActDef {
         id: "act.admit_a_fault",
-        label: "Admit a fault openly",
+        label: "Own the wrong note in front of everyone",
         kinds: &["confession"],
         intent: "deliberate",
         expresses: &[
@@ -476,7 +482,7 @@ pub(in crate::game_data) const NARRATIVE_ACTS: &[NarrativeActDef] = &[
     },
     NarrativeActDef {
         id: "act.tell_an_unwelcome_truth",
-        label: "Tell an unwelcome truth",
+        label: "Say the thing nobody wants amplified",
         kinds: &["honesty"],
         intent: "deliberate",
         expresses: &[("universalism", 0.6000), ("self_direction", 0.4000)],
@@ -504,7 +510,7 @@ pub(in crate::game_data) const NARRATIVE_ACTS: &[NarrativeActDef] = &[
     },
     NarrativeActDef {
         id: "act.refuse_to_help",
-        label: "Refuse to help when you could",
+        label: "Leave someone to hold the night alone",
         kinds: &["refusal", "harm"],
         intent: "deliberate",
         expresses: &[("power", 0.4000), ("security", 0.6000)],
@@ -538,7 +544,7 @@ pub(in crate::game_data) const NARRATIVE_ACTS: &[NarrativeActDef] = &[
     },
     NarrativeActDef {
         id: "act.make_amends",
-        label: "Make amends for a wrong",
+        label: "Retune what you knocked out of true",
         kinds: &["reparation"],
         intent: "deliberate",
         expresses: &[("benevolence", 0.6000), ("conformity", 0.4000)],
@@ -566,7 +572,7 @@ pub(in crate::game_data) const NARRATIVE_ACTS: &[NarrativeActDef] = &[
     },
     NarrativeActDef {
         id: "act.fail_when_it_counted",
-        label: "Fail visibly when it counted",
+        label: "Drop the beat when it counted",
         kinds: &["failure"],
         intent: "reckless",
         expresses: &[],
