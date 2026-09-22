@@ -628,11 +628,50 @@ reported `competence` and `debt` as dead axes, which the fuzzer shows spreading
 properly. Unmet characters are excluded, or the size of the cast would read as a
 dead axis.
 
-On current content it finds seven dead axes — `affection`, `dominance`,
-`closeness`, `dependence`, `grievance`, `belonging`, `alignment` — two runaway
-ones, `goodwill` and `integrity`, and four acts clamping, worst
-`act.share_scarce_water` at 38% of its impacts. These are findings for a writer
-to weigh, so the command reports them and exits zero unless given `--strict`.
+It found seven dead axes on first run — `affection`, `dominance`, `closeness`,
+`dependence`, `grievance`, `belonging`, `alignment`. **There are now none.**
+Fixing them turned out to be four different problems wearing one label:
+
+- **Nothing touched them.** `affection`, `dominance` and `belonging` had no act
+  at all: a writer could gate a scene on being liked and nothing in the game
+  could make anyone like you. Six acts were authored — sitting through the night,
+  humiliating someone before their crew, taking command, standing down, keeping
+  the worst watch, walking out — covering each axis in both directions, because
+  an axis moved only one way leaves the far bands as unreachable as before.
+- **They only landed on groups.** `alignment` and `dependence` had impacts, but
+  on `FactionOf(Target)` and `ParentOf(Target)`. An impact recorded on a faction
+  reaches one of its members at roughly a tenth of its weight, so a moderate act
+  arrived as less than a point. Both now also land on the target.
+- **One act, damped.** `grievance` had a single source, and repeating it is
+  damped by repetition before the axis leaves `mid`. Different acts count
+  separately, so a second, heavier source fixed it: a pattern of different
+  cruelties accumulates where one cruelty repeated does not.
+- **Random play cancelled them.** `dominance` was moved a full tier each way and
+  still read dead, because uniform play fires opposing acts about equally often.
+  This was a fault in the tool, not the content — see below.
+
+Two runaway axes remain, `goodwill` and `integrity`, unchanged by this work.
+Clamping got worse rather than better: eight acts now hit the 0.1 or 4 modifier
+clamp where four did before, worst `act.take_the_lead` at 46%. Higher tiers on
+more impacts is what did it, and it is the honest cost of waking the axes up —
+a clamped impact means the tuning is asking for more than the scale can hold, so
+the act is louder or quieter than its tier claims. Both remain findings for a
+writer, and the command still exits zero unless given `--strict`.
+
+**The fuzzer was missing the policies that make the question answerable.** §5A
+lists "maximize one axis toward one faction, minimize it" among the policies it
+rotates, and we had four of them, none directed. Without a directed policy an
+axis moved equally in both directions reads as dead, because random play cancels
+it — which is a statement about the policy, not about the content. `Push` and
+`Drag` pick acts that move a chosen axis the way they want, falling back to any
+act when none do, since an axis nothing can move is exactly what is being looked
+for and the run must still play.
+
+That split the two thresholds apart, and they now read from different play.
+Reachability is judged under directed play, because a player is consistent where
+random play is not. Runaway is judged under *undirected* play only: a policy
+whose purpose is to drive an axis to its limit will drive it there, and reporting
+that as a runaway would be reporting the measurement rather than the game.
 
 `npm run narr:diff-tuning <before.json> <after.json>` replays a fixed corpus of
 seeded playthroughs and reports which bands and which storylet gates flip. Both

@@ -35,10 +35,44 @@ pub enum Policy {
     /// Prefer whichever choice this run has taken least often. Reaches content
     /// behind an unpopular branch that uniform play keeps missing.
     Novelty,
+    /// Emit acts that push one axis up, and `Drag` down. §5A's "maximize one
+    /// axis toward one faction, minimize it".
+    ///
+    /// Without these, an axis moved equally in both directions by different acts
+    /// reads as dead: uniform play fires the opposing acts about as often as
+    /// each other and they cancel, so `dominance` sat in `mid` for four fifths
+    /// of the cast while being moved a full tier each way. A player is
+    /// consistent; random play is not, and only a directed policy tells the
+    /// difference between "nothing moves this" and "nothing moves this *on
+    /// average*".
+    Push,
+    Drag,
 }
 
 impl Policy {
-    pub const ALL: [Policy; 4] = [Policy::Uniform, Policy::First, Policy::Last, Policy::Novelty];
+    pub const ALL: [Policy; 6] = [
+        Policy::Uniform,
+        Policy::First,
+        Policy::Last,
+        Policy::Novelty,
+        Policy::Push,
+        Policy::Drag,
+    ];
+
+    /// Which way this policy wants the axis it is working on to move, if it
+    /// cares at all.
+    /// Does this policy aim at an axis rather than play the content?
+    pub fn is_directed(self) -> bool {
+        self.direction().is_some()
+    }
+
+    fn direction(self) -> Option<i64> {
+        match self {
+            Policy::Push => Some(1),
+            Policy::Drag => Some(-1),
+            _ => None,
+        }
+    }
 
     pub fn as_str(self) -> &'static str {
         match self {
@@ -46,6 +80,8 @@ impl Policy {
             Policy::First => "first",
             Policy::Last => "last",
             Policy::Novelty => "novelty",
+            Policy::Push => "push",
+            Policy::Drag => "drag",
         }
     }
 }
@@ -171,7 +207,31 @@ pub fn run_once(seed: u64, policy: Policy, max_steps: usize, coverage: &mut Cove
             let acts = add_core::game_data::narrative_acts();
             let targets = add_core::narrative::castable_entities();
             if !acts.is_empty() && !targets.is_empty() {
-                let act = &acts[rng.below(acts.len())];
+                // A directed policy picks from the acts that move its axis the
+                // way it wants, and falls back to any act when none do — an
+                // axis nothing can move is exactly what calibrate is looking
+                // for, so the run must still play rather than stall.
+                let act = match policy.direction() {
+                    Some(wanted) => {
+                        let axis = add_core::narrative::Axis::ALL
+                            [(seed as usize) % add_core::narrative::Axis::ALL.len()];
+                        let movers: Vec<_> = acts
+                            .iter()
+                            .filter(|candidate| {
+                                candidate.impacts.iter().any(|impact| {
+                                    impact.axis == axis.as_str()
+                                        && (impact.sign == wanted || impact.sign == 0)
+                                })
+                            })
+                            .collect();
+                        if movers.is_empty() {
+                            &acts[rng.below(acts.len())]
+                        } else {
+                            movers[rng.below(movers.len())]
+                        }
+                    }
+                    None => &acts[rng.below(acts.len())],
+                };
                 let target = targets[rng.below(targets.len())];
                 let command = GameCommand::EmitAct {
                     act_id: act.id.to_string(),
@@ -358,6 +418,10 @@ pub fn run_once(seed: u64, policy: Policy, max_steps: usize, coverage: &mut Cove
                 .min_by_key(|(index, (id, _))| (taken.get(id).copied().unwrap_or(0), *index))
                 .map(|(index, _)| index)
                 .unwrap_or(0),
+            // The directed policies aim acts, not dialogue: a story choice does
+            // not name an axis, so there is nothing to steer by here and
+            // uniform play keeps the run covering the story graph.
+            Policy::Push | Policy::Drag => rng.below(options.len()),
         };
 
         let (id, command) = options[pick].clone();

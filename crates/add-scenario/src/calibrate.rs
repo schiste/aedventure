@@ -101,10 +101,22 @@ fn share(count: usize, total: usize) -> f64 {
 /// choices, world actions and acts the way a player's session does, so the
 /// distribution below is one the content can actually produce.
 pub fn play(runs: usize, max_steps: usize) -> NarrativeLog {
+    play_with(&Policy::ALL, runs, max_steps)
+}
+
+/// Play under an explicit set of policies.
+///
+/// The two questions calibrate asks need different play. "Can anything move
+/// this axis" is only fair under a policy that tries — a player is consistent
+/// where random play cancels itself out. "Does ordinary play pin this axis at an
+/// extreme" is only fair under a policy that is *not* trying, because a policy
+/// whose purpose is to drive an axis to its limit will drive it there, and
+/// reporting that as a runaway would be reporting the measurement.
+pub fn play_with(policies: &[Policy], runs: usize, max_steps: usize) -> NarrativeLog {
     let mut coverage = super::fuzz::Coverage::default();
     let mut log = NarrativeLog::default();
     for index in 0..runs {
-        let policy = Policy::ALL[index % Policy::ALL.len()];
+        let policy = policies[index % policies.len()];
         let run = run_once(index as u64, policy, max_steps, &mut coverage);
         let Ok(save) = super::fuzz::replay(&run.commands) else {
             continue;
@@ -137,7 +149,15 @@ pub fn run(acts_to_play: usize) -> CalibrationReport {
         };
     }
 
-    let played = play(acts_to_play.div_ceil(40).max(4), 60);
+    let runs = acts_to_play.div_ceil(40).max(4);
+    // Directed play, for reachability: does anything move this axis at all.
+    let played = play_with(&Policy::ALL, runs, 60);
+    // Undirected play, for the runaway check: what ordinary play settles on.
+    let representative: Vec<Policy> = Policy::ALL
+        .into_iter()
+        .filter(|policy| !policy.is_directed())
+        .collect();
+    let ordinary = play_with(&representative, runs, 60);
     let acts_played = played.events.len();
     if acts_played == 0 {
         return CalibrationReport {
@@ -227,17 +247,30 @@ pub fn run(acts_to_play: usize) -> CalibrationReport {
         if let Some(final_counts) = by_checkpoint.get(&100) {
             let total: usize = final_counts.values().sum();
             let mid = share(*final_counts.get("mid").unwrap_or(&0), total);
-            let extreme = share(
-                final_counts.get("very_low").unwrap_or(&0)
-                    + final_counts.get("very_high").unwrap_or(&0),
-                total,
-            );
             if mid > DEAD_AXIS_MID_SHARE {
                 dead_axes.push(axis.as_str().to_string());
             }
-            if extreme > RUNAWAY_EXTREME_SHARE {
-                runaway_axes.push(axis.as_str().to_string());
+        }
+        // Runaway is read from ordinary play, for the reason on `play_with`.
+        let now_ordinary = ordinary
+            .events
+            .last()
+            .map(|event| event.tick)
+            .unwrap_or_default();
+        let mut extreme = 0usize;
+        let mut counted = 0usize;
+        for character in &characters {
+            if !met(&ordinary, character) {
+                continue;
             }
+            counted += 1;
+            let band = Band::of(ordinary.standing(character, *axis, now_ordinary));
+            if band == Band::VeryLow || band == Band::VeryHigh {
+                extreme += 1;
+            }
+        }
+        if share(extreme, counted) > RUNAWAY_EXTREME_SHARE {
+            runaway_axes.push(axis.as_str().to_string());
         }
 
         reported.push(AxisDistribution { axis: axis.as_str().to_string(), at });

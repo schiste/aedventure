@@ -64,6 +64,10 @@ export const NARRATIVE_ACTS: readonly NarrativeActDef[] = [
       { scope: "ParentOf(Target)", axis: "goodwill", tier: "moderate", sign: 1 },
       // sign 0: the faction judges this by its own values, not by fiat.
       { scope: "FactionOf(Target)", axis: "alignment", tier: "moderate", sign: 0 },
+      // Also read by the person it was done to. Judged by the same values, but
+      // unattenuated: a faction-scope reading reaches a member at about a tenth
+      // of its weight, which is why `alignment` never left `mid` for anyone.
+      { scope: "Target", axis: "alignment", tier: "moderate", sign: 0 },
     ],
   },
   {
@@ -76,6 +80,7 @@ export const NARRATIVE_ACTS: readonly NarrativeActDef[] = [
     secrecy: "public",
     impacts: [
       { scope: "Target", axis: "competence", tier: "moderate", sign: 1 },
+      { scope: "Target", axis: "dependence", tier: "moderate", sign: 1 },
       { scope: "ParentOf(Target)", axis: "competence", tier: "moderate", sign: 1 },
       { scope: "ParentOf(Target)", axis: "dependence", tier: "minor", sign: 1 },
       { scope: "FactionOf(Target)", axis: "competence", tier: "minor", sign: 1 },
@@ -92,6 +97,7 @@ export const NARRATIVE_ACTS: readonly NarrativeActDef[] = [
       { scope: "Target", axis: "goodwill", tier: "severe", sign: 1 },
       { scope: "Target", axis: "debt", tier: "major", sign: 1 },
       { scope: "ParentOf(Target)", axis: "alignment", tier: "moderate", sign: 0 },
+      { scope: "Target", axis: "alignment", tier: "moderate", sign: 0 },
     ],
   },
   {
@@ -144,6 +150,118 @@ export const NARRATIVE_ACTS: readonly NarrativeActDef[] = [
       { scope: "Target", axis: "integrity", tier: "major", sign: -1 },
       { scope: "Target", axis: "grievance", tier: "moderate", sign: 1 },
       { scope: "ParentOf(Target)", axis: "integrity", tier: "minor", sign: -1 },
+    ],
+  },
+  {
+    // --- Warmth ------------------------------------------------------------
+    //
+    // `affection` had no act at all: a writer could gate a scene on being liked
+    // and nothing in the game could ever make anyone like you. Goodwill is
+    // approval and is earned by usefulness; affection is warmth, and is earned
+    // by staying when there is nothing to be done.
+    id: "act.sit_through_the_night",
+    label: "Sit through the night with someone",
+    kinds: ["aid", "comfort"],
+    intent: "deliberate",
+    expresses: [["benevolence", 1.0]],
+    secrecy: "witnessed",
+    impacts: [
+      { scope: "Target", axis: "affection", tier: "major", sign: 1 },
+      { scope: "Target", axis: "closeness", tier: "major", sign: 1 },
+    ],
+  },
+  {
+    // The other direction, and the only act that raises `dominance`: the Hero
+    // takes something from someone in front of the people whose opinion they
+    // live by.
+    id: "act.mock_before_the_crew",
+    label: "Humiliate someone before their crew",
+    kinds: ["harm", "humiliation"],
+    intent: "deliberate",
+    expresses: [["power", 1.0]],
+    secrecy: "public",
+    impacts: [
+      { scope: "Target", axis: "affection", tier: "major", sign: -1 },
+      // A second, heavier source of grievance. With only one, repeating it was
+      // damped by repetition before the axis ever left `mid`; different acts
+      // count separately, so a pattern of different cruelties accumulates the
+      // way one cruelty repeated does not.
+      { scope: "Target", axis: "grievance", tier: "major", sign: 1 },
+      { scope: "Target", axis: "dominance", tier: "moderate", sign: 1 },
+      { scope: "Target", axis: "alignment", tier: "moderate", sign: 0 },
+      { scope: "ParentOf(Target)", axis: "affection", tier: "minor", sign: -1 },
+    ],
+  },
+  {
+    // --- Standing in the order ---------------------------------------------
+    //
+    // `dominance` is where the Hero sits relative to the person, not whether
+    // they are liked. Taking command raises it; standing down lowers it. Both
+    // are needed, or the axis only ever travels one way and the low bands are
+    // as unreachable as the high ones were.
+    id: "act.take_the_lead",
+    label: "Take command when nobody else will",
+    kinds: ["leadership"],
+    intent: "deliberate",
+    expresses: [["power", 0.6], ["security", 0.4]],
+    secrecy: "public",
+    impacts: [
+      { scope: "Target", axis: "dominance", tier: "major", sign: 1 },
+      { scope: "Target", axis: "competence", tier: "moderate", sign: 1 },
+      // `dependence` reached members only through their group before, which
+      // costs it four fifths of its weight on the way down.
+      { scope: "Target", axis: "dependence", tier: "major", sign: 1 },
+      { scope: "ParentOf(Target)", axis: "dependence", tier: "moderate", sign: 1 },
+    ],
+  },
+  {
+    id: "act.defer_to_the_crew",
+    label: "Stand down and follow",
+    kinds: ["deference"],
+    intent: "deliberate",
+    expresses: [["conformity", 0.6], ["benevolence", 0.4]],
+    secrecy: "public",
+    impacts: [
+      { scope: "Target", axis: "dominance", tier: "major", sign: -1 },
+      { scope: "Target", axis: "belonging", tier: "moderate", sign: 1 },
+      { scope: "Target", axis: "closeness", tier: "minor", sign: 1 },
+    ],
+  },
+  {
+    // --- One of us ---------------------------------------------------------
+    //
+    // `belonging` is whether the Hero is one of them, which is not the same as
+    // being liked or being useful: it is paid in shared discomfort.
+    id: "act.keep_the_watch",
+    label: "Take the worst watch so others sleep",
+    kinds: ["aid", "sacrifice"],
+    intent: "deliberate",
+    expresses: [["benevolence", 0.6], ["conformity", 0.4]],
+    secrecy: "public",
+    impacts: [
+      { scope: "Target", axis: "belonging", tier: "major", sign: 1 },
+      { scope: "Target", axis: "affection", tier: "moderate", sign: 1 },
+      { scope: "ParentOf(Target)", axis: "belonging", tier: "moderate", sign: 1 },
+    ],
+  },
+  {
+    // Walking out is a `forbidden` act, so it also answers an oath: leaving is
+    // how most oaths are actually broken.
+    id: "act.walk_out_on_the_crew",
+    label: "Walk out when they needed you",
+    kinds: ["forbidden", "abandonment"],
+    intent: "deliberate",
+    expresses: [["self_direction", 1.0]],
+    secrecy: "public",
+    impacts: [
+      // Major, not severe: at severe this alone put two in five characters at
+      // the bottom of the axis, which is a gate that never closes rather than a
+      // consequence that lands.
+      { scope: "Target", axis: "belonging", tier: "major", sign: -1 },
+      { scope: "Target", axis: "closeness", tier: "major", sign: -1 },
+      { scope: "Target", axis: "grievance", tier: "moderate", sign: 1 },
+      { scope: "Target", axis: "alignment", tier: "moderate", sign: 0 },
+      { scope: "ParentOf(Target)", axis: "belonging", tier: "moderate", sign: -1 },
     ],
   },
 ]

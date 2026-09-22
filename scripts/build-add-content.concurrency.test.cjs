@@ -36,11 +36,20 @@ async function main() {
   )
 
   const failed = results.filter((result) => result.code !== 0)
-  assert.deepEqual(
-    failed.map((result) => result.stderr.trim().split("\n")[0]),
-    [],
-    `${failed.length} of ${CONCURRENT_RUNS} concurrent generator runs failed; the scratch path is colliding again`,
-  )
+  if (failed.length > 0) {
+    // Report what actually went wrong rather than naming a cause. Every run
+    // here also fails when the generated Rust has drifted from the TypeScript,
+    // which has nothing to do with concurrency — blaming the scratch path for
+    // that sends the next reader looking in the wrong place.
+    const reasons = failed
+      .map((result) => result.stderr.trim().split("\n").slice(0, 3).join(" | "))
+      .join("\n  ")
+    assert.fail(
+      `${failed.length} of ${CONCURRENT_RUNS} concurrent generator runs failed:\n  ${reasons}\n` +
+        "A collision looks like ENOENT on a path in the system temp directory; " +
+        "anything else is an ordinary generator failure that happens to be reported here.",
+    )
+  }
 
   console.log(`build-add-content concurrency: ${CONCURRENT_RUNS} simultaneous runs all passed.`)
 }
