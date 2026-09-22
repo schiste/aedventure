@@ -18,7 +18,9 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use add_core::game_data::{ROLE_CONSTRUCTION, ROLE_SCAVENGE};
+use add_core::game_data::{
+    ROLE_CONSTRUCTION, ROLE_CRYSTAL_BASSLINE, ROLE_FIRE_PIT, ROLE_SCAVENGE,
+};
 use add_core::{GameCommand, GameState, Simulation, export_save, import_save, story_beats};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -205,6 +207,21 @@ impl Rng {
 /// finer than the action is long.
 const MAX_TICK_WITH_ACTION_SECONDS: f64 = 5.0;
 
+/// Is this beat the end of its arc rather than a stall?
+///
+/// A beat with no choices, no world action and nothing that completes it is
+/// where an arc finishes: `story.beat.stabilize_base` is the end of the first
+/// playable arc and is meant to stay active. Reading that as a dead end only
+/// became possible once runs got far enough to reach it, and it would have
+/// failed every campaign for a beat that is behaving exactly as authored.
+fn is_arc_terminus(beat_id: &str) -> bool {
+    add_core::story_beat_def(beat_id).is_some_and(|beat| {
+        beat.choices.is_empty()
+            && beat.world_action_id.is_none()
+            && beat.auto_complete_when.is_empty()
+    })
+}
+
 /// Work the base loop: put idle crew to work, and build what is affordable.
 ///
 /// The story spine stops being playable at `story.beat.restore_studio`, which
@@ -225,21 +242,62 @@ fn work_the_base_loop(simulation: &mut Simulation) -> Vec<Value> {
     }
 
     let building = state.active_construction.is_some();
-    let on_scavenge = state.roster.crew_by_role.get(ROLE_SCAVENGE).copied().unwrap_or(0);
-    let on_construction = state
-        .roster
-        .crew_by_role
-        .get(ROLE_CONSTRUCTION)
-        .copied()
-        .unwrap_or(0);
 
-    // While a project is running it needs hands; otherwise everyone digs.
-    let (role, vacate) = if building {
-        (ROLE_CONSTRUCTION, ROLE_SCAVENGE)
+    // Where the crew should be, given what the spine is waiting for.
+    //
+    // A single post at a time, because there are two of them to start with and
+    // splitting them makes every step slower without unlocking anything sooner.
+    // The order is the dependency chain: a project needs hands, recruiting
+    // needs the bubble to reach the Survivor Cave and the bubble grows from
+    // stored bassline, recruiting itself is paid in vibes from the fire pit,
+    // and stone is what everything else is priced in.
+    // Whether the spine is currently waiting on something to be built.
+    //
+    // This cannot key off the recruiting beat being active, which is what it
+    // did first: that beat's own precondition is that recruitment is enabled,
+    // and recruitment is enabled by the bubble reaching the cave — so waiting
+    // for the beat before growing the bubble waits forever.
+    let waiting_on_a_build = state
+        .narrative
+        .active_beat_id
+        .as_deref()
+        .and_then(add_core::game_data::story_beat_def)
+        .and_then(|beat| beat.progression.as_ref())
+        .and_then(|progression| progression.primary_action.as_ref())
+        .is_some_and(|action| {
+            matches!(action, add_core::game_data::StoryPrimaryActionDef::Construction { .. })
+        });
+
+    let waiting_to_recruit = matches!(
+        state
+            .narrative
+            .active_beat_id
+            .as_deref()
+            .and_then(add_core::game_data::story_beat_def)
+            .and_then(|beat| beat.progression.as_ref())
+            .and_then(|progression| progression.primary_action.as_ref()),
+        Some(add_core::game_data::StoryPrimaryActionDef::RecruitFromSurvivorCave { .. })
+    );
+
+    let post = if building {
+        ROLE_CONSTRUCTION
+    } else if waiting_on_a_build {
+        // Everything early is priced in stone.
+        ROLE_SCAVENGE
+    } else if waiting_to_recruit && state.objectives.recruitment_enabled {
+        // The cave is in reach, so what is missing is the vibes it costs.
+        ROLE_FIRE_PIT
     } else {
-        (ROLE_SCAVENGE, ROLE_CONSTRUCTION)
+        // Otherwise grow the field. Recruiting needs the bubble to reach the
+        // cave, and `story.beat.await_survivor_arrival` then waits for it to
+        // reach three — so parking the crew on the fire pit the moment
+        // recruiting became possible stopped the bubble growing and the beat
+        // after it never completed.
+        ROLE_CRYSTAL_BASSLINE
     };
-    let already = if building { on_construction } else { on_scavenge };
+
+    let posts = [ROLE_CONSTRUCTION, ROLE_SCAVENGE, ROLE_CRYSTAL_BASSLINE, ROLE_FIRE_PIT];
+    let already = state.roster.crew_by_role.get(post).copied().unwrap_or(0);
     if already != crew {
         // Free them first. Crew cannot be in two places, so assigning while
         // they are still posted elsewhere is refused for exceeding what is
@@ -256,8 +314,10 @@ fn work_the_base_loop(simulation: &mut Simulation) -> Vec<Value> {
                 commands.push(json!({ "type": "SetRoleCrew", "roleId": role_id, "crew": count }));
             }
         };
-        assign(simulation, vacate, 0);
-        assign(simulation, role, crew);
+        for other in posts.iter().filter(|role| **role != post) {
+            assign(simulation, other, 0);
+        }
+        assign(simulation, post, crew);
     }
 
     // Start what the story is waiting on, before anything else.
@@ -355,6 +415,13 @@ pub fn run_once(seed: u64, policy: Policy, max_steps: usize, coverage: &mut Cove
             return FuzzRun { seed, policy, steps, outcome: RunOutcome::Exhausted, commands };
         };
         coverage.beats_seen.insert(beat_id.clone());
+        // Also count what has completed. A beat whose `autoCompleteWhen` is
+        // already satisfied when it becomes active finishes inside the same
+        // tick and is never observed as the active beat — it read as unreached
+        // while its effects had in fact fired.
+        for completed in &simulation.state().narrative.completed_beat_ids {
+            coverage.beats_seen.insert(completed.clone());
+        }
 
         // Emit an act now and then, so runs diverge in standing rather than
         // only in which choices they took. Without this the narrative log stays
@@ -552,6 +619,7 @@ pub fn run_once(seed: u64, policy: Policy, max_steps: usize, coverage: &mut Cove
             commands.extend(tick_without_cancelling_actions(&mut simulation, 30.0));
             if simulation.state().narrative.active_beat_id == before
                 && simulation.state().clock_seconds > 60_000.0
+                && !is_arc_terminus(&beat_id)
             {
                 return FuzzRun {
                     seed,
