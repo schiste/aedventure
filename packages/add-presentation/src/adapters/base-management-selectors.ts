@@ -3578,7 +3578,7 @@ function requirementsMet(
   })
 }
 
-function flagValue(snapshot: SimulationSnapshot, flagId: string): boolean {
+export function flagValue(snapshot: SimulationSnapshot, flagId: string): boolean {
   switch (flagId) {
     case "flag.base.studio_restore_unlocked":
     case "base.studio_restore_unlocked":

@@ -1,2 +1,5 @@
 export * from "./control-flow"
 export * from "./lists"
+export * from "./primitives"
+export * from "./schema"
+export * from "./schema-panel"

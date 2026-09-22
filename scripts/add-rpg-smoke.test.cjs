@@ -1637,6 +1637,12 @@ async function exerciseBaseManagementSurface(page, consoleErrors) {
   )
   const machinePanelText = await page.locator("#base-management-panel").innerText()
   ;[
+    // Rendered from `ui.panel.power` in the catalog, not from the app source:
+    // the label and the hint below it are authored content. A schema panel that
+    // fails to render does so silently, so this is the guard that the
+    // catalog-driven path is actually wired up.
+    "Power and Processing",
+    "Chorus powers the base",
     "Station machine",
     "Crystal Circle",
     "Studio",

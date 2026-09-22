@@ -5250,3 +5250,209 @@ h1 {
     grid-template-columns: 1fr;
   }
 }
+
+/* ==========================================================================
+   Primitives
+   --------------------------------------------------------------------------
+   The shapes in packages/add-ui/src/primitives.tsx. Every value here is a
+   token — that is the whole point of the channel layer, and it is what makes
+   a theme a change to :root rather than a search across 700 selectors.
+   ========================================================================== */
+
+.panel-title {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  color: rgb(var(--paper-rgb) / 88%);
+}
+
+.panel-aside {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  color: rgb(var(--paper-rgb) / 62%);
+}
+
+.panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.panel-note {
+  margin: 0 0 6px;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: rgb(var(--paper-rgb) / 66%);
+}
+
+.ui-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  border: 1px solid rgb(var(--wash-rgb) / 8%);
+  border-radius: var(--radius-ui);
+  background: rgb(var(--wash-rgb) / 4%);
+}
+
+.ui-row[data-tone="danger"] {
+  border-color: rgb(var(--danger-rgb) / 38%);
+  background: rgb(var(--danger-rgb) / 10%);
+}
+
+.ui-row[data-tone="accent"] {
+  border-color: rgb(var(--accent-rgb) / 34%);
+}
+
+.ui-row[data-muted="true"] {
+  opacity: 0.62;
+}
+
+.ui-row-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ui-row-detail {
+  color: rgb(var(--paper-rgb) / 58%);
+}
+
+.ui-row-trailing {
+  display: flex;
+  flex-shrink: 0;
+  gap: 6px;
+  align-items: center;
+}
+
+.ui-stat-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ui-stat {
+  display: flex;
+  flex: 1 1 120px;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 8px;
+  border-radius: var(--radius-ui);
+  background: rgb(var(--surface-deep-rgb) / 30%);
+}
+
+.ui-stat-label {
+  font-size: 0.68rem;
+  color: rgb(var(--paper-rgb) / 58%);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ui-stat-value {
+  font-size: 0.88rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.ui-stat-delta {
+  color: rgb(var(--paper-rgb) / 56%);
+}
+
+.ui-stat[data-tone="danger"] .ui-stat-value {
+  color: var(--danger);
+}
+
+.ui-stat[data-tone="accent"] .ui-stat-value {
+  color: var(--accent);
+}
+
+.ui-button {
+  padding: 5px 10px;
+  border: 1px solid rgb(var(--wash-rgb) / 16%);
+  border-radius: var(--radius-ui);
+  background: rgb(var(--wash-rgb) / 8%);
+  color: var(--paper);
+  font: inherit;
+  cursor: pointer;
+  transition: background var(--motion-fast), border-color var(--motion-fast);
+}
+
+.ui-button:hover:not(:disabled) {
+  border-color: rgb(var(--accent-rgb) / 42%);
+  background: rgb(var(--wash-rgb) / 14%);
+}
+
+.ui-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.ui-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: var(--space-panel);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-ui);
+  background: var(--surface-context);
+  box-shadow: var(--shadow-panel);
+}
+
+.ui-sheet-heading,
+.ui-dialog-heading {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ui-sheet-heading h2,
+.ui-dialog-heading h2 {
+  margin: 0;
+  font-size: 0.84rem;
+}
+
+.ui-sheet-body,
+.ui-dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ui-dialog-scrim {
+  position: fixed;
+  z-index: 60;
+  display: grid;
+  background: rgb(var(--shadow-rgb) / 52%);
+  inset: 0;
+  place-items: center;
+}
+
+.ui-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(480px, calc(100vw - 32px));
+  max-height: calc(100vh - 64px);
+  padding: 14px;
+  overflow-y: auto;
+  border: 1px solid var(--border-context);
+  border-radius: calc(var(--radius-ui) * 1.5);
+  background: var(--surface-context);
+  box-shadow: var(--shadow-panel-strong);
+}
+
+.ui-dialog-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.quick-control-empty {
+  margin: 0;
+  padding: 6px 8px;
+  color: rgb(var(--paper-rgb) / 58%);
+}

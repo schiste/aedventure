@@ -280,3 +280,49 @@ export function MapModeTabs<Id extends string>(props: {
     `,
   )
 }
+
+export interface ForecastDelta {
+  readonly label: string
+  readonly delta: number
+  readonly capReached: boolean
+}
+
+export interface EconomyForecast {
+  readonly label: string
+  readonly summary: string
+  readonly resourceDeltas: readonly ForecastDelta[]
+}
+
+/**
+ * What waiting would do to the base's resources.
+ *
+ * The filter is the content of this component: a delta too small to see is
+ * noise, but one that has hit a cap is worth saying even at zero, because the
+ * reason it is not moving is the thing the player needs to know.
+ */
+export function EconomyForecastCard(props: {
+  forecast: () => EconomyForecast
+  format: (value: number) => string
+  /** How many deltas to show before the line stops being readable. */
+  limit?: number
+}): unknown {
+  const shown = (): readonly ForecastDelta[] =>
+    props
+      .forecast()
+      .resourceDeltas.filter((delta) => Math.abs(delta.delta) >= 0.001 || delta.capReached)
+      .slice(0, props.limit ?? 3)
+  return html`
+    <article class="base-economy-forecast">
+      <span>${() => props.forecast().label}</span>
+      <strong>${() => props.forecast().summary}</strong>
+      <small>
+        ${() =>
+          shown().length > 0
+            ? shown()
+                .map((delta) => `${delta.label} ${props.format(delta.delta)}`)
+                .join(" · ")
+            : "No material resource change."}
+      </small>
+    </article>
+  `
+}

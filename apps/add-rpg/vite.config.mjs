@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process"
 import { fileURLToPath } from "node:url"
 
 import { defineConfig } from "vite"
+import solid from "vite-plugin-solid"
 
 import { traceSink } from "./dev/trace-sink.mjs"
 
@@ -19,7 +20,10 @@ try {
 
 export default defineConfig({
   base: "/app/",
-  plugins: [traceSink()],
+  // `solid()` compiles JSX to Solid's direct-DOM output. It only touches .jsx
+  // and .tsx, so the existing `solid-js/html` templates are unaffected and the
+  // two can coexist while components move across one at a time.
+  plugins: [solid({ include: /\.[jt]sx$/ }), traceSink()],
   define: {
     __ADD_GIT_SHA__: JSON.stringify(gitSha),
   },
@@ -29,6 +33,7 @@ export default defineConfig({
       "@aedventure/add-protocol": packageSource("add-protocol"),
       "@aedventure/add-content": packageSource("add-content"),
       "@aedventure/add-presentation": packageSource("add-presentation"),
+      "@aedventure/add-ui": packageSource("add-ui"),
       "@aedventure/game-animation": packageSource("game-animation"),
       "@aedventure/game-content": packageSource("game-content"),
       "@aedventure/game-assets": packageSource("game-assets"),

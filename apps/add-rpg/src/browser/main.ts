@@ -10,14 +10,19 @@ import {
   untrack,
   type Accessor,
 } from "solid-js"
+import { createStore, reconcile, unwrap } from "solid-js/store"
 import html from "solid-js/html"
-import { render } from "solid-js/web"
+import { createComponent, render } from "solid-js/web"
 import {
   ConstructionControls,
+  EconomyForecastCard,
   InventoryList,
   MapModeTabs,
   ObjectiveSteps,
   PerkControls,
+  SchemaPanel,
+  Stat,
+  visibilityContext,
   ResourceList,
   RoleControls,
   WorldActionList,
@@ -87,6 +92,7 @@ import {
   type AddBaseManagementTabId,
   type AddAreaEntrySide,
   type CatalogSnapshot,
+  type UiElementDef,
   type InkSceneSnapshot,
   type SimulationSnapshot,
   type StationSpecializationPath,
@@ -296,7 +302,68 @@ if (typeof document !== "undefined") {
   applyDomSettings(initialPlayerSettings)
 }
 
-const [snapshot, setSnapshot] = createSignal<SimulationSnapshot | null>(null)
+/**
+ * The simulation snapshot, held in a store rather than a signal.
+ *
+ * The worker sends a whole new snapshot object roughly twenty-four times a
+ * second. In a signal that is a new reference every frame, so every memo
+ * reading it re-ran and every value derived from it was rebuilt — whether or
+ * not a single number had actually changed. That is the root of the churn the
+ * interface kept showing: panels blinking, rows recreated mid-hover, and a
+ * hand-written cache bolted on to hide it.
+ *
+ * `reconcile` diffs the incoming snapshot into the existing store instead of
+ * replacing it, so only the leaves that genuinely changed notify. Reading
+ * `snapshot()?.resources` tracks that path alone.
+ *
+ * `merge: true` diffs positionally rather than by key. The snapshot carries
+ * arrays that have no `id` (notes, for one), where keyed reconciliation has
+ * nothing to match on; positional diffing is also what the list components
+ * want, since they render through `Index`.
+ */
+const [snapshotStore, setSnapshotStore] = createStore<{ value: SimulationSnapshot | null }>({
+  value: null,
+})
+const snapshot = (): SimulationSnapshot | null => snapshotStore.value
+function setSnapshot(next: SimulationSnapshot | null): void {
+  if (next === null) {
+    setSnapshotStore("value", null)
+    return
+  }
+  setSnapshotStore("value", reconcile(next, { merge: true }))
+}
+
+/**
+ * A detached copy of the snapshot, for the few callers that compare a "before"
+ * against a later "after".
+ *
+ * Reconciliation is what makes the interface stop churning, but it changes one
+ * rule: the store is updated in place, so holding a reference no longer freezes
+ * the values it had — that same reference sees the new ones. Anything measuring
+ * a delta across an await has to take a copy, not a reference. Two callers here
+ * did exactly that, and only one of them had a test watching.
+ */
+function captureSnapshot(): SimulationSnapshot | null {
+  const current = snapshot()
+  return current === null ? null : (structuredClone(unwrap(current)) as SimulationSnapshot)
+}
+
+/**
+ * Reconcile a derived view model the same way.
+ *
+ * A selector returns a fresh object every time it runs, so even a perfectly
+ * fine-grained snapshot would hand the UI a new `AddUiState` on any change.
+ * Reconciling the *result* means a panel reading one field re-renders only
+ * when that field moves.
+ */
+function createReconciledMemo<T extends object>(compute: () => T | null): Accessor<T | null> {
+  const [store, setStore] = createStore<{ value: T | null }>({ value: null })
+  createModuleEffect(() => {
+    const next = compute()
+    setStore("value", next === null ? null : reconcile(next, { merge: true }))
+  })
+  return () => store.value
+}
 const [catalog, setCatalog] = createSignal<CatalogSnapshot | null>(null)
 const [world, setWorld] = createSignal<GameWorld | null>(null)
 const [mapMode, setMapMode] = createSignal<AddMapMode>("overworld_hex")
@@ -473,14 +540,14 @@ const runtimeBridge = new AddRuntimeBridge({
   },
 })
 
-const availableCommandsState = createModuleMemo<AddAvailableCommandsState | null>(() => {
+const availableCommandsState = createReconciledMemo<AddAvailableCommandsState>(() => {
   const currentSnapshot = snapshot()
   const currentCatalog = catalog()
   return currentSnapshot && currentCatalog
     ? selectAddAvailableCommands(currentSnapshot, currentCatalog)
     : null
 })
-const uiState = createModuleMemo<AddUiState | null>(() => {
+const uiState = createReconciledMemo<AddUiState>(() => {
   const currentSnapshot = snapshot()
   const currentCatalog = catalog()
   const currentCommands = availableCommandsState()
@@ -3964,7 +4031,7 @@ function baseManagementLeadPanel(state: AddBaseManagementState): unknown {
       return baseStaffingCommandPanel(state)
     case "power":
     case "processing":
-      return baseStationMachineSummary(state)
+      return [schemaPowerPanel(), baseStationMachineSummary(state)]
     case "social":
     case "expeditions":
     case "resonance":
@@ -4068,23 +4135,10 @@ function baseEconomyOverview(state: AddBaseManagementState): unknown {
   `
 }
 
-function baseEconomyForecastCard(forecast: AddBaseManagementState["economy"]["waitForecasts"][number]): unknown {
-  const shownDeltas = forecast.resourceDeltas
-    .filter((delta) => Math.abs(delta.delta) >= 0.001 || delta.capReached)
-    .slice(0, 3)
-  return html`
-    <article class="base-economy-forecast">
-      <span>${forecast.label}</span>
-      <strong>${forecast.summary}</strong>
-      <small>
-        ${shownDeltas.length > 0
-          ? shownDeltas
-              .map((delta) => `${delta.label} ${formatSignedResource(delta.delta)}`)
-              .join(" · ")
-          : "No material resource change."}
-      </small>
-    </article>
-  `
+function baseEconomyForecastCard(
+  forecast: AddBaseManagementState["economy"]["waitForecasts"][number],
+): unknown {
+  return EconomyForecastCard({ forecast: () => forecast, format: formatSignedResource })
 }
 
 function baseStalledSystemRow(stalled: AddBaseManagementState["economy"]["stalledSystems"][number]): unknown {
@@ -4793,6 +4847,67 @@ function baseActiveConstructionCard(option: AddBaseManagementState["buildLoop"][
       </div>
     </article>
   `
+}
+
+/**
+ * What the player can ask about, for the authored visibility conditions.
+ *
+ * Reconciled state feeds this, so it re-evaluates when the fields a condition
+ * actually reads move, not on every frame.
+ */
+const schemaVisibility = createModuleMemo(() => {
+  const currentSnapshot = snapshot()
+  if (!currentSnapshot) return null
+  return visibilityContext(
+    currentSnapshot,
+    (resourceId) =>
+      uiState()?.resources.find((resource) => resource.id === resourceId)?.value ?? 0,
+  )
+})
+
+/**
+ * The first panel in this app rendered from the catalog rather than from this
+ * file. Its title, its player hint and — the part that matters — whether it
+ * appears at all come from `ui.panel.power`, which authored content has carried
+ * all along without anything ever reading it.
+ *
+ * The numbers are still supplied here. The schema says whether and what it is
+ * called; it does not say how to draw a rate.
+ */
+function schemaPowerPanel(): unknown {
+  // Getters, not functions. A component prop is a value read reactively, so
+  // passing `() => element` hands the component the function itself — which is
+  // how the first attempt rendered nothing at all, silently, with no error.
+  return createComponent(SchemaPanel, {
+    get element() {
+      return catalog()?.uiElements.find((entry) => entry.id === "ui.panel.power")
+    },
+    context: schemaVisibility,
+    qa: "schema-power-panel",
+    get tone(): "neutral" | "danger" {
+      return snapshot()?.power.brownoutActive ? "danger" : "neutral"
+    },
+    get children() {
+      return createComponent(
+        () =>
+          html`<div class="ui-stat-row">
+            ${createComponent(Stat, {
+              label: "Active upkeep",
+              get value() {
+                return `${formatResource(snapshot()?.power.activeUpkeepPerSecond ?? 0)} Chorus/s`
+              },
+            })}
+            ${createComponent(Stat, {
+              label: "Requested",
+              get value() {
+                return `${formatResource(snapshot()?.power.requestedUpkeepPerSecond ?? 0)} Chorus/s`
+              },
+            })}
+          </div>`,
+        {},
+      )
+    },
+  })
 }
 
 function baseStationMachineSummary(state: AddBaseManagementState): unknown {
@@ -6998,7 +7113,7 @@ function prepareOfflineReturnSummary(
   elapsedSeconds: number,
   source: AddOfflineReturnSummary["source"],
 ): void {
-  const before = snapshot()
+  const before = captureSnapshot()
   if (!before || elapsedSeconds <= 0) {
     pendingOfflineReturnSummary = null
     setOfflineReturnSummary(null)
@@ -7207,6 +7322,11 @@ async function handleDropItem(itemId: string): Promise<void> {
 async function handleCharacterTravel(event: AddCharacterTravelEvent): Promise<void> {
   const currentSnapshot = snapshot()
   if (!currentSnapshot) return
+  // Read the "before" figures now, as values. The store is reconciled in place,
+  // so `currentSnapshot` will be showing the post-travel numbers by the time the
+  // journey resolves.
+  const discoveredBefore = currentSnapshot.discoveredCells.length
+  const toxicityBefore = currentSnapshot.heroSurvival.viralLoadRatio
 
   if (travelClearTimer !== undefined) {
     window.clearTimeout(travelClearTimer)
@@ -7263,9 +7383,9 @@ async function handleCharacterTravel(event: AddCharacterTravelEvent): Promise<vo
       destinationLabel: event.destinationLabel,
       exposureRisk: event.exposureRisk,
       gameMinutes: travelTiming.visibleGameMinutes,
-      discoveredBefore: currentSnapshot.discoveredCells.length,
+      discoveredBefore,
       discoveredAfter: afterSnapshot.discoveredCells.length,
-      toxicityBefore: currentSnapshot.heroSurvival.viralLoadRatio,
+      toxicityBefore,
       toxicityAfter: afterSnapshot.heroSurvival.viralLoadRatio,
     })
   }
