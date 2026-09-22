@@ -18,6 +18,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
+use add_core::game_data::{ROLE_CONSTRUCTION, ROLE_SCAVENGE};
 use add_core::{GameCommand, GameState, Simulation, export_save, import_save, story_beats};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -204,6 +205,126 @@ impl Rng {
 /// finer than the action is long.
 const MAX_TICK_WITH_ACTION_SECONDS: f64 = 5.0;
 
+/// Work the base loop: put idle crew to work, and build what is affordable.
+///
+/// The story spine stops being playable at `story.beat.restore_studio`, which
+/// waits on a construction project costing 600 stone and needing a crew to work
+/// it. A driver that only takes story choices and world actions can never
+/// satisfy that, so every run stalled there and the five beats behind it stayed
+/// unreached — `beatsNeverSeen` had been naming them the whole time.
+///
+/// Deliberately simple and not a strategy: crew go to scavenge for the stone
+/// every early project is priced in, and to construction while something is
+/// being built. The point is to reach content, not to play well.
+fn work_the_base_loop(simulation: &mut Simulation) -> Vec<Value> {
+    let mut commands = Vec::new();
+    let state = simulation.state();
+    let crew = state.roster.total_crew;
+    if crew == 0 {
+        return commands;
+    }
+
+    let building = state.active_construction.is_some();
+    let on_scavenge = state.roster.crew_by_role.get(ROLE_SCAVENGE).copied().unwrap_or(0);
+    let on_construction = state
+        .roster
+        .crew_by_role
+        .get(ROLE_CONSTRUCTION)
+        .copied()
+        .unwrap_or(0);
+
+    // While a project is running it needs hands; otherwise everyone digs.
+    let (role, vacate) = if building {
+        (ROLE_CONSTRUCTION, ROLE_SCAVENGE)
+    } else {
+        (ROLE_SCAVENGE, ROLE_CONSTRUCTION)
+    };
+    let already = if building { on_construction } else { on_scavenge };
+    if already != crew {
+        // Free them first. Crew cannot be in two places, so assigning while
+        // they are still posted elsewhere is refused for exceeding what is
+        // available — which is why this loop reassigned on every single step
+        // and never actually moved anybody.
+        let mut assign = |simulation: &mut Simulation, role_id: &str, count: u8| {
+            if simulation
+                .apply(GameCommand::SetRoleCrew {
+                    role_id: role_id.to_string(),
+                    crew: count,
+                })
+                .accepted
+            {
+                commands.push(json!({ "type": "SetRoleCrew", "roleId": role_id, "crew": count }));
+            }
+        };
+        assign(simulation, vacate, 0);
+        assign(simulation, role, crew);
+    }
+
+    // Start what the story is waiting on, before anything else.
+    //
+    // Only one project runs at a time, so picking the first affordable option
+    // can block the one that matters: `construction.slot_capacity` is priced in
+    // bassline, nothing here produces bassline, and it sat at zero progress
+    // forever while `story.beat.restore_studio` waited behind it. Base projects
+    // are the ones the spine is gated on, so they go first.
+    if simulation.state().active_construction.is_none() {
+        // Only what the spine is gated on, and only when it is affordable.
+        //
+        // Anything else is stone spent on something the story did not ask for.
+        // `project.build_fire_pit` costs 200 against the Studio's 600, so a
+        // loop that builds whatever it can afford takes the cheap one first and
+        // spends exactly what the Studio was waiting for — and the Studio is
+        // what grants bunks, without which the base is overcrowded and morale
+        // compounds. Crystal upgrades are excluded for a different reason: they
+        // are priced per second rather than upfront, so one is affordable from
+        // the first tick, starts immediately, never finishes because nothing
+        // here produces what it eats, and holds the single construction slot
+        // for the rest of the run.
+        let gating_option = simulation
+            .state()
+            .narrative
+            .active_beat_id
+            .as_deref()
+            .and_then(add_core::game_data::story_beat_def)
+            .and_then(|beat| beat.progression.as_ref())
+            .and_then(|progression| progression.primary_action.as_ref())
+            .and_then(|action| match action {
+                add_core::game_data::StoryPrimaryActionDef::Construction { option_id, .. } => {
+                    Some(*option_id)
+                }
+                _ => None,
+            });
+        if let Some(option_id) = gating_option {
+            let outcome = simulation.apply(GameCommand::StartConstruction {
+                option_id: option_id.to_string(),
+            });
+            if outcome.accepted {
+                commands.push(json!({ "type": "StartConstruction", "optionId": option_id }));
+            }
+        }
+    }
+
+    // Recruiting, when the spine is waiting on it. `story.beat.first_recruit`
+    // completes on someone arriving, and nothing else in this loop produces
+    // one. Offered every step and refused until it is affordable, which is
+    // cheap and saves tracking the cost here.
+    if matches!(
+        simulation
+            .state()
+            .narrative
+            .active_beat_id
+            .as_deref()
+            .and_then(add_core::game_data::story_beat_def)
+            .and_then(|beat| beat.progression.as_ref())
+            .and_then(|progression| progression.primary_action.as_ref()),
+        Some(add_core::game_data::StoryPrimaryActionDef::RecruitFromSurvivorCave { .. })
+    ) && simulation.apply(GameCommand::RecruitFromSurvivorCave).accepted
+    {
+        commands.push(json!({ "type": "RecruitFromSurvivorCave" }));
+    }
+    commands
+}
+
 /// Advance time without stepping over a world action that is in flight.
 fn tick_without_cancelling_actions(simulation: &mut Simulation, seconds: f64) -> Vec<Value> {
     let mut commands = Vec::new();
@@ -369,6 +490,7 @@ pub fn run_once(seed: u64, policy: Policy, max_steps: usize, coverage: &mut Cove
                     commands.push(json!({ "type": "StartWorldAction", "actionId": action_id }));
                 }
             }
+            commands.extend(work_the_base_loop(&mut simulation));
             commands.extend(tick_without_cancelling_actions(&mut simulation, 30.0));
             if simulation.state().narrative.active_beat_id == before
                 && simulation.state().clock_seconds > 60_000.0
@@ -426,6 +548,7 @@ pub fn run_once(seed: u64, policy: Policy, max_steps: usize, coverage: &mut Cove
         if options.is_empty() {
             // A spine beat with no decision: let time carry the story.
             let before = simulation.state().narrative.active_beat_id.clone();
+            commands.extend(work_the_base_loop(&mut simulation));
             commands.extend(tick_without_cancelling_actions(&mut simulation, 30.0));
             if simulation.state().narrative.active_beat_id == before
                 && simulation.state().clock_seconds > 60_000.0
@@ -651,6 +774,20 @@ pub fn replay(commands: &[Value]) -> Result<String, String> {
                     witnesses: Vec::new(),
                     causes: Vec::new(),
                 });
+            }
+            "SetRoleCrew" => {
+                simulation.apply(GameCommand::SetRoleCrew {
+                    role_id: string_field(command, "roleId")?,
+                    crew: command.get("crew").and_then(Value::as_u64).unwrap_or(0) as u8,
+                });
+            }
+            "StartConstruction" => {
+                simulation.apply(GameCommand::StartConstruction {
+                    option_id: string_field(command, "optionId")?,
+                });
+            }
+            "RecruitFromSurvivorCave" => {
+                simulation.apply(GameCommand::RecruitFromSurvivorCave);
             }
             other => return Err(format!("replay does not know command `{other}`")),
         }
