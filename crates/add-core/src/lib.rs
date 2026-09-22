@@ -1775,14 +1775,11 @@ mod tests {
         simulation.apply(GameCommand::SetHeroRole {
             role_id: ROLE_CONSTRUCTION.to_string(),
         });
-        // The walk home after Explore leaves the Hero carrying enough viral load
-        // to sit a debuff tier down, so working off the restore takes a little
-        // longer than it did when the Hero teleported back.
-        simulation.apply(GameCommand::Tick { seconds: 16.0 });
+        simulation.apply(GameCommand::Tick { seconds: 12.0 });
         simulation.apply(GameCommand::StartConstruction {
             option_id: PROJECT_BUILD_FIRE_PIT.to_string(),
         });
-        simulation.apply(GameCommand::Tick { seconds: 8.0 });
+        simulation.apply(GameCommand::Tick { seconds: 4.0 });
 
         assert!(simulation.state().base.studio_restored);
         assert!(simulation.state().base.fire_pit_built);
@@ -2694,10 +2691,12 @@ mod tests {
         });
         let mut sim = Simulation::from_state(state);
 
-        let walk = crate::world_action_def(WORLD_ACTION_EXPLORE_BASE)
-            .map(|def| def.return_to_bubble_seconds + def.return_to_studio_seconds)
+        let def = crate::world_action_def(WORLD_ACTION_EXPLORE_BASE)
             .expect("explore_base is authored");
-        assert!(walk > 0.0, "the walk home has to cost something");
+        assert!(
+            def.return_to_bubble_seconds > 0.0 && def.return_to_studio_seconds > 0.0,
+            "the walk home has two authored legs"
+        );
 
         // Finishing the action sets its flags while the Hero is still outside,
         // so the reactive storylet interrupts on the spot.
@@ -2705,23 +2704,32 @@ mod tests {
         assert_eq!(
             sim.state().hero_survival.location,
             HeroLocationState::OutsideBubble,
-            "the Hero is still outside during the walk home"
+            "the first leg of the walk is still outside the field"
         );
         assert_eq!(
             sim.state().narrative.active_beat_id.as_deref(),
             Some(STORY_BEAT_HERO_EXPOSED)
         );
+        let at_the_edge = sim.state().hero_survival.viral_load_ratio;
 
-        // And the walk ends: the Hero is home once it is paid off, not before.
-        sim.apply(GameCommand::Tick { seconds: walk - 0.5 });
-        assert_eq!(
-            sim.state().hero_survival.location,
-            HeroLocationState::OutsideBubble
-        );
-        sim.apply(GameCommand::Tick { seconds: 1.0 });
-        assert_eq!(
-            sim.state().hero_survival.location,
-            HeroLocationState::Studio
+        // The first leg is outside and costs exposure.
+        sim.apply(GameCommand::Tick {
+            seconds: def.return_to_bubble_seconds,
+        });
+        assert_eq!(sim.state().hero_survival.location, HeroLocationState::Bubble);
+        let at_the_field = sim.state().hero_survival.viral_load_ratio;
+        assert!(at_the_field > at_the_edge, "the walk out is still exposure");
+
+        // The second leg is walked inside the field, and costs nothing.
+        // Charging it too put a mandatory tutorial trip two thirds of the way
+        // to the point of no return instead of half.
+        sim.apply(GameCommand::Tick {
+            seconds: def.return_to_studio_seconds,
+        });
+        assert_eq!(sim.state().hero_survival.location, HeroLocationState::Studio);
+        assert!(
+            sim.state().hero_survival.viral_load_ratio < at_the_field,
+            "inside the field the Hero recovers instead of accruing"
         );
         assert_eq!(sim.state().hero_survival.return_journey_seconds, 0.0);
     }

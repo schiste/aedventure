@@ -1328,19 +1328,61 @@ impl Simulation {
             return;
         }
 
+        // The walk home changes where the Hero is partway through a tick, so
+        // step to each leg boundary rather than charging a whole coarse span at
+        // whichever location the tick started in. Skipping the in-field leg's
+        // recovery left the Hero parked on the tier-one threshold at exactly
+        // 0.5 and quietly costing 10% of every job.
+        let mut remaining = seconds;
+        while remaining > 0.0 {
+            let journey = self.state.hero_survival.return_journey_seconds;
+            let step = if journey > 0.0 {
+                let to_the_edge = journey - self.state.hero_survival.return_to_studio_seconds;
+                let next_boundary = if to_the_edge > 0.0 { to_the_edge } else { journey };
+                remaining.min(next_boundary.max(f64::EPSILON))
+            } else {
+                remaining
+            };
+            self.progress_hero_survival_leg(step);
+            remaining -= step;
+        }
+    }
+
+    fn progress_hero_survival_leg(&mut self, seconds: f64) {
         match self.state.hero_survival.location {
             HeroLocationState::OutsideBubble => {
+                // The walk home has two legs, the same split the forced return
+                // uses: `return_to_bubble` is spent outside and costs exposure,
+                // `return_to_studio` is walked inside the field and does not.
+                let journey = self.state.hero_survival.return_journey_seconds;
+                let exposed = if journey > 0.0 {
+                    let to_the_edge =
+                        (journey - self.state.hero_survival.return_to_studio_seconds).max(0.0);
+                    seconds.min(to_the_edge)
+                } else {
+                    seconds
+                };
                 self.state.hero_survival.viral_load_ratio +=
-                    seconds / self.hero_outside_time_seconds_0_to_1();
-                if self.state.hero_survival.return_journey_seconds > 0.0 {
-                    self.state.hero_survival.return_journey_seconds =
-                        (self.state.hero_survival.return_journey_seconds - seconds).max(0.0);
-                    if self.state.hero_survival.return_journey_seconds == 0.0 {
+                    exposed / self.hero_outside_time_seconds_0_to_1();
+                if journey > 0.0 {
+                    let left = (journey - seconds).max(0.0);
+                    self.state.hero_survival.return_journey_seconds = left;
+                    if left == 0.0 {
+                        // A tick coarse enough to span the whole walk has to
+                        // land the Hero in the Studio. Stopping at the field's
+                        // edge stranded them in `Bubble` with nothing left to
+                        // count down, and they never got back to work.
                         self.state.hero_survival.location = HeroLocationState::Studio;
                         self.state
                             .hero_survival
                             .required_time_to_reenter_bubble_seconds = 0.0;
                         self.state.hero_survival.return_to_studio_seconds = 0.0;
+                    } else if left <= self.state.hero_survival.return_to_studio_seconds {
+                        // Through the field's edge: inside now, still walking.
+                        self.state.hero_survival.location = HeroLocationState::Bubble;
+                        self.state
+                            .hero_survival
+                            .required_time_to_reenter_bubble_seconds = 0.0;
                     }
                 }
                 self.refresh_hero_survival_state();
@@ -1351,6 +1393,14 @@ impl Simulation {
                 }
             }
             HeroLocationState::Studio | HeroLocationState::Bubble => {
+                if self.state.hero_survival.return_journey_seconds > 0.0 {
+                    self.state.hero_survival.return_journey_seconds =
+                        (self.state.hero_survival.return_journey_seconds - seconds).max(0.0);
+                    if self.state.hero_survival.return_journey_seconds == 0.0 {
+                        self.state.hero_survival.location = HeroLocationState::Studio;
+                        self.state.hero_survival.return_to_studio_seconds = 0.0;
+                    }
+                }
                 let recovery_multiplier = self.hero_recovery_rate_multiplier();
                 if recovery_multiplier > 0.0 {
                     self.state.hero_survival.viral_load_ratio =
@@ -2375,6 +2425,15 @@ impl Simulation {
             .unwrap_or(0.0);
         if self.state.hero_survival.location == HeroLocationState::OutsideBubble && walk_home > 0.0 {
             self.state.hero_survival.return_journey_seconds = walk_home;
+            // Re-read both legs from the action that is ending, so the split
+            // never depends on what was left on the state when it started.
+            if let Some(def) = world_action_def(&completed.action_id) {
+                self.state
+                    .hero_survival
+                    .required_time_to_reenter_bubble_seconds = def.return_to_bubble_seconds.max(0.0);
+                self.state.hero_survival.return_to_studio_seconds =
+                    def.return_to_studio_seconds.max(0.0);
+            }
         } else {
             self.state.hero_survival.location = HeroLocationState::Studio;
             self.state
