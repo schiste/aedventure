@@ -79,7 +79,7 @@ export const NARRATIVE_ACTS: readonly NarrativeActDef[] = [
     expresses: [["security", 0.6], ["benevolence", 0.4]],
     secrecy: "public",
     impacts: [
-      { scope: "Target", axis: "competence", tier: "moderate", sign: 1 },
+      { scope: "Target", axis: "competence", tier: "major", sign: 1 },
       { scope: "Target", axis: "dependence", tier: "moderate", sign: 1 },
       { scope: "ParentOf(Target)", axis: "competence", tier: "moderate", sign: 1 },
       { scope: "ParentOf(Target)", axis: "dependence", tier: "minor", sign: 1 },
@@ -149,6 +149,7 @@ export const NARRATIVE_ACTS: readonly NarrativeActDef[] = [
     impacts: [
       { scope: "Target", axis: "integrity", tier: "major", sign: -1 },
       { scope: "Target", axis: "grievance", tier: "moderate", sign: 1 },
+      { scope: "Target", axis: "goodwill", tier: "minor", sign: -1 },
       { scope: "ParentOf(Target)", axis: "integrity", tier: "minor", sign: -1 },
     ],
   },
@@ -181,7 +182,8 @@ export const NARRATIVE_ACTS: readonly NarrativeActDef[] = [
     expresses: [["power", 1.0]],
     secrecy: "public",
     impacts: [
-      { scope: "Target", axis: "affection", tier: "major", sign: -1 },
+      { scope: "Target", axis: "affection", tier: "moderate", sign: -1 },
+      { scope: "Target", axis: "goodwill", tier: "moderate", sign: -1 },
       // A second, heavier source of grievance. With only one, repeating it was
       // damped by repetition before the axis ever left `mid`; different acts
       // count separately, so a pattern of different cruelties accumulates the
@@ -259,9 +261,114 @@ export const NARRATIVE_ACTS: readonly NarrativeActDef[] = [
       // consequence that lands.
       { scope: "Target", axis: "belonging", tier: "major", sign: -1 },
       { scope: "Target", axis: "closeness", tier: "major", sign: -1 },
+      { scope: "Target", axis: "goodwill", tier: "moderate", sign: -1 },
       { scope: "Target", axis: "grievance", tier: "moderate", sign: 1 },
       { scope: "Target", axis: "alignment", tier: "moderate", sign: 0 },
       { scope: "ParentOf(Target)", axis: "belonging", tier: "moderate", sign: -1 },
+    ],
+  },
+  {
+    // --- Being believed ----------------------------------------------------
+    //
+    // `integrity` had three ways down and none up: nothing in the game could
+    // raise it, so a Hero who broke one promise was mistrusted for the rest of
+    // the game whatever they did afterwards. That is not a hard axis, it is a
+    // one-way ratchet, and it pinned four fifths of the cast at the bottom.
+    //
+    // §5B keeps the asymmetry that matters — negativity weights integrity
+    // hardest, so one betrayal still outweighs several kept words. Recovery
+    // being slow is the design; recovery being impossible was not.
+    id: "act.keep_a_promise",
+    label: "Keep a promise at a cost",
+    kinds: ["promise_kept", "reciprocity"],
+    intent: "deliberate",
+    expresses: [["benevolence", 0.5], ["conformity", 0.5]],
+    secrecy: "witnessed",
+    impacts: [
+      { scope: "Target", axis: "integrity", tier: "major", sign: 1 },
+      { scope: "Target", axis: "goodwill", tier: "moderate", sign: 1 },
+      { scope: "ParentOf(Target)", axis: "integrity", tier: "moderate", sign: 1 },
+    ],
+  },
+  {
+    // Owning a failure costs standing and buys back trust, which is the trade
+    // that makes the axis a relationship rather than a verdict.
+    id: "act.admit_a_fault",
+    label: "Admit a fault openly",
+    kinds: ["confession"],
+    intent: "deliberate",
+    expresses: [["benevolence", 0.4], ["conformity", 0.3], ["universalism", 0.3]],
+    secrecy: "public",
+    impacts: [
+      { scope: "Target", axis: "integrity", tier: "moderate", sign: 1 },
+      { scope: "Target", axis: "dominance", tier: "moderate", sign: -1 },
+      { scope: "ParentOf(Target)", axis: "integrity", tier: "minor", sign: 1 },
+    ],
+  },
+  {
+    // Nobody thanks you for it, and they believe you afterwards.
+    id: "act.tell_an_unwelcome_truth",
+    label: "Tell an unwelcome truth",
+    kinds: ["honesty"],
+    intent: "deliberate",
+    expresses: [["universalism", 0.6], ["self_direction", 0.4]],
+    secrecy: "public",
+    impacts: [
+      { scope: "Target", axis: "integrity", tier: "major", sign: 1 },
+      { scope: "Target", axis: "affection", tier: "minor", sign: -1 },
+      { scope: "Target", axis: "alignment", tier: "moderate", sign: 0 },
+    ],
+  },
+  {
+    // The counterweight goodwill was missing: being turned away is how a
+    // survivor stops thinking well of you.
+    id: "act.refuse_to_help",
+    label: "Refuse to help when you could",
+    kinds: ["refusal", "harm"],
+    intent: "deliberate",
+    expresses: [["power", 0.4], ["security", 0.6]],
+    secrecy: "witnessed",
+    impacts: [
+      { scope: "Target", axis: "goodwill", tier: "major", sign: -1 },
+      { scope: "Target", axis: "grievance", tier: "moderate", sign: 1 },
+      { scope: "Target", axis: "dependence", tier: "moderate", sign: -1 },
+      { scope: "ParentOf(Target)", axis: "goodwill", tier: "moderate", sign: -1 },
+    ],
+  },
+  {
+    // --- Settling the ledger -----------------------------------------------
+    //
+    // `grievance` is a ledger axis: §5A says ledger axes never decay, they
+    // "settle through acts instead". Nothing settled it, so it only ever
+    // accumulated and two in five characters ended at the top of it — a grudge
+    // that could be earned and never answered.
+    id: "act.make_amends",
+    label: "Make amends for a wrong",
+    kinds: ["reparation"],
+    intent: "deliberate",
+    expresses: [["benevolence", 0.6], ["conformity", 0.4]],
+    secrecy: "witnessed",
+    impacts: [
+      { scope: "Target", axis: "grievance", tier: "major", sign: -1 },
+      { scope: "Target", axis: "integrity", tier: "moderate", sign: 1 },
+      { scope: "ParentOf(Target)", axis: "grievance", tier: "moderate", sign: -1 },
+    ],
+  },
+  {
+    // Competence had no way down, so it was a one-way ratchet like integrity
+    // was — slower, because its sources were all moderate, but as one-sided.
+    // Reckless: this is a judgement about the Hero's competence, and it lands
+    // harder when the failure was avoidable.
+    id: "act.fail_when_it_counted",
+    label: "Fail visibly when it counted",
+    kinds: ["failure"],
+    intent: "reckless",
+    expresses: [],
+    secrecy: "public",
+    impacts: [
+      { scope: "Target", axis: "competence", tier: "major", sign: -1 },
+      { scope: "Target", axis: "dependence", tier: "moderate", sign: -1 },
+      { scope: "ParentOf(Target)", axis: "competence", tier: "moderate", sign: -1 },
     ],
   },
 ]

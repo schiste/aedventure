@@ -61,6 +61,12 @@ impl Policy {
 
     /// Which way this policy wants the axis it is working on to move, if it
     /// cares at all.
+    /// Which way this policy wants its axis to move, for callers outside this
+    /// module that emit acts on its behalf.
+    pub fn act_direction(self) -> Option<i64> {
+        self.direction()
+    }
+
     /// Does this policy aim at an axis rather than play the content?
     pub fn is_directed(self) -> bool {
         self.direction().is_some()

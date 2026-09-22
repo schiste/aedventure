@@ -55,7 +55,7 @@ pub(in crate::game_data) const NARRATIVE_ACTS: &[NarrativeActDef] = &[
             ActImpactDef {
                 scope: "Target",
                 axis: "competence",
-                tier: "moderate",
+                tier: "major",
                 sign: 1,
             },
             ActImpactDef {
@@ -197,6 +197,12 @@ pub(in crate::game_data) const NARRATIVE_ACTS: &[NarrativeActDef] = &[
                 sign: 1,
             },
             ActImpactDef {
+                scope: "Target",
+                axis: "goodwill",
+                tier: "minor",
+                sign: -1,
+            },
+            ActImpactDef {
                 scope: "ParentOf(Target)",
                 axis: "integrity",
                 tier: "minor",
@@ -237,7 +243,13 @@ pub(in crate::game_data) const NARRATIVE_ACTS: &[NarrativeActDef] = &[
             ActImpactDef {
                 scope: "Target",
                 axis: "affection",
-                tier: "major",
+                tier: "moderate",
+                sign: -1,
+            },
+            ActImpactDef {
+                scope: "Target",
+                axis: "goodwill",
+                tier: "moderate",
                 sign: -1,
             },
             ActImpactDef {
@@ -378,6 +390,12 @@ pub(in crate::game_data) const NARRATIVE_ACTS: &[NarrativeActDef] = &[
             },
             ActImpactDef {
                 scope: "Target",
+                axis: "goodwill",
+                tier: "moderate",
+                sign: -1,
+            },
+            ActImpactDef {
+                scope: "Target",
                 axis: "grievance",
                 tier: "moderate",
                 sign: 1,
@@ -391,6 +409,184 @@ pub(in crate::game_data) const NARRATIVE_ACTS: &[NarrativeActDef] = &[
             ActImpactDef {
                 scope: "ParentOf(Target)",
                 axis: "belonging",
+                tier: "moderate",
+                sign: -1,
+            },
+        ],
+    },
+    NarrativeActDef {
+        id: "act.keep_a_promise",
+        label: "Keep a promise at a cost",
+        kinds: &["promise_kept", "reciprocity"],
+        intent: "deliberate",
+        expresses: &[("benevolence", 0.5000), ("conformity", 0.5000)],
+        secrecy: "witnessed",
+        impacts: &[
+            ActImpactDef {
+                scope: "Target",
+                axis: "integrity",
+                tier: "major",
+                sign: 1,
+            },
+            ActImpactDef {
+                scope: "Target",
+                axis: "goodwill",
+                tier: "moderate",
+                sign: 1,
+            },
+            ActImpactDef {
+                scope: "ParentOf(Target)",
+                axis: "integrity",
+                tier: "moderate",
+                sign: 1,
+            },
+        ],
+    },
+    NarrativeActDef {
+        id: "act.admit_a_fault",
+        label: "Admit a fault openly",
+        kinds: &["confession"],
+        intent: "deliberate",
+        expresses: &[
+            ("benevolence", 0.4000),
+            ("conformity", 0.3000),
+            ("universalism", 0.3000),
+        ],
+        secrecy: "public",
+        impacts: &[
+            ActImpactDef {
+                scope: "Target",
+                axis: "integrity",
+                tier: "moderate",
+                sign: 1,
+            },
+            ActImpactDef {
+                scope: "Target",
+                axis: "dominance",
+                tier: "moderate",
+                sign: -1,
+            },
+            ActImpactDef {
+                scope: "ParentOf(Target)",
+                axis: "integrity",
+                tier: "minor",
+                sign: 1,
+            },
+        ],
+    },
+    NarrativeActDef {
+        id: "act.tell_an_unwelcome_truth",
+        label: "Tell an unwelcome truth",
+        kinds: &["honesty"],
+        intent: "deliberate",
+        expresses: &[("universalism", 0.6000), ("self_direction", 0.4000)],
+        secrecy: "public",
+        impacts: &[
+            ActImpactDef {
+                scope: "Target",
+                axis: "integrity",
+                tier: "major",
+                sign: 1,
+            },
+            ActImpactDef {
+                scope: "Target",
+                axis: "affection",
+                tier: "minor",
+                sign: -1,
+            },
+            ActImpactDef {
+                scope: "Target",
+                axis: "alignment",
+                tier: "moderate",
+                sign: 0,
+            },
+        ],
+    },
+    NarrativeActDef {
+        id: "act.refuse_to_help",
+        label: "Refuse to help when you could",
+        kinds: &["refusal", "harm"],
+        intent: "deliberate",
+        expresses: &[("power", 0.4000), ("security", 0.6000)],
+        secrecy: "witnessed",
+        impacts: &[
+            ActImpactDef {
+                scope: "Target",
+                axis: "goodwill",
+                tier: "major",
+                sign: -1,
+            },
+            ActImpactDef {
+                scope: "Target",
+                axis: "grievance",
+                tier: "moderate",
+                sign: 1,
+            },
+            ActImpactDef {
+                scope: "Target",
+                axis: "dependence",
+                tier: "moderate",
+                sign: -1,
+            },
+            ActImpactDef {
+                scope: "ParentOf(Target)",
+                axis: "goodwill",
+                tier: "moderate",
+                sign: -1,
+            },
+        ],
+    },
+    NarrativeActDef {
+        id: "act.make_amends",
+        label: "Make amends for a wrong",
+        kinds: &["reparation"],
+        intent: "deliberate",
+        expresses: &[("benevolence", 0.6000), ("conformity", 0.4000)],
+        secrecy: "witnessed",
+        impacts: &[
+            ActImpactDef {
+                scope: "Target",
+                axis: "grievance",
+                tier: "major",
+                sign: -1,
+            },
+            ActImpactDef {
+                scope: "Target",
+                axis: "integrity",
+                tier: "moderate",
+                sign: 1,
+            },
+            ActImpactDef {
+                scope: "ParentOf(Target)",
+                axis: "grievance",
+                tier: "moderate",
+                sign: -1,
+            },
+        ],
+    },
+    NarrativeActDef {
+        id: "act.fail_when_it_counted",
+        label: "Fail visibly when it counted",
+        kinds: &["failure"],
+        intent: "reckless",
+        expresses: &[],
+        secrecy: "public",
+        impacts: &[
+            ActImpactDef {
+                scope: "Target",
+                axis: "competence",
+                tier: "major",
+                sign: -1,
+            },
+            ActImpactDef {
+                scope: "Target",
+                axis: "dependence",
+                tier: "moderate",
+                sign: -1,
+            },
+            ActImpactDef {
+                scope: "ParentOf(Target)",
+                axis: "competence",
                 tier: "moderate",
                 sign: -1,
             },

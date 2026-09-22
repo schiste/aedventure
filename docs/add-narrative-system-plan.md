@@ -650,15 +650,52 @@ Fixing them turned out to be four different problems wearing one label:
   still read dead, because uniform play fires opposing acts about equally often.
   This was a fault in the tool, not the content — see below.
 
-Two runaway axes remain, `goodwill` and `integrity`, unchanged by this work.
-Clamping got worse rather than better: eight acts now hit the 0.1 or 4 modifier
-clamp where four did before, worst `act.take_the_lead` at 46%. Higher tiers on
-more impacts is what did it, and it is the honest cost of waking the axes up —
-a clamped impact means the tuning is asking for more than the scale can hold, so
-the act is louder or quieter than its tier claims. Both remain findings for a
-writer, and the command still exits zero unless given `--strict`.
+**The runaway axes are fixed too: no axis is dead, unmovable or runaway.**
 
-**The fuzzer was missing the policies that make the question answerable.** §5A
+Both runaways were the mirror of the dead-axis problem — an axis that could only
+travel one way:
+
+- **`integrity` had three ways down and none up.** Nothing in the game could
+  raise it, so a Hero who broke one promise was mistrusted for the rest of the
+  game whatever they did after. Keeping a promise, admitting a fault and telling
+  an unwelcome truth now raise it. §5B's asymmetry is kept — negativity weights
+  integrity hardest, so one betrayal still outweighs several kept words. Slow
+  recovery is the design; impossible recovery was not.
+- **`goodwill` had three ways up, one of them `severe`, against one `minor`
+  down.** Refusing help is now a heavy way down, and the acts that cost the Hero
+  their standing cost goodwill too.
+- **`grievance` never settled.** It is a ledger axis, and §5A says ledger axes
+  "settle through acts instead" of decaying — but nothing settled it, so it only
+  accumulated and two in five characters ended at the top. Making amends now
+  answers it: 41% at `very_high` became 4%.
+- **`competence` was a ratchet like integrity**, slower only because every
+  source was moderate against a `high` band that begins at 25. Clearing a threat
+  is now major, and failing visibly takes it back.
+
+Counterweighting overshot first, which is worth recording: matching the positive
+sources one for one put goodwill from pinned at the top to pinned at the bottom
+in a single step, and took affection with it. §5B weights negative impacts
+hardest, so **an equal count is not an equal effect** — the counterweights had to
+come in a tier lighter than the acts they answer.
+
+**Clamping is the one finding left, and it is not what it looks like.** Every act
+now hits the 0.1 or 4 modifier clamp somewhere between 14% and 72% of the time,
+where four acts did before. That is not the tier changes: it is the length of the
+playthrough being measured. Repetition damps the nth occurrence of an act by
+0.7^n, and 0.7^7 is 0.082, below the floor — so from the seventh repeat onward
+every further occurrence clamps. A 300-act playthrough repeats each of eighteen
+acts about seventeen times, which predicts around 59% clamped and is what the
+report shows. The earlier figure of four acts came from twenty-act sessions,
+where nothing repeated enough to reach the floor.
+
+So the real finding is that **the seventh and the seventieth repetition of an act
+land identically**, because damping stops at the clamp. Whether that is right is
+a design question — it bounds grinding, and it also means a habit stops getting
+cheaper — and it is a tuning decision rather than a bug.
+
+**Three faults in calibrate itself surfaced on the way, each hidden by the last.**
+
+First, the fuzzer had none of the directed policies §5A lists. §5A
 lists "maximize one axis toward one faction, minimize it" among the policies it
 rotates, and we had four of them, none directed. Without a directed policy an
 axis moved equally in both directions reads as dead, because random play cancels
@@ -672,6 +709,28 @@ Reachability is judged under directed play, because a player is consistent where
 random play is not. Runaway is judged under *undirected* play only: a policy
 whose purpose is to drive an axis to its limit will drive it there, and reporting
 that as a runaway would be reporting the measurement rather than the game.
+
+Second, playthroughs were **concatenated into one log**. Sixty-six sessions
+poured together is one impossibly long game in which every axis saturates, which
+is how raising the run count turned six axes runaway without a line of content
+changing. Each session is now read on its own timeline, so "50% of a playthrough"
+means half of that session.
+
+Third, a fuzz session ends when the story graph is exhausted — about twenty acts
+today — and twenty acts move nobody, so every axis read dead instead. Neither a
+twenty-act session nor sixty-six merged is a playthrough. Each session is now
+continued under its own policy to `ACTS_PER_PLAYTHROUGH`, which is what §5A's
+checkpoints assume.
+
+And reachability is judged only on the sessions that **aimed at** the axis in
+question. Averaging over all of them buries the evidence: each axis is aimed at
+by about two runs in sixty-six, so an axis that moves readily when pushed still
+reads dead in the mean. "Can this move" is a question about the attempts.
+
+Also added: `axesNoActMoves`, a static list of axes no act in the catalog touches
+at all. It is exact and cannot depend on what the sample happened to do, which
+makes it the finding to act on first — `dead_axes` beside it is an observation
+about play and will always be softer evidence.
 
 `npm run narr:diff-tuning <before.json> <after.json>` replays a fixed corpus of
 seeded playthroughs and reports which bands and which storylet gates flip. Both
