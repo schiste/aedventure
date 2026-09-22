@@ -18,8 +18,31 @@ import {
   EconomyForecastCard,
   InventoryList,
   MapModeTabs,
+  firstSentence,
+  formatEconomyDuration,
+  formatResource,
+  formatResourceTime,
+  formatSignedNumber,
+  formatSignedResource,
+  formatSignedResourceDelta,
+  leadUiCopy,
+  normalizeUiCopy,
   ObjectiveSteps,
+  offlineReturnBlockerRows,
+  offlineReturnHighlights,
+  offlineReturnJobKindLabel,
+  offlineReturnJobRows,
+  offlineReturnPausedRows,
+  offlineReturnResourceRows,
   PerkControls,
+  shouldRevealCopyDetail,
+  signedRateCopy,
+  storyBrowserBeatRows,
+  storyBrowserChoiceRows,
+  storyBrowserCommandRows,
+  storyBrowserEligibilityRows,
+  storyBrowserQualityRows,
+  titleCase,
   SchemaPanel,
   Stat,
   visibilityContext,
@@ -2615,114 +2638,36 @@ function adminStoryBrowserPanel(): unknown {
       <details class="story-browser-fold">
         <summary>Completed beats</summary>
         ${state.completedBeats.length > 0
-          ? html`<ul class="story-browser-list">${state.completedBeats.map(storyBrowserBeatRow)}</ul>`
+          ? html`<ul class="story-browser-list">${storyBrowserBeatRows(() => state.completedBeats)}</ul>`
           : html`<p class="story-browser-empty">No completed story beats yet.</p>`}
       </details>
 
       <details class="story-browser-fold">
         <summary>Choices made</summary>
         ${state.choicesMade.length > 0
-          ? html`<ul class="story-browser-list">${state.choicesMade.map(storyBrowserChoiceRow)}</ul>`
+          ? html`<ul class="story-browser-list">${storyBrowserChoiceRows(() => state.choicesMade)}</ul>`
           : html`<p class="story-browser-empty">No story choices committed yet.</p>`}
       </details>
 
       <details class="story-browser-fold">
         <summary>Qualities</summary>
         ${state.qualities.length > 0
-          ? html`<ul class="story-browser-list story-browser-pair-list">${state.qualities.map(storyBrowserQualityRow)}</ul>`
+          ? html`<ul class="story-browser-list story-browser-pair-list">${storyBrowserQualityRows(() => state.qualities)}</ul>`
           : html`<p class="story-browser-empty">No narrative qualities are set.</p>`}
       </details>
 
       <details class="story-browser-fold" data-qa=${ADD_QA_SELECTORS.storyCommands}>
         <summary>Available commands</summary>
-        <ul class="story-browser-list">${state.availableCommands.map(storyBrowserCommandRow)}</ul>
+        <ul class="story-browser-list">${storyBrowserCommandRows(() => state.availableCommands)}</ul>
       </details>
 
       <details class="story-browser-fold">
         <summary>Beat eligibility · TS best-effort</summary>
         <ul class="story-browser-list story-browser-eligibility">
-          ${state.beatEligibility.map(storyBrowserEligibilityRow)}
+          ${storyBrowserEligibilityRows(() => state.beatEligibility)}
         </ul>
       </details>
     </section>
-  `
-}
-
-function storyBrowserBeatRow(beat: AddStoryContentBrowserState["completedBeats"][number]): unknown {
-  return html`
-    <li>
-      <span>
-        <strong>${beat.label}</strong>
-        <small>${`${beat.arc} · sequence ${beat.sequence}`}</small>
-      </span>
-      <code>${beat.id}</code>
-    </li>
-  `
-}
-
-function storyBrowserChoiceRow(choice: AddStoryContentBrowserState["choicesMade"][number]): unknown {
-  return html`
-    <li>
-      <span>
-        <strong>${choice.optionLabel}</strong>
-        <small>${choice.beatLabel}</small>
-      </span>
-      <code>${choice.optionId}</code>
-    </li>
-  `
-}
-
-function storyBrowserQualityRow(quality: AddStoryContentBrowserState["qualities"][number]): unknown {
-  return html`
-    <li>
-      <span>${quality.key}</span>
-      <strong>${quality.value}</strong>
-    </li>
-  `
-}
-
-function storyBrowserCommandRow(command: AddStoryContentBrowserState["availableCommands"][number]): unknown {
-  return html`
-    <li
-      class=${command.enabled ? "story-browser-enabled" : "story-browser-disabled"}
-      data-action-id=${command.id}
-    >
-      <span>
-        <strong>${command.label}</strong>
-        <small>${command.disabledReason ?? `${command.workerType} · ${command.kind}`}</small>
-      </span>
-      <code>${command.id}</code>
-    </li>
-  `
-}
-
-function storyBrowserEligibilityRow(
-  entry: AddStoryContentBrowserState["beatEligibility"][number],
-): unknown {
-  const stateLabel = entry.active
-    ? "Active"
-    : entry.completed
-      ? "Done"
-      : entry.eligible
-        ? "Eligible"
-        : "Blocked"
-  return html`
-    <li class=${entry.eligible || entry.active ? "story-browser-enabled" : "story-browser-disabled"}>
-      <span>
-        <strong>${entry.beat.label}</strong>
-        <small>${entry.reason}</small>
-        ${entry.preconditions.length > 0
-          ? html`
-              <span class="story-browser-condition-line">
-                ${entry.preconditions.map((condition) =>
-                  html`<i data-pass=${condition.passed}>${condition.label}</i>`,
-                )}
-              </span>
-            `
-          : null}
-      </span>
-      <code>${stateLabel}</code>
-    </li>
   `
 }
 
@@ -3232,39 +3177,6 @@ function storyMoment(): AddStoryMoment | null {
   const currentCatalog = catalog()
   if (!currentSnapshot || !currentCatalog) return null
   return selectAddStoryMoment(currentSnapshot, currentCatalog)
-}
-
-function leadUiCopy(copy: string | null | undefined, maxLength = 84): string {
-  const normalized = normalizeUiCopy(copy)
-  if (normalized.length <= maxLength) return normalized
-
-  const sentence = firstSentence(normalized)
-  if (sentence.length >= 18 && sentence.length <= maxLength) return sentence
-
-  const breakpoints = ["; ", " - ", " — ", " · "]
-  for (const breakpoint of breakpoints) {
-    const index = normalized.indexOf(breakpoint)
-    if (index > 16 && index <= maxLength) return normalized.slice(0, index)
-  }
-
-  const slice = normalized.slice(0, maxLength - 3)
-  const lastSpace = slice.lastIndexOf(" ")
-  return `${slice.slice(0, lastSpace > 32 ? lastSpace : slice.length).trimEnd()}...`
-}
-
-function normalizeUiCopy(copy: string | null | undefined): string {
-  return (copy ?? "").replace(/\s+/g, " ").trim()
-}
-
-function firstSentence(copy: string): string {
-  const match = /^(.+?[.!?])\s+/.exec(copy)
-  return match?.[1] ?? copy
-}
-
-function shouldRevealCopyDetail(fullCopy: string | null | undefined, visibleCopy: string): boolean {
-  const full = normalizeUiCopy(fullCopy)
-  const visible = normalizeUiCopy(visibleCopy)
-  return full.length > visible.length + 8 && full !== visible
 }
 
 function copyDisclosure(
@@ -6503,7 +6415,7 @@ function offlineReturnPanel(): unknown {
         tabindex="0"
         aria-label="Return highlights"
       >
-        ${() => offlineReturnHighlightRows(summary)}
+        ${offlineReturnHighlights(() => summary)}
       </div>
       <article
         class="offline-return-card offline-return-next keyboard-section"
@@ -6530,11 +6442,11 @@ function offlineReturnPanel(): unknown {
       <div class="offline-return-grid">
         <article class="offline-return-card keyboard-section" tabindex="0" aria-label="Offline return gains">
           <span>Gained</span>
-          <ul>${offlineReturnResourceRows(summary)}</ul>
+          <ul>${offlineReturnResourceRows(() => summary)}</ul>
         </article>
         <article class="offline-return-card keyboard-section" tabindex="0" aria-label="Offline return completed jobs">
           <span>Completed</span>
-          <ul>${offlineReturnJobRows(summary)}</ul>
+          <ul>${offlineReturnJobRows(() => summary)}</ul>
         </article>
         <article class="offline-return-card keyboard-section" tabindex="0" aria-label="Offline return recruits">
           <span>Recruits</span>
@@ -6557,11 +6469,11 @@ function offlineReturnPanel(): unknown {
         </article>
         <article class="offline-return-card offline-return-blockers keyboard-section" tabindex="0" aria-label="Offline return blockers">
           <span>Blockers</span>
-          <ul>${offlineReturnBlockerRows(summary)}</ul>
+          <ul>${offlineReturnBlockerRows(() => summary)}</ul>
         </article>
         <article class="offline-return-card offline-return-paused keyboard-section" tabindex="0" aria-label="Offline return unchanged systems">
           <span>Unchanged systems</span>
-          <ul>${offlineReturnPausedRows(summary)}</ul>
+          <ul>${offlineReturnPausedRows(() => summary)}</ul>
         </article>
         <article class="offline-return-card offline-return-rules keyboard-section" tabindex="0" aria-label="Offline return rules">
           <span>Offline rules</span>
@@ -6582,114 +6494,6 @@ function offlineReturnPanel(): unknown {
 
 function dismissOfflineReturnSummary(): void {
   setOfflineReturnSummary(null)
-}
-
-function offlineReturnResourceRows(summary: AddOfflineReturnSummary): readonly unknown[] {
-  if (summary.resourcesGained.length === 0) {
-    return [
-      html`<li>
-        <strong>No stock gained</strong>
-        <small>Loops were steady or capped.</small>
-      </li>`,
-    ]
-  }
-  return summary.resourcesGained.slice(0, 6).map(
-    (resource) => html`
-      <li>
-        <strong>${resource.label}</strong>
-        <small>${formatSignedResourceDelta(resource.delta)} to ${formatResource(resource.after)}</small>
-      </li>
-    `,
-  )
-}
-
-function offlineReturnHighlightRows(summary: AddOfflineReturnSummary): readonly unknown[] {
-  const blockerCount = summary.didNotProgress.length + (summary.brownout.occurred ? 1 : 0)
-  return [
-    ["Away", summary.elapsedLabel],
-    ["Gains", `${summary.resourcesGained.length}`],
-    ["Jobs", `${summary.jobsCompleted.length}`],
-    ["Blockers", `${blockerCount}`],
-  ].map(
-    ([label, value]) => html`
-      <span>
-        <small>${label}</small>
-        <strong>${value}</strong>
-      </span>
-    `,
-  )
-}
-
-function offlineReturnJobRows(summary: AddOfflineReturnSummary): readonly unknown[] {
-  if (summary.jobsCompleted.length === 0) {
-    return [
-      html`<li>
-        <strong>No job completed</strong>
-        <small>No queued job finished.</small>
-      </li>`,
-    ]
-  }
-  return summary.jobsCompleted.slice(0, 4).map(
-    (job) => html`
-      <li>
-        <strong>${job.label}</strong>
-        <small>${offlineReturnJobKindLabel(job.kind)}</small>
-      </li>
-    `,
-  )
-}
-
-function offlineReturnJobKindLabel(kind: AddOfflineReturnSummary["jobsCompleted"][number]["kind"]): string {
-  switch (kind) {
-    case "construction":
-      return "Construction finished"
-    case "processing":
-      return "Processing finished"
-    case "expedition":
-      return "Expedition returned"
-    case "resonance":
-      return "Resonance tuned"
-  }
-}
-
-function offlineReturnPausedRows(summary: AddOfflineReturnSummary): readonly unknown[] {
-  return summary.didNotProgress.map(
-    (rule) => html`
-      <li>
-        <strong>${rule.label}</strong>
-        <small title=${rule.detail}>${leadUiCopy(rule.detail, 58)}</small>
-      </li>
-    `,
-  )
-}
-
-function offlineReturnBlockerRows(summary: AddOfflineReturnSummary): readonly unknown[] {
-  const rows: unknown[] = []
-  if (summary.brownout.occurred) {
-    rows.push(html`
-      <li>
-        <strong>Brownout pressure</strong>
-        <small title=${summary.brownout.summary}>${leadUiCopy(summary.brownout.summary, 58)}</small>
-      </li>
-    `)
-  }
-  summary.didNotProgress.forEach((rule) => {
-    rows.push(html`
-      <li>
-        <strong>${rule.label}</strong>
-        <small title=${rule.detail}>${leadUiCopy(rule.detail, 58)}</small>
-      </li>
-    `)
-  })
-  if (rows.length === 0) {
-    rows.push(html`
-      <li>
-        <strong>No return blockers</strong>
-        <small>Nothing needed attention.</small>
-      </li>
-    `)
-  }
-  return rows
 }
 
 function travelDialogEyebrow(kind: TravelDialogKind): string {
@@ -8106,32 +7910,6 @@ function persistenceReadyForFirstPlayable(): boolean {
   )
 }
 
-function formatResource(value: number): string {
-  return Number.isInteger(value) ? `${value}` : value.toFixed(1)
-}
-
-function formatSignedResource(value: number): string {
-  return `${value >= 0 ? "+" : "-"}${formatResource(Math.abs(value))}`
-}
-
-function formatSignedResourceDelta(value: number): string {
-  return `${formatSignedResource(value)} gained`
-}
-
-function formatSignedNumber(value: number): string {
-  if (value === 0) return "0"
-  return value > 0 ? `+${value}` : `${value}`
-}
-
-function signedRateCopy(value: number): string {
-  if (Math.abs(value) < 0.001) return "steady"
-  return `${value > 0 ? "+" : ""}${formatResource(value)}/s`
-}
-
-function formatResourceTime(seconds: number | null): string {
-  return seconds === null ? "stable" : formatEconomyDuration(seconds)
-}
-
 function formatAffordabilityTime(
   affordability: AddBaseManagementState["resources"][number]["nextAffordability"],
 ): string {
@@ -8141,24 +7919,9 @@ function formatAffordabilityTime(
     : formatEconomyDuration(affordability.timeToAffordSeconds)
 }
 
-function formatEconomyDuration(seconds: number): string {
-  if (!Number.isFinite(seconds)) return "blocked"
-  if (seconds <= 0) return "now"
-  if (seconds < 60) return `${Math.ceil(seconds)}s`
-  const minutes = Math.ceil(seconds / 60)
-  if (minutes < 60) return `${minutes}m`
-  const hours = Math.floor(minutes / 60)
-  const remainder = minutes % 60
-  return remainder === 0 ? `${hours}h` : `${hours}h ${remainder}m`
-}
-
 function formatSignedRatioPercent(value: number): string {
   const percent = Math.round(Math.abs(value) * 1000) / 10
   return `${value >= 0 ? "+" : "-"}${percent}%`
-}
-
-function titleCase(value: string): string {
-  return value.length === 0 ? value : `${value[0].toUpperCase()}${value.slice(1)}`
 }
 
 function safeElementId(value: string): string {

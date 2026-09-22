@@ -87,23 +87,45 @@ async function main() {
   }
 }
 
+/** Scaled by `ADD_QA_TIMEOUT_SCALE`, like every other browser budget here. */
+const QA_TIMEOUT_SCALE = (() => {
+  const parsed = Number.parseFloat(process.env.ADD_QA_TIMEOUT_SCALE ?? "1")
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1
+})()
+
+const MIN_STATE_POLLS = 8
+
+/**
+ * Give the predicate a minimum number of looks however loaded the machine is,
+ * and check the clock after a fresh look rather than before it. Each attempt
+ * serializes the whole page state, so one poll costs an unbounded and load-
+ * dependent amount of time; a pure wall-clock deadline reported timeouts for
+ * conditions it had barely examined.
+ */
 async function waitForTextState(page, predicate, consoleErrors = [], timeoutMs = 8000) {
+  const budgetMs = Math.round(timeoutMs * QA_TIMEOUT_SCALE)
   const startedAt = Date.now()
   let lastState
   let lastError
+  let attempts = 0
 
-  while (Date.now() - startedAt < timeoutMs) {
+  for (;;) {
+    attempts += 1
     try {
       lastState = await renderGameToText(page)
       if (predicate(lastState)) return lastState
     } catch (error) {
       lastError = error
     }
+    if (page.isClosed()) break
+    if (Date.now() - startedAt >= budgetMs && attempts >= MIN_STATE_POLLS) break
     await page.waitForTimeout(100)
   }
 
   throw new Error(
-    `Timed out waiting for engine sandbox state. Last state: ${JSON.stringify(
+    `Timed out waiting for engine sandbox state after ${attempts} attempt(s) in ${
+      Date.now() - startedAt
+    }ms (budget ${budgetMs}ms). Last state: ${JSON.stringify(
       lastState,
     )}. Console errors: ${JSON.stringify(consoleErrors)}. Last error: ${
       lastError?.message ?? "none"

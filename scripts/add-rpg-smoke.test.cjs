@@ -841,7 +841,7 @@ async function assertAdminDeveloperSeparation(page, consoleErrors) {
       state.shell?.accessibility?.focusedRegion === "menu",
     consoleErrors,
   )
-  await page.waitForFunction(() => document.activeElement?.id === "open-shell-menu")
+  await page.waitForFunction(() => document.activeElement?.id === "open-shell-menu", { timeout: qaTimeout(15000) })
   assert.equal(await page.locator("#open-shell-menu").evaluate((element) => document.activeElement === element), true)
   await openAdmin(page, consoleErrors)
   await closeAdmin(page, consoleErrors)
@@ -2101,7 +2101,7 @@ async function assertLayoutHierarchy(
         rect.width > 0 &&
         rect.height > 0
       )
-    }, expectedContextPanelId)
+    }, expectedContextPanelId, { timeout: qaTimeout(15000) })
   }
 
   const hierarchy = await page.evaluate((expectedPanelId) => {
@@ -4415,23 +4415,60 @@ async function assertNonBlankNamedMapScreenshot(page, filename, label) {
   )
 }
 
+/**
+ * Wall-clock budgets are scaled by `ADD_QA_TIMEOUT_SCALE`, so a loaded machine
+ * can be given more room without editing eighty-nine call sites.
+ */
+const QA_TIMEOUT_SCALE = (() => {
+  const parsed = Number.parseFloat(process.env.ADD_QA_TIMEOUT_SCALE ?? "1")
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1
+})()
+
+function qaTimeout(milliseconds) {
+  return Math.round(milliseconds * QA_TIMEOUT_SCALE)
+}
+
+/**
+ * The predicate gets a minimum number of looks however slow the machine is.
+ *
+ * Each attempt serializes the entire game state — hundreds of kilobytes, over
+ * CDP, parsed again here — so the cost of one poll is unbounded and load-
+ * dependent. Against a pure wall-clock deadline that produced timeouts for
+ * conditions that had never actually been examined: the budget went on two or
+ * three serializations and the loop gave up. Worse, the old loop tested the
+ * clock *before* taking a fresh look, so it could expire holding state from
+ * well before the deadline.
+ *
+ * Three different scenarios failed this way on runs with identical inputs, and
+ * a suite that cries wolf under load is one people learn to re-run rather than
+ * read.
+ */
+const MIN_STATE_POLLS = 8
+
 async function waitForTextState(page, predicate, consoleErrors = [], timeoutMs = 12000) {
+  const budgetMs = qaTimeout(timeoutMs)
   const startedAt = Date.now()
   let lastState
   let lastError
+  let attempts = 0
 
-  while (Date.now() - startedAt < timeoutMs) {
+  for (;;) {
+    attempts += 1
     try {
       lastState = await renderGameToText(page)
       if (predicate(lastState)) return lastState
     } catch (error) {
       lastError = error
     }
+    if (page.isClosed()) break
+    if (Date.now() - startedAt >= budgetMs && attempts >= MIN_STATE_POLLS) break
     await page.waitForTimeout(100)
   }
 
   throw new Error(
-    `Timed out waiting for ADD RPG state. Last state: ${JSON.stringify(
+    `Timed out waiting for ADD RPG state after ${attempts} attempt(s) in ${
+      Date.now() - startedAt
+    }ms (budget ${budgetMs}ms). Last state: ${JSON.stringify(
       lastState,
     )}. Console errors: ${JSON.stringify(consoleErrors)}. Last error: ${
       lastError?.message ?? "none"
@@ -4500,7 +4537,7 @@ async function clickVisibleElementByDomId(page, id) {
       rect.width > 0 &&
       rect.height > 0
     )
-  }, id)
+  }, id, { timeout: qaTimeout(15000) })
   await page.evaluate((targetId) => {
     const element = document.getElementById(targetId)
     if (!(element instanceof HTMLElement)) {
@@ -4552,7 +4589,7 @@ async function clickVisibleElementBySelector(page, selector) {
         rect.height > 0
       )
     })
-  }, selector)
+  }, selector, { timeout: qaTimeout(15000) })
   await page.evaluate((targetSelector) => {
     const element = Array.from(document.querySelectorAll(targetSelector)).find((candidate) => {
       if (!(candidate instanceof HTMLElement)) return false
@@ -4588,7 +4625,7 @@ async function isVisibleElementDisabledBySelector(page, selector) {
         rect.height > 0
       )
     })
-  }, selector)
+  }, selector, { timeout: qaTimeout(15000) })
   return page.evaluate((targetSelector) => {
     const element = Array.from(document.querySelectorAll(targetSelector)).find((candidate) => {
       if (!(candidate instanceof HTMLElement)) return false
@@ -4686,7 +4723,7 @@ async function assertClickableCenter(page, selector) {
 }
 
 async function isElementDisabledByDomId(page, id) {
-  await page.waitForFunction((targetId) => document.getElementById(targetId) !== null, id)
+  await page.waitForFunction((targetId) => document.getElementById(targetId) !== null, id, { timeout: qaTimeout(15000) })
   return page.evaluate((targetId) => {
     const element = document.getElementById(targetId)
     return element instanceof HTMLButtonElement ? element.disabled : false
@@ -4713,7 +4750,7 @@ async function openDetailsSection(page, selector) {
     if (!(node instanceof HTMLDetailsElement)) return false
     if (!node.open) node.open = true
     return node.open === true
-  }, selector)
+  }, selector, { timeout: qaTimeout(15000) })
 }
 
 async function renderGameToText(page) {

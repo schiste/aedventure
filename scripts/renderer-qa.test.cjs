@@ -2830,20 +2830,50 @@ function clampCanvasPoint(point, image) {
   }
 }
 
+/** Scaled by `ADD_QA_TIMEOUT_SCALE`, like the ADD smoke's budgets. */
+const QA_TIMEOUT_SCALE = (() => {
+  const parsed = Number.parseFloat(process.env.ADD_QA_TIMEOUT_SCALE ?? "1")
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1
+})()
+
+const MIN_STATE_POLLS = 8
+
+/**
+ * Give the predicate a minimum number of looks however loaded the machine is.
+ *
+ * Each attempt serializes the whole renderer state, so the cost of one poll is
+ * unbounded. Against a seven second wall-clock deadline that meant a busy
+ * machine could spend the entire budget on a handful of serializations and then
+ * report a timeout for a condition it had barely examined — which is how the
+ * office stress map failed one run in four with byte-identical input. The clock
+ * is now checked after a fresh look rather than before it.
+ */
 async function waitForTextState(page, predicate, timeoutMs = 7000) {
+  const budgetMs = Math.round(timeoutMs * QA_TIMEOUT_SCALE)
   const startedAt = Date.now()
   let latest
+  let lastError
+  let attempts = 0
 
-  while (Date.now() - startedAt < timeoutMs) {
-    latest = await renderGameToText(page)
-    if (predicate(latest)) return latest
+  for (;;) {
+    attempts += 1
+    try {
+      latest = await renderGameToText(page)
+      if (predicate(latest)) return latest
+    } catch (error) {
+      lastError = error
+    }
+    if (page.isClosed()) break
+    if (Date.now() - startedAt >= budgetMs && attempts >= MIN_STATE_POLLS) break
     await page.waitForTimeout(100)
   }
 
   assert.fail(
     `Timed out waiting for renderer QA state matching ${predicatePreview(
       predicate,
-    )}. Latest state:\n${JSON.stringify(
+    )} after ${attempts} attempt(s) in ${Date.now() - startedAt}ms (budget ${budgetMs}ms).${
+      lastError ? ` Last error: ${lastError.message}.` : ""
+    } Latest state:\n${JSON.stringify(
       latest,
       null,
       2,

@@ -381,19 +381,46 @@ function assertNoFindings(findings, label) {
   )
 }
 
-async function waitForTextState(page, predicate, timeoutMs = 7000) {
-  const startedAt = Date.now()
-  let latest
+/** Scaled by `ADD_QA_TIMEOUT_SCALE`, like every other browser budget here. */
+const QA_TIMEOUT_SCALE = (() => {
+  const parsed = Number.parseFloat(process.env.ADD_QA_TIMEOUT_SCALE ?? "1")
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1
+})()
 
-  while (Date.now() - startedAt < timeoutMs) {
-    latest = await renderGameToText(page)
-    if (predicate(latest)) return latest
+const MIN_STATE_POLLS = 8
+
+/**
+ * Give the predicate a minimum number of looks however loaded the machine is,
+ * and check the clock after a fresh look rather than before it. Each attempt
+ * serializes the whole page state, so one poll costs an unbounded and load-
+ * dependent amount of time; a pure wall-clock deadline reported timeouts for
+ * conditions it had barely examined.
+ */
+async function waitForTextState(page, predicate, timeoutMs = 7000) {
+  const budgetMs = Math.round(timeoutMs * QA_TIMEOUT_SCALE)
+  const startedAt = Date.now()
+  let lastState
+  let lastError
+  let attempts = 0
+
+  for (;;) {
+    attempts += 1
+    try {
+      lastState = await renderGameToText(page)
+      if (predicate(lastState)) return lastState
+    } catch (error) {
+      lastError = error
+    }
+    if (page.isClosed()) break
+    if (Date.now() - startedAt >= budgetMs && attempts >= MIN_STATE_POLLS) break
     await page.waitForTimeout(100)
   }
 
   assert.fail(
-    `Timed out waiting for frontend state. Latest state:\n${JSON.stringify(
-      latest,
+    `Timed out waiting for frontend state after ${attempts} attempt(s) in ${
+      Date.now() - startedAt
+    }ms (budget ${budgetMs}ms).${lastError ? ` Last error: ${lastError.message}.` : ""} Latest state:\n${JSON.stringify(
+      lastState,
       null,
       2,
     )}`,
