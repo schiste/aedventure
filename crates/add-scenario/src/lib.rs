@@ -6,7 +6,9 @@
 
 pub mod bench;
 pub mod calibrate;
+pub mod graph_export;
 pub mod population;
+pub mod reach;
 pub mod tuning;
 pub mod fuzz;
 

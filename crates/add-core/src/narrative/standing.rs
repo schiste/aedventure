@@ -206,6 +206,30 @@ impl Band {
         }
     }
 
+    /// The score at which this band begins. `None` for the bottom band, which
+    /// has no floor. Mirrors [`Band::of`], and exists so tooling can say how far
+    /// short of a gate something fell rather than only that it fell short.
+    pub fn lower_edge(self) -> Option<f64> {
+        match self {
+            Band::VeryLow => None,
+            Band::Low => Some(-40.0),
+            Band::Mid => Some(-10.0),
+            Band::High => Some(25.0),
+            Band::VeryHigh => Some(60.0),
+        }
+    }
+
+    pub fn from_str(value: &str) -> Option<Band> {
+        match value {
+            "very_low" => Some(Band::VeryLow),
+            "low" => Some(Band::Low),
+            "mid" => Some(Band::Mid),
+            "high" => Some(Band::High),
+            "very_high" => Some(Band::VeryHigh),
+            _ => None,
+        }
+    }
+
     pub fn as_str(self) -> &'static str {
         match self {
             Band::VeryLow => "very_low",

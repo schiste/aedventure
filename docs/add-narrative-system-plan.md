@@ -441,8 +441,7 @@ committed scenario, and `broken_oath` has unit coverage including the pending
 case. Dialogue references them through `EXTERNAL arc(pattern_id)`, bound to
 the sifted result. Reactions fire only when the actor has *heard*, which made
 the N4 secret/witnessed pair diverge further still: the secret run fires no
-reaction at all. `narr graph` is the one deliverable not built; it is recorded
-as a gap.
+reaction at all. `narr graph` is built — see §11 tooling below.
 
 ### N6 — Storylets and casting
 
@@ -495,7 +494,7 @@ are axes no act in the catalog moves.** That last is dead standing: the writer
 can ask about it and nothing in the game can change it. It is an authoring gap,
 recorded here rather than papered over.
 
-`narr reach` is not built; it joins `narr graph` as a recorded gap.
+`narr reach` and `narr graph` are built — see §11 tooling below.
 
 ### N7 — Scale and hardening
 
@@ -718,6 +717,34 @@ costs **19,454 us**, because a game that has been asking for standings already
 has them memoised for the current tick. A save taken on a log nothing has read
 costs **8,812,407 us**, which is the worst case and the number to watch if
 saving is ever moved somewhere that has not just been playing.
+
+**`narr graph` and `narr reach` are built**, which closes §11's tool list.
+
+`npm run narr:graph` exports both graphs as DOT. The entity graph's edges point
+from member to group — the direction an impact travels — and carry that step's
+inheritance weight, which is the number deciding how much of what happens to one
+person is felt above them. The causal graph labels events by act and target so a
+chain reads as a story rather than as ids, and draws no edge to an event
+compaction has folded away: an arrow from a node that is not in the log is a
+graph that renders and lies.
+
+`npm run narr:reach` runs §11's two passes. The static pass rejects a gate that
+can never open — an axis or band that does not exist, or a range like "at least
+`low`, at most `very_low`" that is empty. The search then plays and watches for
+anyone who satisfies each gate, sampling as the log grows rather than only at
+the end, because a gate can open mid-game and shut again as decay and repetition
+pull scores back toward the middle — and a gate that was briefly satisfied is a
+gate that fires. An unreached gate is reported with who came closest and how many
+standing points short they were, which is the difference between "this never
+fires" and "this needs six more points of grievance".
+
+Gates are storylet roles. Reactions trigger on acts rather than bands, so they
+gate nothing. On current content the single gate is reachable and nothing is
+contradictory; the tool is pinned by tests that assert it catches an empty
+range, an unknown axis, an unknown band, and a well-formed gate the content
+cannot satisfy — `alignment` at `very_high`, one of the dead axes calibrate
+reports — because a checker that only ever confirms what already works would
+pass a broken gate silently.
 
 **Still outstanding:**
 - **1,000 entities.** Only the event-count half of the acceptance criterion is

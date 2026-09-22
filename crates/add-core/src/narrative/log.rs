@@ -854,33 +854,6 @@ impl NarrativeLog {
         }
     }
 
-    /// A score written into the save, if it is still true.
-    ///
-    /// Every condition the in-memory key encodes is checked here too, plus the
-    /// content stamp, because a save can outlive the content it was made under
-    /// in a way a running process cannot.
-    fn warm_score(&self, observer_id: &str, axis: Axis, now_tick: f64) -> Option<f64> {
-        let warm = &self.warm_scores;
-        if warm.knowledge.is_empty()
-            || warm.catalog_version != crate::game_data::CONTENT_CATALOG_VERSION
-            || warm.events != self.events.len()
-            || warm.tick_bits != now_tick.to_bits()
-        {
-            return None;
-        }
-        // Not folded into this save: nothing can be assumed about it.
-        let saved_knowledge = warm.knowledge.get(observer_id)?;
-        if *saved_knowledge != self.knowledge.len_for(observer_id) {
-            return None;
-        }
-        Some(
-            warm.entries
-                .get(&Self::warm_key(observer_id, axis))
-                .copied()
-                .unwrap_or(0.0),
-        )
-    }
-
     fn warm_key(observer_id: &str, axis: Axis) -> String {
         format!("{observer_id}|{}", axis.as_str())
     }

@@ -39,6 +39,14 @@ fn run() -> Result<(), String> {
             argv.next();
             return run_diff_tuning(argv.collect());
         }
+        Some("graph") => {
+            argv.next();
+            return run_graph(argv.collect());
+        }
+        Some("reach") => {
+            argv.next();
+            return run_reach(argv.collect());
+        }
         Some("schema") => {
             println!("{}", stable_json_string(&narrative_schema()));
             return Ok(());
@@ -136,6 +144,65 @@ fn run_fuzz(arguments: Vec<String>) -> Result<(), String> {
 /// that contributed, each factor with its input, and the running score. The
 /// trace comes from the same fold that produces the number, so an explanation
 /// can never disagree with the score it explains.
+/// Export the entity graph, the causal event graph, or both, as DOT.
+fn run_graph(arguments: Vec<String>) -> Result<(), String> {
+    let mut want_entities = false;
+    let mut want_causes = false;
+    let mut runs = 4usize;
+    let mut iterator = arguments.iter();
+    while let Some(argument) = iterator.next() {
+        match argument.as_str() {
+            "--entities" => want_entities = true,
+            "--causes" => want_causes = true,
+            "--runs" => {
+                runs = iterator
+                    .next()
+                    .and_then(|value| value.parse().ok())
+                    .ok_or_else(|| "--runs needs a number".to_string())?;
+            }
+            other => return Err(format!("unknown graph option `{other}`")),
+        }
+    }
+    // Neither asked for means both, which is what someone exploring wants.
+    if !want_entities && !want_causes {
+        want_entities = true;
+        want_causes = true;
+    }
+
+    if want_entities {
+        print!("{}", add_scenario::graph_export::entity_dot());
+    }
+    if want_causes {
+        let log = add_scenario::calibrate::play(runs, 60);
+        print!("{}", add_scenario::graph_export::causal_dot(&log));
+    }
+    Ok(())
+}
+
+/// Check that every gated scene can actually open.
+fn run_reach(arguments: Vec<String>) -> Result<(), String> {
+    let mut runs = 8usize;
+    let mut iterator = arguments.iter();
+    while let Some(argument) = iterator.next() {
+        match argument.as_str() {
+            "--runs" => {
+                runs = iterator
+                    .next()
+                    .and_then(|value| value.parse().ok())
+                    .ok_or_else(|| "--runs needs a number".to_string())?;
+            }
+            other => return Err(format!("unknown reach option `{other}`")),
+        }
+    }
+
+    let report = add_scenario::reach::search(runs, 60);
+    println!("{}", stable_json_string(&report.to_value()));
+    if !report.ok() {
+        return Err("a gate was contradictory or unreached".to_string());
+    }
+    Ok(())
+}
+
 /// Replay a fixed corpus under two tunings and report what it changes.
 fn run_diff_tuning(arguments: Vec<String>) -> Result<(), String> {
     let mut paths: Vec<PathBuf> = Vec::new();
