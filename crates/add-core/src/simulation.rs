@@ -5085,7 +5085,11 @@ mod authored_acts_tests {
                     action_id: action.to_string(),
                 });
             }
-            simulation.apply(GameCommand::Tick { seconds: 120.0 });
+            // Small steps, for the reason in `MAX_TICK_WITH_ACTION_SECONDS`: a
+            // coarse tick processes a whole span of exposure at once and
+            // cancels the world action before it can finish, which is what kept
+            // this walk pinned on `story.beat.explore_base`.
+            simulation.apply(GameCommand::Tick { seconds: 5.0 });
         }
 
         let log = &simulation.state().narrative.log;
@@ -5098,6 +5102,14 @@ mod authored_acts_tests {
         assert!(
             acts.iter().any(|act| crate::game_data::narrative_act_def(act).is_some()),
             "the recorded acts should be real catalog acts: {acts:?}",
+        );
+
+        // And the walk has to actually get somewhere. `explore_base` used to be
+        // the end of the line for anything but a human at normal speed.
+        let completed = &simulation.state().narrative.completed_beat_ids;
+        assert!(
+            completed.iter().any(|beat| beat == "story.beat.explore_base"),
+            "the opening should reach the base loop, got {completed:?}",
         );
     }
 }

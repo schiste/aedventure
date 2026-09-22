@@ -903,13 +903,27 @@ What it is wired to, and why those places:
 `playing_the_opening_arc_records_acts` walks the opening the way a player does
 and requires the log to fill, so this cannot silently come undone.
 
-**A playthrough still only reaches the first five beats.** It stalls on
-`story.beat.explore_base`, which needs resources a story-and-ticks loop does not
-generate, so the three beat-completion wirings above do not fire yet in practice
-— the fuzz coverage report has been saying so all along, listing `restore_studio`,
-`first_recruit` and `await_survivor_arrival` under `beatsNeverSeen`. That is a
-gap in how far the opening can be played, not in the wiring, and it is why only
-two acts reach a player today.
+**The stall at `explore_base` is fixed, and it was not about resources.**
+
+`world_action.explore_base` takes ten seconds and holds the Hero outside the
+bubble for all of it. The fuzzer advanced time thirty seconds at a jump, so the
+survival system processed that whole span of exposure at once, tripped the point
+of no return and cancelled the action before it could finish. The beat waits on
+a flag only that action sets, so the run sat there until its budget ran out —
+every time, in every run. A player never sees this, because the runtime ticks
+far finer than the action is long.
+
+Time is now advanced in steps of at most `MAX_TICK_WITH_ACTION_SECONDS` while a
+world action is in flight. `story.beat.restore_studio` is now reached, and
+`playing_the_opening_arc_records_acts` asserts the opening gets into the base
+loop rather than only that it records something.
+
+**The next wall is `restore_studio`**, which needs stone and a construction
+crew. Reaching it needs the fuzzer to assign crew and run a construction
+project, which is a larger change than this one: `build_fire_pit`,
+`reach_survivor_cave`, `first_recruit`, `await_survivor_arrival` and
+`stabilize_base` stay unreached until it is made, and the three act wirings on
+those beats stay unfired with them.
 
 **Still outstanding:**
 - **1,000 entities.** Only the event-count half of the acceptance criterion is

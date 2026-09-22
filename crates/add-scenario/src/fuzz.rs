@@ -190,6 +190,37 @@ impl Rng {
 }
 
 /// Run one playthrough under one policy.
+/// The longest a single tick may be while a world action is running.
+///
+/// World actions take seconds — exploring the ruin takes ten — and the hero is
+/// outside the bubble for the whole of it. Advancing time in one coarse jump
+/// processes that entire span of exposure at once, which trips the point of no
+/// return and cancels the action before it can finish. The fuzzer was ticking
+/// thirty seconds at a time and so could never complete `world_action.
+/// explore_base`: it stalled on that beat forever and never saw the six beats
+/// behind it, which is what `beatsNeverSeen` had been reporting all along.
+///
+/// A player at normal speed never hits this, because the runtime ticks far
+/// finer than the action is long.
+const MAX_TICK_WITH_ACTION_SECONDS: f64 = 5.0;
+
+/// Advance time without stepping over a world action that is in flight.
+fn tick_without_cancelling_actions(simulation: &mut Simulation, seconds: f64) -> Vec<Value> {
+    let mut commands = Vec::new();
+    let mut remaining = seconds;
+    while remaining > 0.0 {
+        let step = if simulation.state().active_world_action.is_some() {
+            remaining.min(MAX_TICK_WITH_ACTION_SECONDS)
+        } else {
+            remaining
+        };
+        simulation.apply(GameCommand::Tick { seconds: step });
+        commands.push(json!({ "type": "Tick", "seconds": step }));
+        remaining -= step;
+    }
+    commands
+}
+
 pub fn run_once(seed: u64, policy: Policy, max_steps: usize, coverage: &mut Coverage) -> FuzzRun {
     let mut rng = Rng(seed ^ 0x5DEE_CE66_D1B1_4A25);
     let mut simulation = Simulation::from_state(GameState::new());
@@ -338,8 +369,7 @@ pub fn run_once(seed: u64, policy: Policy, max_steps: usize, coverage: &mut Cove
                     commands.push(json!({ "type": "StartWorldAction", "actionId": action_id }));
                 }
             }
-            simulation.apply(GameCommand::Tick { seconds: 30.0 });
-            commands.push(json!({ "type": "Tick", "seconds": 30.0 }));
+            commands.extend(tick_without_cancelling_actions(&mut simulation, 30.0));
             if simulation.state().narrative.active_beat_id == before
                 && simulation.state().clock_seconds > 60_000.0
             {
@@ -396,8 +426,7 @@ pub fn run_once(seed: u64, policy: Policy, max_steps: usize, coverage: &mut Cove
         if options.is_empty() {
             // A spine beat with no decision: let time carry the story.
             let before = simulation.state().narrative.active_beat_id.clone();
-            simulation.apply(GameCommand::Tick { seconds: 30.0 });
-            commands.push(json!({ "type": "Tick", "seconds": 30.0 }));
+            commands.extend(tick_without_cancelling_actions(&mut simulation, 30.0));
             if simulation.state().narrative.active_beat_id == before
                 && simulation.state().clock_seconds > 60_000.0
             {
