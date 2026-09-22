@@ -473,6 +473,32 @@ pub fn run_once(seed: u64, policy: Policy, max_steps: usize, coverage: &mut Cove
                     None => &acts[rng.below(acts.len())],
                 };
                 let target = targets[rng.below(targets.len())];
+                // Sometimes answer something already done to this person rather
+                // than acting out of nowhere. Every act the fuzzer emitted used
+                // to have an empty cause list, so no pattern with
+                // `requiresCause` could ever complete: `arc.mercy_repaid` wants
+                // aid that is *because of* an earlier mercy, and the whole
+                // causal chain went untested.
+                let causes = if rng.below(2) == 0 {
+                    let prior: Vec<u64> = simulation
+                        .state()
+                        .narrative
+                        .log
+                        .events
+                        .iter()
+                        .rev()
+                        .take(32)
+                        .filter(|event| event.target.as_deref() == Some(target))
+                        .map(|event| event.id)
+                        .collect();
+                    if prior.is_empty() {
+                        Vec::new()
+                    } else {
+                        vec![prior[rng.below(prior.len())]]
+                    }
+                } else {
+                    Vec::new()
+                };
                 let command = GameCommand::EmitAct {
                     act_id: act.id.to_string(),
                     target: Some(target.to_string()),
@@ -480,7 +506,7 @@ pub fn run_once(seed: u64, policy: Policy, max_steps: usize, coverage: &mut Cove
                     need: 1.0,
                     secrecy: None,
                     witnesses: Vec::new(),
-                    causes: Vec::new(),
+                    causes: causes.clone(),
                 };
                 if simulation.apply(command).accepted {
                     coverage.acts_emitted.insert(act.id.to_string());
@@ -488,6 +514,7 @@ pub fn run_once(seed: u64, policy: Policy, max_steps: usize, coverage: &mut Cove
                         "type": "EmitAct",
                         "actId": act.id,
                         "target": target,
+                        "causes": causes,
                     }));
                 }
             }
@@ -855,7 +882,13 @@ pub fn replay(commands: &[Value]) -> Result<String, String> {
                     need: 1.0,
                     secrecy: None,
                     witnesses: Vec::new(),
-                    causes: Vec::new(),
+                    // Replay has to cite the same causes, or a run that only
+                    // failed because one act answered another cannot reproduce.
+                    causes: command
+                        .get("causes")
+                        .and_then(Value::as_array)
+                        .map(|causes| causes.iter().filter_map(Value::as_u64).collect())
+                        .unwrap_or_default(),
                 });
             }
             "SetRoleCrew" => {
