@@ -525,6 +525,7 @@ export interface EffectDef {
     | 'add_quality'
     | 'complete_beat'
     | 'note'
+    | 'emit_act'
   flag_id?: string
   value?: boolean
   amount?: number
@@ -536,6 +537,10 @@ export interface EffectDef {
   beat_id?: string
   /** note */
   text?: string
+  /** emit_act: the act recorded in the narrative log */
+  act_id?: string
+  /** emit_act: whom it was done to, when the act has a single subject */
+  target?: string
   track?:
     | 'slot_capacity'
     | 'output'

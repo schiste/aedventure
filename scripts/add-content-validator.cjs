@@ -41,6 +41,8 @@ function validateAddContent(input) {
   registerExternalIds(ctx, "dungeons", input.dungeons, "id")
   registerExternalIds(ctx, "dungeon_maps", input.dungeons, "mapId")
   registerExternalIds(ctx, "areas", input.areas, "id")
+  registerExternalIds(ctx, "narrative_acts", input.narrativeActs, "id")
+  registerExternalIds(ctx, "narrative_entities", input.narrativeEntities, "id")
   registerExternalIds(ctx, "area_maps", input.areas, "mapId")
   for (const id of SYNTHETIC_IDS) addKnownId(ctx, id, "synthetic")
 
@@ -786,6 +788,18 @@ function validateEffects(ctx, label, effects = []) {
       case "note":
         if (typeof effect.text !== "string" || effect.text.trim() === "") ctx.errors.push(`${label}.note.text: must be a non-empty string`)
         break
+      case "emit_act": {
+        // The act and its target must exist, or the effect fires at runtime
+        // into a log nobody can explain: `narr explain` would name an act that
+        // is not in the catalog.
+        if (typeof effect.act_id !== "string" || !ctx.ids.has(effect.act_id)) {
+          ctx.errors.push(`${label}.emit_act.act_id: unknown act "${effect.act_id}"`)
+        }
+        if (effect.target !== undefined && !ctx.ids.has(effect.target)) {
+          ctx.errors.push(`${label}.emit_act.target: unknown entity "${effect.target}"`)
+        }
+        break
+      }
       default:
         ctx.errors.push(`${label}: unsupported effect kind "${effect.kind}"`)
     }

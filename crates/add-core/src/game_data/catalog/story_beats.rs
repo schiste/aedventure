@@ -17,10 +17,16 @@ pub(in crate::game_data) const STORY_BEATS: &[StoryBeatDef] = &[
                 id: "story.choice.road.follow_signal",
                 label: "Follow the low signal",
                 response: "You stay on the broken road because the distant hum feels like the only promise left.",
-                effects: &[EffectDef::AddQuality {
-                    key: "resolve",
-                    amount: 1,
-                }],
+                effects: &[
+                    EffectDef::AddQuality {
+                        key: "resolve",
+                        amount: 1,
+                    },
+                    EffectDef::EmitAct {
+                        act_id: "act.swear_an_oath",
+                        target: Some("entity.sleepless"),
+                    },
+                ],
             },
             StoryChoiceDef {
                 id: "story.choice.road.keep_moving",
@@ -257,7 +263,10 @@ pub(in crate::game_data) const STORY_BEATS: &[StoryBeatDef] = &[
                 id: "story.choice.explore.look_for_rooms",
                 label: "Look for livable rooms",
                 response: "If more people are coming, they will need more than a miracle. They will need a place to stay.",
-                effects: &[],
+                effects: &[EffectDef::EmitAct {
+                    act_id: "act.keep_the_watch",
+                    target: Some("entity.sleepless"),
+                }],
             },
         ],
         related_ids: &[
@@ -358,10 +367,16 @@ pub(in crate::game_data) const STORY_BEATS: &[StoryBeatDef] = &[
         priority: 0,
         repeatable: false,
         blocks_unrelated_world_actions: false,
-        on_complete: &[EffectDef::AddQuality {
-            key: "hope",
-            amount: 1,
-        }],
+        on_complete: &[
+            EffectDef::AddQuality {
+                key: "hope",
+                amount: 1,
+            },
+            EffectDef::EmitAct {
+                act_id: "act.keep_the_watch",
+                target: Some("entity.sleepless"),
+            },
+        ],
         on_activate: &[],
     },
     StoryBeatDef {
@@ -511,7 +526,10 @@ pub(in crate::game_data) const STORY_BEATS: &[StoryBeatDef] = &[
         priority: 0,
         repeatable: false,
         blocks_unrelated_world_actions: false,
-        on_complete: &[],
+        on_complete: &[EffectDef::EmitAct {
+            act_id: "act.take_the_lead",
+            target: Some("entity.sleepless"),
+        }],
         on_activate: &[],
     },
     StoryBeatDef {
@@ -554,7 +572,10 @@ pub(in crate::game_data) const STORY_BEATS: &[StoryBeatDef] = &[
         priority: 0,
         repeatable: false,
         blocks_unrelated_world_actions: false,
-        on_complete: &[],
+        on_complete: &[EffectDef::EmitAct {
+            act_id: "act.keep_a_promise",
+            target: Some("entity.sleepless"),
+        }],
         on_activate: &[],
     },
     StoryBeatDef {

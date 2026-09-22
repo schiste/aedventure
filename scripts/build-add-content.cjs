@@ -105,6 +105,11 @@ const areas = require(path.join(ROOT, "packages/add-content/dist/areas/registry.
 
 try {
   validateAddContent({
+    // The narrative catalogs are passed so an `emit_act` effect can be checked
+    // against them: an act or target that does not exist would fire at runtime
+    // into a log nobody could explain.
+    narrativeActs: narrativeActs.NARRATIVE_ACTS,
+    narrativeEntities: narrativeEntities.NARRATIVE_ENTITIES,
     resources: resources.RESOURCES,
     roles: roles.ROLES,
     flags: flags.FLAGS,
@@ -222,6 +227,16 @@ const EFFECTS_FIELD = {
       add_quality: { variant: "AddQuality", fields: [{ name: "key", from: "key", kind: "string" }, { name: "amount", kind: "i64" }] },
       complete_beat: { variant: "CompleteBeat", fields: [{ name: "beat_id", from: "beat_id", kind: "idConst" }] },
       note: { variant: "Note", fields: [{ name: "text", from: "text", kind: "string" }] },
+      // The bridge between what the player does and what the world remembers.
+      // Without it the narrative system has no input from authored content:
+      // every act in the catalog was reachable only from the fuzzer.
+      emit_act: {
+        variant: "EmitAct",
+        fields: [
+          { name: "act_id", from: "act_id", kind: "string" },
+          { name: "target", from: "target", kind: "option", inner: "string" },
+        ],
+      },
     },
   },
 }

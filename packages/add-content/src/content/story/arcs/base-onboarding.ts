@@ -73,6 +73,8 @@ export const BASE_ONBOARDING_STORY_BEATS: readonly StoryBeatDef[] = [
       },
       {
         id: "story.choice.explore.look_for_rooms",
+        // Making rooms habitable is work done for people who are not here yet.
+        effects: [{ kind: "emit_act", act_id: "act.keep_the_watch", target: "entity.sleepless" }],
         label: "Look for livable rooms",
         response: "If more people are coming, they will need more than a miracle. They will need a place to stay.",
       },
@@ -154,7 +156,12 @@ export const BASE_ONBOARDING_STORY_BEATS: readonly StoryBeatDef[] = [
     autoCompleteWhen: [flagSet("base.studio_restored")],
     priority: 0,
     repeatable: false,
-    onComplete: [{ kind: "add_quality", key: "hope", amount: 1 }],
+    onComplete: [
+      { kind: "add_quality", key: "hope", amount: 1 },
+      // Building the pit is taking the worst of the work so others can rest —
+      // the faction feels it, not any one survivor yet.
+      { kind: "emit_act", act_id: "act.keep_the_watch", target: "entity.sleepless" },
+    ],
   },
   {
     id: "story.beat.build_fire_pit",
@@ -279,6 +286,10 @@ export const BASE_ONBOARDING_STORY_BEATS: readonly StoryBeatDef[] = [
         ]),
       ],
     }),
+    // Someone chose to walk in: the Hero led and was followed, which is what
+    // `take_the_lead` records. Emitted on completion rather than from a choice
+    // because the beat has none — the recruitment itself is the act.
+    onComplete: [{ kind: "emit_act", act_id: "act.take_the_lead", target: "entity.sleepless" }],
     preconditions: [{ kind: "recruitment_enabled" }],
     autoCompleteWhen: [{ kind: "recruited_any" }],
     priority: 0,
@@ -289,6 +300,8 @@ export const BASE_ONBOARDING_STORY_BEATS: readonly StoryBeatDef[] = [
     schemaId: "story.beat.await_survivor_arrival",
     label: "Await Survivor Arrival",
     body: "Signal the route. Keep the Base stable. A promise only matters if someone can safely walk into it.",
+    // The beat's own text names the act: they walked in, so the promise held.
+    onComplete: [{ kind: "emit_act", act_id: "act.keep_a_promise", target: "entity.sleepless" }],
     arc: STORY_ARC_BASE_ONBOARDING,
     sequence: 85,
     worldActionId: null,

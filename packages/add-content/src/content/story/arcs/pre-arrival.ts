@@ -22,7 +22,14 @@ export const PRE_ARRIVAL_STORY_BEATS: readonly StoryBeatDef[] = [
         id: "story.choice.road.follow_signal",
         label: "Follow the low signal",
         response: "You stay on the broken road because the distant hum feels like the only promise left.",
-        effects: [{ kind: "add_quality", key: "resolve", amount: 1 }],
+        effects: [
+          { kind: "add_quality", key: "resolve", amount: 1 },
+          // Choosing the hum over the road is a commitment to the people making
+          // it, made before meeting them. It is an `oath` kind, so it is the
+          // first slot of `arc.broken_oath`: the opening choice plants
+          // something the rest of the game can break.
+          { kind: "emit_act", act_id: "act.swear_an_oath", target: "entity.sleepless" },
+        ],
       },
       {
         id: "story.choice.road.keep_moving",

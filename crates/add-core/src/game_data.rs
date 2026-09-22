@@ -731,6 +731,17 @@ pub enum EffectDef {
     Note {
         text: &'static str,
     },
+    /// Record a consequential act in the narrative log.
+    ///
+    /// The bridge between what the player does and what the world remembers.
+    /// Without it the narrative system takes no input from authored content:
+    /// every act in the catalog was reachable only from the fuzzer, so a real
+    /// playthrough moved nobody's standing at all.
+    EmitAct {
+        act_id: &'static str,
+        /// Whom it was done to. `None` for an act with no single subject.
+        target: Option<&'static str>,
+    },
 }
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq)]

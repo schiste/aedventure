@@ -869,6 +869,48 @@ cannot satisfy — `alignment` at `very_high`, one of the dead axes calibrate
 reports — because a checker that only ever confirms what already works would
 pass a broken gate silently.
 
+**Authored content can now emit acts, which it could not before.**
+
+Reviewing the authored acts turned up the thing that mattered most: *nothing in
+the game could emit any of them*. No story beat, choice, storylet or world
+action referenced a single act — `story.ts` and `main.ink` contained none — and
+the one reaction wired (`break_a_promise` → `denounce`) triggered on an act
+nothing could produce either. `EmitAct` existed as a command, but only the
+fuzzer and tests sent it.
+
+So a real playthrough left the narrative log empty and every standing at zero.
+The calibration work before this measured a world the player could not reach: it
+established that the axes *can* move, not that anything moves them.
+
+There is now an `emit_act` effect, usable anywhere effects are — choices, beat
+completion, world actions. It is validated against the narrative catalogs, so an
+act or target that does not exist fails the build rather than firing at runtime
+into a log nobody can explain.
+
+What it is wired to, and why those places:
+
+- **`story.choice.road.follow_signal` → `act.swear_an_oath`.** Choosing the hum
+  over the road is a commitment to the people making it, made before meeting
+  them. It is an `oath`, the first slot of `arc.broken_oath`, so the opening
+  choice plants something the rest of the game can break.
+- **`story.choice.explore.look_for_rooms` → `act.keep_the_watch`.** Making rooms
+  habitable is work done for people who are not there yet.
+- **`restore_studio`, `first_recruit`, `await_survivor_arrival` on completion**
+  → `keep_the_watch`, `take_the_lead`, `keep_a_promise`. The last one is named
+  by the beat's own text: "A promise only matters if someone can safely walk
+  into it."
+
+`playing_the_opening_arc_records_acts` walks the opening the way a player does
+and requires the log to fill, so this cannot silently come undone.
+
+**A playthrough still only reaches the first five beats.** It stalls on
+`story.beat.explore_base`, which needs resources a story-and-ticks loop does not
+generate, so the three beat-completion wirings above do not fire yet in practice
+— the fuzz coverage report has been saying so all along, listing `restore_studio`,
+`first_recruit` and `await_survivor_arrival` under `beatsNeverSeen`. That is a
+gap in how far the opening can be played, not in the wiring, and it is why only
+two acts reach a player today.
+
 **Still outstanding:**
 - **1,000 entities.** Only the event-count half of the acceptance criterion is
   actually measured. The entity graph is a compile-time catalog, so a synthetic

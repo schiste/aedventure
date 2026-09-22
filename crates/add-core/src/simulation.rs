@@ -4183,6 +4183,13 @@ impl Simulation {
                 } => self.spend_resource(resource_id, amount),
                 EffectDef::SetQuality { key, value } => self.set_quality(key, value),
                 EffectDef::AddQuality { key, amount } => self.add_quality(key, amount),
+                // Cost and need are left at their neutral 1.0: an authored
+                // choice says what was done, and how much it cost the Hero is
+                // the engine's to judge from context, not the writer's to
+                // assert. Secrecy comes from the act's own default.
+                EffectDef::EmitAct { act_id, target } => {
+                    self.emit_act(act_id, target, 1.0, 1.0, None, Vec::new(), Vec::new())
+                }
                 EffectDef::CompleteBeat { beat_id } => self.mark_story_beat_complete(beat_id),
                 EffectDef::Note { text } => self.push_note(text.to_string()),
             }
@@ -5036,5 +5043,61 @@ mod storylet_runtime_tests {
         let narrative_after_first_apply = simulation.state.narrative.clone();
         simulation.apply(GameCommand::CompletePreArrivalRoute);
         assert_eq!(simulation.state.narrative, narrative_after_first_apply);
+    }
+}
+
+#[cfg(test)]
+mod authored_acts_tests {
+    use super::*;
+
+    /// Playing the game has to move somebody's standing.
+    ///
+    /// Every act in the catalog was once reachable only from the fuzzer: no
+    /// story beat, choice, storylet or world action emitted one, so a real
+    /// playthrough left the narrative log empty and every standing at zero. The
+    /// calibration work that followed measured a world the player could not
+    /// reach. This walks the opening arc the way a player does and requires the
+    /// log to fill.
+    #[test]
+    fn playing_the_opening_arc_records_acts() {
+        let mut simulation = Simulation::from_state(GameState::new());
+
+        // Drive the story the way the runtime does: take the first choice of
+        // whatever beat is active, and let time pass so beats complete.
+        for _ in 0..400 {
+            let Some(beat_id) = simulation.state().narrative.active_beat_id.clone() else {
+                break;
+            };
+            if !simulation.state().narrative.choice_by_beat.contains_key(&beat_id) {
+                if let Some(beat) = crate::game_data::story_beat_def(&beat_id) {
+                    if let Some(choice) = beat.choices.first() {
+                        simulation.apply(GameCommand::ChooseStoryOption {
+                            beat_id: beat_id.clone(),
+                            option_id: choice.id.to_string(),
+                        });
+                    }
+                }
+            }
+            if let Some(action) =
+                crate::game_data::story_beat_def(&beat_id).and_then(|beat| beat.world_action_id)
+            {
+                simulation.apply(GameCommand::StartWorldAction {
+                    action_id: action.to_string(),
+                });
+            }
+            simulation.apply(GameCommand::Tick { seconds: 120.0 });
+        }
+
+        let log = &simulation.state().narrative.log;
+        assert!(
+            !log.events.is_empty(),
+            "an opening arc that records nothing leaves every standing at zero, \
+             and every gate on them permanently shut",
+        );
+        let acts: Vec<&str> = log.events.iter().map(|event| event.act_id.as_str()).collect();
+        assert!(
+            acts.iter().any(|act| crate::game_data::narrative_act_def(act).is_some()),
+            "the recorded acts should be real catalog acts: {acts:?}",
+        );
     }
 }
