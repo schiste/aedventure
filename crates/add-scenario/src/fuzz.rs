@@ -389,8 +389,16 @@ fn work_the_base_loop(simulation: &mut Simulation) -> Vec<Value> {
 fn tick_without_cancelling_actions(simulation: &mut Simulation, seconds: f64) -> Vec<Value> {
     let mut commands = Vec::new();
     let mut remaining = seconds;
+    let beat_on_entry = simulation.state().narrative.active_beat_id.clone();
     while remaining > 0.0 {
-        let step = if simulation.state().active_world_action.is_some() {
+        // Coarse ticks must not step over a bounded state the driver is meant
+        // to observe. An active world action is one; the walk home after an
+        // outdoor action is the other, and that is the only window in which
+        // `story.beat.hero_exposed` is eligible.
+        let state = simulation.state();
+        let step = if state.active_world_action.is_some()
+            || state.hero_survival.return_journey_seconds > 0.0
+        {
             remaining.min(MAX_TICK_WITH_ACTION_SECONDS)
         } else {
             remaining
@@ -398,6 +406,13 @@ fn tick_without_cancelling_actions(simulation: &mut Simulation, seconds: f64) ->
         simulation.apply(GameCommand::Tick { seconds: step });
         commands.push(json!({ "type": "Tick", "seconds": step }));
         remaining -= step;
+        // A beat that interrupts mid-tick has to hand control back. Sleeping
+        // through the rest of the span steps over reactive storylets whose
+        // window is shorter than the tick: `story.beat.hero_exposed` is only
+        // eligible during the walk home, and the driver never saw it.
+        if simulation.state().narrative.active_beat_id != beat_on_entry {
+            break;
+        }
     }
     commands
 }

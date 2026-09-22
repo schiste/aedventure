@@ -52,6 +52,8 @@ export interface HeroSurvivalSnapshot {
   location: 'studio' | 'bubble' | 'outside_bubble'
   requiredTimeToReenterBubbleSeconds: number
   returnToStudioSeconds: number
+  /** Seconds left of the walk home after an outdoor action; positive means still outside. */
+  returnJourneySeconds: number
   pointOfNoReturnRatio: number
   secondsUntilForcedReturn: number
   echoScars: number

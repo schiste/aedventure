@@ -1195,6 +1195,7 @@ impl Simulation {
             .hero_survival
             .required_time_to_reenter_bubble_seconds
             .max(0.1);
+        self.state.hero_survival.return_journey_seconds = 0.0;
         self.state.roster.hero_assigned = false;
         self.normalize_assignment();
         self.state.hero_survival.echo_scars = self.state.hero_survival.echo_scars.saturating_add(1);
@@ -1331,6 +1332,17 @@ impl Simulation {
             HeroLocationState::OutsideBubble => {
                 self.state.hero_survival.viral_load_ratio +=
                     seconds / self.hero_outside_time_seconds_0_to_1();
+                if self.state.hero_survival.return_journey_seconds > 0.0 {
+                    self.state.hero_survival.return_journey_seconds =
+                        (self.state.hero_survival.return_journey_seconds - seconds).max(0.0);
+                    if self.state.hero_survival.return_journey_seconds == 0.0 {
+                        self.state.hero_survival.location = HeroLocationState::Studio;
+                        self.state
+                            .hero_survival
+                            .required_time_to_reenter_bubble_seconds = 0.0;
+                        self.state.hero_survival.return_to_studio_seconds = 0.0;
+                    }
+                }
                 self.refresh_hero_survival_state();
                 if self.state.hero_survival.viral_load_ratio
                     >= self.state.hero_survival.point_of_no_return_ratio
@@ -2355,11 +2367,21 @@ impl Simulation {
             self.state.roster.hero_assigned = completed.hero_assigned_before;
             self.state.roster.hero_role_id = completed.hero_role_id_before;
         }
-        self.state.hero_survival.location = HeroLocationState::Studio;
-        self.state
-            .hero_survival
-            .required_time_to_reenter_bubble_seconds = 0.0;
-        self.state.hero_survival.return_to_studio_seconds = 0.0;
+        // An action that took the Hero outside owes the authored walk back
+        // instead of teleporting them home, so the flags it is about to set are
+        // visible while they are still exposed.
+        let walk_home = world_action_def(&completed.action_id)
+            .map(|def| def.return_to_bubble_seconds.max(0.0) + def.return_to_studio_seconds.max(0.0))
+            .unwrap_or(0.0);
+        if self.state.hero_survival.location == HeroLocationState::OutsideBubble && walk_home > 0.0 {
+            self.state.hero_survival.return_journey_seconds = walk_home;
+        } else {
+            self.state.hero_survival.location = HeroLocationState::Studio;
+            self.state
+                .hero_survival
+                .required_time_to_reenter_bubble_seconds = 0.0;
+            self.state.hero_survival.return_to_studio_seconds = 0.0;
+        }
 
         if let Some(action_def) = world_action_def(&completed.action_id) {
             self.apply_effects(action_def.effects);

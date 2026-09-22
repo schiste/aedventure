@@ -740,6 +740,14 @@ mod tests {
             action_id: WORLD_ACTION_EXPLORE_BASE.to_string(),
         });
         simulation.apply(GameCommand::Tick { seconds: 10.0 });
+        // Explore leaves the Hero outside for the authored walk home, which
+        // `hero_exposed` interrupts. Settle both, so callers start from a Hero
+        // who is back in the Studio and a spine that has the floor again.
+        simulation.apply(GameCommand::ChooseStoryOption {
+            beat_id: STORY_BEAT_HERO_EXPOSED.to_string(),
+            option_id: "story.choice.exposed.steady".to_string(),
+        });
+        simulation.apply(GameCommand::Tick { seconds: 10.0 });
     }
 
     #[test]
@@ -1433,6 +1441,20 @@ mod tests {
         });
         simulation.apply(GameCommand::Tick { seconds: 10.0 });
 
+        // Explore leaves the Hero outside for the authored walk home, and that
+        // window is exactly what `hero_exposed` waits for, so the reactive
+        // storylet interrupts the spine before Restore Studio can take over.
+        assert_eq!(
+            simulation.state().narrative.active_beat_id.as_deref(),
+            Some(STORY_BEAT_HERO_EXPOSED)
+        );
+        simulation.apply(GameCommand::ChooseStoryOption {
+            beat_id: STORY_BEAT_HERO_EXPOSED.to_string(),
+            option_id: "story.choice.exposed.steady".to_string(),
+        });
+        // Walk it off; the Hero is back inside and the spine resumes.
+        simulation.apply(GameCommand::Tick { seconds: 10.0 });
+
         // Beats 6-11 are revived by the storylet selector: after Explore the spine
         // advances to Restore Studio (preconditioned on Explore) instead of going
         // dark like the old hardcoded intro chain did.
@@ -1753,11 +1775,14 @@ mod tests {
         simulation.apply(GameCommand::SetHeroRole {
             role_id: ROLE_CONSTRUCTION.to_string(),
         });
-        simulation.apply(GameCommand::Tick { seconds: 12.0 });
+        // The walk home after Explore leaves the Hero carrying enough viral load
+        // to sit a debuff tier down, so working off the restore takes a little
+        // longer than it did when the Hero teleported back.
+        simulation.apply(GameCommand::Tick { seconds: 16.0 });
         simulation.apply(GameCommand::StartConstruction {
             option_id: PROJECT_BUILD_FIRE_PIT.to_string(),
         });
-        simulation.apply(GameCommand::Tick { seconds: 4.0 });
+        simulation.apply(GameCommand::Tick { seconds: 8.0 });
 
         assert!(simulation.state().base.studio_restored);
         assert!(simulation.state().base.fire_pit_built);
@@ -2642,6 +2667,63 @@ mod tests {
         ]);
         sim.refresh_narrative_state();
         assert_eq!(sim.quality("hope"), 1);
+    }
+
+    #[test]
+    fn outdoor_action_owes_the_walk_home() {
+        // The Hero used to teleport into the Studio the instant an outdoor
+        // action finished, in the same call that set the action's flags. That
+        // made `story.beat.hero_exposed` unreachable: its preconditions want
+        // the Hero outside *and* `explore_base` complete, and those two could
+        // never hold at once. It also left the authored return times dead —
+        // nothing but the forced-return panic path ever read them.
+        let mut state = GameState::new();
+        state.narrative.completed_beat_ids = vec![
+            STORY_BEAT_ROAD_TO_BASE.to_string(),
+            STORY_BEAT_FIRST_GLIMPSE.to_string(),
+            STORY_BEAT_ENTER_THE_BUBBLE.to_string(),
+            STORY_BEAT_INVESTIGATE_BASE.to_string(),
+        ];
+        state.hero_survival.location = HeroLocationState::OutsideBubble;
+        state.active_world_action = Some(crate::state::WorldAction {
+            action_id: WORLD_ACTION_EXPLORE_BASE.to_string(),
+            total_seconds: 10.0,
+            remaining_seconds: 1.0,
+            hero_assigned_before: false,
+            hero_role_id_before: String::new(),
+        });
+        let mut sim = Simulation::from_state(state);
+
+        let walk = crate::world_action_def(WORLD_ACTION_EXPLORE_BASE)
+            .map(|def| def.return_to_bubble_seconds + def.return_to_studio_seconds)
+            .expect("explore_base is authored");
+        assert!(walk > 0.0, "the walk home has to cost something");
+
+        // Finishing the action sets its flags while the Hero is still outside,
+        // so the reactive storylet interrupts on the spot.
+        sim.apply(GameCommand::Tick { seconds: 1.0 });
+        assert_eq!(
+            sim.state().hero_survival.location,
+            HeroLocationState::OutsideBubble,
+            "the Hero is still outside during the walk home"
+        );
+        assert_eq!(
+            sim.state().narrative.active_beat_id.as_deref(),
+            Some(STORY_BEAT_HERO_EXPOSED)
+        );
+
+        // And the walk ends: the Hero is home once it is paid off, not before.
+        sim.apply(GameCommand::Tick { seconds: walk - 0.5 });
+        assert_eq!(
+            sim.state().hero_survival.location,
+            HeroLocationState::OutsideBubble
+        );
+        sim.apply(GameCommand::Tick { seconds: 1.0 });
+        assert_eq!(
+            sim.state().hero_survival.location,
+            HeroLocationState::Studio
+        );
+        assert_eq!(sim.state().hero_survival.return_journey_seconds, 0.0);
     }
 
     #[test]

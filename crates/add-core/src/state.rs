@@ -410,6 +410,10 @@ pub struct HeroSurvivalState {
     pub required_time_to_reenter_bubble_seconds: f64,
     #[serde(default)]
     pub return_to_studio_seconds: f64,
+    /// Seconds left of the walk home after an outdoor action finishes. While
+    /// this is positive the Hero is still outside the bubble.
+    #[serde(default)]
+    pub return_journey_seconds: f64,
     #[serde(default = "default_point_of_no_return_ratio")]
     pub point_of_no_return_ratio: f64,
     #[serde(
@@ -441,6 +445,7 @@ impl HeroSurvivalState {
             location: HeroLocationState::Studio,
             required_time_to_reenter_bubble_seconds: 0.0,
             return_to_studio_seconds: 0.0,
+            return_journey_seconds: 0.0,
             point_of_no_return_ratio: 1.0,
             seconds_until_forced_return: default_seconds_until_forced_return(),
             echo_scars: 0,
