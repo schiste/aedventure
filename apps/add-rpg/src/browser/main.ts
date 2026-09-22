@@ -5,6 +5,7 @@ import {
   createSignal,
   onCleanup,
   onMount,
+  untrack,
   type Accessor,
 } from "solid-js"
 import html from "solid-js/html"
@@ -726,6 +727,39 @@ function handleLiveTuningReset(): void {
   sendWorkerRequest({ type: "resetBalanceOverrides" })
 }
 
+/** Cached rows, keyed by the data they were built from. */
+const rowCaches = new Map<string, { signature: string; rows: readonly unknown[] }>()
+
+/**
+ * Build a list of elements only when the data behind it actually changes.
+ *
+ * These builders read `uiState()`, which is replaced on every snapshot — about
+ * twenty-four times a second — so their rows were torn down and recreated at
+ * that rate even when nothing about them had changed. Recreated DOM is visible:
+ * the contextual panel blinked, and anything mid-hover or mid-transition
+ * flickered with it.
+ *
+ * While the signature is unchanged this returns the very same array of the very
+ * same nodes, so Solid's insert sees no change and leaves the DOM alone. The
+ * signature must therefore cover every field the rows render, or a change the
+ * player should see would be cached away.
+ *
+ * Deliberately not a `createMemo`: several of these are called from other
+ * builders rather than from a component, where there is no owner to hang a memo
+ * on. One mechanism that works everywhere beats two that each work somewhere.
+ */
+function rowsBySignature(
+  key: string,
+  signature: string,
+  build: () => readonly unknown[],
+): readonly unknown[] {
+  const cached = rowCaches.get(key)
+  if (cached && cached.signature === signature) return cached.rows
+  const rows = build()
+  rowCaches.set(key, { signature, rows })
+  return rows
+}
+
 render(() => html`<${AddRpgApp} />`, requiredElement("app"))
 sendWorkerRequest({ type: "init" })
 
@@ -900,7 +934,7 @@ function AddRpgApp() {
             aria-label="ADD map navigation and status"
           >
             <div class="map-mode-switcher" role="tablist" aria-label="ADD map mode">
-              ${() => mapModeButtons()}
+              ${() => rowsBySignature("map-modes", JSON.stringify(mapModeNavigationItems()), mapModeButtons)}
             </div>
             <div class="status-stack" data-interface-answer="resources-time-status">
               <span class="status-pill" data-state=${() => statusState()}>
@@ -1446,7 +1480,7 @@ function AddRpgApp() {
             <span class="small-chip">${() => `${uiState()?.resources.length ?? 0} tracked`}</span>
           </div>
           <div class="resource-list">
-            ${() => resourceRows()}
+            ${() => rowsBySignature("resources", JSON.stringify(uiState()?.resources.slice(0, 6) ?? []), resourceRows)}
           </div>
         </section>
 
@@ -1654,21 +1688,21 @@ function AddRpgApp() {
               </button>
             </div>
             <div class="quick-control-group" aria-label="First playable role controls">
-              ${() => roleQuickControls()}
+              ${() => rowsBySignature("role-controls", JSON.stringify(uiState()?.roleAssignments ?? []), roleQuickControls)}
             </div>
             <div class="quick-control-group" aria-label="First playable construction controls">
-              ${() => constructionQuickControls()}
+              ${() => rowsBySignature("construction-controls", JSON.stringify(uiState()?.constructionOptions ?? []), constructionQuickControls)}
             </div>
             <div class="quick-control-group" aria-label="Hero perk controls">
               <p class="quick-control-heading">
                 Perks
                 <span class="small-chip">${() => `${perkProgress()?.pointsAvailable ?? 0} pts`}</span>
               </p>
-              ${() => perkQuickControls()}
+              ${() => rowsBySignature("perk-controls", JSON.stringify(perkProgress() ?? null), perkQuickControls)}
             </div>
             <div class="quick-control-group" aria-label="Hero inventory">
               <p class="quick-control-heading">Inventory</p>
-              ${() => inventoryRows()}
+              ${() => rowsBySignature("inventory", JSON.stringify([inventoryItems(), heroDungeonCell() !== null]), inventoryRows)}
             </div>
             ${() => (lastError() ? html`<p class="error-line">${lastError()}</p>` : null)}
           </section>
@@ -5761,7 +5795,7 @@ function objectivePanelBody(): unknown {
       ${() => firstPlayableCopy()}
     </p>
     <ol class="first-playable-list">
-      ${() => firstPlayableStepRows()}
+      ${() => rowsBySignature("first-playable-steps", JSON.stringify(uiState()?.firstPlayable.steps ?? []), firstPlayableStepRows)}
     </ol>
   `
 }
