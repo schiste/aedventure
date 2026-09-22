@@ -727,8 +727,8 @@ function handleLiveTuningReset(): void {
   sendWorkerRequest({ type: "resetBalanceOverrides" })
 }
 
-/** Cached rows, keyed by the data they were built from. */
-const rowCaches = new Map<string, { signature: string; rows: readonly unknown[] }>()
+/** Cached values, keyed by the data they were built from. */
+const rowCaches = new Map<string, { signature: string; rows: unknown }>()
 
 /**
  * Build a list of elements only when the data behind it actually changes.
@@ -748,13 +748,9 @@ const rowCaches = new Map<string, { signature: string; rows: readonly unknown[] 
  * builders rather than from a component, where there is no owner to hang a memo
  * on. One mechanism that works everywhere beats two that each work somewhere.
  */
-function rowsBySignature(
-  key: string,
-  signature: string,
-  build: () => readonly unknown[],
-): readonly unknown[] {
+function rowsBySignature<T>(key: string, signature: string, build: () => T): T {
   const cached = rowCaches.get(key)
-  if (cached && cached.signature === signature) return cached.rows
+  if (cached && cached.signature === signature) return cached.rows as T
   const rows = build()
   rowCaches.set(key, { signature, rows })
   return rows
@@ -765,6 +761,21 @@ sendWorkerRequest({ type: "init" })
 
 function AddRpgApp() {
   let mapElement: HTMLDivElement | undefined
+  // Attribute bindings re-run their setter whenever any dependency fires, and
+  // `setAttribute` writes unconditionally — so an unchanged value still counts
+  // as a DOM mutation, every tick. A memo dedupes by value, so the write only
+  // happens when the value really changed.
+  const mapLoadingClass = createMemo(() =>
+    mapInfo().ready ? "shell-state-layer loading hidden" : "shell-state-layer loading",
+  )
+  const mapLoadingDetail = createMemo(() =>
+    ready() ? "Drawing the map" : "Starting the runtime",
+  )
+  const dayNightPhase = createMemo(() => displayedWorldTime()?.daylightPhase ?? "day")
+  const dayNightSeason = createMemo(() => displayedWorldTime()?.season ?? "spring")
+  const travelRisk = createMemo(() => travelRiskState())
+  const statusStateMemo = createMemo(() => statusState())
+  const statusLabelMemo = createMemo(() => statusLabel())
   let autoTickTimer: number | undefined
   let mapInfoTimer: number | undefined
   let autosaveTimer: number | undefined
@@ -888,27 +899,29 @@ function AddRpgApp() {
         >
           <div
             id="map-loading-state"
-            class=${() => (mapInfo().ready ? "shell-state-layer loading hidden" : "shell-state-layer loading")}
+            class=${mapLoadingClass}
             data-visual-state="loading"
             role="status"
             aria-live="polite"
           >
             <span>Preparing world</span>
-            <strong>${() => (ready() ? "Drawing the map" : "Starting the runtime")}</strong>
+            <strong>${mapLoadingDetail}</strong>
             <small>Loading the simulation, visibility, and Phaser layers.</small>
           </div>
           ${() => worldErrorState()}
           <div
             class="day-night-overlay"
-            data-phase=${() => displayedWorldTime()?.daylightPhase ?? "day"}
-            data-season=${() => displayedWorldTime()?.season ?? "spring"}
-            style=${() => dayNightOverlayStyle()}
+            data-phase=${dayNightPhase}
+            data-season=${dayNightSeason}
+            style=${() =>
+              rowsBySignature("day-night-style", JSON.stringify(dayNightOverlayStyle()), dayNightOverlayStyle)}
             aria-hidden="true"
           />
           <div
             class="toxicity-haze"
-            data-risk=${() => travelRiskState()}
-            style=${() => toxicityHazeStyle()}
+            data-risk=${travelRisk}
+            style=${() =>
+              rowsBySignature("toxicity-style", JSON.stringify(toxicityHazeStyle()), toxicityHazeStyle)}
             aria-hidden="true"
           />
           <div
@@ -937,8 +950,8 @@ function AddRpgApp() {
               ${() => rowsBySignature("map-modes", JSON.stringify(mapModeNavigationItems()), mapModeButtons)}
             </div>
             <div class="status-stack" data-interface-answer="resources-time-status">
-              <span class="status-pill" data-state=${() => statusState()}>
-                ${() => statusLabel()}
+              <span class="status-pill" data-state=${statusStateMemo}>
+                ${statusLabelMemo}
               </span>
               ${() => resourceStatusStrip()}
               <div
@@ -1556,7 +1569,7 @@ function AddRpgApp() {
             <span class="small-chip">${() => `${worldActions().filter((action) => action.enabled).length} ready`}</span>
           </div>
           <ul class="action-list">
-            ${() => actionRows()}
+            ${() => rowsBySignature("action-list", JSON.stringify(worldActions().slice(0, 5)), actionRows)}
           </ul>
         </section>
       </aside>
