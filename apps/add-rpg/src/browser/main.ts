@@ -3195,12 +3195,15 @@ function toggleDiscoveryDetail(): void {
 }
 
 function baseManagementPanel(): unknown {
-  const state = baseManagementState()
-  if (!state) return null
+  // Same shape as the dungeon panel: read lazily so this subtree is not a
+  // dependency of the `contextualPanel()` thunk. Eager reads here rebuilt the
+  // whole panel on every snapshot, restarting its entrance animation and
+  // discarding scroll position, focus and the open tab's scroll offset.
   const entrance = () => baseDungeonEntranceInteraction()
-  const section = activeBaseManagementSection(state)
   const focusedSystemTab = () => ["build", "power", "social", "expeditions", "resonance", "processing"].includes(baseManagementTab())
-  return html`
+  return showWhen(baseManagementState, (state) => {
+    const section = () => activeBaseManagementSection(state())
+    return html`
     <section
       id="base-management-panel"
       data-interface-tier="secondary"
@@ -3212,7 +3215,7 @@ function baseManagementPanel(): unknown {
       data-tab=${() => baseManagementTab()}
     >
       <div class="panel-heading base-management-heading">
-        <span id="base-management-panel-title">${state.title}</span>
+        <span id="base-management-panel-title">${() => state().title}</span>
         <div>
           ${() =>
             entrance()
@@ -3233,11 +3236,11 @@ function baseManagementPanel(): unknown {
         </div>
       </div>
       ${() => currentActionSurface()}
-      ${basePlayerLoopPanel({ state: () => state, onSelectTab: (tabId) => setBaseManagementTab(tabId as AddBaseManagementTabId), renderPlanDetail: (args) => copyDisclosure(args.id, args.summary, args.fullCopy, args.visibleCopy, args.className) })}
-      ${() => baseManagementCommandStrip(state)}
+      ${basePlayerLoopPanel({ state, onSelectTab: (tabId) => setBaseManagementTab(tabId as AddBaseManagementTabId), renderPlanDetail: (args) => copyDisclosure(args.id, args.summary, args.fullCopy, args.visibleCopy, args.className) })}
+      ${() => baseManagementCommandStrip(state())}
       ${() => baseRateChangePanel()}
       <div class="base-management-tabs" role="tablist" aria-label="Base management sections">
-        ${() => baseManagementTabButtons(state)}
+        ${() => baseManagementTabButtons(state())}
       </div>
       <div class="base-management-body">
         ${() => focusedSystemTab()
@@ -3245,26 +3248,27 @@ function baseManagementPanel(): unknown {
           : html`
               <article
                 class="base-section-summary keyboard-section"
-                data-severity=${section?.blockedReason ? "warning" : "neutral"}
+                data-severity=${() => (section()?.blockedReason ? "warning" : "neutral")}
                 tabindex="0"
                 aria-label="Base section summary"
               >
-                <span>${section?.headline ?? state.subtitle}</span>
-                <small>${section?.detail ?? state.nextBottleneck.detail}</small>
+                <span>${() => section()?.headline ?? state().subtitle}</span>
+                <small>${() => section()?.detail ?? state().nextBottleneck.detail}</small>
               </article>
             `}
-        ${() => baseManagementLeadPanel(state)}
+        ${() => baseManagementLeadPanel(state())}
         ${() => focusedSystemTab()
           ? null
           : html`
               <div class="base-metric-grid">
-                ${baseManagementMetricRows(() => section)}
+                ${baseManagementMetricRows(section)}
               </div>
             `}
-        ${() => baseManagementTabContent(state)}
+        ${() => baseManagementTabContent(state())}
       </div>
     </section>
   `
+  })
 }
 
 function baseManagementCommandStrip(state: AddBaseManagementState): unknown {
@@ -3309,8 +3313,14 @@ function baseRateWatchChips(state: AddBaseManagementState): readonly unknown[] {
 }
 
 function dungeonContextPanel(): unknown {
-  const dungeon = dungeonObjectiveState()
-  const currentStep = () => currentDungeonObjectiveStep(dungeon)
+  // Read lazily. `contextualPanel()` runs inside a reactive thunk, so a signal
+  // read *eagerly* here becomes a dependency of that thunk and every change
+  // rebuilds this whole subtree. The panel was being destroyed and re-created
+  // roughly eight times a second, which restarted its `surface-arrive`
+  // entrance animation every time and left it pinned at opacity 0 — present,
+  // sized, and invisible — as well as throwing away scroll position and focus.
+  const dungeon = () => dungeonObjectiveState()
+  const currentStep = () => currentDungeonObjectiveStep(dungeon())
   return html`
     <section
       id="dungeon-context-panel"
@@ -3322,7 +3332,7 @@ function dungeonContextPanel(): unknown {
       aria-labelledby="dungeon-context-panel-title"
     >
       <div class="panel-heading dungeon-context-heading">
-        <span id="dungeon-context-panel-title">${dungeon?.label ?? "Dungeon"}</span>
+        <span id="dungeon-context-panel-title">${() => dungeon()?.label ?? "Dungeon"}</span>
         <button
           id="return-overworld"
           type="button"
@@ -3339,9 +3349,10 @@ function dungeonContextPanel(): unknown {
         aria-label="Dungeon status summary"
       >
         <span>Dungeon status</span>
-        <strong>${dungeon?.headline ?? "Explore the interior"}</strong>
-        <small title=${dungeon?.detail ?? "Explore the interior and return when ready."}>
-          ${leadUiCopy(dungeon?.detail ?? "Explore the interior and return when ready.", 62)}
+        <strong>${() => dungeon()?.headline ?? "Explore the interior"}</strong>
+        <small title=${() => dungeon()?.detail ?? "Explore the interior and return when ready."}>
+          ${() =>
+            leadUiCopy(dungeon()?.detail ?? "Explore the interior and return when ready.", 62)}
         </small>
       </article>
       <div class="dungeon-context-grid">
@@ -3351,10 +3362,12 @@ function dungeonContextPanel(): unknown {
           aria-label="Dungeon current objective"
         >
           <span>Current objective</span>
-          <strong>${currentStep()?.label ?? dungeon?.headline ?? "Get your bearings"}</strong>
-          <small title=${currentStep()?.detail ?? dungeon?.detail ?? "Inspect the room, then return when ready."}>
-            ${leadUiCopy(
-              currentStep()?.detail ?? dungeon?.detail ?? "Inspect the room, then return when ready.",
+          <strong>${() => currentStep()?.label ?? dungeon()?.headline ?? "Get your bearings"}</strong>
+          <small title=${() =>
+            currentStep()?.detail ?? dungeon()?.detail ?? "Inspect the room, then return when ready."}>
+            ${() =>
+              leadUiCopy(
+              currentStep()?.detail ?? dungeon()?.detail ?? "Inspect the room, then return when ready.",
               62,
             )}
           </small>
@@ -3366,7 +3379,7 @@ function dungeonContextPanel(): unknown {
         >
           <span>Discovered exits</span>
           <div class="dungeon-context-list">
-            ${() => dungeonExitRows(dungeon)}
+            ${() => dungeonExitRows(dungeon())}
           </div>
         </article>
         <article

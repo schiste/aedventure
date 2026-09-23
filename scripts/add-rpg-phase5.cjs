@@ -234,7 +234,7 @@ async function captureAddBrowserFixture({
   fixtureId,
   state,
   artifactDir,
-  assertNonBlankImageBuffer,
+  captureNonBlankImage,
 }) {
   const fixture = fixtureById(manifest, fixtureId)
   const sourceState = state ?? await page.evaluate(() => {
@@ -248,9 +248,9 @@ async function captureAddBrowserFixture({
   const screenshotPath = path.join(artifactDir, manifest.artifact.screenshot_directory, fixture.screenshot)
   fs.mkdirSync(path.dirname(screenshotPath), { recursive: true })
   const screenshotSelector = manifest.selectors[fixture.surface]
-  const buffer = await page.locator(screenshotSelector).screenshot({ path: screenshotPath })
-  const screenshotStats = assertNonBlankImageBuffer(
-    buffer,
+  const { stats: screenshotStats } = await captureNonBlankImage(
+    page.locator(screenshotSelector),
+    screenshotPath,
     `ADD Phase 5 ${fixture.id} screenshot`,
     {
       minWidth: 300,

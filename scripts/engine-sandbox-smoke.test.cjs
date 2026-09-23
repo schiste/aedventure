@@ -2,7 +2,7 @@ const assert = require("node:assert")
 const fs = require("node:fs")
 const path = require("node:path")
 const { chromium } = require("playwright")
-const { assertNonBlankImageBuffer } = require("./app-qa-contracts.cjs")
+const { captureNonBlankImage } = require("./app-qa-contracts.cjs")
 const { startStaticAppServer } = require("./app-qa-server.cjs")
 
 const ROOT_DIR = path.resolve(__dirname, "..")
@@ -152,9 +152,9 @@ async function clickInteraction(page, interaction) {
 
 async function assertNonBlankWorldScreenshot(page) {
   fs.mkdirSync(path.dirname(SCREENSHOT_PATH), { recursive: true })
-  await page.locator("#world canvas").screenshot({ path: SCREENSHOT_PATH })
-  assertNonBlankImageBuffer(
-    fs.readFileSync(SCREENSHOT_PATH),
+  await captureNonBlankImage(
+    page.locator("#world canvas"),
+    SCREENSHOT_PATH,
     "Engine sandbox world screenshot",
     {
       minWidth: 300,

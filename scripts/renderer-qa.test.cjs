@@ -6,6 +6,7 @@ const { chromium } = require("playwright")
 const { PNG } = require("pngjs")
 const {
   assertNonBlankImageBuffer,
+  captureNonBlankImage,
   assertOfficeRenderGameContract,
 } = require("./app-qa-contracts.cjs")
 const { startStaticAppServer } = require("./app-qa-server.cjs")
@@ -971,9 +972,9 @@ async function verifyEngineSandboxFixtures(browser, report) {
     })
 
     const path = join(ARTIFACT_DIR, "engine-sandbox-topology-fixture-canvas.png")
-    const buffer = await page.locator("#world canvas").screenshot({ path })
-    const stats = assertNonBlankImageBuffer(
-      buffer,
+    const { buffer, stats } = await captureNonBlankImage(
+      page.locator("#world canvas"),
+      path,
       "engine sandbox topology fixture canvas",
       {
         minWidth: 300,
@@ -1147,9 +1148,9 @@ async function verifyAddRendererTopologyFixtures(browser, report) {
 
 async function captureAddTopologyCanvas(page, state, topology, mode) {
   const path = join(ARTIFACT_DIR, ADD_TOPOLOGY_QA_FIXTURE_FILES[topology])
-  const buffer = await page.locator("#add-world canvas").screenshot({ path })
-  const stats = assertNonBlankImageBuffer(
-    buffer,
+  const { buffer, stats } = await captureNonBlankImage(
+    page.locator("#add-world canvas"),
+    path,
     `ADD RPG ${topology} renderer fixture canvas`,
     {
       minWidth: 300,

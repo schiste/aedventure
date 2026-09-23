@@ -118,6 +118,7 @@ node "$ROOT_DIR/apps/web/test/customer-office-app.test.js"
 node "$ROOT_DIR/apps/web/test/adapters.test.js"
 
 echo "Running multi-app QA contract checks..."
+npm run qa:contracts
 npm run qa:multi-app
 
 echo "Building browser frontend bundle..."

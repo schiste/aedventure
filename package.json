@@ -53,6 +53,7 @@
     "build": "npm run wasm:build:add && tsc -b && npm --workspace @aedventure/web run build:browser",
     "dev:http": "npm run build && node scripts/dev-http-host.cjs",
     "qa:responsive": "node scripts/responsive-layout-qa.test.cjs",
+    "qa:contracts": "node scripts/app-qa-contracts.test.cjs",
     "qa:multi-app": "node scripts/multi-app-qa-contracts.test.cjs",
     "qa:add-rpg:phase5": "npm --workspace @aedventure/add-rpg run build:browser && node scripts/add-rpg-smoke.test.cjs",
     "qa:add-rpg:phase5:built": "node scripts/add-rpg-smoke.test.cjs",

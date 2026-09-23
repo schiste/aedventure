@@ -2,7 +2,7 @@ const assert = require("node:assert")
 const fs = require("node:fs")
 const path = require("node:path")
 const { chromium } = require("playwright")
-const { assertNonBlankImageBuffer } = require("./app-qa-contracts.cjs")
+const { assertNonBlankImageBuffer, captureNonBlankImage } = require("./app-qa-contracts.cjs")
 const { startStaticAppServer } = require("./app-qa-server.cjs")
 const {
   captureAddBrowserFixture,
@@ -193,6 +193,7 @@ async function capturePhase5Fixture(page, evidence, fixtureId, state) {
       state,
       artifactDir: SMOKE_ARTIFACT_DIR,
       assertNonBlankImageBuffer,
+      captureNonBlankImage,
     }),
   )
 }
@@ -2179,7 +2180,35 @@ async function assertLayoutHierarchy(
         rect.width > 0 &&
         rect.height > 0
       )
-    }, expectedContextPanelId, { timeout: qaTimeout(15000) })
+    }, expectedContextPanelId, { timeout: qaTimeout(15000) }).catch(async (error) => {
+      // A bare timeout here says nothing: it cannot tell "the panel never
+      // rendered" from "it rendered but never became opaque". Reporting the
+      // element's real state is what turned this from an intermittent mystery
+      // into a diagnosis — a panel present and sized, held at opacity 0 by an
+      // entrance animation frozen at currentTime 0.
+      const seen = await page.evaluate((panelId) => {
+        const panel = document.getElementById(panelId)
+        if (!(panel instanceof HTMLElement)) {
+          return { present: false }
+        }
+        const style = window.getComputedStyle(panel)
+        const rect = panel.getBoundingClientRect()
+        return {
+          present: true,
+          display: style.display,
+          visibility: style.visibility,
+          opacity: style.opacity,
+          animationName: style.animationName,
+          w: Math.round(rect.width),
+          h: Math.round(rect.height),
+          anims: panel.getAnimations().map((a) => ({
+            state: a.playState,
+            t: a.currentTime,
+          })),
+        }
+      }, expectedContextPanelId)
+      throw new Error(`${error.message} | ${expectedContextPanelId}: ${JSON.stringify(seen)}`)
+    })
   }
 
   const hierarchy = await page.evaluate((expectedPanelId) => {
@@ -4491,9 +4520,9 @@ function collectTravelAnimationObservation(
 async function assertNonBlankNamedMapScreenshot(page, filename, label) {
   fs.mkdirSync(path.dirname(SCREENSHOT_PATH), { recursive: true })
   const mapPath = path.join(SMOKE_ARTIFACT_DIR, filename)
-  await page.locator("#add-world canvas").screenshot({ path: mapPath })
-  assertNonBlankImageBuffer(
-    fs.readFileSync(mapPath),
+  await captureNonBlankImage(
+    page.locator("#add-world canvas"),
+    mapPath,
     label,
     {
       minWidth: 300,
@@ -4880,9 +4909,9 @@ function parseHexCoord(coord) {
 
 async function assertNonBlankAppScreenshot(page) {
   fs.mkdirSync(path.dirname(SCREENSHOT_PATH), { recursive: true })
-  await page.locator("#app").screenshot({ path: SCREENSHOT_PATH })
-  assertNonBlankImageBuffer(
-    fs.readFileSync(SCREENSHOT_PATH),
+  await captureNonBlankImage(
+    page.locator("#app"),
+    SCREENSHOT_PATH,
     "ADD RPG runtime app screenshot",
     {
       minWidth: 300,
@@ -4897,9 +4926,9 @@ async function assertNonBlankAppScreenshot(page) {
 async function assertNonBlankNamedAppScreenshot(page, filename, label) {
   fs.mkdirSync(path.dirname(SCREENSHOT_PATH), { recursive: true })
   const screenshotPath = path.join(SMOKE_ARTIFACT_DIR, filename)
-  await page.locator("#app").screenshot({ path: screenshotPath })
-  assertNonBlankImageBuffer(
-    fs.readFileSync(screenshotPath),
+  await captureNonBlankImage(
+    page.locator("#app"),
+    screenshotPath,
     label,
     {
       minWidth: 300,

@@ -102,8 +102,51 @@ function assertNonBlankImageBuffer(buffer, label, options = {}) {
   return stats
 }
 
+/**
+ * Screenshot a target until the image satisfies the non-blank contract.
+ *
+ * The suites used to capture once and assert immediately. A canvas has no
+ * obligation to have drawn by then, and under load it frequently has not — the
+ * engine sandbox failed a push gate with "expected varied colors, got 6",
+ * which is a half-painted frame rather than a broken renderer. Asserting on
+ * rendered pixels at one arbitrary instant is the defect; retrying the capture
+ * is the fix.
+ *
+ * Costs nothing in the normal case: the first capture passes and returns. Only
+ * a frame that is not ready yet pays for another look.
+ *
+ * `target` is anything with a `screenshot()` — a Page or a Locator.
+ * Returns `{ buffer, stats }` for the frame that satisfied the contract.
+ */
+async function captureNonBlankImage(target, screenshotPath, label, options = {}) {
+  const { budgetMs = 8000, intervalMs = 150, ...contract } = options
+  const startedAt = Date.now()
+  let attempts = 0
+  let lastError
+
+  for (;;) {
+    attempts += 1
+    const buffer = await target.screenshot({ path: screenshotPath })
+    try {
+      // Both are wanted downstream: the stats for reporting, the buffer for
+      // further pixel contracts such as the fog palette check.
+      return { buffer, stats: assertNonBlankImageBuffer(buffer, label, contract) }
+    } catch (error) {
+      lastError = error
+    }
+    if (Date.now() - startedAt >= budgetMs) break
+    await new Promise((resolve) => setTimeout(resolve, intervalMs))
+  }
+
+  lastError.message = `${lastError.message} (after ${attempts} capture(s) over ${
+    Date.now() - startedAt
+  }ms — the frame never settled)`
+  throw lastError
+}
+
 module.exports = {
   SHARED_ENGINE_PACKAGES,
   assertNonBlankImageBuffer,
   assertOfficeRenderGameContract,
+  captureNonBlankImage,
 }
