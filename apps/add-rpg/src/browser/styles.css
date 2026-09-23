@@ -5456,3 +5456,52 @@ h1 {
   padding: 6px 8px;
   color: rgb(var(--paper-rgb) / 58%);
 }
+
+/* ==========================================================================
+   Schema context
+   --------------------------------------------------------------------------
+   "What this involves": a surface's related entities with live state, from
+   `ui_elements.relatedIds`. Collapsed, because it answers a question the
+   player asks occasionally rather than something they read every frame.
+   ========================================================================== */
+
+.schema-context {
+  margin-top: 6px;
+  border: 1px solid rgb(var(--wash-rgb) / 10%);
+  border-radius: var(--radius-ui);
+  background: rgb(var(--wash-rgb) / 3%);
+}
+
+.schema-context > summary {
+  padding: 5px 8px;
+  color: rgb(var(--paper-rgb) / 66%);
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.schema-context > summary:hover {
+  color: var(--paper);
+}
+
+.schema-context[open] > summary {
+  border-bottom: 1px solid rgb(var(--wash-rgb) / 10%);
+}
+
+.schema-context .panel-note {
+  margin: 6px 8px 0;
+}
+
+.schema-context-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px 8px;
+}
+
+/* A nested element renders as its own panel inside the disclosure. */
+.schema-context-rows .panel {
+  padding: 6px;
+  border: 1px solid rgb(var(--aqua-rgb) / 18%);
+  border-radius: var(--radius-ui);
+  background: rgb(var(--surface-deep-rgb) / 24%);
+}

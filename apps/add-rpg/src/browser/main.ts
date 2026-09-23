@@ -70,6 +70,7 @@ import {
   travelDialogActions,
   worldActionEntityRow,
   titleCase,
+  SchemaContext,
   SchemaPanel,
   Stat,
   visibilityContext,
@@ -613,6 +614,110 @@ const baseManagementState = createModuleMemo<AddBaseManagementState | null>(() =
     ? selectAddBaseManagementState(currentSnapshot, currentCatalog)
     : null
 })
+
+// ---------------------------------------------------------------------------
+// Schema plumbing.
+//
+// Declared here, directly after the derived state it reads and above every
+// panel body that uses it. Further down the file it was initialised *after* the
+// first render touched it, and the bundler turns that from a TDZ error into a
+// silent `undefined`, which reached the player as a blank boot and
+// `props.context is not a function`. Deferring the reads was not enough — the
+// declaration has to precede its consumers.
+// ---------------------------------------------------------------------------
+
+/**
+ * What the player can ask about, for the authored visibility conditions.
+ *
+ * Reconciled state feeds this, so it re-evaluates when the fields a condition
+ * actually reads move, not on every frame.
+ */
+const schemaVisibility = createModuleMemo(() => {
+  const currentSnapshot = snapshot()
+  if (!currentSnapshot) return null
+  return visibilityContext(
+    currentSnapshot,
+    (resourceId) =>
+      uiState()?.resources.find((resource) => resource.id === resourceId)?.value ?? 0,
+  )
+})
+
+/**
+ * The first panel in this app rendered from the catalog rather than from this
+ * file. Its title, its player hint and — the part that matters — whether it
+ * appears at all come from `ui.panel.power`, which authored content has carried
+ * all along without anything ever reading it.
+ *
+ * The numbers are still supplied here. The schema says whether and what it is
+ * called; it does not say how to draw a rate.
+ */
+/**
+ * How to draw each kind of entity a panel can name.
+ *
+ * This is the whole point of the schema path: a panel's body is its related
+ * entities, so a new panel is an authored catalog entry rather than a new
+ * component. Adding a *kind* means one entry here; adding a panel means none.
+ */
+/** Every flag the catalog knows, so an id is recognised whatever group it names. */
+const schemaFlagIds = createModuleMemo(
+  () => new Set((catalog()?.flags ?? []).map((flag) => flag.id)),
+)
+
+const schemaEntityRenderers: EntityRendererRegistry = {
+  resource: (id) =>
+    resourceEntityRow(() => uiState()?.resources.find((resource) => resource.id === id)),
+  role: (id) =>
+    roleEntityRow(() => uiState()?.roleAssignments.find((role) => role.id === id)),
+  station: (id) =>
+    stationEntityRow(() =>
+      baseManagementState()?.stationMachine.cards.find((station) => station.id === id),
+    ),
+  // Projects are authored under two prefixes, `project.` and `construction.`,
+  // and both name the same kind of thing.
+  project: (id) =>
+    projectEntityRow(() => uiState()?.constructionOptions.find((option) => option.id === id)),
+  construction: (id) =>
+    projectEntityRow(() => uiState()?.constructionOptions.find((option) => option.id === id)),
+  world_action: (id) =>
+    worldActionEntityRow(() =>
+      uiState()?.availableWorldActions.find((action) => action.id === id),
+    ),
+  // `allBeats` already carries every beat with its status, so a beat named by a
+  // panel is looked up rather than recomputed.
+  story: (id) =>
+    storyBeatEntityRow(() =>
+      uiState()?.storyProgression.allBeats.find((beat) => beat.id === id),
+    ),
+  tile: (id) => tileEntityRow(() => catalog()?.tiles.find((tile) => tile.id === id)),
+  // The catalog gives the flag its label and group; the snapshot says whether
+  // it is set. `flagValue` is the same resolver the visibility conditions use,
+  // so a flag drawn as a row and a flag gating a panel agree by construction.
+  flag: (id) =>
+    flagEntityRow(() => {
+      const definition = catalog()?.flags.find((flag) => flag.id === id)
+      const currentSnapshot = snapshot()
+      if (!definition || !currentSnapshot) return undefined
+      return {
+        label: definition.label,
+        group: definition.group,
+        set: flagValue(currentSnapshot, id),
+      }
+    }),
+  // Panels compose: an element may name another element, which is drawn inside
+  // it with its own label, hint and visibility. The depth is what stops a cycle
+  // — `ui.panel.map` names `ui.map.cave_gate`, and nothing prevents an author
+  // from pointing the two at each other.
+  ui: (id, context) =>
+    context.depth >= MAX_PANEL_NESTING_DEPTH
+      ? null
+      : schemaPanel(id, undefined, context.depth + 1),
+}
+
+/**
+ * A panel drawn entirely from the catalog: label, player hint, visibility, and
+ * contents. Adding one is this call and nothing else — no component is written,
+ * and there is none to extract later.
+ */
 const storyContentBrowserState = createModuleMemo<AddStoryContentBrowserState | null>(() => {
   const currentSnapshot = snapshot()
   const currentCatalog = catalog()
@@ -2625,15 +2730,10 @@ function adminStoryBrowserPanel(): unknown {
         state; beat eligibility is a TS best-effort diagnostic mirror.
       </p>
 
-      ${/* Catalog-driven panels, shown here as a diagnostic: their labels,
-          hints, visibility and every row come from `ui_elements`, and nothing
-          in this file lists what they contain. `ui.panel.narrative` names the
-          five beats of the opening arc; `ui.panel.map` names a tile, a resource
-          and `ui.map.cave_gate`, which is itself an element and is drawn nested
-          with its own visibility. Where these belong in the product is a design
-          decision; this is where they are verified. */ ""}
-      ${schemaPanel("ui.panel.narrative")}
-      ${schemaPanel("ui.panel.map")}
+      ${/* The opening arc's beats, with live status. This is the surface the
+          element describes, so the disclosure belongs here rather than as a
+          panel of its own. */ ""}
+      ${schemaContext("ui.panel.narrative", "What the opening arc involves")}
 
       <div class="story-browser-summary" aria-label="Story content summary">
         <article>
@@ -3869,10 +3969,8 @@ function baseManagementLeadPanel(state: AddBaseManagementState): unknown {
     case "power":
     case "processing":
       return [
-        schemaPanel("ui.panel.power", () =>
-          snapshot()?.power.brownoutActive ? "danger" : "neutral",
-        ),
         baseStationMachineSummary(() => state),
+        schemaContext("ui.panel.power"),
       ]
     case "social":
     case "expeditions":
@@ -4001,13 +4099,10 @@ function baseCrystalPanel(state: AddBaseManagementState): unknown {
   )
   return html`
     <div class="base-card-list">
-      ${/* One line, and no component written for it: `ui.panel.crystal` names
-          its station and resources, and the entity registry already knows how
-          to draw both kinds. This is what the schema path is for. */ ""}
-      ${schemaPanel("ui.panel.crystal")}
       ${baseResourceRows(() => crystalResources)}
       ${baseSlotPoolRows(() => state.staffing.slotPools.filter((pool) => pool.id === "crystal_circle"))}
       ${() => baseRoleRows(crystalRoles, state)}
+      ${schemaContext("ui.panel.crystal")}
     </div>
   `
 }
@@ -4550,97 +4645,33 @@ function baseActiveConstructionCard(option: AddBaseManagementState["buildLoop"][
 }
 
 /**
- * What the player can ask about, for the authored visibility conditions.
+ * "What this involves" for a surface, from its catalog element.
  *
- * Reconciled state feeds this, so it re-evaluates when the fields a condition
- * actually reads move, not on every frame.
+ * `relatedIds` is what a surface *concerns*, not what it is made of, so this is
+ * a collapsed disclosure on the surface it describes rather than that surface's
+ * body. Drawn as a body it duplicated readouts the HUD already had, and for the
+ * map it produced a panel that was not a map.
  */
-const schemaVisibility = createModuleMemo(() => {
-  const currentSnapshot = snapshot()
-  if (!currentSnapshot) return null
-  return visibilityContext(
-    currentSnapshot,
-    (resourceId) =>
-      uiState()?.resources.find((resource) => resource.id === resourceId)?.value ?? 0,
-  )
-})
-
-/**
- * The first panel in this app rendered from the catalog rather than from this
- * file. Its title, its player hint and — the part that matters — whether it
- * appears at all come from `ui.panel.power`, which authored content has carried
- * all along without anything ever reading it.
- *
- * The numbers are still supplied here. The schema says whether and what it is
- * called; it does not say how to draw a rate.
- */
-/**
- * How to draw each kind of entity a panel can name.
- *
- * This is the whole point of the schema path: a panel's body is its related
- * entities, so a new panel is an authored catalog entry rather than a new
- * component. Adding a *kind* means one entry here; adding a panel means none.
- */
-/** Every flag the catalog knows, so an id is recognised whatever group it names. */
-const schemaFlagIds = createModuleMemo(
-  () => new Set((catalog()?.flags ?? []).map((flag) => flag.id)),
-)
-
-const schemaEntityRenderers: EntityRendererRegistry = {
-  resource: (id) =>
-    resourceEntityRow(() => uiState()?.resources.find((resource) => resource.id === id)),
-  role: (id) =>
-    roleEntityRow(() => uiState()?.roleAssignments.find((role) => role.id === id)),
-  station: (id) =>
-    stationEntityRow(() =>
-      baseManagementState()?.stationMachine.cards.find((station) => station.id === id),
-    ),
-  // Projects are authored under two prefixes, `project.` and `construction.`,
-  // and both name the same kind of thing.
-  project: (id) =>
-    projectEntityRow(() => uiState()?.constructionOptions.find((option) => option.id === id)),
-  construction: (id) =>
-    projectEntityRow(() => uiState()?.constructionOptions.find((option) => option.id === id)),
-  world_action: (id) =>
-    worldActionEntityRow(() =>
-      uiState()?.availableWorldActions.find((action) => action.id === id),
-    ),
-  // `allBeats` already carries every beat with its status, so a beat named by a
-  // panel is looked up rather than recomputed.
-  story: (id) =>
-    storyBeatEntityRow(() =>
-      uiState()?.storyProgression.allBeats.find((beat) => beat.id === id),
-    ),
-  tile: (id) => tileEntityRow(() => catalog()?.tiles.find((tile) => tile.id === id)),
-  // The catalog gives the flag its label and group; the snapshot says whether
-  // it is set. `flagValue` is the same resolver the visibility conditions use,
-  // so a flag drawn as a row and a flag gating a panel agree by construction.
-  flag: (id) =>
-    flagEntityRow(() => {
-      const definition = catalog()?.flags.find((flag) => flag.id === id)
-      const currentSnapshot = snapshot()
-      if (!definition || !currentSnapshot) return undefined
-      return {
-        label: definition.label,
-        group: definition.group,
-        set: flagValue(currentSnapshot, id),
-      }
-    }),
-  // Panels compose: an element may name another element, which is drawn inside
-  // it with its own label, hint and visibility. The depth is what stops a cycle
-  // — `ui.panel.map` names `ui.map.cave_gate`, and nothing prevents an author
-  // from pointing the two at each other.
-  ui: (id, context) =>
-    context.depth >= MAX_PANEL_NESTING_DEPTH
-      ? null
-      : schemaPanel(id, undefined, context.depth + 1),
+function schemaContext(elementId: string, summary?: string): unknown {
+  return createComponent(SchemaContext, {
+    get element() {
+      return catalog()?.uiElements.find((entry) => entry.id === elementId)
+    },
+    // Read through a thunk, not captured. These helpers are called from panel
+    // bodies that can run before the module-level memos below have
+    // initialised, and the bundler turns that from a TDZ error into a silent
+    // `undefined` — which surfaced as `props.context is not a function` at boot.
+    context: () => schemaVisibility(),
+    get renderers() {
+      return schemaEntityRenderers
+    },
+    get flagIds() {
+      return schemaFlagIds()
+    },
+    summary,
+  })
 }
 
-/**
- * A panel drawn entirely from the catalog: label, player hint, visibility, and
- * contents. Adding one is this call and nothing else — no component is written,
- * and there is none to extract later.
- */
 function schemaPanel(
   elementId: string,
   tone?: () => "neutral" | "danger",
@@ -4657,9 +4688,11 @@ function schemaPanel(
     get element() {
       return catalog()?.uiElements.find((entry) => entry.id === elementId)
     },
-    context: schemaVisibility,
+    context: () => schemaVisibility(),
     qa: `schema-panel-${elementId.replaceAll(".", "-")}`,
-    renderers: schemaEntityRenderers,
+    get renderers() {
+      return schemaEntityRenderers
+    },
     get tone(): "neutral" | "danger" {
       return tone?.() ?? "neutral"
     },
@@ -5634,6 +5667,9 @@ function objectivePanelBody(): unknown {
     <ol class="first-playable-list">
       ${firstPlayableStepRows}
     </ol>
+    ${/* The steps above are the next few moves; this is the whole spine with
+        live status, which the interface could not previously show. */ ""}
+    ${schemaContext("ui.panel.objectives", "What the run involves")}
   `
 }
 

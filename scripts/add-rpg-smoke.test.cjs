@@ -810,7 +810,7 @@ async function assertAdminDeveloperSeparation(page, consoleErrors) {
   // asserts the story kind end to end — and a schema panel that fails to render
   // does so silently, which is how the first one shipped empty while green.
   const narrativeBeatRows = await page.evaluate(() => {
-    const panel = document.querySelector('[data-qa="schema-panel-ui-panel-narrative"]')
+    const panel = document.querySelector('[data-qa="schema-context-ui-panel-narrative"]')
     if (!panel) return null
     return {
       rows: panel.querySelectorAll('[data-entity="story"]').length,
@@ -832,41 +832,6 @@ async function assertAdminDeveloperSeparation(page, consoleErrors) {
     `Every beat row should carry a real status, got ${JSON.stringify(
       narrativeBeatRows.statuses,
     )}.`,
-  )
-
-  // `ui.panel.map` names a tile, a resource, and `ui.map.cave_gate` — itself an
-  // element, drawn nested with its own label and visibility. That nesting is
-  // what makes panels compose, and the depth guard is what stops a cycle.
-  const mapPanel = await page.evaluate(() => {
-    const panel = document.querySelector('[data-qa="schema-panel-ui-panel-map"]')
-    if (!panel) return null
-    return {
-      // Scoped to this panel's own rows: the nested element names
-      // `resource.bassline` too, so a descendant query counts it twice.
-      tiles: [...panel.querySelectorAll('[data-entity="tile"]')].filter(
-        (row) => row.closest("[data-qa]") === panel,
-      ).length,
-      resources: [...panel.querySelectorAll('[data-entity="resource"]')].filter(
-        (row) => row.closest("[data-qa]") === panel,
-      ).length,
-      nestedResources: [...panel.querySelectorAll('[data-entity="resource"]')].filter(
-        (row) => row.closest("[data-qa]") !== panel,
-      ).length,
-      nested: panel.querySelectorAll('[data-qa="schema-panel-ui-map-cave_gate"]').length,
-    }
-  })
-  assert.ok(mapPanel, "The catalog-driven map panel should be on screen.")
-  assert.equal(mapPanel.tiles, 1, "The map panel should draw the tile its catalog entry names.")
-  assert.equal(mapPanel.resources, 1, "The map panel should draw the resource it names.")
-  assert.equal(
-    mapPanel.nested,
-    1,
-    "The map panel should draw ui.map.cave_gate nested inside it.",
-  )
-  assert.equal(
-    mapPanel.nestedResources,
-    1,
-    "The nested cave-gate element should draw the resource it names, inside itself.",
   )
 
   assert.equal(await page.locator("#save-payload").isVisible(), false)
@@ -1616,7 +1581,7 @@ async function exerciseBaseManagementSurface(page, consoleErrors) {
   // group rather than by its kind. Recognising it needs the catalog's flag ids,
   // not the prefix, and this is the assertion that the lookup is wired through.
   const crystalPanel = await page.evaluate(() => {
-    const panel = document.querySelector('[data-qa="schema-panel-ui-panel-crystal"]')
+    const panel = document.querySelector('[data-qa="schema-context-ui-panel-crystal"]')
     if (!panel) return null
     const own = (selector) =>
       [...panel.querySelectorAll(selector)].filter((row) => row.closest("[data-qa]") === panel)
@@ -1730,12 +1695,11 @@ async function exerciseBaseManagementSurface(page, consoleErrors) {
   )
   const machinePanelText = await page.locator("#base-management-panel").innerText()
   ;[
-    // Rendered from `ui.panel.power` in the catalog, not from the app source:
-    // the label and the hint below it are authored content. A schema panel that
-    // fails to render does so silently, so this is the guard that the
-    // catalog-driven path is actually wired up.
+    // "Power and Processing" is the catalog label, reaching the screen through
+    // the disclosure's summary. The player hint sits inside the disclosure and
+    // so is deliberately absent from visible text until it is opened; it is
+    // asserted against the DOM below instead.
     "Power and Processing",
-    "Chorus powers the base",
     "Station machine",
     "Crystal Circle",
     "Studio",
@@ -1761,14 +1725,20 @@ async function exerciseBaseManagementSurface(page, consoleErrors) {
   // fails to render does so silently, which is how the first version of this
   // panel shipped empty with the suite still green.
   const schemaPanelRows = await page.evaluate(() => {
-    const panel = document.querySelector('[data-qa="schema-panel-ui-panel-power"]')
+    const panel = document.querySelector('[data-qa="schema-context-ui-panel-power"]')
     if (!panel) return null
     return {
+      hint: panel.querySelector(".panel-note")?.textContent?.trim() ?? "",
       resources: panel.querySelectorAll('[data-entity="resource"]').length,
       stations: panel.querySelectorAll('[data-entity="station"]').length,
     }
   })
-  assert.ok(schemaPanelRows, "The schema-driven power panel should be on screen.")
+  assert.ok(schemaPanelRows, "The catalog-driven power disclosure should be on screen.")
+  assert.match(
+    schemaPanelRows.hint,
+    /Chorus powers the base/i,
+    "The disclosure should carry the element's authored player hint.",
+  )
   assert.equal(
     schemaPanelRows.resources,
     2,
