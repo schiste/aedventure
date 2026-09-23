@@ -19,3 +19,11 @@ artifacts/agent-verification/
 
 # Local-mode verbose trace logs
 logs/
+
+# Broker runtime state: session database, locks and generated telemetry.
+.aethyme/
+
+# The lore site generator is its own git clone (Quartz) with ~245MB of
+# dependencies inside it. The authored pages under lore/ are the source; this
+# is the machine that renders them and does not belong in this history.
+lore-quartz/

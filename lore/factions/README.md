@@ -11,3 +11,18 @@
 ## World Factions
 
 The principal post-Silence ideological factions are currently documented through the thesaurus and timeline: The Archive, The Choir, The Engineers, The Silent and The Resonants. Dedicated subject files should be created as each faction is detailed.
+
+<!-- lore:index:start -->
+
+## In this section
+
+- No direct pages yet.
+
+### Subsections
+
+- [Paris Underground](paris_underground/)
+- [Sleepless In Decibels](sleepless_in_decibels/)
+- [The Unplugged](the_unplugged/)
+
+_Generated from the lore tree: 0 page(s), 3 subsection(s)._
+<!-- lore:index:end -->

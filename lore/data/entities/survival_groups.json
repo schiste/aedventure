@@ -1,0 +1,32 @@
+{
+  "$schema": "../../schemas/survival-group.schema.json",
+  "schema_version": 1,
+  "groups": [
+    {
+      "id":"survival-group.ardeche-unplugged",
+      "name":"The Unplugged of Ardèche",
+      "page":"survival-groups/ardeche-unplugged.md",
+      "origin_period":{"start":"event.the-silence","end":"event.first-underground-stabilization"},
+      "origin_location":"location.ardeche-caves",
+      "initial_population":87,
+      "survival_context":"Prepared cave shelter and evacuation protocol.",
+      "observations":["claim.sound-continuity-protects"],
+      "founding_events":["event.activation-protocol-alpha","event.ardeche-arrival"],
+      "sources":["source.henri-journal","source.unplugged-archives"],
+      "status":"draft"
+    },
+    {
+      "id":"survival-group.mponeng-mine",
+      "name":"Mponeng Deep Survivors",
+      "page":"survival-groups/mponeng-mine.md",
+      "origin_period":{"start":"event.the-silence","end":"event.first-underground-stabilization"},
+      "origin_location":"location.mponeng-mine",
+      "initial_population":1500,
+      "survival_context":"Workers and families already below ground when the Filter activated.",
+      "observations":["claim.sound-continuity-protects"],
+      "founding_events":["event.mponeng-first-night"],
+      "sources":["source.mponeng-chronicle"],
+      "status":"draft"
+    }
+  ]
+}

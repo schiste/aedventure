@@ -1,0 +1,45 @@
+{
+  "$schema": "../schemas/population-model.schema.json",
+  "schema_version": 1,
+  "id": "population.aedventure-working-model",
+  "calendar": "after-silence",
+  "status": "draft",
+  "baseline": {
+    "day_zero": "2034-10-14",
+    "present_as": 311,
+    "present_ce": 2345
+  },
+  "checkpoints": [
+    {"as_year": 0, "label": "Day 1", "population": 400000, "status": "draft", "source_status": "inherited_working_estimate"},
+    {"as_year": 1, "label": "Year 1 AS", "population": 120000, "status": "draft", "source_status": "inherited_working_estimate"},
+    {"as_year": 50, "label": "Year 50 AS", "population": 200000, "status": "draft", "source_status": "inherited_working_estimate"},
+    {"as_year": 200, "label": "Year 200 AS", "population": 800000, "status": "draft", "source_status": "inherited_working_estimate"},
+    {"as_year": 250, "label": "Year 250 AS", "population": 1200000, "status": "draft", "source_status": "inherited_working_estimate"},
+    {"as_year": 290, "label": "Year 290 AS", "population": 1800000, "status": "draft", "source_status": "inherited_working_estimate"},
+    {"as_year": 311, "label": "Year 311 AS", "population": 2000000, "status": "draft", "source_status": "high_working_hypothesis"}
+  ],
+  "model_inputs": {
+    "fertility": {"status": "unknown", "value": null, "unit": "births_per_woman_per_year"},
+    "ordinary_mortality": {"status": "unknown", "value": null, "unit": "deaths_per_person_per_year"},
+    "infant_mortality": {"status": "unknown", "value": null, "unit": "deaths_per_1000_live_births"},
+    "maternal_mortality": {"status": "unknown", "value": null, "unit": "deaths_per_100000_births"},
+    "carrying_capacity": {"status": "unknown", "value": null, "unit": "people_supported"},
+    "crisis_mortality": {"status": "unknown", "value": null, "unit": "fraction_of_population"},
+    "migration": {"status": "unknown", "value": null, "unit": "people_per_year"}
+  },
+  "required_checks": [
+    "age_structure",
+    "food_capacity",
+    "water_capacity",
+    "energy_capacity",
+    "space_capacity",
+    "disease_and_accident_mortality",
+    "migration_between_communities",
+    "founder_effect_and_genetic_diversity"
+  ],
+  "sources": [
+    "lore/timeline.md",
+    "lore/LORE_REVISION_v2.md",
+    "lore/the-truth.canon-draft.md"
+  ]
+}

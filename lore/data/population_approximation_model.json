@@ -1,0 +1,65 @@
+{
+  "$schema": "../schemas/population-approximation-model.schema.json",
+  "schema_version": 1,
+  "id": "population.approximation.paris-1000km",
+  "status": "draft",
+  "purpose": "Fast plausible demographic allocation without storing or processing a continental population raster.",
+  "display_grid": {
+    "cell_size_km": 25,
+    "cell_count": 4996,
+    "role": "restitution_and_refuge_overlay_only"
+  },
+  "calculation_units": {
+    "type": "macro_zones",
+    "recommended_count": "20_to_40",
+    "selected_structure": "administrative_or_functional_macro_zones_with_major_urban_basins",
+    "role": "population_and_refuge_calculation"
+  },
+  "method": {
+    "step_1": "Assign each macro-zone a sourced or explicitly estimated population anchor for the reference year.",
+    "step_2": "Project the anchor to 2034 using the relevant national or regional demographic scenario.",
+    "step_3": "Split each macro-zone between settlement classes using normalized weights, not a uniform density.",
+    "step_4": "Distribute each class into the 25 km display cells using land area and settlement intensity weights.",
+    "step_5": "Apply refuge capacity and access factors only after the population layer is complete.",
+    "step_6": "Run low, central and high variants and preserve the parameter set with every result."
+  },
+  "population_formula": "P_cell = P_macro_2034 * (w_cell / sum(w_cells_in_macro))",
+  "weight_formula": "w_cell = usable_land_area * settlement_intensity_weight * accessibility_weight",
+  "settlement_classes": [
+    "metropolitan",
+    "urban",
+    "rural",
+    "sparse_or_mountain"
+  ],
+  "refuge_formula": "S_cell = sum_over_refuge_types(min(reachable_population, physical_capacity) * access_probability * operational_probability)",
+  "post_silence_formula": "S_year_1 = S_initial * post_installation_survival_probability",
+  "required_parameters": [
+    "macro_zone_population",
+    "macro_zone_projection_factor",
+    "settlement_class_shares",
+    "usable_land_area",
+    "settlement_intensity_weight",
+    "accessibility_weight",
+    "refuge_physical_capacity",
+    "access_probability",
+    "operational_probability",
+    "post_installation_survival_probability"
+  ],
+  "uncertainty_rules": [
+    "Every unobserved parameter remains a scenario range, never a hidden point estimate.",
+    "The same person cannot be counted both in an existing refuge and in an improvised refuge.",
+    "A population anchor is not a survivor estimate.",
+    "The model must report sensitivity: which parameters move the result most.",
+    "The approximation is suitable for worldbuilding scale, not emergency planning or scientific forecasting."
+  ],
+  "sources": [
+    "https://www.insee.fr/fr/statistiques/6652134?sommaire=6652140",
+    "https://ec.europa.eu/eurostat/web/gisco/geodata/population-distribution/population-grids"
+  ],
+  "open_decisions": [
+    "macro_zone_boundaries",
+    "settlement_classification_source",
+    "scenario_width_for_unobserved_parameters",
+    "whether refuge capacity is modelled per macro-zone or per display cell"
+  ]
+}

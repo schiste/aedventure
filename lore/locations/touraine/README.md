@@ -244,3 +244,13 @@ He just didn't know why he'd need that knowledge.
 ---
 
 *Last updated: 2026-03-15*
+
+<!-- lore:index:start -->
+
+## In this section
+
+- [Les Grottes De La Bresme](les_grottes_de_la_bresme.md)
+- [Studio Echo](studio_echo.md)
+
+_Generated from the lore tree: 2 page(s), 0 subsection(s)._
+<!-- lore:index:end -->

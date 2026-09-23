@@ -1,0 +1,40 @@
+{
+  "$schema": "../schemas/macro-population-envelope.schema.json",
+  "schema_version": 1,
+  "id": "population.envelope.paris-1000km",
+  "status": "draft",
+  "reference_year": 2024,
+  "scope": "Paris and approximate 1,000 km radius",
+  "method": "Country population anchor multiplied by an explicit included-area proxy. This is an envelope, not a spatial census.",
+  "source": {
+    "name": "World Bank Population, total",
+    "url": "https://api.worldbank.org/v2/country/FR;BE;LU;NL;DE;CH;GB;ES;IT;AT;CZ/indicator/SP.POP.TOTL?date=2024&format=json&per_page=100",
+    "lastupdated": "2026-07-13"
+  },
+  "countries": [
+    {"id":"FR","population_2024":68551653,"included_share_low":1.0,"included_share_central":1.0,"included_share_high":1.0,"share_status":"scope_assumption"},
+    {"id":"BE","population_2024":11858610,"included_share_low":1.0,"included_share_central":1.0,"included_share_high":1.0,"share_status":"scope_assumption"},
+    {"id":"LU","population_2024":677012,"included_share_low":1.0,"included_share_central":1.0,"included_share_high":1.0,"share_status":"scope_assumption"},
+    {"id":"NL","population_2024":17993485,"included_share_low":0.9,"included_share_central":1.0,"included_share_high":1.0,"share_status":"scope_assumption"},
+    {"id":"DE","population_2024":83516593,"included_share_low":0.55,"included_share_central":0.7,"included_share_high":0.8,"share_status":"scope_assumption"},
+    {"id":"CH","population_2024":9005582,"included_share_low":1.0,"included_share_central":1.0,"included_share_high":1.0,"share_status":"scope_assumption"},
+    {"id":"GB","population_2024":69281000,"included_share_low":0.4,"included_share_central":0.55,"included_share_high":0.65,"share_status":"scope_assumption"},
+    {"id":"ES","population_2024":48848840,"included_share_low":0.15,"included_share_central":0.25,"included_share_high":0.3,"share_status":"scope_assumption"},
+    {"id":"IT","population_2024":58952704,"included_share_low":0.3,"included_share_central":0.4,"included_share_high":0.45,"share_status":"scope_assumption"},
+    {"id":"AT","population_2024":9177982,"included_share_low":0.35,"included_share_central":0.45,"included_share_high":0.6,"share_status":"scope_assumption"},
+    {"id":"CZ","population_2024":10905028,"included_share_low":0.35,"included_share_central":0.55,"included_share_high":0.7,"share_status":"scope_assumption"}
+  ],
+  "results_persons": {
+    "low": 211975710,
+    "central": 250573656,
+    "high": 274255944
+  },
+  "interpretation": "The study circle contains roughly 212 to 274 million residents on a coarse 2024 country-anchor envelope, with a central working value near 251 million. This is not a survivor estimate and must not be treated as the 2034 population until the macro-zone boundaries and projection factors are calibrated.",
+  "limitations": [
+    "Included shares are explicit modelling assumptions, not GIS-derived area fractions.",
+    "Country totals are 2024 while the lore reference event is 2034.",
+    "The envelope does not distinguish urban density or uninhabited areas.",
+    "The French Insee regional 2034 layer should replace the World Bank France anchor for the France-only component.",
+    "No refuge, preparedness or survival factor is applied."
+  ]
+}

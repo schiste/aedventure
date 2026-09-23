@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "sources": [
+    {
+      "id": "source.timeline",
+      "type": "editorial_page",
+      "path": "timeline.md",
+      "reliability": "secondary"
+    },
+    {
+      "id": "source.truth",
+      "type": "editorial_page",
+      "path": "the-truth.md",
+      "reliability": "internal-canon"
+    },
+    {
+      "id": "source.timeline-events",
+      "type": "editorial_page",
+      "path": "timeline_events.md",
+      "reliability": "secondary"
+    },
+    {
+      "id": "source.henri",
+      "type": "character_record",
+      "path": "characters/the_unplugged/henri_marchand.md",
+      "reliability": "primary-but-partial"
+    },
+    {
+      "id": "source.unplugged",
+      "type": "archive",
+      "path": "factions/sleepless_in_decibels/telegram_archives/channels/the_unplugged/README.md",
+      "reliability": "primary-but-partial"
+    },
+    {
+      "id": "source.unplugged-archives",
+      "type": "archive",
+      "path": "factions/sleepless_in_decibels/telegram_archives/channels/the_unplugged/README.md",
+      "reliability": "primary-but-partial"
+    },
+    {
+      "id": "source.henri-journal",
+      "type": "character_record",
+      "path": "characters/the_unplugged/henri_marchand.md",
+      "reliability": "primary-but-partial"
+    },
+    {
+      "id": "source.mponeng-chronicle",
+      "type": "editorial_page",
+      "path": "survival-groups/mponeng-mine.md",
+      "reliability": "unknown"
+    }
+  ]
+}

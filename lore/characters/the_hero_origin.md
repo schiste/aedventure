@@ -288,7 +288,7 @@ Whenever the community needed someone for a dangerous mission, the Lindquists we
 
 ## The Hero's Generation
 
-### The Test Mission (Year 299 AS)
+### The Test Mission (Year 311 AS)
 
 **Background:**
 

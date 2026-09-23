@@ -63,3 +63,16 @@ See [tone_guide.md](../../tone_guide.md) for full writing guidance.
 ---
 
 *This folder is internal lore. Players should only discover fragments.*
+
+<!-- lore:index:start -->
+
+## In this section
+
+- No direct pages yet.
+
+### Subsections
+
+- [Telegram Archives](telegram_archives/)
+
+_Generated from the lore tree: 0 page(s), 1 subsection(s)._
+<!-- lore:index:end -->

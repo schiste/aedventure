@@ -59,16 +59,72 @@ def year_conversion_checks(data: dict) -> list[str]:
     return errors
 
 
+STRUCTURED_FILES = (
+    LORE / "data" / "calendar.json",
+    LORE / "data" / "sources.json",
+    LORE / "data" / "entities" / "survival_groups.json",
+    LORE / "data" / "events.json",
+    LORE / "data" / "claims.json",
+    LORE / "data" / "relations.json",
+)
+
+
+def structured_checks() -> tuple[int, list[str]]:
+    errors: list[str] = []
+    ids: set[str] = set()
+    source_ids: set[str] = set()
+    records = 0
+    loaded: dict[Path, dict] = {}
+    for path in STRUCTURED_FILES:
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            loaded[path] = data
+        except (OSError, json.JSONDecodeError) as exc:
+            errors.append(f"{path.relative_to(ROOT)}: invalid JSON ({exc})")
+    sources_path = LORE / "data" / "sources.json"
+    for source in loaded.get(sources_path, {}).get("sources", []):
+        if source.get("id"):
+            source_ids.add(source["id"])
+        source_page = source.get("path")
+        if source_page and not (LORE / source_page).exists():
+            errors.append(f"missing source page: {source_page}")
+    groups_path = LORE / "data" / "entities" / "survival_groups.json"
+    for group in loaded.get(groups_path, {}).get("groups", []):
+        page = group.get("page")
+        if page and not (LORE / page).exists():
+            errors.append(f"missing survival-group page: {page}")
+    for path, data in loaded.items():
+        collections = [value for value in data.values() if isinstance(value, list)]
+        for collection in collections:
+            for record in collection:
+                records += 1
+                record_id = record.get("id") if isinstance(record, dict) else None
+                if record_id:
+                    if record_id in ids:
+                        errors.append(f"duplicate structured id: {record_id}")
+                    ids.add(record_id)
+                if isinstance(record, dict):
+                    for source in record.get("sources", []):
+                        if not isinstance(source, str):
+                            errors.append(f"{path.relative_to(ROOT)}: non-string source reference")
+                        elif source not in source_ids:
+                            errors.append(f"unknown source reference: {source}")
+    return records, errors
+
+
 def main() -> int:
     data = load_data()
     checked, missing = markdown_links()
     errors = year_conversion_checks(data)
+    structured_records, structured_errors = structured_checks()
+    errors.extend(structured_errors)
     conflicts = data.get("known_conflicts", [])
 
     print(f"Markdown links checked: {checked}")
     print(f"Broken Markdown links: {len(missing)}")
     for item in missing:
         print(f"  ERROR {item}")
+    print(f"Structured records checked: {structured_records}")
     print(f"Structured conflicts recorded: {len(conflicts)}")
     for conflict in conflicts:
         print(f"  CONFLICT {conflict['id']}: {conflict['question']}")

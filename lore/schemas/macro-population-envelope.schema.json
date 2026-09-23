@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["schema_version", "id", "status", "reference_year", "countries", "results_persons", "limitations"],
+  "properties": {
+    "schema_version": {"type": "integer"},
+    "id": {"type": "string"},
+    "status": {"type": "string"},
+    "reference_year": {"type": "integer"},
+    "scope": {"type": "string"},
+    "method": {"type": "string"},
+    "source": {"type": "object"},
+    "countries": {"type": "array", "items": {"type": "object"}},
+    "results_persons": {"type": "object"},
+    "interpretation": {"type": "string"},
+    "limitations": {"type": "array", "items": {"type": "string"}}
+  }
+}

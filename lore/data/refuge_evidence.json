@@ -1,0 +1,93 @@
+{
+  "$schema": "../schemas/refuge-evidence.schema.json",
+  "schema_version": 1,
+  "status": "draft",
+  "scope": "Paris and 1000 km radius",
+  "records": [
+    {
+      "id": "france.shelters.2017.reported",
+      "country": "FR",
+      "category": "civil_defence_and_military",
+      "value": {
+        "shelters_total": 1000,
+        "military": 600,
+        "private_civil": 400
+      },
+      "unit": "shelters",
+      "status": "reported",
+      "date": "2017",
+      "source": "https://www.senat.fr/questions/base/2023/qSEQ230205279.html",
+      "caveat": "Figures appear in the written parliamentary question; the ministerial response does not independently validate the inventory or its operational status."
+    },
+    {
+      "id": "france.coverage.2017.reported",
+      "country": "FR",
+      "category": "shelter_coverage",
+      "value": {
+        "coverage": "slightly_above_0_percent"
+      },
+      "status": "reported",
+      "date": "2017",
+      "source": "https://www.senat.fr/questions/base/2023/qSEQ230205279.html",
+      "caveat": "Derived statement in the parliamentary question, not a current audited capacity dataset."
+    },
+    {
+      "id": "switzerland.shelters.current",
+      "country": "CH",
+      "category": "civil_defence",
+      "value": {
+        "shelter_places": 9000000,
+        "shelters": 370000,
+        "coverage": "more_than_100_percent"
+      },
+      "unit": "places_and_shelters",
+      "status": "official",
+      "source": "https://www.babs.admin.ch/en/shelters-for-the-population",
+      "caveat": "Coverage differs between cantons; local shortages remain. Availability does not equal immediate occupancy or long-term autonomy."
+    },
+    {
+      "id": "switzerland.readiness.current",
+      "country": "CH",
+      "category": "operational_readiness",
+      "value": {
+        "ready_time_days": 5
+      },
+      "unit": "days",
+      "status": "official",
+      "source": "https://www.babs.admin.ch/en/shelters-for-the-population",
+      "caveat": "This is a civil-protection preparation requirement, not a measured survival probability."
+    },
+    {
+      "id": "survivalism.france.2022",
+      "country": "FR",
+      "category": "survivalist_prevalence",
+      "value": null,
+      "status": "qualitative_research",
+      "source": "https://doi.org/10.36253/spc-18723",
+      "caveat": "The study describes diverse preparation practices and their social logics; it does not provide a representative national headcount."
+    },
+    {
+      "id": "neighbours.coverage.secondary",
+      "country": "EU",
+      "category": "shelter_coverage",
+      "value": {
+        "germany": "near_40_percent",
+        "norway": "near_40_percent",
+        "finland": "70_percent",
+        "switzerland": "104_percent"
+      },
+      "status": "secondary_reported",
+      "source": "https://www.senat.fr/questions/base/2023/qSEQ230205279.html",
+      "caveat": "Values are quoted in a French parliamentary question and need country-level primary-source verification before model use."
+    }
+  ],
+  "unknowns": [
+    "representative number of survivalists by country",
+    "operational capacity of French shelters",
+    "geographic distribution of private bunkers",
+    "actual occupancy and access probability",
+    "food, water and energy autonomy",
+    "refuge maintenance state in 2034"
+  ],
+  "rule": "No record in this file is a canonical survivor count. Reported capacities remain evidence inputs and require accessibility and operationality factors."
+}

@@ -51,3 +51,24 @@ The group had no idea they were the unwitting cover for a conspiracy that would 
 ---
 
 *[See also: [sounding_five](../sounding_five/) | [the_unplugged](../the_unplugged/)]*
+
+<!-- lore:index:start -->
+
+## In this section
+
+- No direct pages yet.
+
+### Subsections
+
+- [2026](2026/)
+- [2027](2027/)
+- [2028](2028/)
+- [2029](2029/)
+- [2030](2030/)
+- [2031](2031/)
+- [2032](2032/)
+- [2033](2033/)
+- [2034](2034/)
+
+_Generated from the lore tree: 0 page(s), 9 subsection(s)._
+<!-- lore:index:end -->

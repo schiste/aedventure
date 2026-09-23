@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["id", "seed", "starting_state", "current_state", "transitions", "status"],
+  "properties": {
+    "id": {"type": "string"},
+    "seed": {"type": "integer"},
+    "starting_state": {"$ref": "#/$defs/state"},
+    "current_state": {"$ref": "#/$defs/state"},
+    "transitions": {"type": "array", "items": {"$ref": "#/$defs/transition"}},
+    "dimensions": {"type": "object"},
+    "constraints": {"type": "array"},
+    "derived_consequences": {"type": "array"},
+    "story_proposals": {"type": "array"},
+    "sources": {"type": "array", "items": {"type": "string"}},
+    "status": {"type": "string"}
+  },
+  "$defs": {
+    "state": {
+      "type": "object",
+      "required": ["period", "dimensions"],
+      "properties": {
+        "period": {"type": "object"},
+        "dimensions": {"type": "object"}
+      }
+    },
+    "transition": {
+      "type": "object",
+      "required": ["date_or_range", "affected_dimensions", "trigger", "observed_change", "status"],
+      "properties": {
+        "date_or_range": {},
+        "affected_dimensions": {"type": "array", "items": {"type": "string"}},
+        "trigger": {"type": "string"},
+        "observed_change": {"type": "string"},
+        "beneficiaries": {"type": "array"},
+        "losses": {"type": "array"},
+        "sources": {"type": "array", "items": {"type": "string"}},
+        "status": {"type": "string"}
+      }
+    }
+  }
+}

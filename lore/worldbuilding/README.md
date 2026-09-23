@@ -139,3 +139,31 @@ When an item appears in multiple contexts:
 ---
 
 *Worldbuilding reference directory. Last updated: 2025-12-16*
+
+<!-- lore:index:start -->
+
+## In this section
+
+- [Community Classification Framework](community-classification-framework.md)
+- [Prologue: Before the Surface](prologue-before-the-surface.md)
+- [Quiet Centuries: 226-300 AS](../timeline_quiet_centuries_226-300.md)
+- [Hero Story Hooks After the Prologue](hero-story-hooks-after-prologue.md)
+
+### Subsections
+
+- [Books](books/)
+- [Companies And Products](companies_and_products/)
+- [Fashion](fashion/)
+- [Food And Brands](food_and_brands/)
+- [Geography](geography/)
+- [Memes And Internet](memes_and_internet/)
+- [Movies](movies/)
+- [Music](music/)
+- [Religion And Cults](religion_and_cults/)
+- [Science](science/)
+- [Sports](sports/)
+- [Technology](technology/)
+- [Tv Shows](tv_shows/)
+
+_Generated from the lore tree: 1 page(s), 13 subsection(s)._
+<!-- lore:index:end -->

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["schema_version", "id", "status", "scope", "zones", "fields_to_collect"],
+  "properties": {
+    "schema_version": {"type": "integer"},
+    "id": {"type": "string"},
+    "status": {"type": "string"},
+    "scope": {"type": "object"},
+    "zones": {"type": "array", "items": {"type": "object"}},
+    "fields_to_collect": {"type": "array", "items": {"type": "string"}},
+    "notes": {"type": "string"}
+  }
+}

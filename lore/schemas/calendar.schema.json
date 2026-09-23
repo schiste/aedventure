@@ -1,0 +1,1 @@
+{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","required":["id","day_zero","year_one_starts"],"properties":{"id":{"type":"string"},"day_zero":{"type":"string","format":"date"},"year_one_starts":{"type":"string","format":"date"},"year_one_ce":{"type":"integer"},"present":{"type":"object"},"game_start":{"type":"object"}}}

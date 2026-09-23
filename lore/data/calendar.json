@@ -1,0 +1,14 @@
+{
+  "$schema": "../schemas/calendar.schema.json",
+  "schema_version": 1,
+  "id": "calendar.after-silence",
+  "label": "AS",
+  "anchor_event": "event.the-silence",
+  "anchor_date_ce": "2034-10-14",
+  "day_zero": "2034-10-14",
+  "day_zero_meaning": "The day of the Silence is Day 0.",
+  "year_one_starts": "2034-10-15",
+  "year_one_ce": 2035,
+  "present": {"as_year": 311, "ce_year": 2345},
+  "game_start": {"as_year": 311, "ce_year": 2345}
+}

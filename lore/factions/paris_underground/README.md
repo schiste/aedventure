@@ -283,3 +283,16 @@ La Défense            │         Nation → Vincennes
 ---
 
 *Paris Underground overview v3 — December 17, 2025*
+
+<!-- lore:index:start -->
+
+## In this section
+
+- No direct pages yet.
+
+### Subsections
+
+- [Factions](factions/)
+
+_Generated from the lore tree: 0 page(s), 1 subsection(s)._
+<!-- lore:index:end -->

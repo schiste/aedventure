@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["schema_version", "id", "scope", "spatial_unit", "refuge_categories", "calculation", "scenarios", "zones", "status"],
+  "properties": {
+    "schema_version": {"type": "integer"},
+    "id": {"type": "string"},
+    "name": {"type": "string"},
+    "status": {"type": "string"},
+    "scope": {"type": "object"},
+    "spatial_unit": {"type": "object"},
+    "refuge_categories": {"type": "array", "items": {"type": "string"}},
+    "calculation": {"type": "object"},
+    "scenarios": {"type": "object"},
+    "zones": {"type": "array"},
+    "required_evidence": {"type": "array", "items": {"type": "string"}},
+    "sources": {"type": "array", "items": {"type": "string"}},
+    "notes": {"type": "string"}
+  }
+}

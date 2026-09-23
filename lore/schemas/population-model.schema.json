@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["schema_version", "id", "status", "checkpoints", "model_inputs"],
+  "properties": {
+    "schema_version": {"type": "integer"},
+    "id": {"type": "string"},
+    "calendar": {"type": "string"},
+    "status": {"type": "string"},
+    "baseline": {"type": "object"},
+    "checkpoints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["as_year", "label", "population", "status"],
+        "properties": {
+          "as_year": {"type": "integer"},
+          "label": {"type": "string"},
+          "population": {"type": "integer", "minimum": 0},
+          "status": {"type": "string"},
+          "source_status": {"type": "string"}
+        }
+      }
+    },
+    "model_inputs": {"type": "object"},
+    "required_checks": {"type": "array", "items": {"type": "string"}},
+    "sources": {"type": "array", "items": {"type": "string"}}
+  }
+}

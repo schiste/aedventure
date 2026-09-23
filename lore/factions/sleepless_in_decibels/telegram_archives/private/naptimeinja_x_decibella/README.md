@@ -46,3 +46,16 @@ Marc never learned her exact fate. He assumes the worst. He's right.
 ---
 
 *[Related: [sounding_five](../../channels/sounding_five/)]*
+
+<!-- lore:index:start -->
+
+## In this section
+
+- No direct pages yet.
+
+### Subsections
+
+- [2027](2027/)
+
+_Generated from the lore tree: 0 page(s), 1 subsection(s)._
+<!-- lore:index:end -->

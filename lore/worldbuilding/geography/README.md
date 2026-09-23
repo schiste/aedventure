@@ -178,3 +178,12 @@ Year 300 maps are:
 ---
 
 *Geography section index. In Year 300, the map is written in silence and danger. Every safe place was earned. Every dangerous place has claimed lives.*
+
+<!-- lore:index:start -->
+
+## In this section
+
+- No direct pages yet.
+
+_Generated from the lore tree: 0 page(s), 0 subsection(s)._
+<!-- lore:index:end -->

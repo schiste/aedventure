@@ -32,7 +32,16 @@
     "lore:check": "python3 tools/lore_check.py",
     "lore:refs": "npm --workspace @aedventure/add-content run build && node scripts/lore-refs.cjs",
     "lore:refs:check": "npm --workspace @aedventure/add-content run build && node scripts/lore-refs.cjs --check",
+    "lore:indexes": "python3 tools/lore_indexes.py",
+    "lore:work-inventory": "python3 tools/lore_work_inventory.py",
+    "lore:inventory": "python3 tools/lore_inventory.py",
     "lore:render": "python3 tools/lore_render.py --write",
+    "lore:site": "vitepress dev lore",
+    "lore:site:build": "npm run lore:indexes && npm run lore:inventory && vitepress build lore",
+    "lore:site:preview": "vitepress preview lore",
+    "lore:quartz:prepare": "python3 tools/lore_quartz_prepare.py",
+    "lore:quartz:build": "npm run lore:quartz:prepare && cd lore-quartz && npm run quartz -- build -d content",
+    "lore:quartz:site": "npm run lore:quartz:prepare && cd lore-quartz && npm run quartz -- build --serve -d content",
     "test:packages": "npm run test --workspaces --if-present",
     "verify": "npm run wasm:build:add && tsc -b && npm run content:check && cargo test -p add-core && npm run test:packages",
     "verify:full": "npm run check",
@@ -88,7 +97,8 @@
     "pngjs": "^7.0.0",
     "typescript": "^4.8.2",
     "vite": "^8.0.14",
-    "vite-plugin-solid": "^2.11.14"
+    "vite-plugin-solid": "^2.11.14",
+    "vitepress": "^1.6.4"
   },
   "engines": {
     "node": ">=20"

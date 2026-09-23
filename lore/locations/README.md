@@ -62,6 +62,8 @@ The game world maps real geography to a hex grid with consistent scale rules. Th
 
 ### Survival Parameters (Lore-Mechanical Bridge)
 
+The shared numeric values in this table are registered in [`data/survival_rules.json`](../data/survival_rules.json). This page presents them for readers; the structured registry is the maintenance source for values reused by lore, mechanics and code.
+
 | Parameter | Value | Real-World Meaning | Code Reference |
 |-----------|-------|-------------------|----------------|
 | **Hero survival outside bubble** | 24s (= 24 in-world hours) | Resilient physiology | `game_data.rs: hero_time_seconds_0_to_1` |
@@ -140,3 +142,16 @@ See [touraine/README.md](touraine/README.md) for the structured real-world geogr
 ---
 
 *Last updated: 2026-03-15*
+
+<!-- lore:index:start -->
+
+## In this section
+
+- No direct pages yet.
+
+### Subsections
+
+- [Touraine](touraine/)
+
+_Generated from the lore tree: 0 page(s), 1 subsection(s)._
+<!-- lore:index:end -->

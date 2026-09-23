@@ -5,15 +5,11 @@ The prose remains in Markdown, but facts that must agree across pages belong in
 
 ## Current data
 
-- [`data/canon.json`](data/canon.json) contains the calendar anchor, present-day
-  candidates, game-start candidate and unresolved conflicts.
-
-The file is intentionally conservative: a conflict is recorded as a conflict,
-not silently resolved by whichever page was edited last.
+- [`data/README.md`](data/README.md): shared calendar, entity, event,
+  claim, source and relationship records.
+- [`../schemas/`](../schemas/): JSON Schemas for the data files.
 
 ## Transclusion
-
-A Markdown page may include one structured value:
 
 ```markdown
 <!-- lore:include data/canon.json#present -->

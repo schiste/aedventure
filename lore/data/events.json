@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "events": [
+    {
+      "id": "event.the-silence",
+      "name": "The Silence",
+      "as": 0,
+      "ce": "2034-10-14",
+      "status": "canonical",
+      "sources": ["source.timeline", "source.truth"]
+    },
+    {
+      "id": "event.activation-alpha",
+      "name": "Activation Protocol Alpha",
+      "as": 0,
+      "ce": "2034-10-14",
+      "status": "canonical",
+      "sources": ["source.truth"]
+    },
+    {
+      "id": "event.first-crystal",
+      "name": "Material presence of the first Crystals",
+      "as": null,
+      "ce": null,
+      "status": "draft",
+      "sources": ["source.timeline"],
+      "notes": "The previous 2041 CE / 7 AS date is no longer canonical. Material Crystal presence is placed around 200 AS by canon decision, but the exact event date remains undocumented."
+    }
+  ]
+}

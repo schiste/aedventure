@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["schema_version", "id", "status", "method", "population_formula", "weight_formula", "refuge_formula", "uncertainty_rules"],
+  "properties": {
+    "schema_version": {"type": "integer"},
+    "id": {"type": "string"},
+    "status": {"type": "string"},
+    "purpose": {"type": "string"},
+    "display_grid": {"type": "object"},
+    "calculation_units": {"type": "object"},
+    "method": {"type": "object"},
+    "population_formula": {"type": "string"},
+    "weight_formula": {"type": "string"},
+    "settlement_classes": {"type": "array", "items": {"type": "string"}},
+    "refuge_formula": {"type": "string"},
+    "post_silence_formula": {"type": "string"},
+    "required_parameters": {"type": "array", "items": {"type": "string"}},
+    "uncertainty_rules": {"type": "array", "items": {"type": "string"}},
+    "sources": {"type": "array", "items": {"type": "string"}},
+    "open_decisions": {"type": "array", "items": {"type": "string"}}
+  }
+}

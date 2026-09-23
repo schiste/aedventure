@@ -1,0 +1,48 @@
+{
+  "$schema": "../schemas/survival-rules.schema.json",
+  "schema_version": 1,
+  "rules": [
+    {
+      "id": "survival.normal-human.outside-bubble",
+      "name": "Normal human survival outside a Crystal bubble",
+      "value": 4,
+      "unit": "in_world_hours",
+      "status": "canonical",
+      "scope": "standard human outside effective Crystal protection",
+      "sources": ["lore/locations/README.md", "lore/the-truth.md", "legacy/add/mechanics/specifications.md"],
+      "mechanical_reference": "game_data.rs: normal_human_time_seconds_0_to_1",
+      "notes": "This is the standard lethal window, not a promise that every exposure has identical conditions. Geology, route, protection and exposure profile can shorten it."
+    },
+    {
+      "id": "survival.resilient.outside-bubble",
+      "name": "Resilient survival outside a Crystal bubble",
+      "value": 24,
+      "unit": "in_world_hours",
+      "status": "canonical",
+      "scope": "Resilient physiology outside effective Crystal protection",
+      "sources": ["lore/locations/README.md", "lore/the-truth.md", "lore/timeline_quiet_centuries_76-150.md"],
+      "mechanical_reference": "game_data.rs: hero_time_seconds_0_to_1",
+      "notes": "Resilient does not mean immune. The standard tolerance is extended, and operational decisions must still account for route and exposure conditions."
+    },
+    {
+      "id": "survival.recovery.full-viral-load",
+      "name": "Recovery from full viral load inside a Crystal bubble",
+      "value": 10,
+      "unit": "in_world_days",
+      "status": "canonical",
+      "scope": "full viral load recovering inside effective Crystal protection",
+      "sources": ["lore/locations/README.md"],
+      "mechanical_reference": "game_data.rs: recovery_time_seconds_1_to_0"
+    },
+    {
+      "id": "time.game-second",
+      "name": "Game second conversion",
+      "value": 1,
+      "unit": "in_world_hour_per_real_second",
+      "status": "canonical",
+      "scope": "game simulation",
+      "sources": ["lore/locations/README.md", "legacy/add/mechanics/specifications.md"],
+      "mechanical_reference": "specifications.md:252"
+    }
+  ]
+}
