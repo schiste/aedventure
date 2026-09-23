@@ -58,6 +58,7 @@ import {
   signedRateCopy,
   socialPendingArrivalRows,
   stationEntityRow,
+  storyBeatEntityRow,
   storyBrowserBeatRows,
   storyBrowserChoiceRows,
   storyBrowserCommandRows,
@@ -2620,6 +2621,11 @@ function adminStoryBrowserPanel(): unknown {
         state; beat eligibility is a TS best-effort diagnostic mirror.
       </p>
 
+      ${/* `ui.panel.narrative` names the five beats of the opening arc. Nothing
+          here lists them: the panel, its label, its hint and its rows all come
+          from the catalog, through the story renderer. */ ""}
+      ${schemaPanel("ui.panel.narrative")}
+
       <div class="story-browser-summary" aria-label="Story content summary">
         <article>
           <span>Active</span>
@@ -4584,6 +4590,12 @@ const schemaEntityRenderers: EntityRendererRegistry = {
   world_action: (id) =>
     worldActionEntityRow(() =>
       uiState()?.availableWorldActions.find((action) => action.id === id),
+    ),
+  // `allBeats` already carries every beat with its status, so a beat named by a
+  // panel is looked up rather than recomputed.
+  story: (id) =>
+    storyBeatEntityRow(() =>
+      uiState()?.storyProgression.allBeats.find((beat) => beat.id === id),
     ),
 }
 

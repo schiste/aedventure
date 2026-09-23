@@ -805,6 +805,35 @@ async function assertAdminDeveloperSeparation(page, consoleErrors) {
     true,
     "Clean Admin view should expose the story/content browser.",
   )
+  // `ui.panel.narrative` names the five beats of the opening arc, and the story
+  // renderer draws them. Nothing in the app source lists those beats, so this
+  // asserts the story kind end to end — and a schema panel that fails to render
+  // does so silently, which is how the first one shipped empty while green.
+  const narrativeBeatRows = await page.evaluate(() => {
+    const panel = document.querySelector('[data-qa="schema-panel-ui-panel-narrative"]')
+    if (!panel) return null
+    return {
+      rows: panel.querySelectorAll('[data-entity="story"]').length,
+      statuses: [...panel.querySelectorAll("[data-beat-status]")].map((row) =>
+        row.getAttribute("data-beat-status"),
+      ),
+    }
+  })
+  assert.ok(narrativeBeatRows, "The catalog-driven narrative panel should be on screen.")
+  assert.equal(
+    narrativeBeatRows.rows,
+    5,
+    "The narrative panel should draw the five beats its catalog entry names.",
+  )
+  assert.ok(
+    narrativeBeatRows.statuses.every((status) =>
+      ["completed", "current", "upcoming"].includes(status),
+    ),
+    `Every beat row should carry a real status, got ${JSON.stringify(
+      narrativeBeatRows.statuses,
+    )}.`,
+  )
+
   assert.equal(await page.locator("#save-payload").isVisible(), false)
   assert.equal(await page.locator("#dev-view").isVisible(), false)
   await assertNonBlankNamedAppScreenshot(

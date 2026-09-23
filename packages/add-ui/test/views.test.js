@@ -60,3 +60,53 @@ assert.equal(offlineReturnJobKindLabel("expedition"), "Expedition returned")
 assert.equal(offlineReturnJobKindLabel("resonance"), "Resonance tuned")
 
 console.log("add-ui views: all assertions passed")
+
+// --- story beat status -----------------------------------------------------
+// Four states that a naive "done / not done" would collapse into two.
+
+const { storyBeatStatusCopy, storyBeatTone } = require("../dist/entity-rows.js")
+
+const beat = (over) => ({
+  label: "Explore",
+  arc: "base_onboarding",
+  status: "upcoming",
+  awaitingChoice: false,
+  worldActionId: null,
+  ...over,
+})
+
+assert.equal(storyBeatStatusCopy(beat({ status: "completed" })), "Done")
+
+// A current beat waiting on the player is the only actionable row on the panel.
+assert.equal(
+  storyBeatStatusCopy(beat({ status: "current", awaitingChoice: true })),
+  "Waiting on you",
+)
+assert.equal(
+  storyBeatStatusCopy(beat({ status: "current", worldActionId: "world_action.explore_base" })),
+  "Ready to act",
+  "a current beat with a world action is something to do, not something to watch",
+)
+assert.equal(
+  storyBeatStatusCopy(beat({ status: "current" })),
+  "In progress",
+  "current with neither a choice nor an action is genuinely just running",
+)
+
+// Waiting on the player beats having an action: the choice blocks the action.
+assert.equal(
+  storyBeatStatusCopy(
+    beat({ status: "current", awaitingChoice: true, worldActionId: "world_action.explore_base" }),
+  ),
+  "Waiting on you",
+)
+
+// An upcoming beat names its arc rather than guessing what comes next, because
+// beat selection is emergent and nothing has promised an order yet.
+assert.equal(storyBeatStatusCopy(beat({ status: "upcoming" })), "base_onboarding")
+
+assert.equal(storyBeatTone(beat({ status: "completed" })), "muted")
+assert.equal(storyBeatTone(beat({ status: "current" })), "accent")
+assert.equal(storyBeatTone(beat({ status: "upcoming" })), "neutral")
+
+console.log("add-ui story beat rows: all assertions passed")

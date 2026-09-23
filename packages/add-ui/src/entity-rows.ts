@@ -156,3 +156,63 @@ export function worldActionEntityRow(action: () => WorldActionRowView | undefine
     </article>
   `
 }
+
+export interface StoryBeatRowView {
+  readonly label: string
+  readonly arc: string
+  readonly status: "completed" | "current" | "upcoming"
+  readonly awaitingChoice: boolean
+  readonly worldActionId: string | null
+}
+
+/**
+ * What a beat says about itself: done, happening, or still ahead.
+ *
+ * `awaitingChoice` is the one worth separating from `current`. A current beat
+ * that is waiting on the player is the only row on the panel they can act on,
+ * and reading "In progress" when the game is in fact stopped waiting for them
+ * is the difference between an objective list and a stalled one.
+ *
+ * An upcoming beat shows its arc rather than a hint at what it is. Beats are
+ * selected emergently, so which one comes next is not decided yet, and naming
+ * it would be a promise the engine has not made.
+ */
+export function storyBeatStatusCopy(beat: StoryBeatRowView): string {
+  if (beat.status === "completed") return "Done"
+  if (beat.status === "current") {
+    if (beat.awaitingChoice) return "Waiting on you"
+    return beat.worldActionId ? "Ready to act" : "In progress"
+  }
+  return beat.arc
+}
+
+export function storyBeatTone(beat: StoryBeatRowView): "neutral" | "accent" | "muted" {
+  if (beat.status === "completed") return "muted"
+  if (beat.status === "current") return "accent"
+  return "neutral"
+}
+
+export function storyBeatEntityRow(beat: () => StoryBeatRowView | undefined): unknown {
+  if (!beat()) return null
+  return html`
+    <article
+      class="ui-row"
+      data-tone=${() => {
+        const current = beat()
+        return current ? storyBeatTone(current) : "neutral"
+      }}
+      data-entity="story"
+      data-beat-status=${() => beat()?.status}
+    >
+      <span class="ui-row-label">
+        ${() => beat()?.label}
+        <small class="ui-row-detail">
+          ${() => {
+            const current = beat()
+            return current ? storyBeatStatusCopy(current) : ""
+          }}
+        </small>
+      </span>
+    </article>
+  `
+}
