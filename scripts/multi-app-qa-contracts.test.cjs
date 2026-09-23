@@ -59,17 +59,14 @@ function main() {
   assertAgentVerificationContract(agentVerify, agentGuide)
 
   assertScreenshotContract("scripts/frontend-smoke.test.cjs", [
-    "assertNonBlankImageBuffer",
     "office map screenshot",
   ])
   assertScreenshotContract("scripts/engine-sandbox-smoke.test.cjs", [
-    "assertNonBlankImageBuffer",
     "engine-sandbox-smoke.png",
     "squareRendered",
     "hexRendered",
   ])
   assertScreenshotContract("scripts/add-rpg-smoke.test.cjs", [
-    "assertNonBlankImageBuffer",
     "add-rpg-map-smoke.png",
     "add-rpg-dungeon-map-smoke.png",
     "mapMode?.topology === \"square\"",
@@ -130,8 +127,23 @@ function assertStackStep(scriptText, expectedFragment) {
   )
 }
 
+/**
+ * The two ways a suite may satisfy the non-blank screenshot contract.
+ *
+ * `captureNonBlankImage` retries the capture and calls `assertNonBlankImageBuffer`
+ * itself, so naming either one keeps the guarantee this contract exists for:
+ * a screenshot in these suites is never taken without being checked.
+ */
+const NON_BLANK_SCREENSHOT_CHECKS = ["assertNonBlankImageBuffer", "captureNonBlankImage"]
+
 function assertScreenshotContract(relativePath, expectedFragments) {
   const scriptText = readText(relativePath)
+  assert.ok(
+    NON_BLANK_SCREENSHOT_CHECKS.some((check) => scriptText.includes(check)),
+    `Expected ${relativePath} to check its screenshots with one of ${NON_BLANK_SCREENSHOT_CHECKS.join(
+      " or ",
+    )}.`,
+  )
   expectedFragments.forEach((fragment) => {
     assert.ok(
       scriptText.includes(fragment),
