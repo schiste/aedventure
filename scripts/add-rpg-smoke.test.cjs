@@ -614,10 +614,25 @@ async function assertMapModeNavigationLabels(page, expectedLabels) {
   )
 }
 
+/**
+ * A resource the player has none of and is nothing producing is not shown: four
+ * permanent zeroes teach that the strip is not worth reading. At boot that
+ * means no strip at all, so this checks the rule rather than the old contract,
+ * and still checks the clarity contract for whatever is on screen.
+ */
 async function assertResourceStatusClarity(page) {
   const strip = page.locator("#resource-status-strip")
+  const stripCount = await strip.count()
+  if (stripCount === 0) {
+    const state = await renderGameToText(page)
+    const anyStock = (state.ui?.resources ?? []).some((resource) => resource.value > 0)
+    assert.ok(
+      !anyStock,
+      "The resource strip should be present once the player has stock of anything.",
+    )
+    return
+  }
   await strip.waitFor({ state: "visible" })
-  await expectResourceStripText(page, ["Bassline", "Chorus", "Stone", "Water"])
 
   const resources = await strip.locator("[data-resource]").evaluateAll((elements) =>
     elements.map((element) => ({
@@ -626,7 +641,10 @@ async function assertResourceStatusClarity(page) {
       ariaLabel: element.getAttribute("aria-label") ?? "",
     })),
   )
-  assert.ok(resources.length >= 4, "Resource strip should expose the four first-playable resources.")
+  assert.ok(
+    resources.length > 0,
+    "A rendered resource strip should carry at least one resource.",
+  )
   for (const resource of resources.slice(0, 4)) {
     assert.match(resource.title, /Source: .+ Used for: /, `${resource.id} should explain source and use in its tooltip.`)
     assert.match(resource.ariaLabel, /Source: .+ Used for /, `${resource.id} should explain source and use to assistive tech.`)
@@ -1576,35 +1594,6 @@ async function exerciseBaseManagementSurface(page, consoleErrors) {
     consoleErrors,
   )
 
-  // `ui.panel.crystal` names a station, three resources, and
-  // `crystal.removing_moss_unlocked` — a flag, whose id is namespaced by its
-  // group rather than by its kind. Recognising it needs the catalog's flag ids,
-  // not the prefix, and this is the assertion that the lookup is wired through.
-  const crystalPanel = await page.evaluate(() => {
-    const panel = document.querySelector('[data-qa="schema-context-ui-panel-crystal"]')
-    if (!panel) return null
-    const own = (selector) =>
-      [...panel.querySelectorAll(selector)].filter((row) => row.closest("[data-qa]") === panel)
-    return {
-      stations: own('[data-entity="station"]').length,
-      resources: own('[data-entity="resource"]').length,
-      flags: own('[data-entity="flag"]').length,
-      flagStates: own("[data-flag-set]").map((row) => row.getAttribute("data-flag-set")),
-    }
-  })
-  assert.ok(crystalPanel, "The catalog-driven crystal panel should be on screen.")
-  assert.equal(crystalPanel.stations, 1, "The crystal panel should draw the station it names.")
-  assert.equal(crystalPanel.resources, 3, "The crystal panel should draw the three resources it names.")
-  assert.equal(
-    crystalPanel.flags,
-    1,
-    "The crystal panel should draw the flag it names, which no id prefix identifies as a flag.",
-  )
-  assert.ok(
-    crystalPanel.flagStates.every((state) => state === "true" || state === "false"),
-    `The flag row should report a real state, got ${JSON.stringify(crystalPanel.flagStates)}.`,
-  )
-
   let staffingBaseline = await renderGameToText(page)
   const beforeBassline = staffingBaseline.baseManagement.rolePressure.find(
     (role) => role.id === "role.crystal_bassline",
@@ -1695,12 +1684,7 @@ async function exerciseBaseManagementSurface(page, consoleErrors) {
   )
   const machinePanelText = await page.locator("#base-management-panel").innerText()
   ;[
-    // "Power and Processing" is the catalog label, reaching the screen through
-    // the disclosure's summary. The player hint sits inside the disclosure and
-    // so is deliberately absent from visible text until it is opened; it is
-    // asserted against the DOM below instead.
-    "Power and Processing",
-    "Station machine",
+          "Station machine",
     "Crystal Circle",
     "Studio",
     "Fire Pit",
@@ -1719,35 +1703,18 @@ async function exerciseBaseManagementSurface(page, consoleErrors) {
       `Station machine panel should include ${expectedText}.`,
     )
   })
-  // `ui.panel.power` names two resources and two stations in its `relatedIds`,
-  // and the panel renders them through the entity registry. Nothing in the app
-  // source lists them, so this asserts the schema path end to end: a row that
-  // fails to render does so silently, which is how the first version of this
-  // panel shipped empty with the suite still green.
-  const schemaPanelRows = await page.evaluate(() => {
-    const panel = document.querySelector('[data-qa="schema-context-ui-panel-power"]')
-    if (!panel) return null
-    return {
-      hint: panel.querySelector(".panel-note")?.textContent?.trim() ?? "",
-      resources: panel.querySelectorAll('[data-entity="resource"]').length,
-      stations: panel.querySelectorAll('[data-entity="station"]').length,
-    }
-  })
-  assert.ok(schemaPanelRows, "The catalog-driven power disclosure should be on screen.")
-  assert.match(
-    schemaPanelRows.hint,
-    /Chorus powers the base/i,
-    "The disclosure should carry the element's authored player hint.",
+  // Catalog-driven context is a developer surface and must not reach a player.
+  // The only mount left is inside the admin story browser; the base tabs carry
+  // none, and this is the assertion that keeps it that way.
+  const playerFacingSchemaContext = await page.evaluate(
+    () =>
+      document.querySelector("#base-management-panel")?.querySelectorAll('[data-qa^="schema-context-"]')
+        .length ?? 0,
   )
   assert.equal(
-    schemaPanelRows.resources,
-    2,
-    "The power panel should draw the two resources its catalog entry names.",
-  )
-  assert.equal(
-    schemaPanelRows.stations,
-    2,
-    "The power panel should draw the two stations its catalog entry names.",
+    playerFacingSchemaContext,
+    0,
+    "Catalog context disclosures should not appear on player-facing base tabs.",
   )
 
   await assertNonBlankNamedAppScreenshot(

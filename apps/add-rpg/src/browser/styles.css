@@ -19,6 +19,7 @@
   --mode-dungeon-strong-rgb: 214 225 234;
   --mode-return-rgb: 255 211 127;
   --danger-rgb: 200 101 75;
+  --contamination-rgb: 178 34 28;
   --surface-deep-rgb: 7 12 12;
   --surface-shade-rgb: 11 17 16;
   --shadow-rgb: 0 0 0;
@@ -819,16 +820,33 @@ h1 {
   filter: saturate(1.08) hue-rotate(-7deg);
 }
 
+/*
+ * Contamination. A clear centre with the red gathering at the edges, so the
+ * world stays readable while the frame closes in — it reads as dread rather
+ * than as damage, which is the point: the Hero is immune and does not know it.
+ *
+ * The inner stop tightens as the ratio climbs, so the clear area shrinks. That
+ * is what makes late contamination feel like it is closing rather than simply
+ * getting darker.
+ */
 .toxicity-haze {
   position: absolute;
   inset: 0;
   z-index: 3;
   background:
-    radial-gradient(circle at 52% 52%, transparent 0 42%, rgb(125 63 40 / var(--toxicity-alpha, 0)) 78%),
-    linear-gradient(135deg, rgb(var(--aqua-rgb)/ 0%), rgb(117 88 45 / calc(var(--toxicity-alpha, 0) * 0.44)));
+    radial-gradient(
+      circle at 50% 50%,
+      transparent 0 calc(46% - var(--contamination-ratio, 0) * 20%),
+      rgb(var(--contamination-rgb) / var(--toxicity-alpha, 0)) 82%
+    ),
+    linear-gradient(
+      135deg,
+      rgb(var(--contamination-rgb) / 0%),
+      rgb(var(--contamination-rgb) / calc(var(--toxicity-alpha, 0) * 0.3))
+    );
   opacity: 1;
   pointer-events: none;
-  transition: opacity 220ms ease;
+  transition: background 420ms ease;
 }
 
 .toxicity-haze[data-risk="toxic"],

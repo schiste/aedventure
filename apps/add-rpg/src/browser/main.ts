@@ -616,6 +616,98 @@ const baseManagementState = createModuleMemo<AddBaseManagementState | null>(() =
 })
 
 // ---------------------------------------------------------------------------
+// Contamination.
+//
+// Declared with the other module state and above every consumer. Placed lower
+// in the file its effect ran before the state it reads had initialised, and the
+// bundler turns that into a silent `undefined` rather than a TDZ error — the
+// runtime never finished booting and the console said only "is not a function".
+// ---------------------------------------------------------------------------
+
+/**
+ * How long the Hero can be out there before the screen is entirely red.
+ *
+ * Six hours during the opening, which is roughly the walk to the Studio: the
+ * contamination fills as the crossing goes on and is at its worst as the field
+ * comes into view. Twenty-four hours after that, because by then the Hero has
+ * been outside, survived, and privately stopped believing the worst of it.
+ *
+ * None of this is the survival simulation. The Hero is immune and does not know
+ * it, so the red is what he expects to be happening rather than what is. The
+ * authoritative viral load is untouched by any of this.
+ */
+const CONTAMINATION_INTRO_SCALE_SECONDS = 6 * 60
+const CONTAMINATION_SETTLED_SCALE_SECONDS = 24 * 60
+
+/** Below this the cue is barely there; above it, it climbs. */
+const CONTAMINATION_LIGHT_CUE_RATIO = 0.5
+const CONTAMINATION_LIGHT_CUE_ALPHA = 0.12
+const CONTAMINATION_FULL_ALPHA = 0.68
+
+const [contaminationSeconds, setContaminationSeconds] = createSignal(0)
+let lastContaminationClock: number | null = null
+let contaminationIntroCleared = false
+
+/** Has the Hero reached the field? Before that, every hour outside counts. */
+const STORY_BEAT_ENTER_THE_BUBBLE = "story.beat.enter_the_bubble"
+
+function contaminationIntroActive(): boolean {
+  return !(snapshot()?.narrative.completedBeatIds ?? []).includes(STORY_BEAT_ENTER_THE_BUBBLE)
+}
+
+/**
+ * Accrue exposure from the authoritative clock rather than wall time, so it
+ * tracks offline catch-up and time-speed exactly as everything else does.
+ */
+createModuleEffect(() => {
+  const currentSnapshot = snapshot()
+  if (!currentSnapshot) return
+  const clock = currentSnapshot.clockSeconds
+  const previous = lastContaminationClock
+  lastContaminationClock = clock
+  if (previous === null || clock < previous) return
+
+  const intro = contaminationIntroActive()
+  if (!intro && !contaminationIntroCleared) {
+    // Reaching the field is the reveal: he steps inside, nothing has happened
+    // to him, and the fear he walked in with lifts. Clearing it here is the
+    // payoff for a screen that has been reddening for the whole crossing.
+    contaminationIntroCleared = true
+    setContaminationSeconds(0)
+    return
+  }
+
+  // Crossing the wasteland is exposure in itself during the opening. After it,
+  // only genuinely standing outside the field counts.
+  const exposed = intro || currentSnapshot.heroSurvival.location === "outside_bubble"
+  if (!exposed) return
+  setContaminationSeconds((held) => held + (clock - previous))
+})
+
+function contaminationRatio(): number {
+  const scale = contaminationIntroActive()
+    ? CONTAMINATION_INTRO_SCALE_SECONDS
+    : CONTAMINATION_SETTLED_SCALE_SECONDS
+  return Math.min(1, contaminationSeconds() / scale)
+}
+
+/**
+ * Light up to halfway, then climbing. A cue that rises evenly reads as a meter;
+ * one that stays faint and then grows reads as something getting worse.
+ */
+function contaminationAlpha(ratio: number): number {
+  if (ratio <= CONTAMINATION_LIGHT_CUE_RATIO) {
+    return (ratio / CONTAMINATION_LIGHT_CUE_RATIO) * CONTAMINATION_LIGHT_CUE_ALPHA
+  }
+  const beyond = (ratio - CONTAMINATION_LIGHT_CUE_RATIO) / (1 - CONTAMINATION_LIGHT_CUE_RATIO)
+  return (
+    CONTAMINATION_LIGHT_CUE_ALPHA +
+    Math.pow(beyond, 1.4) * (CONTAMINATION_FULL_ALPHA - CONTAMINATION_LIGHT_CUE_ALPHA)
+  )
+}
+
+
+// ---------------------------------------------------------------------------
 // Schema plumbing.
 //
 // Declared here, directly after the derived state it reads and above every
@@ -3239,12 +3331,30 @@ function dungeonLocalMapMetricRows(): readonly unknown[] {
   )
 }
 
+/**
+ * Is anything making this resource right now?
+ *
+ * The rate lives on the base-management projection rather than the status
+ * summary, and that projection only exists once there is a base — which is
+ * correct here: before the Studio nothing produces anything, so an absent
+ * projection and a zero rate mean the same thing.
+ */
+function resourceIsProducing(resourceId: string): boolean {
+  const row = baseManagementState()?.resources.find((entry) => entry.id === resourceId)
+  return (row?.gainPerSecond ?? 0) > 0
+}
+
 function resourceStatusStrip(): unknown {
   const resources = uiState()?.resources ?? []
   const priorityIds = [RESOURCE_BASSLINE, RESOURCE_CHORUS, RESOURCE_STONE, RESOURCE_WATER]
   const prioritized = priorityIds
     .map((id) => resources.find((resource) => resource.id === id))
     .filter((resource): resource is AddUiState["resources"][number] => Boolean(resource))
+    // A resource the player has none of and is not making is not information —
+    // it is four zeroes sitting in the status bar for the whole opening, which
+    // teaches that the bar is not worth reading. They appear the moment there
+    // is stock or something producing.
+    .filter((resource) => resource.value > 0 || resourceIsProducing(resource.id))
     .slice(0, 4)
   if (prioritized.length === 0) return null
 
@@ -3970,7 +4080,6 @@ function baseManagementLeadPanel(state: AddBaseManagementState): unknown {
     case "processing":
       return [
         baseStationMachineSummary(() => state),
-        schemaContext("ui.panel.power"),
       ]
     case "social":
     case "expeditions":
@@ -4102,7 +4211,6 @@ function baseCrystalPanel(state: AddBaseManagementState): unknown {
       ${baseResourceRows(() => crystalResources)}
       ${baseSlotPoolRows(() => state.staffing.slotPools.filter((pool) => pool.id === "crystal_circle"))}
       ${() => baseRoleRows(crystalRoles, state)}
-      ${schemaContext("ui.panel.crystal")}
     </div>
   `
 }
@@ -4651,6 +4759,16 @@ function baseActiveConstructionCard(option: AddBaseManagementState["buildLoop"][
  * a collapsed disclosure on the surface it describes rather than that surface's
  * body. Drawn as a body it duplicated readouts the HUD already had, and for the
  * map it produced a panel that was not a map.
+ */
+/**
+ * Catalog-driven context, for developer surfaces only.
+ *
+ * `relatedIds` is authoring metadata — what a surface concerns — and reads that
+ * way: a player opening it gets ids and states that repeat what the panel
+ * around it already shows. It is genuinely useful for checking that the catalog
+ * and the running game agree, which is a developer's question, so the only
+ * mount left is inside the admin story browser. That panel is already kept away
+ * from players, so the gating is structural rather than a flag that can drift.
  */
 function schemaContext(elementId: string, summary?: string): unknown {
   return createComponent(SchemaContext, {
@@ -5962,20 +6080,13 @@ function dayNightOverlayStyle(): string {
 }
 
 function toxicityHazeStyle(): string {
-  const survival = snapshot()?.heroSurvival
+  const ratio = contaminationRatio()
+  const alpha = contaminationAlpha(ratio)
+  // The travel risk still tints the edge, but it no longer competes with the
+  // contamination for the same channel.
   const risk = currentTravelRisk()
-  const baseAlpha = Math.min(0.34, (survival?.viralLoadRatio ?? 0) * 0.42)
-  const riskAlpha =
-    risk === "toxic"
-      ? 0.24
-      : risk === "fringe"
-        ? 0.16
-        : risk === "safe_field"
-          ? 0.06
-          : 0
-  const activeBoost = travelExperience()?.phase === "traveling" ? 0.08 : 0
-  const alpha = Math.min(0.46, baseAlpha + riskAlpha + activeBoost)
-  return `--toxicity-alpha:${alpha.toFixed(3)}`
+  const riskEdge = risk === "toxic" ? 0.1 : risk === "fringe" ? 0.06 : 0
+  return `--toxicity-alpha:${Math.min(1, alpha + riskEdge).toFixed(3)};--contamination-ratio:${ratio.toFixed(3)}`
 }
 
 function daylightMeterStyle(): Record<string, string> {
