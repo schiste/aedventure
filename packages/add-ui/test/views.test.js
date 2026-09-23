@@ -148,3 +148,13 @@ assert.equal(
 )
 
 console.log("add-ui tile rows: all assertions passed")
+
+// --- flags -----------------------------------------------------------------
+
+const { flagStatusCopy } = require("../dist/entity-rows.js")
+
+// Progression, not raw state: a flag is a gate the player opened or has not.
+assert.equal(flagStatusCopy({ label: "Removing Moss", group: "crystal", set: true }), "Unlocked")
+assert.equal(flagStatusCopy({ label: "Removing Moss", group: "crystal", set: false }), "Locked")
+
+console.log("add-ui flag rows: all assertions passed")

@@ -1611,6 +1611,35 @@ async function exerciseBaseManagementSurface(page, consoleErrors) {
     consoleErrors,
   )
 
+  // `ui.panel.crystal` names a station, three resources, and
+  // `crystal.removing_moss_unlocked` — a flag, whose id is namespaced by its
+  // group rather than by its kind. Recognising it needs the catalog's flag ids,
+  // not the prefix, and this is the assertion that the lookup is wired through.
+  const crystalPanel = await page.evaluate(() => {
+    const panel = document.querySelector('[data-qa="schema-panel-ui-panel-crystal"]')
+    if (!panel) return null
+    const own = (selector) =>
+      [...panel.querySelectorAll(selector)].filter((row) => row.closest("[data-qa]") === panel)
+    return {
+      stations: own('[data-entity="station"]').length,
+      resources: own('[data-entity="resource"]').length,
+      flags: own('[data-entity="flag"]').length,
+      flagStates: own("[data-flag-set]").map((row) => row.getAttribute("data-flag-set")),
+    }
+  })
+  assert.ok(crystalPanel, "The catalog-driven crystal panel should be on screen.")
+  assert.equal(crystalPanel.stations, 1, "The crystal panel should draw the station it names.")
+  assert.equal(crystalPanel.resources, 3, "The crystal panel should draw the three resources it names.")
+  assert.equal(
+    crystalPanel.flags,
+    1,
+    "The crystal panel should draw the flag it names, which no id prefix identifies as a flag.",
+  )
+  assert.ok(
+    crystalPanel.flagStates.every((state) => state === "true" || state === "false"),
+    `The flag row should report a real state, got ${JSON.stringify(crystalPanel.flagStates)}.`,
+  )
+
   let staffingBaseline = await renderGameToText(page)
   const beforeBassline = staffingBaseline.baseManagement.rolePressure.find(
     (role) => role.id === "role.crystal_bassline",

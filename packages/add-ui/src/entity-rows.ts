@@ -274,3 +274,43 @@ export function tileEntityRow(tile: () => TileRowView | undefined): unknown {
     `
   }
 }
+
+export interface FlagRowView {
+  readonly label: string
+  readonly group: string
+  readonly set: boolean
+}
+
+/**
+ * A gate, and whether it is open.
+ *
+ * Flags read as progression rather than as state: "Unlocked" is something the
+ * player achieved, "Locked" is something still ahead. Neither says *how* to
+ * open it, because a flag records that a gate exists and nothing about what
+ * turns it — that lives in the beats and projects which set it, and guessing
+ * here would put a wrong instruction next to a correct status.
+ */
+export function flagStatusCopy(flag: FlagRowView): string {
+  return flag.set ? "Unlocked" : "Locked"
+}
+
+export function flagEntityRow(flag: () => FlagRowView | undefined): unknown {
+  return () => {
+    const current = flag()
+    if (!current) return null
+    return html`
+      <article
+        class="ui-row"
+        data-tone=${current.set ? "neutral" : "muted"}
+        data-entity="flag"
+        data-flag-set=${current.set ? "true" : "false"}
+      >
+        <span class="ui-row-label">
+          ${current.label}
+          <small class="ui-row-detail">${current.group}</small>
+        </span>
+        <strong class="ui-row-trailing">${flagStatusCopy(current)}</strong>
+      </article>
+    `
+  }
+}

@@ -23,6 +23,8 @@ export interface SchemaPanelProps {
    */
   renderers?: EntityRendererRegistry
   schemasById?: ReadonlyMap<string, EntitySchemaDef>
+  /** Every known flag id, so a flag is recognised whatever group it sits in. */
+  flagIds?: ReadonlySet<string>
   /** How deep this panel sits inside other panels. Roots omit it. */
   depth?: number
   /** Supplied instead of, or in addition to, the catalog-driven content. */
@@ -60,6 +62,7 @@ export function SchemaPanel(props: SchemaPanelProps): JSX.Element {
             // no JSX type; the cast is the same one the list helpers make.
             renderPanelContent(element(), props.renderers ?? {}, {
               schemasById: props.schemasById,
+              flagIds: props.flagIds,
               depth: props.depth ?? 0,
             }) as unknown as JSX.Element
           }

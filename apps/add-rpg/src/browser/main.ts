@@ -31,6 +31,7 @@ import {
   InventoryList,
   MapModeTabs,
   firstSentence,
+  flagEntityRow,
   indexList,
   formatEconomyDuration,
   formatResource,
@@ -96,6 +97,7 @@ import {
   addCommandForGameInteraction,
   selectAddAvailableCommands,
   selectAddBaseManagementState,
+  flagValue,
   selectAddDiscoverySummary,
   selectAddDungeonObjective,
   selectAddInventory,
@@ -4579,6 +4581,11 @@ const schemaVisibility = createModuleMemo(() => {
  * entities, so a new panel is an authored catalog entry rather than a new
  * component. Adding a *kind* means one entry here; adding a panel means none.
  */
+/** Every flag the catalog knows, so an id is recognised whatever group it names. */
+const schemaFlagIds = createModuleMemo(
+  () => new Set((catalog()?.flags ?? []).map((flag) => flag.id)),
+)
+
 const schemaEntityRenderers: EntityRendererRegistry = {
   resource: (id) =>
     resourceEntityRow(() => uiState()?.resources.find((resource) => resource.id === id)),
@@ -4605,6 +4612,20 @@ const schemaEntityRenderers: EntityRendererRegistry = {
       uiState()?.storyProgression.allBeats.find((beat) => beat.id === id),
     ),
   tile: (id) => tileEntityRow(() => catalog()?.tiles.find((tile) => tile.id === id)),
+  // The catalog gives the flag its label and group; the snapshot says whether
+  // it is set. `flagValue` is the same resolver the visibility conditions use,
+  // so a flag drawn as a row and a flag gating a panel agree by construction.
+  flag: (id) =>
+    flagEntityRow(() => {
+      const definition = catalog()?.flags.find((flag) => flag.id === id)
+      const currentSnapshot = snapshot()
+      if (!definition || !currentSnapshot) return undefined
+      return {
+        label: definition.label,
+        group: definition.group,
+        set: flagValue(currentSnapshot, id),
+      }
+    }),
   // Panels compose: an element may name another element, which is drawn inside
   // it with its own label, hint and visibility. The depth is what stops a cycle
   // — `ui.panel.map` names `ui.map.cave_gate`, and nothing prevents an author
@@ -4627,6 +4648,9 @@ function schemaPanel(
 ): unknown {
   return createComponent(SchemaPanel, {
     depth,
+    get flagIds() {
+      return schemaFlagIds()
+    },
     // Getters, not functions. A component prop is a value read reactively, so
     // passing `() => element` hands the component the function itself — which
     // is how the first schema panel rendered nothing at all, silently.

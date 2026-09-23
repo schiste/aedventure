@@ -27,8 +27,49 @@ assert.equal(entityKindOf("bare"), "bare", "an id with no namespace is its own k
 
 // An authored schema beats the prefix, because it was written rather than inferred.
 const schemas = new Map([["resource.stone", { id: "resource.stone", entityKind: "material" }]])
-assert.equal(entityKindOf("resource.stone", schemas), "material")
-assert.equal(entityKindOf("resource.water", schemas), "resource", "falls back when absent")
+assert.equal(entityKindOf("resource.stone", { schemasById: schemas }), "material")
+assert.equal(
+  entityKindOf("resource.water", { schemasById: schemas }),
+  "resource",
+  "falls back when absent",
+)
+
+// Flags are namespaced by group, not by kind, so the prefix names the part of
+// the game they belong to rather than what they are. Without the lookup a flag
+// renderer would need registering once per group, and again whenever content
+// added another.
+const flagIds = new Set(["crystal.removing_moss_unlocked", "base.studio_restored"])
+assert.equal(entityKindOf("crystal.removing_moss_unlocked", { flagIds }), "flag")
+assert.equal(entityKindOf("base.studio_restored", { flagIds }), "flag")
+assert.equal(
+  entityKindOf("crystal.removing_moss_unlocked"),
+  "crystal",
+  "without the lookup the group prefix is all there is to go on",
+)
+assert.equal(
+  entityKindOf("resource.stone", { flagIds }),
+  "resource",
+  "an id that is not a flag is unaffected",
+)
+
+// A schema is more specific than "it is a flag", so it still wins.
+assert.equal(
+  entityKindOf("base.studio_restored", {
+    flagIds,
+    schemasById: new Map([["base.studio_restored", { entityKind: "milestone" }]]),
+  }),
+  "milestone",
+)
+
+// Routed through a render, the flag renderer is picked over the group one.
+assert.deepEqual(
+  renderPanelContent(
+    element("ui.panel.a", ["crystal.removing_moss_unlocked"]),
+    { flag: (id) => `flag:${id}`, crystal: (id) => `crystal:${id}` },
+    { flagIds },
+  ),
+  ["flag:crystal.removing_moss_unlocked"],
+)
 
 // --- content ids -----------------------------------------------------------
 

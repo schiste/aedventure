@@ -35,19 +35,35 @@ export type EntityRenderer = (id: string, context: EntityRenderContext) => unkno
 export type EntityRendererRegistry = Readonly<Record<string, EntityRenderer | undefined>>
 
 /**
+ * Authored sources that say what an id is, consulted before the prefix.
+ */
+export interface EntityKindSources {
+  readonly schemasById?: ReadonlyMap<string, EntitySchemaDef>
+  /**
+   * Every known flag id.
+   *
+   * Flags are namespaced by their *group* rather than by their kind —
+   * `crystal.removing_moss_unlocked`, `base.studio_restored` — so the prefix
+   * names the part of the game they belong to, not what they are. Without this
+   * lookup a flag renderer would have to be registered once per group and
+   * re-registered whenever content added another.
+   */
+  readonly flagIds?: ReadonlySet<string>
+}
+
+/**
  * The kind of thing an id names.
  *
  * Ids are namespaced by kind — `resource.stone`, `story.beat.explore_base` —
- * so the prefix is the discriminator. An entity schema is preferred when one
- * exists, because it is authored rather than inferred, but only about a
- * quarter of referenced entities have one, so the prefix has to carry the rest.
+ * so the prefix is the discriminator for most things. Authored sources are
+ * preferred where they exist, because they are declared rather than inferred:
+ * an entity schema names its own kind, and a flag is a flag whatever group it
+ * sits in.
  */
-export function entityKindOf(
-  id: string,
-  schemasById?: ReadonlyMap<string, EntitySchemaDef>,
-): string {
-  const schema = schemasById?.get(id)
+export function entityKindOf(id: string, sources?: EntityKindSources): string {
+  const schema = sources?.schemasById?.get(id)
   if (schema) return schema.entityKind
+  if (sources?.flagIds?.has(id)) return "flag"
   const separator = id.indexOf(".")
   return separator === -1 ? id : id.slice(0, separator)
 }
@@ -82,8 +98,7 @@ export function panelContentIds(element: UiElementDef): readonly string[] {
 export function renderPanelContent(
   element: UiElementDef,
   renderers: EntityRendererRegistry,
-  options?: {
-    schemasById?: ReadonlyMap<string, EntitySchemaDef>
+  options?: EntityKindSources & {
     missing?: (id: string, kind: string) => unknown
     /** How deep this panel already is. Nested panels pass `depth + 1`. */
     depth?: number
@@ -92,7 +107,7 @@ export function renderPanelContent(
   const context: EntityRenderContext = { depth: options?.depth ?? 0 }
   const drawn: unknown[] = []
   for (const id of panelContentIds(element)) {
-    const kind = entityKindOf(id, options?.schemasById)
+    const kind = entityKindOf(id, options)
     const renderer = renderers[kind]
     const rendered = renderer ? renderer(id, context) : options?.missing?.(id, kind)
     if (rendered !== undefined && rendered !== null) drawn.push(rendered)
@@ -113,11 +128,11 @@ export const MAX_PANEL_NESTING_DEPTH = 2
 export function unrenderableKinds(
   element: UiElementDef,
   renderers: EntityRendererRegistry,
-  schemasById?: ReadonlyMap<string, EntitySchemaDef>,
+  sources?: EntityKindSources,
 ): readonly string[] {
   const missing = new Set<string>()
   for (const id of panelContentIds(element)) {
-    const kind = entityKindOf(id, schemasById)
+    const kind = entityKindOf(id, sources)
     if (!renderers[kind]) missing.add(kind)
   }
   return [...missing].sort()
