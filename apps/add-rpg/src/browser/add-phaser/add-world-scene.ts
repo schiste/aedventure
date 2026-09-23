@@ -51,9 +51,11 @@ import {
   clamp,
   createRenderContext,
   distanceBetween,
+  frameRateIndependentLerp,
   round,
   sameCoord,
   smoothStep,
+  smootherStep,
   squareCellSize,
   visualCellRadius,
 } from "./add-render-context"
@@ -267,7 +269,44 @@ export class AddRpgHexScene extends Phaser.Scene {
   zoomBy(factor: number): void {
     const camera = this.cameras.main
     camera.setZoom(clamp(camera.zoom * factor, MIN_ZOOM, MAX_ZOOM))
+    // Bounds are expressed in world units and padded by half a viewport, so
+    // they depend on the zoom they were built at. Leaving them stale after a
+    // zoom clamps every later `centerOn`, which is what pinned the map to a
+    // screen edge and left most of the viewport empty once a player had used
+    // the zoom buttons even once.
+    this.applyCameraBounds()
+    if (this.followHero && this.characterCoord) {
+      this.focusOnCoord(this.characterCoord, 0)
+    }
     this.refreshInfo()
+  }
+
+  /**
+   * Let the camera reach every cell, plus half a viewport of margin so the edge
+   * of the world can still be centred rather than sticking to the frame.
+   */
+  private applyCameraBounds(): void {
+    const context = this.context
+    if (!context) return
+    const centers = context.terrainCells.map((cell) => centerFor(cell.coord, context))
+    if (centers.length === 0) return
+    const padding =
+      context.topologyKind === "hex"
+        ? (context.map.topology.kind === "hex" ? context.map.topology.radius : DEFAULT_RADIUS) * 2
+        : squareCellSize(context) * 1.5
+    const minX = Math.min(...centers.map((point) => point.x)) - padding
+    const maxX = Math.max(...centers.map((point) => point.x)) + padding
+    const minY = Math.min(...centers.map((point) => point.y)) - padding
+    const maxY = Math.max(...centers.map((point) => point.y)) + padding
+    const camera = this.cameras.main
+    const visibleWidth = this.scale.width / camera.zoom
+    const visibleHeight = this.scale.height / camera.zoom
+    camera.setBounds(
+      minX - visibleWidth / 2,
+      minY - visibleHeight / 2,
+      Math.max(1, maxX - minX) + visibleWidth,
+      Math.max(1, maxY - minY) + visibleHeight,
+    )
   }
 
   resetCamera(): void {
@@ -867,7 +906,7 @@ export class AddRpgHexScene extends Phaser.Scene {
         0,
         1,
       )
-      const eased = smoothStep(rawProgress)
+      const eased = smootherStep(rawProgress)
       this.characterPosition = {
         x: Phaser.Math.Linear(
           this.characterTravel.fromPosition.x,
@@ -895,7 +934,8 @@ export class AddRpgHexScene extends Phaser.Scene {
       return
     }
 
-    const travel = Math.min(1, delta / 145)
+    // Halve the remaining distance every ~70ms, independent of frame rate.
+    const travel = frameRateIndependentLerp(delta, 70)
     this.characterPosition = {
       x: Phaser.Math.Linear(this.characterPosition.x, this.characterTarget.x, travel),
       y: Phaser.Math.Linear(this.characterPosition.y, this.characterTarget.y, travel),
@@ -1756,16 +1796,10 @@ export class AddRpgHexScene extends Phaser.Scene {
       context.topologyKind === "hex"
         ? (context.map.topology.kind === "hex" ? context.map.topology.radius : DEFAULT_RADIUS) * 2
         : squareCellSize(context) * 1.5
-    const boundsMinX = Math.min(...allCenters.map((point) => point.x)) - padding
-    const boundsMaxX = Math.max(...allCenters.map((point) => point.x)) + padding
-    const boundsMinY = Math.min(...allCenters.map((point) => point.y)) - padding
-    const boundsMaxY = Math.max(...allCenters.map((point) => point.y)) + padding
     const frameMinX = Math.min(...framingCenters.map((point) => point.x)) - padding
     const frameMaxX = Math.max(...framingCenters.map((point) => point.x)) + padding
     const frameMinY = Math.min(...framingCenters.map((point) => point.y)) - padding
     const frameMaxY = Math.max(...framingCenters.map((point) => point.y)) + padding
-    const boundsWidth = Math.max(1, boundsMaxX - boundsMinX)
-    const boundsHeight = Math.max(1, boundsMaxY - boundsMinY)
     const frameWidth = Math.max(1, frameMaxX - frameMinX)
     const frameHeight = Math.max(1, frameMaxY - frameMinY)
     const maxFitZoom = context.topologyKind === "square" ? 1.92 : 1.68
@@ -1779,14 +1813,7 @@ export class AddRpgHexScene extends Phaser.Scene {
       y: frameMinY + frameHeight / 2,
     }
     camera.setZoom(zoom)
-    const visibleWidth = this.scale.width / zoom
-    const visibleHeight = this.scale.height / zoom
-    camera.setBounds(
-      boundsMinX - visibleWidth / 2,
-      boundsMinY - visibleHeight / 2,
-      boundsWidth + visibleWidth,
-      boundsHeight + visibleHeight,
-    )
+    this.applyCameraBounds()
     camera.centerOn(focus.x, focus.y)
   }
 

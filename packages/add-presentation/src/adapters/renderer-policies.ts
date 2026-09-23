@@ -268,6 +268,14 @@ function addSquareNextCoord(coord: Extract<CellCoord, { kind: "square" }>, direc
   return null
 }
 
+/**
+ * Where each named direction lands, pointy-top.
+ *
+ * Four of the six are exact: `q±1` is due east/west, and the two diagonals name
+ * themselves. The remaining pair — `(q, r-1)` and `(q, r+1)` — are north-west
+ * and south-east on screen, and are also what a bare Up or Down arrow resolves
+ * to, because pointy-top has no cell directly above or below.
+ */
 function addHexNextCoord(coord: Extract<CellCoord, { kind: "hex" }>, direction: string) {
   if (direction === "up" || direction === "north_west") {
     return { kind: "hex" as const, q: coord.q, r: coord.r - 1 }

@@ -2621,9 +2621,21 @@ function assertInitialDiscoveryAnchors(state) {
     state.map.landmarks.baseCenterWorld && state.map.landmarks.survivorCaveWorld,
     "Studio and Survivor Cave should expose world positions.",
   )
+  // These two landmarks used to sit on one horizontal screen line, because the
+  // flat-top projection made `r + q/2` the screen row and both work out to 3.
+  // Pointy-top makes `r` the row, and they differ — restoring the old framing
+  // would mean moving the Survivor Cave to r=3, which invalidates the protected
+  // canonical route and the Rust assertions that lock its shape. The journey is
+  // a gentle diagonal now. What still matters, and is what this guarded, is
+  // that the Studio reads as a destination off to one side rather than sitting
+  // on top of where the player starts.
+  const landmarkDx =
+    state.map.landmarks.survivorCaveWorld.x - state.map.landmarks.baseCenterWorld.x
+  const landmarkDy =
+    state.map.landmarks.survivorCaveWorld.y - state.map.landmarks.baseCenterWorld.y
   assert.ok(
-    Math.abs(state.map.landmarks.baseCenterWorld.y - state.map.landmarks.survivorCaveWorld.y) <= 1,
-    `The Studio and Survivor Cave should sit on a straight horizontal screen line. Studio y=${state.map.landmarks.baseCenterWorld.y}, cave y=${state.map.landmarks.survivorCaveWorld.y}.`,
+    landmarkDx > 0 && Math.abs(landmarkDy) < Math.abs(landmarkDx),
+    `The Survivor Cave should read as east of the Studio, more across than up or down. dx=${landmarkDx}, dy=${landmarkDy}.`,
   )
   assert.equal(state.map.landmarks.studioLabelVisible, true)
 }

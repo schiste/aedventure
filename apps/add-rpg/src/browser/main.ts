@@ -5389,10 +5389,10 @@ function areaEntrySideFromWorldCells(
   const dr = source.b - target.b
   if (dq === 0 && dr === 0) return null
 
-  // Project the source vector through the same flat-top axial layout used by the
-  // renderer, then classify it against the six side normals.
-  const worldX = 1.5 * dq
-  const worldY = Math.sqrt(3) * (dr + dq / 2)
+  // Project the source vector through the same pointy-top axial layout used by
+  // the renderer, then classify it against the six side normals.
+  const worldX = Math.sqrt(3) * (dq + dr / 2)
+  const worldY = 1.5 * dr
   const magnitude = Math.sqrt(worldX * worldX + worldY * worldY)
   if (magnitude === 0) return null
 

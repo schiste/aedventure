@@ -234,16 +234,30 @@ export function hexCoordInRadius(coord: HexCoord, radius: number): boolean {
   return hexDistance(createHexCoord(0, 0), coord) <= radius
 }
 
+/**
+ * Project an axial coordinate to world space, pointy-top.
+ *
+ * Pointy-top puts a vertex at the top and bottom of each cell and a flat,
+ * vertical edge on the left and right. That orientation is what makes the
+ * arrow keys work: `q+1` is due east and `q-1` due west, so left and right are
+ * exact neighbours rather than diagonals. Under the flat-top layout this used
+ * to use, the cell named "right" actually sat down-and-right, which is the
+ * mismatch players felt as the keys going the wrong way.
+ *
+ * Only the projection changes. Distance, neighbours and blocking are all
+ * computed on the axial coordinates, so the world's shape and every route
+ * through it are exactly as before — this rotates the view, not the map.
+ */
 export function hexToWorld(coord: HexCoord, radius: number): Vector2 {
   return {
-    x: radius * 1.5 * coord.q,
-    y: radius * Math.sqrt(3) * (coord.r + coord.q / 2),
+    x: radius * Math.sqrt(3) * (coord.q + coord.r / 2),
+    y: radius * 1.5 * coord.r,
   }
 }
 
 export function worldToHex(point: Vector2, radius: number): HexCoord {
-  const q = (2 / 3 * point.x) / radius
-  const r = (-point.x / 3 + Math.sqrt(3) / 3 * point.y) / radius
+  const q = (Math.sqrt(3) / 3 * point.x - point.y / 3) / radius
+  const r = (2 / 3 * point.y) / radius
   return roundAxial(q, r)
 }
 
