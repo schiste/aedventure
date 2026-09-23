@@ -639,10 +639,20 @@ const baseManagementState = createModuleMemo<AddBaseManagementState | null>(() =
 const CONTAMINATION_INTRO_SCALE_SECONDS = 6 * 60
 const CONTAMINATION_SETTLED_SCALE_SECONDS = 24 * 60
 
-/** Below this the cue is barely there; above it, it climbs. */
+/**
+ * The first half has to be watchable, not merely present.
+ *
+ * It began at a whisper and climbed to 0.12 by the halfway mark, which read as
+ * nothing happening for three hours and then a sudden turn. The point of the
+ * first phase is that the Hero can see it getting worse, so it starts at a
+ * visible floor the moment any exposure is on the clock and roughly triples
+ * across that half. The second half is where it stops being watchable and
+ * starts being a problem.
+ */
 const CONTAMINATION_LIGHT_CUE_RATIO = 0.5
-const CONTAMINATION_LIGHT_CUE_ALPHA = 0.12
-const CONTAMINATION_FULL_ALPHA = 0.68
+const CONTAMINATION_ONSET_ALPHA = 0.1
+const CONTAMINATION_LIGHT_CUE_ALPHA = 0.32
+const CONTAMINATION_FULL_ALPHA = 0.82
 
 const [contaminationSeconds, setContaminationSeconds] = createSignal(0)
 let lastContaminationClock: number | null = null
@@ -696,14 +706,25 @@ function contaminationRatio(): number {
  * one that stays faint and then grows reads as something getting worse.
  */
 function contaminationAlpha(ratio: number): number {
+  if (ratio <= 0) return 0
   if (ratio <= CONTAMINATION_LIGHT_CUE_RATIO) {
-    return (ratio / CONTAMINATION_LIGHT_CUE_RATIO) * CONTAMINATION_LIGHT_CUE_ALPHA
+    // Straight from the floor, so every hour out there shows on screen.
+    const within = ratio / CONTAMINATION_LIGHT_CUE_RATIO
+    return (
+      CONTAMINATION_ONSET_ALPHA +
+      within * (CONTAMINATION_LIGHT_CUE_ALPHA - CONTAMINATION_ONSET_ALPHA)
+    )
   }
   const beyond = (ratio - CONTAMINATION_LIGHT_CUE_RATIO) / (1 - CONTAMINATION_LIGHT_CUE_RATIO)
   return (
     CONTAMINATION_LIGHT_CUE_ALPHA +
-    Math.pow(beyond, 1.4) * (CONTAMINATION_FULL_ALPHA - CONTAMINATION_LIGHT_CUE_ALPHA)
+    Math.pow(beyond, 1.25) * (CONTAMINATION_FULL_ALPHA - CONTAMINATION_LIGHT_CUE_ALPHA)
   )
+}
+
+/** Breathing quickens as it worsens: 6s when it first shows, 2.6s at its worst. */
+function contaminationBreathSeconds(ratio: number): number {
+  return 6 - ratio * 3.4
 }
 
 
@@ -6086,7 +6107,11 @@ function toxicityHazeStyle(): string {
   // contamination for the same channel.
   const risk = currentTravelRisk()
   const riskEdge = risk === "toxic" ? 0.1 : risk === "fringe" ? 0.06 : 0
-  return `--toxicity-alpha:${Math.min(1, alpha + riskEdge).toFixed(3)};--contamination-ratio:${ratio.toFixed(3)}`
+  return [
+    `--toxicity-alpha:${Math.min(1, alpha + riskEdge).toFixed(3)}`,
+    `--contamination-ratio:${ratio.toFixed(3)}`,
+    `--contamination-breath:${contaminationBreathSeconds(ratio).toFixed(2)}s`,
+  ].join(";")
 }
 
 function daylightMeterStyle(): Record<string, string> {

@@ -821,13 +821,16 @@ h1 {
 }
 
 /*
- * Contamination. A clear centre with the red gathering at the edges, so the
- * world stays readable while the frame closes in — it reads as dread rather
- * than as damage, which is the point: the Hero is immune and does not know it.
+ * Contamination.
  *
- * The inner stop tightens as the ratio climbs, so the clear area shrinks. That
- * is what makes late contamination feel like it is closing rather than simply
- * getting darker.
+ * A field of small hexes rather than a smooth wash: the world is read through
+ * a hex grid, so the thing closing in on the Hero is built from the same shape.
+ * A gradient reads as a filter over the picture; a lattice reads as something
+ * in the air with him.
+ *
+ * The centre stays clear and the lattice gathers at the edges, tightening as it
+ * climbs so it closes rather than merely darkens. It breathes throughout —
+ * lightly, and a little quicker the worse it gets.
  */
 .toxicity-haze {
   position: absolute;
@@ -836,17 +839,62 @@ h1 {
   background:
     radial-gradient(
       circle at 50% 50%,
-      transparent 0 calc(46% - var(--contamination-ratio, 0) * 20%),
-      rgb(var(--contamination-rgb) / var(--toxicity-alpha, 0)) 82%
-    ),
-    linear-gradient(
-      135deg,
-      rgb(var(--contamination-rgb) / 0%),
-      rgb(var(--contamination-rgb) / calc(var(--toxicity-alpha, 0) * 0.3))
+      transparent 0 calc(48% - var(--contamination-ratio, 0) * 20%),
+      rgb(var(--contamination-rgb) / calc(var(--toxicity-alpha, 0) * 0.55)) 88%
     );
   opacity: 1;
   pointer-events: none;
   transition: background 420ms ease;
+}
+
+/*
+ * The lattice.
+ *
+ * The hexes are a mask, not an image: the colour comes from the same
+ * `--contamination-rgb` token as everything else, so a theme change reaches
+ * here too. An SVG data data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='15.588' height='27.000' viewBox='0 0 15.588 27.000'><g fill='none' stroke='black' stroke-width='1.15'><polygon points='7.79,4.50 0.00,9.00 -7.79,4.50 -7.79,-4.50 -0.00,-9.00 7.79,-4.50'/><polygon points='23.38,4.50 15.59,9.00 7.79,4.50 7.79,-4.50 15.59,-9.00 23.38,-4.50'/><polygon points='7.79,31.50 0.00,36.00 -7.79,31.50 -7.79,22.50 -0.00,18.00 7.79,22.50'/><polygon points='23.38,31.50 15.59,36.00 7.79,31.50 7.79,22.50 15.59,18.00 23.38,22.50'/><polygon points='15.59,18.00 7.79,22.50 -0.00,18.00 0.00,9.00 7.79,4.50 15.59,9.00'/></g></svg> cannot read a custom property, and hardcoding the
+ * red inside it would have quietly put one colour beyond the token layer.
+ *
+ * Two mask layers intersected — the lattice and the same falloff as the wash —
+ * so it thickens toward the frame and leaves the middle of the map clear.
+ */
+.toxicity-haze::after {
+  position: absolute;
+  background-color: rgb(var(--contamination-rgb));
+  opacity: var(--toxicity-alpha, 0);
+  content: "";
+  inset: 0;
+  mask-image:
+    url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='15.588' height='27.000' viewBox='0 0 15.588 27.000'><g fill='none' stroke='black' stroke-width='1.15'><polygon points='7.79,4.50 0.00,9.00 -7.79,4.50 -7.79,-4.50 -0.00,-9.00 7.79,-4.50'/><polygon points='23.38,4.50 15.59,9.00 7.79,4.50 7.79,-4.50 15.59,-9.00 23.38,-4.50'/><polygon points='7.79,31.50 0.00,36.00 -7.79,31.50 -7.79,22.50 -0.00,18.00 7.79,22.50'/><polygon points='23.38,31.50 15.59,36.00 7.79,31.50 7.79,22.50 15.59,18.00 23.38,22.50'/><polygon points='15.59,18.00 7.79,22.50 -0.00,18.00 0.00,9.00 7.79,4.50 15.59,9.00'/></g></svg>"),
+    radial-gradient(
+      circle at 50% 50%,
+      transparent 0 calc(44% - var(--contamination-ratio, 0) * 22%),
+      black 92%
+    );
+  mask-repeat: repeat, no-repeat;
+  mask-size: 31.18px 54px, 100% 100%;
+  mask-composite: intersect;
+  animation: contamination-breath var(--contamination-breath, 5.4s) ease-in-out infinite;
+  transition: opacity 420ms ease;
+}
+
+@keyframes contamination-breath {
+  0%,
+  100% {
+    opacity: calc(var(--toxicity-alpha, 0) * 0.82);
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: var(--toxicity-alpha, 0);
+    transform: scale(1.012);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toxicity-haze::after {
+    animation: none;
+  }
 }
 
 .toxicity-haze[data-risk="toxic"],
