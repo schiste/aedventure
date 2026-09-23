@@ -743,6 +743,42 @@ function skipCinematic(): void {
   sendWorkerRequest({ type: "skipCinematic" })
 }
 
+/** The opening recollection, authored in the content catalog. */
+const INTRO_CINEMATIC_ID = "cinematic.intro"
+
+/**
+ * Ask for the opening once the runtime is up.
+ *
+ * Asked from here rather than from the simulation on purpose. A cinematic that
+ * freezes the world, started inside `Simulation::new()`, would hold the clock
+ * still in every headless test that ticks — hundreds of them. Whether it has
+ * already been seen is still authoritative and saved, so the simulation is
+ * free to decline: this only ever asks.
+ */
+let introRequested = false
+createModuleEffect(() => {
+  const state = snapshot()
+  // Read the reactive values *before* any early return.
+  //
+  // The snapshot is a store, so `snapshot()` hands back the same proxy every
+  // update and is not, by itself, a dependency that changes. An effect that
+  // bailed on `introRequested` first would therefore have tracked nothing but
+  // that stable reference, and would never run again — which is exactly what
+  // made "Start over" leave the opening unplayed: the simulation had forgotten
+  // it, the flag had been cleared, and nothing ever re-evaluated to notice.
+  const alreadyPlaying = Boolean(state?.cinematics.active)
+  const alreadySeen = state?.cinematics.seen.includes(INTRO_CINEMATIC_ID) ?? true
+  if (!state || alreadyPlaying || alreadySeen) {
+    // A run that has forgotten the opening may ask for it again.
+    if (!alreadySeen && !alreadyPlaying) introRequested = false
+    return
+  }
+  if (introRequested) return
+  introRequested = true
+  setLastCommand("start_cinematic")
+  sendWorkerRequest({ type: "startCinematic", cinematicId: INTRO_CINEMATIC_ID })
+})
+
 function contaminationAlpha(ratio: number): number {
   if (ratio <= 0) return 0
   if (ratio <= CONTAMINATION_LIGHT_CUE_RATIO) {
@@ -1677,7 +1713,7 @@ function AddRpgApp() {
                   ${() => (playerSettings().muted ? "Muted" : "On")}
                 </button>
               </div>
-              ${settingsVolumeRow("Master volume", "Overall game audio level.", "masterVolume")}
+              ${settingsVolumeRow("Master", "Overall game audio level.", "masterVolume")}
               ${settingsVolumeRow("Music", "Adaptive world bed and story stingers.", "musicVolume")}
               ${settingsVolumeRow("Effects", "Interface cues and future world sounds.", "sfxVolume")}
               <div class="settings-action-row">
@@ -2331,6 +2367,11 @@ function soundMixSummary(): string {
   )}%`
 }
 
+/**
+ * One volume row. `label` is the bare channel name — "Master", not "Master
+ * volume" — because the accessible name below appends the word, and a label
+ * that already carried it read as "Master volume volume" to a screen reader.
+ */
 function settingsVolumeRow(
   label: string,
   detail: string,
@@ -7675,6 +7716,12 @@ async function resetRuntime(): Promise<void> {
     setLastCommand("reset")
     setResetCount((count) => count + 1)
     travelDramaState = "fresh"
+    // Module-level "once" flags belong here or a new run inherits the old
+    // run's history: the opening would never be asked for again, and the
+    // reveal line would stay silent the second time it lands. The simulation
+    // has already forgotten both — this is the browser catching up.
+    introRequested = false
+    contaminationRevealAnnounced = false
     setBaseNavigationUnlocked(false)
     setTravelDialog(null)
     pendingOfflineReturnSummary = null

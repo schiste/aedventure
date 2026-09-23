@@ -2,7 +2,11 @@ const assert = require("node:assert")
 const fs = require("node:fs")
 const path = require("node:path")
 const { chromium } = require("playwright")
-const { assertNonBlankImageBuffer, captureNonBlankImage } = require("./app-qa-contracts.cjs")
+const {
+  assertNonBlankImageBuffer,
+  captureNonBlankImage,
+  dismissOpeningCinematic,
+} = require("./app-qa-contracts.cjs")
 const { startStaticAppServer } = require("./app-qa-server.cjs")
 const {
   captureAddBrowserFixture,
@@ -73,6 +77,7 @@ async function main() {
     }, { autosaveStorageKey: ADD_AUTOSAVE_STORAGE_KEY, settingsStorageKey: ADD_SETTINGS_STORAGE_KEY })
 
     await page.goto(`${url}/app`, { waitUntil: "domcontentloaded" })
+    await dismissOpeningCinematic(page, { timeoutMs: qaTimeout(20000) })
     const initial = await runScenario("boot and render text contract", () =>
       assertBootAndRenderTextContract(page, consoleErrors),
     )
@@ -736,7 +741,9 @@ async function assertAdminDeveloperSeparation(page, consoleErrors) {
   ;[
     "Sound",
     "Mute all",
-    "Master volume",
+    // The visible label is the bare channel name; the word "volume" lives in
+    // the accessible name, which the control-id assertions below cover.
+    "Master",
     "Music",
     "Effects",
     "Play pace",
@@ -753,6 +760,40 @@ async function assertAdminDeveloperSeparation(page, consoleErrors) {
       `Player Settings should include ${expectedText}.`,
     )
   })
+
+  // Copy is rewritten often; the controls are the contract. Assert on the ids
+  // and the accessible names so a wording pass cannot silently drop a control,
+  // and so a duplicated label like "Master volume volume" is caught.
+  for (const [id, accessibleName] of [
+    ["settings-master-volume", "Master volume"],
+    ["settings-music-volume", "Music volume"],
+    ["settings-sfx-volume", "Effects volume"],
+  ]) {
+    assert.equal(
+      await page.locator(`#${id}`).getAttribute("aria-label"),
+      accessibleName,
+      `Player Settings control #${id} should be named "${accessibleName}".`,
+    )
+  }
+  for (const id of [
+    "settings-toggle-mute",
+    "settings-reset-audio",
+    "settings-toggle-time",
+    "settings-cycle-speed",
+    "settings-toggle-objective",
+    "settings-toggle-travel-markers",
+    "settings-toggle-motion",
+    "settings-toggle-autosave",
+    "settings-save-now",
+    "settings-load-autosave",
+    "settings-start-over",
+  ]) {
+    assert.equal(
+      await page.locator(`#${id}`).count(),
+      1,
+      `Player Settings should offer #${id}.`,
+    )
+  }
   await page.locator("#settings-toggle-mute").click()
   const mutedSettings = await waitForTextState(
     page,

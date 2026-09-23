@@ -1910,7 +1910,7 @@
   "cinematics": [
     {
       "id": "cinematic.sample",
-      "label": "Sample moment",
+      "label": "Engine fixture",
       "skippable": true,
       "freezeWorld": true,
       "replay": "once",
@@ -1938,6 +1938,119 @@
           "copy": "",
           "advance": "media_end",
           "seconds": 30.0
+        }
+      ]
+    },
+    {
+      "id": "cinematic.intro",
+      "label": "Before the surface",
+      "skippable": true,
+      "freezeWorld": true,
+      "replay": "once",
+      "beats": [
+        {
+          "id": "cinematic.intro.beat.year",
+          "media": "text",
+          "assetId": "",
+          "copy": "311 years after the Silence.",
+          "advance": "auto",
+          "seconds": 3.0
+        },
+        {
+          "id": "cinematic.intro.beat.caves",
+          "media": "text",
+          "assetId": "",
+          "copy": "Two thousand people live in the Grottes de la Bresme. You are one of them. It is not a shelter. It is a home, and it is full.",
+          "advance": "auto",
+          "seconds": 5.0
+        },
+        {
+          "id": "cinematic.intro.beat.depth",
+          "media": "text",
+          "assetId": "",
+          "copy": "You know the place by depth. The Entrance Hall at five metres. La Salle Piaf at twenty, where the records are kept. The Sanctuary at forty-five, where you sleep.",
+          "advance": "auto",
+          "seconds": 6.0
+        },
+        {
+          "id": "cinematic.intro.beat.drums",
+          "media": "text",
+          "assetId": "",
+          "copy": "The drums never stop. Children learn the rotations before they learn why. Down here, silence is not peace. Silence is a symptom.",
+          "advance": "auto",
+          "seconds": 5.0
+        },
+        {
+          "id": "cinematic.intro.beat.name",
+          "media": "text",
+          "assetId": "",
+          "copy": "Your name is Lindquist. People are careful with it. The Lindquists take the dangerous missions, and the Lindquists talk about the Studio.",
+          "advance": "auto",
+          "seconds": 5.0
+        },
+        {
+          "id": "cinematic.intro.beat.kaylee",
+          "media": "text",
+          "assetId": "",
+          "copy": "It started with Kaylee Jo, who walked in from outside looking for a party and stayed to find the records. What she promised at the end of it, the family has repeated ever since.",
+          "advance": "auto",
+          "seconds": 6.0
+        },
+        {
+          "id": "cinematic.intro.beat.pressure",
+          "media": "text",
+          "assetId": "",
+          "copy": "The caves cannot hold more of you. The Council knows it. There is no safe way to make room.",
+          "advance": "auto",
+          "seconds": 4.0
+        },
+        {
+          "id": "cinematic.intro.beat.lead",
+          "media": "text",
+          "assetId": "",
+          "copy": "So when an old Lindquist map matched a place nobody has walked to, the argument stopped being about faith. It became about space.",
+          "advance": "auto",
+          "seconds": 5.0
+        },
+        {
+          "id": "cinematic.intro.beat.council",
+          "media": "text",
+          "assetId": "",
+          "copy": "Sylvain Marchand authorised it. Reconnaissance. Not a promise.",
+          "advance": "auto",
+          "seconds": 4.0
+        },
+        {
+          "id": "cinematic.intro.beat.three",
+          "media": "text",
+          "assetId": "",
+          "copy": "Three of you go. Julien wants it to be true. Marie wants it proven. You want to know whether any of it ever meant anything.",
+          "advance": "auto",
+          "seconds": 6.0
+        },
+        {
+          "id": "cinematic.intro.beat.rules",
+          "media": "text",
+          "assetId": "",
+          "copy": "The rules are read out twice, because everyone knows what a family story can do to good discipline. Verify. Record. Turn back before four hours. If anyone shows symptoms, abandon it.",
+          "advance": "auto",
+          "seconds": 7.0
+        },
+        {
+          "id": "cinematic.intro.beat.farewell",
+          "media": "text",
+          "assetId": "",
+          "copy": "You say goodbye in the quarters. Inspection at the Entrance Hall. Then the old quarry passages, going up.",
+          "advance": "auto",
+          "seconds": 5.0
+        },
+        {
+          "id": "cinematic.intro.beat.threshold",
+          "media": "text",
+          "assetId": "",
+          "copy": "The last door you know is behind you.",
+          "advance": "input",
+          "seconds": 0.0
         }
       ]
     }

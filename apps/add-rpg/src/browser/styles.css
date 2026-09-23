@@ -3748,7 +3748,7 @@ h1 {
     radial-gradient(circle at 82% 76%, rgb(var(--mode-base-warm-rgb)/ 18%), transparent 36%),
     linear-gradient(135deg, rgb(255 221 148 / 54%), rgb(var(--aqua-rgb)/ 30%)),
     rgb(19 27 22 / 96%);
-  clip-path: polygon(18% 0, 82% 0, 100% 50%, 82% 100%, 18% 100%, 0 50%);
+  clip-path: polygon(9% 0, 91% 0, 100% 50%, 91% 100%, 9% 100%, 0 50%);
   box-shadow:
     0 34px 96px rgb(var(--shadow-rgb)/ 48%),
     0 0 0 1px rgb(var(--wash-rgb)/ 10%);
@@ -3775,7 +3775,8 @@ h1 {
   width: 100%;
   height: 100%;
   min-width: 0;
-  padding: clamp(30px, 4.5vw, 42px) clamp(108px, 16vw, 132px);
+  /* Tracks the clip above: enough to clear the diagonal, no more. */
+  padding: clamp(28px, 4vw, 38px) clamp(56px, 8vw, 74px);
   background:
     linear-gradient(180deg, rgb(var(--wash-rgb)/ 12%), rgb(var(--wash-rgb)/ 5%)),
     rgb(14 24 21 / 94%);
@@ -3878,6 +3879,39 @@ h1 {
   border-top: 0;
 }
 
+/*
+ * One column for every control, so the right edge is a line rather than a
+ * ragged margin. Widths ran from 48px ("On") to 182px ("Save now") and each
+ * row started somewhere different, which read as carelessness even though
+ * every control worked.
+ */
+.settings-row > :is(button, .settings-confirm-pair, .settings-volume-control) {
+  justify-self: end;
+  min-width: 104px;
+}
+
+.settings-row > button {
+  text-align: center;
+}
+
+/* Paired actions share the column and split it evenly. */
+.settings-confirm-pair > button {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Save and Load sit on one line and match each other. */
+.settings-save-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.settings-save-actions > button {
+  min-width: 0;
+  text-align: center;
+}
+
 .settings-row span {
   display: grid;
   min-width: 0;
@@ -3901,12 +3935,32 @@ h1 {
   cursor: default;
 }
 
+/*
+ * Volume rows stack instead of sitting side by side.
+ *
+ * The sound panel holds the widest controls in the narrower of the two
+ * columns, so a slider beside its label left the copy about 120px and wrapped
+ * "Adaptive world bed and story stingers." over four lines. Giving the slider
+ * its own line hands the description the full column.
+ */
+.settings-volume-row {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.settings-row > .settings-volume-row-control,
+.settings-volume-row > .settings-volume-control {
+  justify-self: stretch;
+  min-width: 0;
+}
+
 .settings-volume-control {
   display: grid;
-  grid-template-columns: minmax(7.5rem, 1fr) 3.1rem;
+  /* The slider gives ground to the copy beside it: a 16rem minimum left the
+   * sound panel's descriptions wrapping to four lines in a column it shares. */
+  grid-template-columns: minmax(5.5rem, 1fr) 2.8rem;
   gap: 8px;
   align-items: center;
-  min-width: min(16rem, 42vw);
+  min-width: min(10.5rem, 38vw);
 }
 
 .settings-volume-control input[type="range"] {
@@ -3932,6 +3986,7 @@ h1 {
 .settings-save-actions {
   margin-top: 8px;
 }
+
 
 @media (max-width: 780px) {
   .settings-hex-window {

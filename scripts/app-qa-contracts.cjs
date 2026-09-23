@@ -144,7 +144,53 @@ async function captureNonBlankImage(target, screenshotPath, label, options = {})
   throw lastError
 }
 
+/**
+ * Get past the opening cinematic, the way a player does.
+ *
+ * A fresh run opens on `cinematic.intro`, a modal over the whole interface, so
+ * without this every scenario after boot is clicking at a dialog. Skipping is
+ * what the Skip button is for — this is the same route a returning player
+ * takes, not a test-only back door.
+ *
+ * Two details that matter, both learned the hard way:
+ * - it waits for the runtime first, because the intro is requested when the
+ *   first snapshot lands, so a check straight after `goto` finds nothing and
+ *   the modal then opens behind it;
+ * - it wants two clear looks in a row, so a stage that has not opened yet is
+ *   never mistaken for one that is already gone.
+ *
+ * A run that has already seen the opening shows no stage; that is not a failure.
+ */
+async function dismissOpeningCinematic(page, { timeoutMs = 20000 } = {}) {
+  await page.waitForFunction(
+    () => typeof window.render_game_to_text === "function",
+    undefined,
+    { timeout: timeoutMs },
+  )
+
+  const deadline = Date.now() + timeoutMs
+  let clearRuns = 0
+  while (Date.now() < deadline) {
+    if (page.isClosed()) return
+    const skip = page.locator("#cinematic-skip")
+    if (await skip.count()) {
+      try {
+        await skip.click({ timeout: Math.min(2000, timeoutMs) })
+      } catch {
+        // The stage can finish between the count and the click.
+      }
+    }
+    clearRuns = (await page.locator("#cinematic-stage").count()) ? 0 : clearRuns + 1
+    if (clearRuns >= 2) return
+    await page.waitForTimeout(150)
+  }
+  throw new Error(
+    "The opening cinematic never cleared; every later scenario would be blocked by it.",
+  )
+}
+
 module.exports = {
+  dismissOpeningCinematic,
   SHARED_ENGINE_PACKAGES,
   assertNonBlankImageBuffer,
   assertOfficeRenderGameContract,

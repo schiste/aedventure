@@ -352,6 +352,12 @@ export interface RuntimeTextState {
     readonly discoveredCells: readonly string[]
     readonly heroMap: string
     readonly heroAssigned: boolean
+    /** Cinematic playback: a modal over the interface, so QA must see it. */
+    readonly cinematics: {
+      readonly activeId: string | null
+      readonly beatIndex: number | null
+      readonly seen: readonly string[]
+    }
     readonly activeWorldAction: string | null
     readonly resources: {
       readonly bassline: number
@@ -1489,6 +1495,14 @@ function snapshotTelemetry(snapshot: SimulationSnapshot): NonNullable<RuntimeTex
     discoveredCells: snapshot.discoveredCells.map((coord) => `${coord.q},${coord.r}`),
     heroMap: `${snapshot.heroMap.q},${snapshot.heroMap.r}`,
     heroAssigned: snapshot.roster.heroAssigned,
+    // Cinematic playback is player-visible state — it can hold a modal over
+    // the whole interface — so the QA text contract has to be able to see it.
+    // Debugging why an opening did or did not replay is guesswork without it.
+    cinematics: {
+      activeId: snapshot.cinematics.active?.cinematicId ?? null,
+      beatIndex: snapshot.cinematics.active?.beatIndex ?? null,
+      seen: [...snapshot.cinematics.seen],
+    },
     activeWorldAction: snapshot.activeWorldAction?.actionId ?? null,
     resources: {
       bassline: snapshot.resources.bassline,

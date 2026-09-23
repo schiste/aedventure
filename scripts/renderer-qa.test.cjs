@@ -7,6 +7,7 @@ const { PNG } = require("pngjs")
 const {
   assertNonBlankImageBuffer,
   captureNonBlankImage,
+  dismissOpeningCinematic,
   assertOfficeRenderGameContract,
 } = require("./app-qa-contracts.cjs")
 const { startStaticAppServer } = require("./app-qa-server.cjs")
@@ -1030,6 +1031,9 @@ async function verifyAddRendererTopologyFixtures(browser, report) {
 
   try {
     await page.goto(`${url}/app`, { waitUntil: "domcontentloaded" })
+    // The opening cinematic is a modal; without this every click below lands
+    // on the dialog instead of the map.
+    await dismissOpeningCinematic(page, { timeoutMs: Math.round(20000 * QA_TIMEOUT_SCALE) })
     const hexState = await waitForTextState(
       page,
       (state) =>

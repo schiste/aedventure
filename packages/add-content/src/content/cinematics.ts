@@ -60,14 +60,36 @@ export interface AuthoredCinematicDef {
 }
 
 /**
- * One sample, and it is only a sample: it exists so the pipeline has something
- * to carry end to end and so the authored shape is visible. Replace or delete
- * it when real moments arrive — nothing triggers it.
+ * The opening recollection.
+ *
+ * DRAFT, written to be rewritten. Every fact here is drawn from canon; the
+ * phrasing is not canon and the voice is a first pass.
+ *
+ * The canon pages are deliberately not named here: content may cite lore only
+ * through `content/lore-refs.ts` (see `docs/lore-engine-content-bricks.md`),
+ * and that registry only knows the content families `content:explain` resolves
+ * — cinematics are not one of them yet. Registering the family would let this
+ * draft carry its sources properly, and is worth doing before the beats become
+ * real shots.
+ *
+ * It is a memory, not exposition: the Hero going back over the life they are
+ * walking away from, and it stops at the decision rather than the journey.
+ * Beats are `text` so the pipeline carries it today; each one is a shot that
+ * wants an image or a clip, which is a change of `media` and `assetId` and
+ * nothing else.
+ *
+ * Three things canon says the player must NOT know yet, and none of these
+ * beats say: whether the Hero is Resilient, whether Studio Echo still stands,
+ * and whether any Crystal is there. The ending is commitment, not discovery.
  */
 export const CINEMATICS: readonly AuthoredCinematicDef[] = [
   {
+    // The engine's fixture, not a moment. It is the only definition exercising
+    // all three advance kinds, which is what the playback tests need, and
+    // nothing triggers it. Keep it authored alongside the real cinematics so
+    // those tests break when the shape changes rather than when content does.
     id: "cinematic.sample",
-    label: "Sample moment",
+    label: "Engine fixture",
     skippable: true,
     freezeWorld: true,
     replay: "once",
@@ -75,6 +97,32 @@ export const CINEMATICS: readonly AuthoredCinematicDef[] = [
       { id: "cinematic.sample.beat.title", media: "text", assetId: "", copy: "A beat of type.", advance: "auto", seconds: 2 },
       { id: "cinematic.sample.beat.still", media: "image", assetId: "sample/still", copy: "A still, with a caption.", advance: "input", seconds: 0 },
       { id: "cinematic.sample.beat.clip", media: "video", assetId: "sample/clip", copy: "", advance: "mediaEnd", seconds: 30 },
+    ],
+  },
+  {
+    id: "cinematic.intro",
+    label: "Before the surface",
+    // The opening should not be cuttable on a first run, but a player who has
+    // seen it and starts over has earned the skip. `once` plus `skippable`
+    // gives that: it only ever plays through in full the first time.
+    skippable: true,
+    freezeWorld: true,
+    replay: "once",
+    beats: [
+      { id: "cinematic.intro.beat.year", media: "text", assetId: "", copy: "311 years after the Silence.", advance: "auto", seconds: 3 },
+      { id: "cinematic.intro.beat.caves", media: "text", assetId: "", copy: "Two thousand people live in the Grottes de la Bresme. You are one of them. It is not a shelter. It is a home, and it is full.", advance: "auto", seconds: 5 },
+      { id: "cinematic.intro.beat.depth", media: "text", assetId: "", copy: "You know the place by depth. The Entrance Hall at five metres. La Salle Piaf at twenty, where the records are kept. The Sanctuary at forty-five, where you sleep.", advance: "auto", seconds: 6 },
+      { id: "cinematic.intro.beat.drums", media: "text", assetId: "", copy: "The drums never stop. Children learn the rotations before they learn why. Down here, silence is not peace. Silence is a symptom.", advance: "auto", seconds: 5 },
+      { id: "cinematic.intro.beat.name", media: "text", assetId: "", copy: "Your name is Lindquist. People are careful with it. The Lindquists take the dangerous missions, and the Lindquists talk about the Studio.", advance: "auto", seconds: 5 },
+      { id: "cinematic.intro.beat.kaylee", media: "text", assetId: "", copy: "It started with Kaylee Jo, who walked in from outside looking for a party and stayed to find the records. What she promised at the end of it, the family has repeated ever since.", advance: "auto", seconds: 6 },
+      { id: "cinematic.intro.beat.pressure", media: "text", assetId: "", copy: "The caves cannot hold more of you. The Council knows it. There is no safe way to make room.", advance: "auto", seconds: 4 },
+      { id: "cinematic.intro.beat.lead", media: "text", assetId: "", copy: "So when an old Lindquist map matched a place nobody has walked to, the argument stopped being about faith. It became about space.", advance: "auto", seconds: 5 },
+      { id: "cinematic.intro.beat.council", media: "text", assetId: "", copy: "Sylvain Marchand authorised it. Reconnaissance. Not a promise.", advance: "auto", seconds: 4 },
+      { id: "cinematic.intro.beat.three", media: "text", assetId: "", copy: "Three of you go. Julien wants it to be true. Marie wants it proven. You want to know whether any of it ever meant anything.", advance: "auto", seconds: 6 },
+      { id: "cinematic.intro.beat.rules", media: "text", assetId: "", copy: "The rules are read out twice, because everyone knows what a family story can do to good discipline. Verify. Record. Turn back before four hours. If anyone shows symptoms, abandon it.", advance: "auto", seconds: 7 },
+      { id: "cinematic.intro.beat.farewell", media: "text", assetId: "", copy: "You say goodbye in the quarters. Inspection at the Entrance Hall. Then the old quarry passages, going up.", advance: "auto", seconds: 5 },
+      // The last beat waits: the threshold is the player's to cross.
+      { id: "cinematic.intro.beat.threshold", media: "text", assetId: "", copy: "The last door you know is behind you.", advance: "input", seconds: 0 },
     ],
   },
 ]
