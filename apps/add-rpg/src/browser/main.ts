@@ -5667,9 +5667,6 @@ function objectivePanelBody(): unknown {
     <ol class="first-playable-list">
       ${firstPlayableStepRows}
     </ol>
-    ${/* The steps above are the next few moves; this is the whole spine with
-        live status, which the interface could not previously show. */ ""}
-    ${schemaContext("ui.panel.objectives", "What the run involves")}
   `
 }
 
