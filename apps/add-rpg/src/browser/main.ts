@@ -451,6 +451,15 @@ const [autoTick, setAutoTick] = createSignal(true)
 const [timeSpeed, setTimeSpeed] = createSignal(1)
 const [playerSettings, setPlayerSettings] = createSignal<AddSettings>(initialPlayerSettings)
 const [settingsOpen, setSettingsOpen] = createSignal(false)
+/**
+ * Whether "Start over" has been armed and is waiting for confirmation.
+ *
+ * Starting over throws the run away, so it asks twice. A two-step button rather
+ * than `window.confirm`: a native dialog blocks the page, which would stall the
+ * browser QA suite, and it cannot be styled or dismissed with Escape like the
+ * rest of this interface.
+ */
+const [startOverArmed, setStartOverArmed] = createSignal(false)
 const [adminOpen, setAdminOpen] = createSignal(false)
 const [devToolsOpen, setDevToolsOpen] = createSignal(false)
 const [liveTuningDashboardVisible, setLiveTuningDashboardVisible] = createSignal(false)
@@ -1829,6 +1838,49 @@ function AddRpgApp() {
                   Load autosave
                 </button>
               </div>
+              <div class="settings-row settings-start-over-row">
+                <span>
+                  <strong>Start over</strong>
+                  <small>
+                    ${() =>
+                      startOverArmed() ? "No undo." : "Back to the opening."}
+                  </small>
+                </span>
+                ${() =>
+                  startOverArmed()
+                    ? html`
+                        <div class="settings-confirm-pair">
+                          <button
+                            id="settings-start-over-cancel"
+                            type="button"
+                            class="ghost-button"
+                            onClick=${() => setStartOverArmed(false)}
+                          >
+                            Keep playing
+                          </button>
+                          <button
+                            id="settings-start-over-confirm"
+                            type="button"
+                            class="danger-button"
+                            onClick=${() => void startOver()}
+                            disabled=${() => !ready()}
+                          >
+                            Start over
+                          </button>
+                        </div>
+                      `
+                    : html`
+                        <button
+                          id="settings-start-over"
+                          type="button"
+                          class="ghost-button"
+                          onClick=${() => setStartOverArmed(true)}
+                          disabled=${() => !ready()}
+                        >
+                          Start over
+                        </button>
+                      `}
+              </div>
             </section>
           </div>
         </div>
@@ -2327,6 +2379,15 @@ function openDevView(): void {
 
 function closeSettingsView(): void {
   setSettingsOpen(false)
+  // Never leave a destructive action armed behind a closed panel.
+  setStartOverArmed(false)
+}
+
+/** Throw the run away and come back at the opening. */
+async function startOver(): Promise<void> {
+  setStartOverArmed(false)
+  await resetRuntime()
+  closeSettingsView()
 }
 
 function closeAdminView(): void {

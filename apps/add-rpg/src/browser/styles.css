@@ -5756,3 +5756,16 @@ h1 {
     transition: none;
   }
 }
+
+/* The armed state of "Start over": two buttons where one was, so the confirm
+ * never lands under a pointer that was already heading for the first click. */
+.settings-confirm-pair {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.settings-start-over-row strong {
+  color: rgb(var(--danger-rgb) / 92%);
+}
