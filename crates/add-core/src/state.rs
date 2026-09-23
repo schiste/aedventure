@@ -44,6 +44,8 @@ pub struct GameState {
     #[serde(default)]
     pub hero_survival: HeroSurvivalState,
     #[serde(default)]
+    pub contamination: ContaminationState,
+    #[serde(default)]
     pub narrative: NarrativeState,
     pub crystal_circle: CrystalCircleState,
     pub processing: ProcessingState,
@@ -178,6 +180,11 @@ pub enum GameEvent {
     EffectRejected { reason: String },
     /// A Hero progression track leveled up this frame.
     HeroLeveledUp { track: String, level: u16 },
+    /// Contamination filled for the first time and the Hero survived it. The
+    /// moment he learns he is immune, though he does not phrase it that way.
+    ContaminationRevealed,
+    /// Contamination filled again. The run is over.
+    ContaminationFatal,
     /// An auto-battler skirmish finished. `outcome` is "victory" or "retreat".
     CombatResolved {
         creature_id: String,
@@ -269,6 +276,7 @@ impl GameState {
             },
             hero_progress: HeroProgressState::new(),
             hero_survival: HeroSurvivalState::new(),
+            contamination: ContaminationState::new(),
             narrative: NarrativeState::new(),
             crystal_circle: CrystalCircleState {
                 base_slots: DEFAULT_BASE_SLOTS,
@@ -456,6 +464,63 @@ impl HeroSurvivalState {
             wounds: WoundTrackState::hero_baseline(),
             forced_return: None,
         }
+    }
+}
+
+/// What the Hero believes is happening to him out in the static.
+///
+/// He is immune and does not know it. Exposure accrues whenever he is beyond
+/// the field, and the first time it fills he is certain he is dying — and is
+/// not. Every time after that it kills him, because he has already learned what
+/// it should mean.
+///
+/// This is authoritative and saved: a death that a reload undoes is not a
+/// death. The `viral_load_ratio` beside it is a different quantity entirely and
+/// is untouched by any of this.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ContaminationState {
+    /// Seconds spent beyond the field, against the current scale.
+    #[serde(default)]
+    pub exposure_seconds: f64,
+    /// Has he already been certain once, and been wrong?
+    #[serde(default)]
+    pub reveal_seen: bool,
+    /// Set the second time exposure fills. The run is over.
+    #[serde(default)]
+    pub fatal: bool,
+}
+
+impl ContaminationState {
+    /// Six hours before the reveal, twenty-four after: the walk that first
+    /// convinces him is short, and nothing is ever that frightening again.
+    pub const INTRO_SCALE_SECONDS: f64 = 6.0 * 60.0;
+    pub const SETTLED_SCALE_SECONDS: f64 = 24.0 * 60.0;
+    /// Larger steps are offline catch-up, not play. Returning to the game
+    /// should not find the Hero dead of an absence; a crossing is 60 seconds,
+    /// so real play passes this comfortably.
+    pub const MAX_STEP_SECONDS: f64 = 180.0;
+
+    pub fn new() -> Self {
+        Self { exposure_seconds: 0.0, reveal_seen: false, fatal: false }
+    }
+
+    pub fn scale_seconds(&self) -> f64 {
+        if self.reveal_seen {
+            Self::SETTLED_SCALE_SECONDS
+        } else {
+            Self::INTRO_SCALE_SECONDS
+        }
+    }
+
+    pub fn ratio(&self) -> f64 {
+        (self.exposure_seconds / self.scale_seconds()).clamp(0.0, 1.0)
+    }
+}
+
+impl Default for ContaminationState {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1119,7 +1184,7 @@ pub fn initial_discovered_cells() -> BTreeSet<HexCoordState> {
         .collect()
 }
 
-fn cube_distance(q1: i8, r1: i8, q2: i8, r2: i8) -> u8 {
+pub(crate) fn cube_distance(q1: i8, r1: i8, q2: i8, r2: i8) -> u8 {
     let dq = q1 - q2;
     let dr = r1 - r2;
     dq.abs().max(dr.abs()).max((-(q1 + r1) + (q2 + r2)).abs()) as u8

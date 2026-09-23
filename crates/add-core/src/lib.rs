@@ -2667,6 +2667,76 @@ mod tests {
     }
 
     #[test]
+    fn contamination_reveals_once_then_kills() {
+        // The Hero starts at the Survivor Cave, six hexes from the field, so he
+        // is exposed from the first tick.
+        let mut simulation = Simulation::new();
+        assert_eq!(simulation.state().contamination.exposure_seconds, 0.0);
+
+        // A step larger than the cap is offline catch-up, not play. Coming back
+        // to the game must not find him dead of an absence.
+        simulation.apply(GameCommand::Tick { seconds: 4000.0 });
+        assert_eq!(
+            simulation.state().contamination.exposure_seconds, 0.0,
+            "an absence must not accrue dread"
+        );
+
+        // Six hours out there and he is certain. He is also wrong.
+        for _ in 0..6 {
+            simulation.apply(GameCommand::Tick { seconds: 60.0 });
+        }
+        assert!(simulation.state().contamination.reveal_seen);
+        assert!(!simulation.state().contamination.fatal, "the first fill is survived");
+        assert_eq!(
+            simulation.state().contamination.exposure_seconds, 0.0,
+            "surviving it clears the clock"
+        );
+        assert!(
+            simulation.state().contamination.scale_seconds()
+                > crate::state::ContaminationState::INTRO_SCALE_SECONDS,
+            "and moves him onto the longer scale"
+        );
+
+        // Twenty-four hours this time, and it means what he thought it meant.
+        for _ in 0..24 {
+            simulation.apply(GameCommand::Tick { seconds: 60.0 });
+        }
+        assert!(simulation.state().contamination.fatal);
+
+        // Death is terminal: further time changes nothing.
+        let at_death = simulation.state().contamination.exposure_seconds;
+        simulation.apply(GameCommand::Tick { seconds: 60.0 });
+        assert_eq!(simulation.state().contamination.exposure_seconds, at_death);
+    }
+
+    #[test]
+    fn contamination_survives_a_save_round_trip() {
+        // The whole point of moving this into the simulation: a reload must not
+        // undo a death.
+        let mut simulation = Simulation::new();
+        for _ in 0..6 {
+            simulation.apply(GameCommand::Tick { seconds: 60.0 });
+        }
+        for _ in 0..24 {
+            simulation.apply(GameCommand::Tick { seconds: 60.0 });
+        }
+        assert!(simulation.state().contamination.fatal);
+
+        let saved = serde_json::to_string(simulation.state()).expect("state serializes");
+        let restored: GameState = serde_json::from_str(&saved).expect("state restores");
+        assert!(restored.contamination.fatal, "a reload must not undo a death");
+        assert!(restored.contamination.reveal_seen);
+
+        // A save written before contamination existed loads as an untouched run
+        // rather than being rejected.
+        let mut older: serde_json::Value = serde_json::from_str(&saved).expect("value");
+        older.as_object_mut().expect("object").remove("contamination");
+        let legacy: GameState =
+            serde_json::from_value(older).expect("older saves still load");
+        assert_eq!(legacy.contamination, crate::state::ContaminationState::new());
+    }
+
+    #[test]
     fn outdoor_action_owes_the_walk_home() {
         // The Hero used to teleport into the Studio the instant an outdoor
         // action finished, in the same call that set the action's flags. That

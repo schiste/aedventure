@@ -619,24 +619,13 @@ const baseManagementState = createModuleMemo<AddBaseManagementState | null>(() =
 // ---------------------------------------------------------------------------
 // Contamination.
 //
-// Declared with the other module state and above every consumer. Placed lower
-// in the file its effect ran before the state it reads had initialised, and the
-// bundler turns that into a silent `undefined` rather than a TDZ error — the
-// runtime never finished booting and the console said only "is not a function".
+// The quantity itself is authoritative and lives in the save: how long the Hero
+// has been beyond the field, whether he has already been certain once, and
+// whether the static has finally taken him. A death a reload undoes is not a
+// death, so none of that is decided here. This file only draws it.
 // ---------------------------------------------------------------------------
 
-/**
- * How long the Hero can be out there before the screen is entirely red.
- *
- * Six hours during the opening, which is roughly the walk to the Studio: the
- * contamination fills as the crossing goes on and is at its worst as the field
- * comes into view. Twenty-four hours after that, because by then the Hero has
- * been outside, survived, and privately stopped believing the worst of it.
- *
- * None of this is the survival simulation. The Hero is immune and does not know
- * it, so the red is what he expects to be happening rather than what is. The
- * authoritative viral load is untouched by any of this.
- */
+/** Mirrors `ContaminationState` in add-core; the scale depends on the reveal. */
 const CONTAMINATION_INTRO_SCALE_SECONDS = 6 * 60
 const CONTAMINATION_SETTLED_SCALE_SECONDS = 24 * 60
 
@@ -655,16 +644,8 @@ const CONTAMINATION_ONSET_ALPHA = 0.1
 const CONTAMINATION_LIGHT_CUE_ALPHA = 0.32
 const CONTAMINATION_FULL_ALPHA = 0.82
 
-const [contaminationSeconds, setContaminationSeconds] = createSignal(0)
 /** What the Hero says to himself the first time he is certain he is dying. */
 const [heroAside, setHeroAside] = createSignal<string | null>(null)
-const [contaminationFatal, setContaminationFatal] = createSignal(false)
-/**
- * The first time contamination reaches full is the reveal, and it is survived.
- * Every time after that it kills, because by then he knows what it should mean.
- */
-const [contaminationRevealSeen, setContaminationRevealSeen] = createSignal(false)
-let lastContaminationClock: number | null = null
 
 /**
  * Not a line of dialogue with anybody — he is alone, and this is the sound a
@@ -673,88 +654,33 @@ let lastContaminationClock: number | null = null
 const CONTAMINATION_REVEAL_LINE = "what the... oh no..."
 const CONTAMINATION_REVEAL_HOLD_MS = 4200
 
-/**
- * The largest clock jump that counts as exposure.
- *
- * A crossing advances the clock a game hour in one step, so the limit has to
- * clear that comfortably. Offline catch-up advances it by however long the game
- * was closed, which is thousands — and letting that through meant returning to
- * the game to find the Hero had died while it was shut. Dread is something you
- * sit through, not something that accrues in your absence.
- */
-const CONTAMINATION_MAX_STEP_SECONDS = 180
+function contaminationRatio(): number {
+  const contamination = snapshot()?.contamination
+  if (!contamination) return 0
+  const scale = contamination.revealSeen
+    ? CONTAMINATION_SETTLED_SCALE_SECONDS
+    : CONTAMINATION_INTRO_SCALE_SECONDS
+  return Math.min(1, Math.max(0, contamination.exposureSeconds / scale))
+}
 
-/** Before the reveal every hour outside counts, and on the shorter scale. */
-function contaminationIntroActive(): boolean {
-  return !contaminationRevealSeen()
+function contaminationFatal(): boolean {
+  return snapshot()?.contamination.fatal ?? false
 }
 
 /**
- * Accrue exposure from the authoritative clock rather than wall time, so it
- * tracks offline catch-up and time-speed exactly as everything else does.
+ * Speak the line on the frame the reveal lands, watching the saved flag rather
+ * than the event stream: a player who reloads mid-hold has already had the
+ * moment, and the flag says so where a replayed event would not.
  */
+let contaminationRevealAnnounced = false
 createModuleEffect(() => {
-  const currentSnapshot = snapshot()
-  if (!currentSnapshot) return
-  const clock = currentSnapshot.clockSeconds
-  const previous = lastContaminationClock
-  lastContaminationClock = clock
-  if (previous === null || clock < previous) return
-
-  if (contaminationFatal()) return
-
-  // Out in the world is out in the world, before the reveal and after it. Tying
-  // this to `heroSurvival.location` alone was wrong: that reads "studio" for
-  // the whole overworld crossing, so after the reveal the dread would clear and
-  // never return however far the Hero walked. The bubble's own field is the
-  // only place it stops.
-  const intro = contaminationIntroActive()
-  const sheltered =
-    mapMode() !== "overworld_hex" || currentTravelRisk() === "safe_field"
-  const exposed =
-    currentSnapshot.heroSurvival.location === "outside_bubble" || !sheltered
-  if (!exposed) return
-
-  const step = clock - previous
-  if (step > CONTAMINATION_MAX_STEP_SECONDS) return
-
-  const scale = intro
-    ? CONTAMINATION_INTRO_SCALE_SECONDS
-    : CONTAMINATION_SETTLED_SCALE_SECONDS
-  const next = contaminationSeconds() + step
-  if (next < scale) {
-    setContaminationSeconds(next)
-    return
-  }
-
-  setContaminationSeconds(scale)
-  if (!contaminationRevealSeen()) {
-    // He has counted the hours, he is certain, and then nothing happens. The
-    // screen holds at its worst for the length of the line, then lets go.
-    setContaminationRevealSeen(true)
-    setHeroAside(CONTAMINATION_REVEAL_LINE)
-    window.setTimeout(() => {
-      setHeroAside(null)
-      setContaminationSeconds(0)
-    }, CONTAMINATION_REVEAL_HOLD_MS)
-    return
-  }
-
-  // Second time he knows exactly what it means, and this time it is true.
-  setContaminationFatal(true)
+  const revealed = snapshot()?.contamination.revealSeen ?? false
+  if (!revealed || contaminationRevealAnnounced) return
+  contaminationRevealAnnounced = true
+  setHeroAside(CONTAMINATION_REVEAL_LINE)
+  window.setTimeout(() => setHeroAside(null), CONTAMINATION_REVEAL_HOLD_MS)
 })
 
-function contaminationRatio(): number {
-  const scale = contaminationIntroActive()
-    ? CONTAMINATION_INTRO_SCALE_SECONDS
-    : CONTAMINATION_SETTLED_SCALE_SECONDS
-  return Math.min(1, contaminationSeconds() / scale)
-}
-
-/**
- * Light up to halfway, then climbing. A cue that rises evenly reads as a meter;
- * one that stays faint and then grows reads as something getting worse.
- */
 function contaminationAlpha(ratio: number): number {
   if (ratio <= 0) return 0
   if (ratio <= CONTAMINATION_LIGHT_CUE_RATIO) {

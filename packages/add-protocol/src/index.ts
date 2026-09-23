@@ -334,6 +334,8 @@ export type AddGameEvent =
   | { kind: "beat_activated"; beatId: string }
   | { kind: "forced_return_triggered" }
   | { kind: "hero_recovered" }
+  | { kind: "contamination_revealed" }
+  | { kind: "contamination_fatal" }
   | { kind: "bubble_frontier_collapsed" }
   | { kind: "recruitment_gate_opened" }
   | { kind: "effect_rejected"; reason: string }
@@ -372,6 +374,17 @@ export interface CombatJobSnapshot {
   log: CombatLogEntrySnapshot[]
 }
 
+/**
+ * What the Hero believes the static is doing to him. Authoritative and saved:
+ * the first fill is survived and teaches him he is immune, the second ends the
+ * run. Distinct from `heroSurvival.viralLoadRatio`, which is the real thing.
+ */
+export interface ContaminationSnapshot {
+  exposureSeconds: number
+  revealSeen: boolean
+  fatal: boolean
+}
+
 export interface SimulationSnapshot {
   schemaVersion: number
   /** Content catalog identity this save was authored against (see save migration). */
@@ -387,6 +400,7 @@ export interface SimulationSnapshot {
   roster: RosterSnapshot
   heroProgress: HeroProgressSnapshot
   heroSurvival: HeroSurvivalSnapshot
+  contamination: ContaminationSnapshot
   narrative: NarrativeSnapshot
   crystalCircle: CrystalCircleSnapshot
   processing: ProcessingSnapshot

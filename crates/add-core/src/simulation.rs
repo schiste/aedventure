@@ -24,6 +24,7 @@ use crate::game_data::{
     station_def, stations, story_beat_def, story_beats, tile_def, world_action_def, world_actions,
 };
 use crate::state::{
+    ContaminationState,
     CombatJob, CombatLogEntry, ConstructionJob, CrystalTuningTrackState, ExpeditionJob,
     ExpeditionReport, ExpeditionRiskState, ForcedReturnPhase, ForcedReturnState, GRID_RADIUS,
     GameState, HeroLocationState, HexCoordState, HexState, HexVisualState, ResonanceJob,
@@ -1321,7 +1322,61 @@ impl Simulation {
         }
     }
 
+    /// Is the Hero beyond the field's reach right now?
+    ///
+    /// Measured from the map rather than from `hero_survival.location`, which
+    /// reads `Studio` for the whole overworld crossing: the Hero walking the
+    /// wasteland is plainly exposed, and tying this to that field would have
+    /// meant the crossing cost him nothing.
+    fn hero_beyond_the_field(&self) -> bool {
+        if self.state.hero_survival.location == HeroLocationState::OutsideBubble {
+            return true;
+        }
+        let hero = self.state.hero_map;
+        let distance = crate::state::cube_distance(hero.q, hero.r, crate::state::BASE_Q, crate::state::BASE_R);
+        distance > self.state.bubble.reach_from_base
+    }
+
+    /// Accrue the Hero's certainty that the static is killing him.
+    ///
+    /// The first fill is survived and resets the clock onto the longer scale;
+    /// the second ends the run. Both are authoritative and saved, because a
+    /// death a reload undoes is not a death.
+    fn progress_contamination(&mut self, seconds: f64) {
+        if self.state.contamination.fatal {
+            return;
+        }
+        // A whole absence arrives as one enormous step. Dread is something the
+        // player sits through, not something that accrues while the game is shut.
+        if seconds > ContaminationState::MAX_STEP_SECONDS {
+            return;
+        }
+        if !self.hero_beyond_the_field() {
+            return;
+        }
+
+        let scale = self.state.contamination.scale_seconds();
+        let next = self.state.contamination.exposure_seconds + seconds;
+        if next < scale {
+            self.state.contamination.exposure_seconds = next;
+            return;
+        }
+
+        self.state.contamination.exposure_seconds = scale;
+        if self.state.contamination.reveal_seen {
+            self.state.contamination.fatal = true;
+            self.push_event(crate::state::GameEvent::ContaminationFatal);
+            self.push_note("The static took him.".to_string());
+            return;
+        }
+
+        self.state.contamination.reveal_seen = true;
+        self.state.contamination.exposure_seconds = 0.0;
+        self.push_event(crate::state::GameEvent::ContaminationRevealed);
+    }
+
     fn progress_hero_survival(&mut self, seconds: f64) {
+        self.progress_contamination(seconds);
         if self.state.hero_survival.forced_return.is_some() {
             self.progress_forced_return(seconds);
             self.refresh_hero_survival_state();
