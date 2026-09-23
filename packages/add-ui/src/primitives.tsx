@@ -11,6 +11,8 @@
 import type { JSX } from "solid-js"
 import { Show } from "solid-js"
 
+import { normalizeUiCopy, shouldRevealCopyDetail } from "./format"
+
 export type Tone = "neutral" | "accent" | "danger" | "muted"
 
 export interface PanelProps {
@@ -221,5 +223,32 @@ export function Empty(props: { children: JSX.Element }): JSX.Element {
     <p class="quick-control-empty">
       <small>{props.children}</small>
     </p>
+  )
+}
+
+export interface DisclosureProps {
+  id: string
+  /** The always-visible label on the toggle. */
+  summary: string
+  /** The long form. */
+  fullCopy: string | null | undefined
+  /** What the player can already see, which decides whether this renders. */
+  visibleCopy: string
+  class?: string
+}
+
+/**
+ * A `<details>` that exists only when the full copy says meaningfully more than
+ * what is already on screen — otherwise the player gets a control that opens to
+ * repeat what they just read.
+ */
+export function Disclosure(props: DisclosureProps): JSX.Element {
+  return (
+    <Show when={shouldRevealCopyDetail(props.fullCopy, props.visibleCopy)}>
+      <details id={props.id} class={`copy-detail ${props.class ?? ""}`.trim()}>
+        <summary>{props.summary}</summary>
+        <p>{normalizeUiCopy(props.fullCopy)}</p>
+      </details>
+    </Show>
   )
 }

@@ -14,11 +14,22 @@ import { createStore, reconcile, unwrap } from "solid-js/store"
 import html from "solid-js/html"
 import { createComponent, render } from "solid-js/web"
 import {
+  baseConstructionLoopSummary,
+  basePlayerLoopPanel,
+  baseManagementMetricRows,
+  baseResourceRows,
+  baseSlotPoolRows,
+  baseStalledSystemRow,
+  baseStationMachineSummary,
   ConstructionControls,
+  Disclosure,
   EconomyForecastCard,
+  expeditionActiveJobRows,
+  formatAffordabilityTime,
   InventoryList,
   MapModeTabs,
   firstSentence,
+  indexList,
   formatEconomyDuration,
   formatResource,
   formatResourceTime,
@@ -35,13 +46,19 @@ import {
   offlineReturnPausedRows,
   offlineReturnResourceRows,
   PerkControls,
+  resonanceMaterialCard,
+  selectedTileLinkRows,
+  selectedTileUsefulnessRows,
+  selectedTileUsefulnessSummary,
   shouldRevealCopyDetail,
   signedRateCopy,
+  socialPendingArrivalRows,
   storyBrowserBeatRows,
   storyBrowserChoiceRows,
   storyBrowserCommandRows,
   storyBrowserEligibilityRows,
   storyBrowserQualityRows,
+  travelDialogActions,
   titleCase,
   SchemaPanel,
   Stat,
@@ -2842,7 +2859,7 @@ function baseManagementPanel(): unknown {
         </div>
       </div>
       ${() => currentActionSurface()}
-      ${() => basePlayerLoopPanel(state)}
+      ${basePlayerLoopPanel({ state: () => state, onSelectTab: (tabId) => setBaseManagementTab(tabId as AddBaseManagementTabId), renderPlanDetail: (args) => copyDisclosure(args.id, args.summary, args.fullCopy, args.visibleCopy, args.className) })}
       ${() => baseManagementCommandStrip(state)}
       ${() => baseRateChangePanel()}
       <div class="base-management-tabs" role="tablist" aria-label="Base management sections">
@@ -2867,7 +2884,7 @@ function baseManagementPanel(): unknown {
           ? null
           : html`
               <div class="base-metric-grid">
-                ${() => baseManagementMetricRows(section)}
+                ${baseManagementMetricRows(() => section)}
               </div>
             `}
         ${() => baseManagementTabContent(state)}
@@ -3186,13 +3203,7 @@ function copyDisclosure(
   visibleCopy: string,
   className = "",
 ): unknown {
-  if (!shouldRevealCopyDetail(fullCopy, visibleCopy)) return null
-  return html`
-    <details id=${id} class=${`copy-detail ${className}`.trim()}>
-      <summary>${summary}</summary>
-      <p>${normalizeUiCopy(fullCopy)}</p>
-    </details>
-  `
+  return createComponent(Disclosure, { id, summary, fullCopy, visibleCopy, class: className })
 }
 
 // The narrative moment stays inside the unified decision surface. The primary
@@ -3828,122 +3839,15 @@ function interfaceStatusCopy(): string {
   return `${worldTimePrimaryCopy()} · ${statusLabel()} · ${resourceCopy}`
 }
 
-function basePlayerLoopPanel(state: AddBaseManagementState): unknown {
-  const loop = state.playerLoop
-  const currentStep = loop.steps.find((step) => step.status === "current")
-  const waitForecast = state.economy.waitForecasts[0] ?? null
-  return html`
-    <section
-      id="base-player-loop"
-      class="base-player-loop keyboard-section"
-      data-health=${loop.health.status}
-      tabindex="0"
-      aria-label="Base player loop"
-    >
-      <header>
-        <span>Player loop</span>
-        <strong>${currentStep?.label ?? "Decide"}</strong>
-        <small title=${loop.summary}>
-          Assign the Hero, check the bottleneck, watch rates, then decide if waiting helps.
-        </small>
-      </header>
-      <div class="base-loop-focus-grid">
-        <article
-          class="keyboard-section"
-          data-severity=${loop.health.severity}
-          tabindex="0"
-          aria-label="Base health summary"
-        >
-          <span>Health</span>
-          <strong>${loop.health.label}</strong>
-          <small title=${loop.health.detail}>${leadUiCopy(loop.health.detail, 50)}</small>
-        </article>
-        <article
-          class="keyboard-section"
-          data-severity=${loop.bottleneck.severity}
-          tabindex="0"
-          aria-label="Base bottleneck summary"
-        >
-          <span>Bottleneck</span>
-          <strong>${loop.bottleneck.label}</strong>
-          <small title=${loop.bottleneck.detail}>${leadUiCopy(loop.bottleneck.detail, 50)}</small>
-        </article>
-        <article
-          class="keyboard-section"
-          data-severity=${state.recommendedAction.enabled ? "good" : "neutral"}
-          tabindex="0"
-          aria-label="Base recommended action summary"
-        >
-          <span>Action</span>
-          <strong>${state.recommendedAction.label}</strong>
-          <small title=${state.recommendedAction.detail}>${leadUiCopy(state.recommendedAction.detail, 50)}</small>
-        </article>
-        <article
-          class="keyboard-section"
-          data-severity="neutral"
-          tabindex="0"
-          aria-label="Base wait forecast summary"
-        >
-          <span>If I wait</span>
-          <strong>${waitForecast?.label ?? "Forecast"}</strong>
-          <small title=${waitForecast?.summary ?? state.economy.offlinePreview.summary}>
-            ${leadUiCopy(waitForecast?.summary ?? state.economy.offlinePreview.summary, 50)}
-          </small>
-        </article>
-        <article
-          class="keyboard-section"
-          data-severity="neutral"
-          tabindex="0"
-          aria-label="Base return plan summary"
-        >
-          <span>Return</span>
-          <strong>${loop.returnPlan.horizonSeconds === null ? "Review now" : formatEconomyDuration(loop.returnPlan.horizonSeconds)}</strong>
-          <small title=${loop.returnPlan.summary}>${leadUiCopy(loop.returnPlan.summary, 50)}</small>
-        </article>
-      </div>
-      <div class="base-loop-rate-strip">
-        <span>Rates</span>
-        <strong>${loop.rateWatch.summary}</strong>
-      </div>
-      <div class="base-loop-steps" aria-label="Idle loop steps">
-        ${() => loop.steps.map(basePlayerLoopStep)}
-      </div>
-      ${copyDisclosure(
-        "base-loop-plan-detail",
-        "Plan",
-        loop.decisionHint,
-        currentStep?.label ?? "Decide",
-        "base-loop-details",
-      )}
-    </section>
-  `
-}
-
-function basePlayerLoopStep(
-  step: AddBaseManagementState["playerLoop"]["steps"][number],
-): unknown {
-  return html`
-    <button
-      type="button"
-      class="base-loop-step"
-      data-status=${step.status}
-      onClick=${() => step.tabId && setBaseManagementTab(step.tabId)}
-      disabled=${() => step.tabId === null}
-    >
-      <span>${step.label}</span>
-    </button>
-  `
-}
-
 function baseManagementLeadPanel(state: AddBaseManagementState): unknown {
   switch (baseManagementTab()) {
     case "build":
-      return baseConstructionLoopSummary(state)
+      return baseConstructionLoopSummary(() => state)
     case "crew":
       return baseStaffingCommandPanel(state)
     case "power":
     case "processing":
-      return [schemaPowerPanel(), baseStationMachineSummary(state)]
+      return [schemaPowerPanel(), baseStationMachineSummary(() => state)]
     case "social":
     case "expeditions":
     case "resonance":
@@ -3996,18 +3900,6 @@ function baseTabSeverity(section: AddBaseManagementState["sections"][number]): s
   return "neutral"
 }
 
-function baseManagementMetricRows(section: AddBaseManagementState["sections"][number] | undefined): readonly unknown[] {
-  return (section?.metrics ?? []).map(
-    (metric) => html`
-      <span class="base-metric" data-severity=${metric.severity}>
-        ${metric.label}
-        <strong>${metric.value}</strong>
-        <small>${metric.detail}</small>
-      </span>
-    `,
-  )
-}
-
 function baseEconomyOverview(state: AddBaseManagementState): unknown {
   const limiting = state.economy.limitingResource
   const stalled = state.economy.stalledSystems.slice(0, 3)
@@ -4033,7 +3925,7 @@ function baseEconomyOverview(state: AddBaseManagementState): unknown {
       ${stalled.length > 0
         ? html`
             <div class="base-stalled-list" aria-label="Stalled systems">
-              ${() => stalled.map(baseStalledSystemRow)}
+              ${indexList(() => stalled, (entry) => baseStalledSystemRow(entry))}
             </div>
           `
         : null}
@@ -4051,15 +3943,6 @@ function baseEconomyForecastCard(
   forecast: AddBaseManagementState["economy"]["waitForecasts"][number],
 ): unknown {
   return EconomyForecastCard({ forecast: () => forecast, format: formatSignedResource })
-}
-
-function baseStalledSystemRow(stalled: AddBaseManagementState["economy"]["stalledSystems"][number]): unknown {
-  return html`
-      <span class="base-stalled-row" data-severity=${stalled.severity}>
-        <strong>${stalled.label}</strong>
-        <small title=${stalled.reason}>${leadUiCopy(stalled.reason, 58)}</small>
-      </span>
-  `
 }
 
 function baseManagementTabContent(state: AddBaseManagementState): unknown {
@@ -4092,8 +3975,8 @@ function baseCrystalPanel(state: AddBaseManagementState): unknown {
   )
   return html`
     <div class="base-card-list">
-      ${() => baseResourceRows(crystalResources)}
-      ${() => baseSlotPoolRows(state.staffing.slotPools.filter((pool) => pool.id === "crystal_circle"))}
+      ${baseResourceRows(() => crystalResources)}
+      ${baseSlotPoolRows(() => state.staffing.slotPools.filter((pool) => pool.id === "crystal_circle"))}
       ${() => baseRoleRows(crystalRoles, state)}
     </div>
   `
@@ -4119,7 +4002,7 @@ function basePowerPanel(state: AddBaseManagementState): unknown {
 function baseCrewPanel(state: AddBaseManagementState): unknown {
   return html`
     <div class="base-card-list">
-      ${() => baseSlotPoolRows(state.staffing.slotPools)}
+      ${baseSlotPoolRows(() => state.staffing.slotPools)}
       ${() => baseRoleRows(state.roles, state)}
     </div>
   `
@@ -4185,36 +4068,9 @@ function baseSocialPanel(state: AddBaseManagementState): unknown {
           ? html`<small class="base-card-note warning">${social.supportForecast.warning}</small>`
           : null}
       </article>
-      ${() => socialPendingArrivalRows(state)}
+      ${socialPendingArrivalRows(() => state)}
     </div>
   `
-}
-
-function socialPendingArrivalRows(state: AddBaseManagementState): readonly unknown[] {
-  const arrivals = state.socialPressure.pendingArrivals
-  if (arrivals.length === 0) {
-    return [
-      html`
-        <article class="base-management-card">
-          <span>Pending arrival</span>
-          <strong>None</strong>
-          <small>No recruit is traveling to the base right now.</small>
-        </article>
-      `,
-    ]
-  }
-  return arrivals.map(
-    (arrival) => html`
-      <article class="base-management-card active">
-        <span>Pending arrival</span>
-        <strong>${arrival.label}</strong>
-        <small>${arrival.arrivalCopy}</small>
-        <div class="base-progress-track" aria-label=${`${arrival.label} arrival progress`}>
-          <i style=${{ width: `${Math.round(arrival.progressPercent)}%` }} aria-hidden="true" />
-        </div>
-      </article>
-    `,
-  )
 }
 
 function baseExpeditionsPanel(state: AddBaseManagementState): unknown {
@@ -4229,43 +4085,11 @@ function baseExpeditionsPanel(state: AddBaseManagementState): unknown {
           ${expeditions.totalClues} clues · ${expeditions.totalDungeonLeads} leads
         </small>
       </article>
-      ${() => expeditionActiveJobRows(state)}
+      ${expeditionActiveJobRows(() => state)}
       ${() => expeditionReportRows(state)}
       ${() => expeditionTargetRows(state)}
     </div>
   `
-}
-
-function expeditionActiveJobRows(state: AddBaseManagementState): readonly unknown[] {
-  const jobs = state.expeditions.activeJobs
-  if (jobs.length === 0) {
-    return [
-      html`
-        <article class="base-management-card">
-          <span>In the field</span>
-          <strong>No active expedition</strong>
-          <small>Send free crew from the target list below to keep the base acting in parallel.</small>
-        </article>
-      `,
-    ]
-  }
-  return jobs.map(
-    (job) => html`
-      <article class="base-management-card active" data-pressure=${job.risk}>
-        <span>In the field</span>
-        <strong>${job.label}</strong>
-        <small>${job.returnCopy}</small>
-        <div class="base-progress-track" aria-label=${`${job.label} expedition progress`}>
-          <i style=${{ width: `${Math.round(job.progressPercent)}%` }} aria-hidden="true" />
-        </div>
-        <div class="base-economy-line">
-          <span>${job.assignedCrew} crew</span>
-          <span>${job.riskLabel}</span>
-          <strong>${formatEconomyDuration(job.remainingSeconds)}</strong>
-        </div>
-      </article>
-    `,
-  )
 }
 
 function expeditionTargetRows(state: AddBaseManagementState): readonly unknown[] {
@@ -4372,22 +4196,10 @@ function baseResonancePanel(state: AddBaseManagementState): unknown {
           <strong>Harmonics Lv ${resonance.tuning.harmonicsLevel}</strong>
         </div>
       </article>
-      ${() => resonance.materials.map(resonanceMaterialCard)}
+      ${indexList(() => resonance.materials, (material) => resonanceMaterialCard(material))}
       ${() => resonance.recipes.map(resonanceRecipeCard)}
       ${() => resonance.stationSpecializations.map(resonanceSpecializationCard)}
     </div>
-  `
-}
-
-function resonanceMaterialCard(
-  material: AddBaseManagementState["resonance"]["materials"][number],
-): unknown {
-  return html`
-    <article class="base-management-card" data-pressure=${material.value > 0 ? "room" : "empty"}>
-      <span>Strange material</span>
-      <strong>${material.value} ${material.label}</strong>
-      <small>${material.detail}</small>
-    </article>
   `
 }
 
@@ -4469,34 +4281,6 @@ function baseProcessingPanel(state: AddBaseManagementState): unknown {
   `
 }
 
-function baseResourceRows(resources: readonly AddBaseManagementState["resources"][number][]): readonly unknown[] {
-  return resources.map(
-    (resource) => html`
-      <article class="base-management-card" data-pressure=${resource.capPressure}>
-        <span>${resource.label}</span>
-        <strong>${formatResource(resource.value)} / ${formatResource(resource.cap)}</strong>
-        <small>${resource.productionZeroReason ?? resource.blocker ?? resource.sink}</small>
-        <div class="base-economy-line">
-          <span>Gain ${formatResource(resource.gainPerSecond)}/s</span>
-          <span>Spend ${formatResource(resource.spendPerSecond)}/s</span>
-          <strong>Net ${signedRateCopy(resource.netPerSecond)}</strong>
-        </div>
-        <div class="base-economy-line">
-          <span>Cap ${formatResourceTime(resource.timeToCapSeconds)}</span>
-          <span>Afford ${formatAffordabilityTime(resource.nextAffordability)}</span>
-        </div>
-        ${resource.nextAffordability
-          ? html`
-              <small class="base-affordability-note">
-                ${resource.nextAffordability.reason}
-              </small>
-            `
-          : null}
-      </article>
-    `,
-  )
-}
-
 function baseStaffingCommandPanel(state: AddBaseManagementState): unknown {
   return html`
     <article class="base-staffing-command">
@@ -4561,16 +4345,6 @@ function baseRateChangePanel(): unknown {
       </div>
     </article>
   `
-}
-
-function baseSlotPoolRows(pools: readonly AddBaseManagementState["staffing"]["slotPools"][number][]): readonly unknown[] {
-  return pools.map((pool) => html`
-    <article class="base-slot-pool" data-pressure=${pool.pressure}>
-      <span>${pool.label}</span>
-      <strong>${pool.occupied} / ${pool.capacity}</strong>
-      <small>${pool.detail}</small>
-    </article>
-  `)
 }
 
 function baseRoleRows(
@@ -4645,22 +4419,6 @@ function canAddCrewToRole(
   if (role.maxCrewSlots !== null && role.crewAssigned >= role.maxCrewSlots) return false
   const slotPool = state.staffing.slotPools.find((pool) => pool.id === role.slotPool)
   return role.slotPool === "base" ? true : (slotPool?.free ?? 0) > 0
-}
-
-function baseConstructionLoopSummary(state: AddBaseManagementState): unknown {
-  return html`
-    <article class="base-construction-summary">
-      <span>Construction loop</span>
-      <strong>
-        ${state.buildLoop.readyProjectCount} ready / ${state.buildLoop.assignedWorkers} builders
-      </strong>
-      <small>${state.buildLoop.summary}</small>
-      <div class="base-economy-line">
-        <span>Throughput ${signedRateCopy(state.buildLoop.workerThroughputPerSecond)}</span>
-        <span>${state.buildLoop.blockedProjectCount} waiting</span>
-      </div>
-    </article>
-  `
 }
 
 function baseConstructionCategoryGroups(
@@ -4820,22 +4578,6 @@ function schemaPowerPanel(): unknown {
       )
     },
   })
-}
-
-function baseStationMachineSummary(state: AddBaseManagementState): unknown {
-  return html`
-    <article class="base-machine-summary" data-brownout=${state.stationMachine.brownedOutCount > 0 ? "true" : "false"}>
-      <span>Station machine</span>
-      <strong>
-        ${state.stationMachine.poweredCount} powered / ${state.stationMachine.activeJobCount} jobs
-      </strong>
-      <small>${state.stationMachine.summary}</small>
-      <div class="base-economy-line">
-        <span>Active upkeep ${formatResource(state.stationMachine.activeUpkeepPerSecond)} Chorus/s</span>
-        <span>Requested ${formatResource(state.stationMachine.requestedUpkeepPerSecond)} Chorus/s</span>
-      </div>
-    </article>
-  `
 }
 
 function baseStationMachineGroups(
@@ -5207,7 +4949,7 @@ function discoverySelectedTileCard(): unknown {
         ${() => selectedTileActionRows(detail)}
       </div>
       <div class="selected-tile-links">
-        ${() => selectedTileLinkRows(detail)}
+        ${selectedTileLinkRows(() => detail)}
       </div>
       <div class="selected-tile-metrics">
         <span>
@@ -5235,7 +4977,7 @@ function discoverySelectedTileCard(): unknown {
       </div>
       <div class="selected-tile-usefulness">
         <small>Why it matters</small>
-        ${selectedTileUsefulnessRows(decision?.usefulness.reasons ?? [])}
+        ${selectedTileUsefulnessRows(() => decision?.usefulness.reasons ?? [])}
       </div>
       <div class="selected-tile-facts">
         <div>
@@ -5272,32 +5014,6 @@ function selectedTileCommandHint(detail: AddTileDetailSummary): string {
   if (detail.travel.standingHere) return "Pick a neighboring region."
   if (detail.travel.adjacent) return "Inspect now; travel from a neighboring region."
   return "Move closer to act."
-}
-
-function selectedTileUsefulnessSummary(reasons: readonly string[]): string {
-  return reasons[0] ?? "Useful for routing."
-}
-
-function selectedTileUsefulnessRows(reasons: readonly string[]): readonly unknown[] {
-  const rows = reasons.length > 0 ? reasons : ["Useful for routing."]
-  return rows.map((reason) => html`<span>${reason}</span>`)
-}
-
-function selectedTileLinkRows(detail: AddTileDetailSummary): readonly unknown[] {
-  if (detail.links.length === 0) {
-    return [html`<span class="selected-tile-empty-link">No building, base, or dungeon submap is known here.</span>`]
-  }
-  return detail.links.map(
-    (link) => html`
-      <article class="selected-tile-link" data-kind=${link.kind}>
-        <span>
-          ${link.label}
-          <small>${link.enabled ? "Available" : link.blockedReason ?? "Locked"}</small>
-        </span>
-        <strong>${titleCase(link.kind.replaceAll("_", " "))}</strong>
-      </article>
-    `,
-  )
 }
 
 function selectedTileActionRows(detail: AddTileDetailSummary): readonly unknown[] {
@@ -6344,7 +6060,15 @@ function travelDialogView(): unknown {
           ${() => travelDialogCopy(dialog.kind, dialog.event)}
         </p>
         <div class="travel-dialog-actions">
-          ${() => travelDialogActions(dialog.kind)}
+          ${travelDialogActions({
+            kind: () => dialog.kind,
+            actionIds: {
+              cancel: ADD_QA_ACTION_IDS.travelCancel,
+              confirm: ADD_QA_ACTION_IDS.travelConfirm,
+              dismissWarning: ADD_QA_ACTION_IDS.travelDismissWarning,
+            },
+            onAnswer: answerTravelDialog,
+          })}
         </div>
       </section>
     </div>
@@ -6529,86 +6253,6 @@ function travelDialogCopy(
     case "dramatic_reprise":
       return "That was just for dramatic effect. Just venture forth."
   }
-}
-
-function travelDialogActions(kind: TravelDialogKind): readonly unknown[] {
-  if (kind === "first_declined") {
-    return [
-      html`
-        <button
-          id="travel-dialog-dismiss"
-          type="button"
-          class="primary-action"
-          data-action-id=${ADD_QA_ACTION_IDS.travelDismissWarning}
-          data-key-action="confirm"
-          aria-keyshortcuts="Enter Escape"
-          onClick=${() => answerTravelDialog(true)}
-        >
-          Fine
-        </button>
-      `,
-    ]
-  }
-
-  if (kind === "dramatic_reprise") {
-    return [
-      html`
-        <button
-          id="travel-dialog-cancel"
-          type="button"
-          class="ghost-button"
-          data-action-id=${ADD_QA_ACTION_IDS.travelCancel}
-          data-key-action="cancel"
-          aria-keyshortcuts="Escape"
-          onClick=${() => answerTravelDialog(false)}
-        >
-          Actually wait
-        </button>
-      `,
-      html`
-        <button
-          id="travel-dialog-venture"
-          type="button"
-          class="primary-action"
-          data-action-id=${ADD_QA_ACTION_IDS.travelConfirm}
-          data-key-action="confirm"
-          aria-keyshortcuts="Enter"
-          onClick=${() => answerTravelDialog(true)}
-        >
-          Venture forth
-        </button>
-      `,
-    ]
-  }
-
-  return [
-    html`
-      <button
-        id="travel-dialog-cancel"
-        type="button"
-        class="ghost-button"
-        data-action-id=${ADD_QA_ACTION_IDS.travelCancel}
-        data-key-action="cancel"
-        aria-keyshortcuts="Escape"
-        onClick=${() => answerTravelDialog(false)}
-      >
-        ${kind === "first_warning" ? "No, stay here" : "Not yet"}
-      </button>
-    `,
-    html`
-      <button
-        id="travel-dialog-confirm"
-        type="button"
-        class="primary-action"
-        data-action-id=${ADD_QA_ACTION_IDS.travelConfirm}
-        data-key-action="confirm"
-        aria-keyshortcuts="Enter"
-        onClick=${() => answerTravelDialog(true)}
-      >
-        ${kind === "first_warning" ? "OK, venture forth" : "Yes, I know"}
-      </button>
-    `,
-  ]
 }
 
 function openBaseManagementView(command: string, target: string = "base_square"): void {
@@ -7908,15 +7552,6 @@ function persistenceReadyForFirstPlayable(): boolean {
     (lastManualExportAtMs() !== null || savePayload().length > 200) &&
     lastOfflineCatchupSeconds() > 0
   )
-}
-
-function formatAffordabilityTime(
-  affordability: AddBaseManagementState["resources"][number]["nextAffordability"],
-): string {
-  if (!affordability) return "ready"
-  return affordability.timeToAffordSeconds === null
-    ? "blocked"
-    : formatEconomyDuration(affordability.timeToAffordSeconds)
 }
 
 function formatSignedRatioPercent(value: number): string {
