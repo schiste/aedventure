@@ -14,6 +14,9 @@ import { createStore, reconcile, unwrap } from "solid-js/store"
 import html from "solid-js/html"
 import { createComponent, render } from "solid-js/web"
 import {
+  CinematicStage,
+  type CinematicPlaybackView,
+  cinematicPlaybackView,
   baseConstructionLoopSummary,
   basePlayerLoopPanel,
   baseManagementMetricRows,
@@ -145,6 +148,7 @@ import {
   type AddBaseManagementTabId,
   type AddAreaEntrySide,
   type CatalogSnapshot,
+  type CinematicDef,
   type UiElementDef,
   type InkSceneSnapshot,
   type SimulationSnapshot,
@@ -681,6 +685,54 @@ createModuleEffect(() => {
   setHeroAside(CONTAMINATION_REVEAL_LINE)
   window.setTimeout(() => setHeroAside(null), CONTAMINATION_REVEAL_HOLD_MS)
 })
+
+// ---------------------------------------------------------------------------
+// Cinematic moments.
+//
+// The simulation owns which beat is playing and holds the world still while it
+// does. This file only draws it, and only knows how to draw: what a beat is
+// made of comes from the catalog, and where its media lives comes from the
+// registry below.
+// ---------------------------------------------------------------------------
+
+/**
+ * Asset id to URL.
+ *
+ * Deliberately empty. Authored beats name their media (`assetId: "intro/clip"`)
+ * and the app decides where that lives — bundled, public folder, CDN — so a
+ * content author never writes a path. An unregistered id resolves to null and
+ * the stage falls back to the beat's copy, which is also what makes a missing
+ * file a soft landing rather than a blank screen.
+ */
+const CINEMATIC_ASSETS: Readonly<Record<string, string>> = {}
+
+function resolveCinematicAsset(assetId: string): string | null {
+  return CINEMATIC_ASSETS[assetId] ?? null
+}
+
+function activeCinematicDef(): CinematicDef | null {
+  const active = snapshot()?.cinematics.active
+  if (!active) return null
+  return catalog()?.cinematics.find((entry) => entry.id === active.cinematicId) ?? null
+}
+
+/**
+ * What the stage should draw right now. Every inconsistency between the save
+ * and the catalog resolves to "nothing is playing" inside the selector.
+ */
+function cinematicPlayback(): CinematicPlaybackView {
+  return cinematicPlaybackView(activeCinematicDef(), snapshot()?.cinematics.active ?? null)
+}
+
+function advanceCinematic(): void {
+  setLastCommand("advance_cinematic")
+  sendWorkerRequest({ type: "advanceCinematic" })
+}
+
+function skipCinematic(): void {
+  setLastCommand("skip_cinematic")
+  sendWorkerRequest({ type: "skipCinematic" })
+}
 
 function contaminationAlpha(ratio: number): number {
   if (ratio <= 0) return 0
@@ -1267,6 +1319,31 @@ function AddRpgApp() {
                 </div>
               `,
             )}
+          ${() =>
+            createComponent(CinematicStage, {
+              get beat() {
+                return cinematicPlayback().beat
+              },
+              get label() {
+                return cinematicPlayback().label || "Cinematic"
+              },
+              get progress() {
+                return cinematicPlayback().progress
+              },
+              get beatNumber() {
+                return cinematicPlayback().beatNumber
+              },
+              get beatCount() {
+                return cinematicPlayback().beatCount
+              },
+              get onSkip() {
+                // Absent when the cinematic is authored unskippable, which is
+                // how the stage knows not to draw the button.
+                return cinematicPlayback().skippable ? skipCinematic : undefined
+              },
+              onAdvance: advanceCinematic,
+              resolveAsset: resolveCinematicAsset,
+            })}
           <div
             class=${() =>
               baseViewTransition() === "idle"

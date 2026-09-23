@@ -81,6 +81,24 @@ impl WebRuntime {
         });
     }
 
+    #[wasm_bindgen(js_name = startCinematic)]
+    pub fn start_cinematic(&mut self, cinematic_id: &str) -> Result<JsValue, JsValue> {
+        apply_command(
+            &mut self.simulation,
+            GameCommand::StartCinematic { cinematic_id: cinematic_id.to_string() },
+        )
+    }
+
+    #[wasm_bindgen(js_name = advanceCinematic)]
+    pub fn advance_cinematic(&mut self) -> Result<JsValue, JsValue> {
+        apply_command(&mut self.simulation, GameCommand::AdvanceCinematic)
+    }
+
+    #[wasm_bindgen(js_name = skipCinematic)]
+    pub fn skip_cinematic(&mut self) -> Result<JsValue, JsValue> {
+        apply_command(&mut self.simulation, GameCommand::SkipCinematic)
+    }
+
     #[wasm_bindgen(js_name = completePreArrivalRoute)]
     pub fn complete_pre_arrival_route(&mut self) -> Result<JsValue, JsValue> {
         apply_command(&mut self.simulation, GameCommand::CompletePreArrivalRoute)

@@ -44,6 +44,8 @@ pub struct GameState {
     #[serde(default)]
     pub hero_survival: HeroSurvivalState,
     #[serde(default)]
+    pub cinematics: CinematicState,
+    #[serde(default)]
     pub narrative: NarrativeState,
     pub crystal_circle: CrystalCircleState,
     pub processing: ProcessingState,
@@ -183,6 +185,10 @@ pub enum GameEvent {
     ContaminationRevealed,
     /// Contamination filled again. The run is over.
     ContaminationFatal,
+    /// A cinematic began playing.
+    CinematicStarted { cinematic_id: String },
+    /// A cinematic reached its end, or was skipped to it.
+    CinematicCompleted { cinematic_id: String, skipped: bool },
     /// An auto-battler skirmish finished. `outcome` is "victory" or "retreat".
     CombatResolved {
         creature_id: String,
@@ -274,6 +280,7 @@ impl GameState {
             },
             hero_progress: HeroProgressState::new(),
             hero_survival: HeroSurvivalState::new(),
+            cinematics: CinematicState::new(),
             narrative: NarrativeState::new(),
             crystal_circle: CrystalCircleState {
                 base_slots: DEFAULT_BASE_SLOTS,
@@ -473,6 +480,46 @@ impl HeroSurvivalState {
 impl Default for HeroSurvivalState {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+/// A cinematic in progress.
+///
+/// Saved, because playback is state rather than presentation: a player who
+/// reloads three beats into a cutscene should resume on the third beat, not be
+/// dropped back at the top of it.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ActiveCinematic {
+    pub cinematic_id: String,
+    /// Index into the authored beats. Out-of-range means the catalog changed
+    /// under a save; playback treats that as finished rather than panicking.
+    #[serde(default)]
+    pub beat_index: u16,
+    /// Time spent on the current beat.
+    #[serde(default)]
+    pub beat_elapsed_seconds: f64,
+}
+
+/// What the player has been shown, and what they are being shown now.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct CinematicState {
+    #[serde(default)]
+    pub active: Option<ActiveCinematic>,
+    /// Ids seen through to the end, including skipped ones — skipping is a way
+    /// of having seen it. `replay: once` consults this.
+    #[serde(default)]
+    pub seen: BTreeSet<String>,
+}
+
+impl CinematicState {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn is_playing(&self) -> bool {
+        self.active.is_some()
     }
 }
 

@@ -508,15 +508,38 @@ async function assertBootAndRenderTextContract(page, consoleErrors) {
     return window.render_add_runtime_text()
   })
   assert.match(compactAgentReport, /runtime ready source=rust-wasm/)
-  const jsonAgentReport = await page.evaluate(() => {
+  // Read both reports in ONE evaluation so they observe the same instant.
+  //
+  // The invariant under test is that the JSON report agrees with the text
+  // report, not that either matches a value captured earlier. The world clock
+  // advances a game minute per second, so comparing a freshly rendered report
+  // against `initial` — captured several assertions ago — lost the race
+  // whenever a tick landed in between, and failed as a bare `1 == 0`.
+  const pairedReports = await page.evaluate(() => {
     if (typeof window.render_add_runtime_json !== "function") {
       throw new Error("render_add_runtime_json is not installed")
     }
-    return JSON.parse(window.render_add_runtime_json())
+    if (typeof window.render_game_to_text !== "function") {
+      throw new Error("render_game_to_text is not installed")
+    }
+    // Both renderers read the snapshot already in hand, and this body is
+    // synchronous, so no worker update can land between the two calls.
+    return {
+      agent: JSON.parse(window.render_add_runtime_json()),
+      state: JSON.parse(window.render_game_to_text()),
+    }
   })
+  const jsonAgentReport = pairedReports.agent
   assert.equal(jsonAgentReport.contract, "agent_runtime_v1")
-  assert.equal(jsonAgentReport.authoritative.currentTime.seconds, initial.snapshot.clockSeconds)
-  assert.deepEqual(jsonAgentReport.derived.enabledCommandIds, initial.agentRuntime.derived.enabledCommandIds)
+  assert.equal(
+    jsonAgentReport.authoritative.currentTime.seconds,
+    pairedReports.state.snapshot.clockSeconds,
+    "The agent report and the text state must agree about the clock.",
+  )
+  assert.deepEqual(
+    jsonAgentReport.derived.enabledCommandIds,
+    pairedReports.state.agentRuntime.derived.enabledCommandIds,
+  )
   assert.ok(
     initial.storyAgent.commandIds.includes(
       "story-choice:story.beat.road_to_base:story.choice.road.follow_signal",

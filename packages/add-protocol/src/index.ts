@@ -351,6 +351,8 @@ export type AddGameEvent =
   | { kind: "hero_recovered" }
   | { kind: "contamination_revealed" }
   | { kind: "contamination_fatal" }
+  | { kind: "cinematic_started"; cinematicId: string }
+  | { kind: "cinematic_completed"; cinematicId: string; skipped: boolean }
   | { kind: "bubble_frontier_collapsed" }
   | { kind: "recruitment_gate_opened" }
   | { kind: "effect_rejected"; reason: string }
@@ -394,6 +396,45 @@ export interface CombatJobSnapshot {
  * the first fill is survived and teaches him he is immune, the second ends the
  * run. Distinct from `heroSurvival.viralLoadRatio`, which is the real thing.
  */
+/** What a cinematic beat is made of; the player component switches on it. */
+export type CinematicMedia = 'none' | 'image' | 'video' | 'text'
+
+/** What ends a beat. `media_end` keeps `seconds` as a backstop. */
+export type CinematicAdvance = 'auto' | 'input' | 'media_end'
+
+/** Playback position. Saved, so a reload resumes mid-cutscene. */
+export interface ActiveCinematicSnapshot {
+  cinematicId: string
+  beatIndex: number
+  beatElapsedSeconds: number
+}
+
+/** One authored beat, as the catalog publishes it. */
+export interface CinematicBeatDef {
+  id: string
+  media: CinematicMedia
+  assetId: string
+  copy: string
+  advance: CinematicAdvance
+  seconds: number
+}
+
+export interface CinematicDef {
+  id: string
+  label: string
+  skippable: boolean
+  /** Hold the world still while it plays. See the Rust `CinematicDef`. */
+  freezeWorld: boolean
+  replay: 'once' | 'always'
+  beats: CinematicBeatDef[]
+}
+
+export interface CinematicSnapshot {
+  active: ActiveCinematicSnapshot | null
+  /** Ids seen through to the end, skipped ones included. */
+  seen: readonly string[]
+}
+
 export interface SimulationSnapshot {
   schemaVersion: number
   /** Content catalog identity this save was authored against (see save migration). */
@@ -409,6 +450,7 @@ export interface SimulationSnapshot {
   roster: RosterSnapshot
   heroProgress: HeroProgressSnapshot
   heroSurvival: HeroSurvivalSnapshot
+  cinematics: CinematicSnapshot
   narrative: NarrativeSnapshot
   crystalCircle: CrystalCircleSnapshot
   processing: ProcessingSnapshot
@@ -975,6 +1017,7 @@ export interface CatalogSnapshot {
   objectives: ObjectiveDef[]
   items: ItemDef[]
   perks: PerkDef[]
+  cinematics: CinematicDef[]
   creatures: CreatureDef[]
   flags: FlagDef[]
   models: ModelDef[]
@@ -1149,6 +1192,9 @@ export type WorkerRequest =
   | { type: 'chooseStoryOption'; beatId: string; optionId: string }
   | { type: 'chooseInkChoice'; beatId: string; index: number }
   | { type: 'completePreArrivalRoute' }
+  | { type: 'startCinematic'; cinematicId: string }
+  | { type: 'advanceCinematic' }
+  | { type: 'skipCinematic' }
   | { type: 'assignHero'; assigned: boolean }
   | { type: 'setHeroRole'; roleId: string }
   | { type: 'setRoleCrew'; roleId: string; crew: number }

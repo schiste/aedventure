@@ -5647,3 +5647,112 @@ h1 {
   letter-spacing: 0.02em;
   text-shadow: 0 2px 24px rgb(var(--shadow-rgb) / 80%);
 }
+
+/* ---------------------------------------------------------------------------
+ * Cinematic stage.
+ *
+ * One surface for every medium. The frame is letterboxed and the chrome sits
+ * under it, so a still, a clip and a line of type all occupy the same shape and
+ * a cut between them does not move the furniture.
+ * ------------------------------------------------------------------------- */
+
+.cinematic-stage {
+  position: absolute;
+  z-index: 60; /* over the contamination haze and the death overlay */
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  background: rgb(var(--shadow-rgb) / 94%);
+  inset: 0;
+}
+
+.cinematic-frame {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 14px;
+  align-items: center;
+  justify-content: center;
+  width: min(100%, 1100px);
+  cursor: pointer;
+}
+
+.cinematic-media {
+  max-width: 100%;
+  max-height: 72vh;
+  border-radius: 6px;
+  box-shadow: 0 18px 60px rgb(var(--shadow-rgb) / 70%);
+  object-fit: contain;
+}
+
+/* Doubles as the body of a text beat and the caption over any other kind. */
+.cinematic-copy {
+  max-width: 62ch;
+  margin: 0;
+  color: rgb(var(--paper-rgb) / 94%);
+  font-size: 1.25rem;
+  line-height: 1.5;
+  text-align: center;
+  text-shadow: 0 2px 20px rgb(var(--shadow-rgb) / 90%);
+}
+
+/* A text beat has no media to sit under, so its copy carries the frame. */
+.cinematic-stage[data-media="text"] .cinematic-copy {
+  font-size: 1.7rem;
+  letter-spacing: 0.01em;
+}
+
+.cinematic-chrome {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 14px;
+  align-items: center;
+  width: min(100%, 1100px);
+}
+
+.cinematic-progress {
+  flex: 1 1 auto;
+  height: 2px;
+  background: rgb(var(--paper-rgb) / 18%);
+}
+
+.cinematic-progress-fill {
+  display: block;
+  height: 100%;
+  background: rgb(var(--paper-rgb) / 70%);
+  transition: width 240ms linear;
+}
+
+.cinematic-count {
+  color: rgb(var(--paper-rgb) / 55%);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.08em;
+}
+
+.cinematic-skip {
+  padding: 6px 14px;
+  border: 1px solid rgb(var(--paper-rgb) / 28%);
+  border-radius: 3px;
+  background: transparent;
+  color: rgb(var(--paper-rgb) / 82%);
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.cinematic-skip:hover,
+.cinematic-skip:focus-visible {
+  border-color: rgb(var(--paper-rgb) / 60%);
+  color: rgb(var(--paper-rgb) / 100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cinematic-progress-fill {
+    transition: none;
+  }
+}

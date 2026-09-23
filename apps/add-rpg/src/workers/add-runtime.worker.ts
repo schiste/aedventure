@@ -69,6 +69,18 @@ async function handleMessage(message: WorkerRequest) {
         runtime?.completePreArrivalRoute()
         postSnapshotUpdate()
         break
+      case 'startCinematic':
+        runtime?.startCinematic(message.cinematicId)
+        postSnapshotUpdate()
+        break
+      case 'advanceCinematic':
+        runtime?.advanceCinematic()
+        postSnapshotUpdate()
+        break
+      case 'skipCinematic':
+        runtime?.skipCinematic()
+        postSnapshotUpdate()
+        break
       case 'assignHero':
         runtime?.assignHero(message.assigned)
         postSnapshotUpdate()

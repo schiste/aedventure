@@ -1,5 +1,6 @@
 mod actions;
 mod balance;
+mod cinematics;
 mod creatures;
 mod entity_schemas;
 mod expeditions;
@@ -18,6 +19,7 @@ mod version;
 
 pub(super) use actions::{CONSTRUCTION_OPTIONS, PROCESSING_RECIPES, WORLD_ACTIONS};
 pub(super) use balance::BALANCE;
+pub(super) use cinematics::CINEMATICS;
 pub(super) use creatures::CREATURES;
 pub(super) use entity_schemas::ENTITY_SCHEMAS;
 pub(super) use expeditions::EXPEDITION_TARGETS;

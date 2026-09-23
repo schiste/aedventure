@@ -1907,6 +1907,41 @@
       ]
     }
   ],
+  "cinematics": [
+    {
+      "id": "cinematic.sample",
+      "label": "Sample moment",
+      "skippable": true,
+      "freezeWorld": true,
+      "replay": "once",
+      "beats": [
+        {
+          "id": "cinematic.sample.beat.title",
+          "media": "text",
+          "assetId": "",
+          "copy": "A beat of type.",
+          "advance": "auto",
+          "seconds": 2.0
+        },
+        {
+          "id": "cinematic.sample.beat.still",
+          "media": "image",
+          "assetId": "sample/still",
+          "copy": "A still, with a caption.",
+          "advance": "input",
+          "seconds": 0.0
+        },
+        {
+          "id": "cinematic.sample.beat.clip",
+          "media": "video",
+          "assetId": "sample/clip",
+          "copy": "",
+          "advance": "media_end",
+          "seconds": 30.0
+        }
+      ]
+    }
+  ],
   "creatures": [
     {
       "id": "rat",

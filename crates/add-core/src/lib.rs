@@ -2739,6 +2739,272 @@ mod tests {
     }
 
 
+    // -- Cinematic primitives ----------------------------------------------
+
+    const SAMPLE_CINEMATIC: &str = "cinematic.sample";
+
+    #[test]
+    fn a_cinematic_plays_its_beats_in_order_and_ends() {
+        let mut simulation = Simulation::new();
+        let def = crate::game_data::cinematic_def(SAMPLE_CINEMATIC).expect("sample is authored");
+        assert!(def.beats.len() >= 2, "the sample needs beats to step through");
+
+        simulation.apply(GameCommand::StartCinematic {
+            cinematic_id: SAMPLE_CINEMATIC.to_string(),
+        });
+        assert_eq!(
+            simulation
+                .state()
+                .cinematics
+                .active
+                .as_ref()
+                .map(|active| active.beat_index),
+            Some(0)
+        );
+
+        for expected in 1..def.beats.len() {
+            simulation.apply(GameCommand::AdvanceCinematic);
+            assert_eq!(
+                simulation
+                    .state()
+                    .cinematics
+                    .active
+                    .as_ref()
+                    .map(|active| usize::from(active.beat_index)),
+                Some(expected)
+            );
+        }
+
+        // Advancing off the last beat finishes it.
+        simulation.apply(GameCommand::AdvanceCinematic);
+        assert!(!simulation.state().cinematics.is_playing());
+        assert!(simulation.state().cinematics.seen.contains(SAMPLE_CINEMATIC));
+    }
+
+    #[test]
+    fn a_frozen_cinematic_does_not_spend_the_heros_protection() {
+        // The reason the freeze exists. The world clock is what spends exposure,
+        // so a cutscene played against a running clock would charge the Hero for
+        // the time the player spent watching it.
+        let mut simulation = Simulation::new();
+        let def = crate::game_data::cinematic_def(SAMPLE_CINEMATIC).expect("authored");
+        assert!(def.freeze_world, "the sample is authored to hold the world");
+
+        simulation.apply(GameCommand::StartCinematic {
+            cinematic_id: SAMPLE_CINEMATIC.to_string(),
+        });
+        let clock = simulation.state().clock_seconds;
+        let load = simulation.state().hero_survival.viral_load_ratio;
+
+        simulation.apply(GameCommand::Tick { seconds: 120.0 });
+
+        assert_eq!(simulation.state().clock_seconds, clock, "the world holds still");
+        assert_eq!(
+            simulation.state().hero_survival.viral_load_ratio, load,
+            "two minutes of footage must not cost two game hours of protection"
+        );
+    }
+
+    #[test]
+    fn an_auto_beat_ends_on_its_authored_seconds() {
+        let mut simulation = Simulation::new();
+        simulation.apply(GameCommand::StartCinematic {
+            cinematic_id: SAMPLE_CINEMATIC.to_string(),
+        });
+        let def = crate::game_data::cinematic_def(SAMPLE_CINEMATIC).expect("authored");
+        let first = def.beats[0];
+        assert!(
+            matches!(first.advance, crate::game_data::CinematicAdvanceKind::Auto),
+            "this test needs the first beat to be an auto beat"
+        );
+
+        // A hair short: still on the first beat.
+        simulation.apply(GameCommand::Tick { seconds: first.seconds - 0.1 });
+        assert_eq!(
+            simulation
+                .state()
+                .cinematics
+                .active
+                .as_ref()
+                .map(|active| active.beat_index),
+            Some(0)
+        );
+
+        simulation.apply(GameCommand::Tick { seconds: 0.2 });
+        assert_eq!(
+            simulation
+                .state()
+                .cinematics
+                .active
+                .as_ref()
+                .map(|active| active.beat_index),
+            Some(1),
+            "an auto beat has to end by itself"
+        );
+    }
+
+    #[test]
+    fn an_input_beat_waits() {
+        let mut simulation = Simulation::new();
+        simulation.apply(GameCommand::StartCinematic {
+            cinematic_id: SAMPLE_CINEMATIC.to_string(),
+        });
+        // Step past the opening auto beat onto the input beat.
+        simulation.apply(GameCommand::AdvanceCinematic);
+        let def = crate::game_data::cinematic_def(SAMPLE_CINEMATIC).expect("authored");
+        assert!(matches!(
+            def.beats[1].advance,
+            crate::game_data::CinematicAdvanceKind::Input
+        ));
+
+        simulation.apply(GameCommand::Tick { seconds: 600.0 });
+        assert_eq!(
+            simulation
+                .state()
+                .cinematics
+                .active
+                .as_ref()
+                .map(|active| active.beat_index),
+            Some(1),
+            "an input beat waits however long the player waits"
+        );
+    }
+
+    #[test]
+    fn a_media_end_beat_has_a_backstop() {
+        // A clip that never reports it finished — a missing file, a codec the
+        // browser refused — must not strand the player inside a cutscene.
+        let mut simulation = Simulation::new();
+        simulation.apply(GameCommand::StartCinematic {
+            cinematic_id: SAMPLE_CINEMATIC.to_string(),
+        });
+        simulation.apply(GameCommand::AdvanceCinematic);
+        simulation.apply(GameCommand::AdvanceCinematic);
+        let def = crate::game_data::cinematic_def(SAMPLE_CINEMATIC).expect("authored");
+        let last = def.beats[2];
+        assert!(matches!(
+            last.advance,
+            crate::game_data::CinematicAdvanceKind::MediaEnd
+        ));
+        assert!(last.seconds > 0.0, "a media beat needs a backstop authored");
+
+        simulation.apply(GameCommand::Tick { seconds: last.seconds + 1.0 });
+        assert!(
+            !simulation.state().cinematics.is_playing(),
+            "the backstop has to let the player out"
+        );
+    }
+
+    #[test]
+    fn a_once_cinematic_does_not_come_back() {
+        let mut simulation = Simulation::new();
+        assert!(matches!(
+            crate::game_data::cinematic_def(SAMPLE_CINEMATIC).expect("authored").replay,
+            crate::game_data::CinematicReplayKind::Once
+        ));
+
+        simulation.apply(GameCommand::StartCinematic {
+            cinematic_id: SAMPLE_CINEMATIC.to_string(),
+        });
+        simulation.apply(GameCommand::SkipCinematic);
+        assert!(!simulation.state().cinematics.is_playing());
+
+        // Skipping counts as having seen it.
+        simulation.apply(GameCommand::StartCinematic {
+            cinematic_id: SAMPLE_CINEMATIC.to_string(),
+        });
+        assert!(
+            !simulation.state().cinematics.is_playing(),
+            "a once the player cut short must not be shown again"
+        );
+    }
+
+    #[test]
+    fn playback_survives_a_reload_mid_cutscene() {
+        let mut simulation = Simulation::new();
+        simulation.apply(GameCommand::StartCinematic {
+            cinematic_id: SAMPLE_CINEMATIC.to_string(),
+        });
+        simulation.apply(GameCommand::AdvanceCinematic);
+
+        let saved = crate::save::export_save(simulation.state()).expect("save writes");
+        let restored = crate::save::import_save(&saved).expect("save loads");
+        let active = restored.cinematics.active.expect("still playing");
+        assert_eq!(active.cinematic_id, SAMPLE_CINEMATIC);
+        assert_eq!(active.beat_index, 1, "a reload resumes the beat it was on");
+    }
+
+    #[test]
+    fn an_unknown_cinematic_is_declined_rather_than_fatal() {
+        // Triggers fire from authored content, which can name an id that a later
+        // content build removed. Declining has to be ordinary.
+        let mut simulation = Simulation::new();
+        simulation.apply(GameCommand::StartCinematic {
+            cinematic_id: "cinematic.does_not_exist".to_string(),
+        });
+        assert!(!simulation.state().cinematics.is_playing());
+        // And the world still runs.
+        let clock = simulation.state().clock_seconds;
+        simulation.apply(GameCommand::Tick { seconds: 1.0 });
+        assert!(simulation.state().clock_seconds > clock);
+    }
+
+    #[test]
+    fn a_save_whose_cinematic_left_the_catalog_lets_the_player_out() {
+        // The stranding case: a save mid-cutscene, loaded by a build whose
+        // catalog no longer has it. The world would freeze forever if playback
+        // trusted the saved id.
+        let mut state = GameState::new();
+        state.cinematics.active = Some(crate::state::ActiveCinematic {
+            cinematic_id: "cinematic.removed".to_string(),
+            beat_index: 3,
+            beat_elapsed_seconds: 0.0,
+        });
+        let mut simulation = Simulation::from_state(state);
+
+        // An unknown id cannot freeze the world, so the tick runs the world and
+        // the stale playback is cleared on the next advance.
+        assert!(!simulation.cinematic_freezes_world());
+        simulation.apply(GameCommand::AdvanceCinematic);
+        assert!(
+            !simulation.state().cinematics.is_playing(),
+            "a player must never be held behind a cutscene that cannot be drawn"
+        );
+    }
+
+    #[test]
+    fn authored_content_can_ask_for_a_moment() {
+        // The trigger side: `PlayCinematic` is how a storylet or an objective
+        // reward reaches this system.
+        let mut simulation = Simulation::new();
+        simulation.apply_effects(&[EffectDef::PlayCinematic {
+            cinematic_id: SAMPLE_CINEMATIC,
+        }]);
+        assert!(simulation.state().cinematics.is_playing());
+    }
+
+    #[test]
+    fn a_cinematic_cannot_interrupt_another() {
+        let mut simulation = Simulation::new();
+        simulation.apply(GameCommand::StartCinematic {
+            cinematic_id: SAMPLE_CINEMATIC.to_string(),
+        });
+        simulation.apply(GameCommand::AdvanceCinematic);
+        simulation.apply(GameCommand::StartCinematic {
+            cinematic_id: SAMPLE_CINEMATIC.to_string(),
+        });
+        assert_eq!(
+            simulation
+                .state()
+                .cinematics
+                .active
+                .as_ref()
+                .map(|active| active.beat_index),
+            Some(1),
+            "a second start must not reset the one already playing"
+        );
+    }
+
     #[test]
     fn untested_hero_has_six_of_his_twenty_four_hours() {
         // 24 authored hours less the 18 withheld while his immunity is

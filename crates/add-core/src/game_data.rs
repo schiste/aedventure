@@ -11,8 +11,8 @@ use catalog::{
     CONTENT_SAVE_SCHEMA_VERSION as GENERATED_CONTENT_SAVE_SCHEMA_VERSION,
     CONTENT_SCHEMA_VERSION as GENERATED_CONTENT_SCHEMA_VERSION, CREATURES, ENTITY_SCHEMAS,
     EXPEDITION_TARGETS, FLAGS, FLORA, ITEMS, OBJECTIVES, PERKS, PROCESSING_RECIPES,
-    RESONANCE_RECIPES, RESOURCES, ROLES, STATIONS, STORY_BEATS, STRUCTURES, TILES, UI_ELEMENTS,
-    WORLD_ACTIONS,
+    CINEMATICS, RESONANCE_RECIPES, RESOURCES, ROLES, STATIONS, STORY_BEATS, STRUCTURES, TILES,
+    UI_ELEMENTS, WORLD_ACTIONS,
 };
 
 /// Authored content contract mirrored from `content-version.ts` by codegen.
@@ -731,6 +731,15 @@ pub enum EffectDef {
     Note {
         text: &'static str,
     },
+    /// Show a cinematic moment.
+    ///
+    /// The trigger side of the primitive: authored content asks for a moment
+    /// and the simulation decides whether it plays. Declining is normal — one
+    /// may already be running, or a `once` may have been seen — so this can sit
+    /// on a storylet or an objective reward without the author guarding it.
+    PlayCinematic {
+        cinematic_id: &'static str,
+    },
     /// Record a consequential act in the narrative log.
     ///
     /// The bridge between what the player does and what the world remembers.
@@ -1086,6 +1095,7 @@ pub struct CatalogSnapshot {
     pub objectives: Vec<ObjectiveDef>,
     pub items: Vec<ItemDef>,
     pub perks: Vec<PerkDef>,
+    pub cinematics: Vec<CinematicDef>,
     pub creatures: Vec<CreatureDef>,
     pub flags: Vec<FlagDef>,
     pub models: Vec<ModelDef>,
@@ -2426,6 +2436,7 @@ pub fn catalog_snapshot() -> CatalogSnapshot {
         objectives: OBJECTIVES.to_vec(),
         items: ITEMS.to_vec(),
         perks: PERKS.to_vec(),
+        cinematics: CINEMATICS.to_vec(),
         creatures: CREATURES.to_vec(),
         flags: FLAGS.to_vec(),
         models: model_snapshot(),
@@ -2606,6 +2617,76 @@ pub fn flora_def(id: &str) -> Option<&'static FloraDef> {
 
 pub fn structure_def(id: &str) -> Option<&'static StructureDef> {
     STRUCTURES.iter().find(|structure| structure.id == id)
+}
+
+/// What a cinematic beat is made of.
+///
+/// The simulation never looks at this — it only counts beats and time. It is
+/// carried so the renderer can switch on it, which is what keeps one playback
+/// system able to show a video, a still or a line of type.
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum CinematicMediaKind {
+    None,
+    Image,
+    Video,
+    Text,
+}
+
+/// What ends a beat.
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum CinematicAdvanceKind {
+    /// After the beat's authored seconds.
+    Auto,
+    /// When the player asks for the next one.
+    Input,
+    /// When the medium reports it finished. `seconds` is the backstop, so a
+    /// missing or broken asset cannot strand the player inside a cutscene.
+    MediaEnd,
+}
+
+/// Whether a cinematic may be seen more than once.
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum CinematicReplayKind {
+    Once,
+    Always,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct CinematicBeatDef {
+    pub id: &'static str,
+    pub media: CinematicMediaKind,
+    /// Asset the app resolves to a URL. Empty when the medium needs none.
+    pub asset_id: &'static str,
+    /// Body copy for a text beat, or a caption over any other kind.
+    pub copy: &'static str,
+    pub advance: CinematicAdvanceKind,
+    pub seconds: f64,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct CinematicDef {
+    pub id: &'static str,
+    pub label: &'static str,
+    pub skippable: bool,
+    /// Hold the world still while it plays. The world clock drives the Hero's
+    /// exposure, so a cutscene played against a running clock would spend his
+    /// protection while he watched it.
+    pub freeze_world: bool,
+    pub replay: CinematicReplayKind,
+    pub beats: &'static [CinematicBeatDef],
+}
+
+pub fn cinematics() -> &'static [CinematicDef] {
+    CINEMATICS
+}
+
+pub fn cinematic_def(id: &str) -> Option<&'static CinematicDef> {
+    CINEMATICS.iter().find(|cinematic| cinematic.id == id)
 }
 
 pub fn perks() -> &'static [PerkDef] {

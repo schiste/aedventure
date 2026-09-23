@@ -109,6 +109,18 @@ export class SimulationClient {
     this.post({ type: 'chooseInkChoice', beatId, index })
   }
 
+  startCinematic(cinematicId: string) {
+    this.post({ type: 'startCinematic', cinematicId })
+  }
+
+  advanceCinematic() {
+    this.post({ type: 'advanceCinematic' })
+  }
+
+  skipCinematic() {
+    this.post({ type: 'skipCinematic' })
+  }
+
   completePreArrivalRoute() {
     this.post({ type: 'completePreArrivalRoute' })
   }

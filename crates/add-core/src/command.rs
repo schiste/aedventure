@@ -55,6 +55,16 @@ pub enum GameCommand {
         beat_id: String,
         index: u16,
     },
+    /// Begin an authored cinematic. A no-op when one is already playing, when
+    /// the id is unknown, or when `replay: once` and it has been seen.
+    StartCinematic {
+        cinematic_id: String,
+    },
+    /// Move to the next beat: the player asked, or the medium reported it
+    /// finished. A no-op when nothing is playing.
+    AdvanceCinematic,
+    /// Cut to the end. Honoured only when the cinematic is authored skippable.
+    SkipCinematic,
     CompletePreArrivalRoute,
     SetHeroAssigned {
         assigned: bool,

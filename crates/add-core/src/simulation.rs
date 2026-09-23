@@ -184,6 +184,11 @@ impl Simulation {
                 event_id,
             } => self.tell(&entity_id, event_id),
             GameCommand::Silence { entity_id } => self.silence(&entity_id),
+            GameCommand::StartCinematic { cinematic_id } => {
+                self.start_cinematic(&cinematic_id);
+            }
+            GameCommand::AdvanceCinematic => self.advance_cinematic(),
+            GameCommand::SkipCinematic => self.skip_cinematic(),
             GameCommand::CompletePreArrivalRoute => self.complete_pre_arrival_route(),
             GameCommand::SetHeroAssigned { assigned } => self.set_hero_assigned(assigned),
             GameCommand::SetHeroRole { role_id } => self.set_hero_role(&role_id),
@@ -1535,9 +1540,164 @@ impl Simulation {
         }
     }
 
+    // -- Cinematic playback ------------------------------------------------
+    //
+    // The simulation owns *where the player is* in a cinematic and nothing
+    // else: it counts beats and time, and never looks at what a beat is made
+    // of. That is what lets one playback path carry video, stills and type.
+
+    /// The definition behind whatever is playing, if it is still in the
+    /// catalog. A save can outlive the content it referenced.
+    fn active_cinematic_def(&self) -> Option<&'static crate::game_data::CinematicDef> {
+        self.state
+            .cinematics
+            .active
+            .as_ref()
+            .and_then(|active| crate::game_data::cinematic_def(&active.cinematic_id))
+    }
+
+    /// Is the world held still right now?
+    pub fn cinematic_freezes_world(&self) -> bool {
+        self.active_cinematic_def()
+            .is_some_and(|def| def.freeze_world)
+    }
+
+    /// Begin a cinematic. Returns whether it started.
+    ///
+    /// Declining is the common case and is never an error: the id may be
+    /// unknown, something may already be playing, or it may be a `once` the
+    /// player has seen. Callers are authored triggers, which should be able to
+    /// fire freely without checking first.
+    fn start_cinematic(&mut self, cinematic_id: &str) -> bool {
+        if self.state.cinematics.is_playing() {
+            return false;
+        }
+        let Some(def) = crate::game_data::cinematic_def(cinematic_id) else {
+            return false;
+        };
+        if matches!(def.replay, crate::game_data::CinematicReplayKind::Once)
+            && self.state.cinematics.seen.contains(cinematic_id)
+        {
+            return false;
+        }
+        // A cinematic with no beats has nothing to show. Mark it seen so a
+        // `once` trigger does not keep retrying an empty moment.
+        if def.beats.is_empty() {
+            self.state.cinematics.seen.insert(cinematic_id.to_string());
+            return false;
+        }
+
+        self.state.cinematics.active = Some(crate::state::ActiveCinematic {
+            cinematic_id: cinematic_id.to_string(),
+            beat_index: 0,
+            beat_elapsed_seconds: 0.0,
+        });
+        self.push_event(crate::state::GameEvent::CinematicStarted {
+            cinematic_id: cinematic_id.to_string(),
+        });
+        true
+    }
+
+    /// Move to the next beat, finishing the cinematic if that was the last.
+    fn advance_cinematic(&mut self) {
+        let Some(def) = self.active_cinematic_def() else {
+            // Either nothing is playing, or the save outlived its content. The
+            // latter would otherwise leave the player stuck behind a cutscene
+            // that can no longer be rendered.
+            if self.state.cinematics.is_playing() {
+                self.finish_cinematic(false);
+            }
+            return;
+        };
+        let last_beat = def.beats.len().saturating_sub(1);
+        let Some(active) = self.state.cinematics.active.as_mut() else {
+            return;
+        };
+        if usize::from(active.beat_index) >= last_beat {
+            self.finish_cinematic(false);
+            return;
+        }
+        active.beat_index += 1;
+        active.beat_elapsed_seconds = 0.0;
+    }
+
+    fn skip_cinematic(&mut self) {
+        let Some(def) = self.active_cinematic_def() else {
+            if self.state.cinematics.is_playing() {
+                self.finish_cinematic(true);
+            }
+            return;
+        };
+        if !def.skippable {
+            return;
+        }
+        self.finish_cinematic(true);
+    }
+
+    fn finish_cinematic(&mut self, skipped: bool) {
+        let Some(active) = self.state.cinematics.active.take() else {
+            return;
+        };
+        // Skipping counts as having seen it: a `once` the player chose to cut
+        // short must not come back.
+        self.state.cinematics.seen.insert(active.cinematic_id.clone());
+        self.push_event(crate::state::GameEvent::CinematicCompleted {
+            cinematic_id: active.cinematic_id,
+            skipped,
+        });
+    }
+
+    /// Advance the beat clock. Only `auto` beats end on time; `mediaEnd` uses
+    /// its authored seconds as a backstop so a broken asset cannot strand the
+    /// player, and `input` waits however long it waits.
+    fn progress_cinematic(&mut self, seconds: f64) {
+        let Some(def) = self.active_cinematic_def() else {
+            return;
+        };
+        let Some(active) = self.state.cinematics.active.as_ref() else {
+            return;
+        };
+        let Some(beat) = def.beats.get(usize::from(active.beat_index)) else {
+            // The catalog changed under a save and the index no longer exists.
+            self.finish_cinematic(false);
+            return;
+        };
+        let (advance, limit) = (beat.advance, beat.seconds);
+
+        let Some(active) = self.state.cinematics.active.as_mut() else {
+            return;
+        };
+        active.beat_elapsed_seconds += seconds;
+        let elapsed = active.beat_elapsed_seconds;
+
+        let expired = match advance {
+            crate::game_data::CinematicAdvanceKind::Auto => elapsed >= limit,
+            crate::game_data::CinematicAdvanceKind::MediaEnd => limit > 0.0 && elapsed >= limit,
+            crate::game_data::CinematicAdvanceKind::Input => false,
+        };
+        if expired {
+            self.advance_cinematic();
+        }
+    }
+
     fn tick_internal(&mut self, seconds: f64, offline: bool) {
         let safe_seconds = seconds.max(0.0);
         if safe_seconds <= 0.0 {
+            return;
+        }
+
+        // A cinematic that freezes the world takes the tick for itself. The
+        // world clock is what spends the Hero's exposure, so letting it run
+        // behind a cutscene would charge him for the time the player spent
+        // watching — two minutes of footage is two game hours of his
+        // protection. Everything else stops with it, so the moment is a moment
+        // and not a window in which the base quietly starves.
+        // Read the freeze before advancing: a tick that ends the cinematic holds
+        // the world for that whole tick rather than letting the remainder leak
+        // through, which keeps "the world stopped for this" exactly true.
+        let world_held = self.cinematic_freezes_world();
+        self.progress_cinematic(safe_seconds);
+        if world_held {
             return;
         }
 
@@ -4394,6 +4554,9 @@ impl Simulation {
                 }
                 EffectDef::CompleteBeat { beat_id } => self.mark_story_beat_complete(beat_id),
                 EffectDef::Note { text } => self.push_note(text.to_string()),
+                EffectDef::PlayCinematic { cinematic_id } => {
+                    self.start_cinematic(cinematic_id);
+                }
             }
         }
     }

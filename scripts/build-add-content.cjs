@@ -89,6 +89,7 @@ const uiElements = content("ui-elements")
 const entitySchemas = content("entity-schemas")
 const balance = content("balance")
 const perks = content("perks")
+const cinematics = content("cinematics")
 const items = content("items")
 const creatures = content("creatures")
 const objectives = content("objectives")
@@ -216,6 +217,7 @@ const EFFECTS_FIELD = {
     kind: "taggedEnum",
     rustEnum: "EffectDef",
     variants: {
+      play_cinematic: { variant: "PlayCinematic", fields: [{ name: "cinematic_id", from: "cinematicId", kind: "string" }] },
       set_flag: { variant: "SetFlag", fields: [{ name: "flag_id", from: "flag_id", kind: "idConst", prefix: "FLAG_" }, { name: "value", kind: "bool" }] },
       add_bunks: { variant: "AddBunks", fields: [{ name: "amount", kind: "i64" }] },
       add_skins: { variant: "AddSkins", fields: [{ name: "amount", kind: "i64" }] },
@@ -843,6 +845,44 @@ const FILES = [
             { name: "vibes", kind: "struct", structType: "VibesBalance", fields: f64s("negative_k", "bad_vibes_beta", "bad_vibes_pow", "doubling_time_seconds", "decay_reset_seconds") },
             { name: "recruitment", kind: "struct", structType: "RecruitmentBalance", fields: f64s("recruit_travel_seconds", "instant_recruit_delay_seconds", "good_vibes_opt_base", "good_vibes_opt_step", "t1_minutes", "t30_total_good_vibes", "t500_total_good_vibes", "t1000_total_good_vibes") },
             i64("notes_limit"),
+          ],
+        },
+      },
+    ],
+  },
+  {
+    sourceModule: "packages/add-content/src/content/cinematics.ts",
+    rustPath: "crates/add-core/src/game_data/catalog/cinematics.rs",
+    consts: [
+      {
+        entries: cinematics.CINEMATICS,
+        spec: {
+          constName: "CINEMATICS",
+          rustType: "CinematicDef",
+          visibility: VIS,
+          fields: [
+            { name: "id", kind: "string" },
+            { name: "label", kind: "string" },
+            { name: "skippable", kind: "bool" },
+            { name: "freeze_world", from: "freezeWorld", kind: "bool" },
+            { name: "replay", kind: "enum", rustEnum: "CinematicReplayKind" },
+            {
+              name: "beats",
+              kind: "array",
+              element: {
+                name: "b",
+                kind: "struct",
+                structType: "CinematicBeatDef",
+                fields: [
+                  { name: "id", kind: "string" },
+                  { name: "media", kind: "enum", rustEnum: "CinematicMediaKind" },
+                  { name: "asset_id", from: "assetId", kind: "string" },
+                  { name: "copy", kind: "string" },
+                  { name: "advance", kind: "enum", rustEnum: "CinematicAdvanceKind" },
+                  { name: "seconds", kind: "f64" },
+                ],
+              },
+            },
           ],
         },
       },

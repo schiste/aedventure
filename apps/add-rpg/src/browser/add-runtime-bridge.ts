@@ -176,6 +176,15 @@ export class AddRuntimeBridge {
       case "completePreArrivalRoute":
         this.client.completePreArrivalRoute()
         return true
+      case "startCinematic":
+        this.client.startCinematic(request.cinematicId)
+        return true
+      case "advanceCinematic":
+        this.client.advanceCinematic()
+        return true
+      case "skipCinematic":
+        this.client.skipCinematic()
+        return true
       case "setBalanceOverride":
         this.client.setBalanceOverride(request.path, request.value)
         return true
