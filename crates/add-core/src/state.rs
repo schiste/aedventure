@@ -44,8 +44,6 @@ pub struct GameState {
     #[serde(default)]
     pub hero_survival: HeroSurvivalState,
     #[serde(default)]
-    pub contamination: ContaminationState,
-    #[serde(default)]
     pub narrative: NarrativeState,
     pub crystal_circle: CrystalCircleState,
     pub processing: ProcessingState,
@@ -276,7 +274,6 @@ impl GameState {
             },
             hero_progress: HeroProgressState::new(),
             hero_survival: HeroSurvivalState::new(),
-            contamination: ContaminationState::new(),
             narrative: NarrativeState::new(),
             crystal_circle: CrystalCircleState {
                 base_slots: DEFAULT_BASE_SLOTS,
@@ -443,6 +440,11 @@ pub struct HeroSurvivalState {
     pub wounds: WoundTrackState,
     #[serde(default)]
     pub forced_return: Option<ForcedReturnState>,
+    /// The Hero's one-time exposure buffs and whether the static has taken him.
+    /// `viral_load_ratio` above is the spent fraction of the budget these size;
+    /// see [`crate::exposure`].
+    #[serde(default)]
+    pub exposure: crate::exposure::ExposureState,
 }
 
 impl HeroSurvivalState {
@@ -463,64 +465,8 @@ impl HeroSurvivalState {
             encounter_rate_multiplier: 1.0,
             wounds: WoundTrackState::hero_baseline(),
             forced_return: None,
+            exposure: crate::exposure::ExposureState::new(),
         }
-    }
-}
-
-/// What the Hero believes is happening to him out in the static.
-///
-/// He is immune and does not know it. Exposure accrues whenever he is beyond
-/// the field, and the first time it fills he is certain he is dying — and is
-/// not. Every time after that it kills him, because he has already learned what
-/// it should mean.
-///
-/// This is authoritative and saved: a death that a reload undoes is not a
-/// death. The `viral_load_ratio` beside it is a different quantity entirely and
-/// is untouched by any of this.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct ContaminationState {
-    /// Seconds spent beyond the field, against the current scale.
-    #[serde(default)]
-    pub exposure_seconds: f64,
-    /// Has he already been certain once, and been wrong?
-    #[serde(default)]
-    pub reveal_seen: bool,
-    /// Set the second time exposure fills. The run is over.
-    #[serde(default)]
-    pub fatal: bool,
-}
-
-impl ContaminationState {
-    /// Six hours before the reveal, twenty-four after: the walk that first
-    /// convinces him is short, and nothing is ever that frightening again.
-    pub const INTRO_SCALE_SECONDS: f64 = 6.0 * 60.0;
-    pub const SETTLED_SCALE_SECONDS: f64 = 24.0 * 60.0;
-    /// Larger steps are offline catch-up, not play. Returning to the game
-    /// should not find the Hero dead of an absence; a crossing is 60 seconds,
-    /// so real play passes this comfortably.
-    pub const MAX_STEP_SECONDS: f64 = 180.0;
-
-    pub fn new() -> Self {
-        Self { exposure_seconds: 0.0, reveal_seen: false, fatal: false }
-    }
-
-    pub fn scale_seconds(&self) -> f64 {
-        if self.reveal_seen {
-            Self::SETTLED_SCALE_SECONDS
-        } else {
-            Self::INTRO_SCALE_SECONDS
-        }
-    }
-
-    pub fn ratio(&self) -> f64 {
-        (self.exposure_seconds / self.scale_seconds()).clamp(0.0, 1.0)
-    }
-}
-
-impl Default for ContaminationState {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

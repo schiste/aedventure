@@ -1234,8 +1234,14 @@ pub struct CombatBalance {
 #[derive(Debug, Clone, Copy, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct SurvivalBalance {
-    pub hero_time_seconds_0_to_1: f64,
-    pub normal_human_time_seconds_0_to_1: f64,
+    /// Game hours the Hero lasts beyond the field before his protection is
+    /// spent. One hex crossing costs one hour, so this reads as a distance.
+    pub hero_exposure_game_hours: f64,
+    /// The same budget for anyone who is not him. The gap is the whole point.
+    pub normal_human_exposure_game_hours: f64,
+    /// Hours withheld while the Hero's immunity is unproven (see
+    /// [`crate::exposure`]). The remainder is what his first walk feels like.
+    pub hero_untested_immunity_reduction_game_hours: f64,
     pub recovery_time_seconds_1_to_0: f64,
     pub sustain_bonus_per_level: f64,
     pub tier_one_threshold_ratio: f64,

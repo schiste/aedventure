@@ -11733,8 +11733,9 @@
       "defeatExtraWoundUnits": 3.0
     },
     "survival": {
-      "heroTimeSeconds0To1": 24.0,
-      "normalHumanTimeSeconds0To1": 4.0,
+      "heroExposureGameHours": 24.0,
+      "normalHumanExposureGameHours": 4.0,
+      "heroUntestedImmunityReductionGameHours": 18.0,
       "recoveryTimeSeconds1To0": 240.0,
       "sustainBonusPerLevel": 0.05,
       "tierOneThresholdRatio": 0.5,

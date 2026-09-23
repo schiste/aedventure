@@ -19,7 +19,7 @@
 
 use std::fmt;
 
-use serde_json::Value;
+use serde_json::{Value, json};
 
 /// Current shape of the serialized [`GameState`](crate::state::GameState).
 ///
@@ -52,15 +52,58 @@ struct Migration {
 }
 
 /// Ordered registry of data-transforming migrations.
+const MIGRATIONS: &[Migration] = &[Migration { from: 15, apply: migrate_15_to_16 }];
+
+/// v15 → v16: exposure became one quantity on one scale.
 ///
-/// Empty today: every field added on the way to v15 was additive and is covered
-/// by `#[serde(default)]`, so no save needs reshaping. The framework still runs
-/// (it stamps the version and rejects future saves); the first reshaping change
-/// adds its entry here.
-const MIGRATIONS: &[Migration] = &[
-    // Example (when a real transform is needed):
-    // Migration { from: 15, apply: migrate_15_to_16 },
-];
+/// v15 kept a top-level `contamination` block with its own `exposureSeconds`
+/// counter running against a hardcoded 6-hour or 24-hour scale, separate from
+/// `heroSurvival.viralLoadRatio`. v16 has only the ratio, sized by the Hero's
+/// authored endurance, and the two one-time buffs live on the Hero.
+///
+/// Nothing is converted, because no conversion is meaningful: v15's budget was
+/// 24 *seconds* and v16's is 24 game *hours*, so a v15 ratio of 0.9 described
+/// two and a half seconds of exposure, not twenty-one hours of it. Worse,
+/// carrying the fraction across would be dangerous — under v15 a high ratio
+/// meant "debuffed and about to be dragged home", and under v16 it means "one
+/// tick from dead", so a loaded save could kill a player who was merely in bad
+/// shape. The spent ratio is therefore cleared, in the player's favour.
+///
+/// What must survive is whether he had already been certain once, because a
+/// player who has seen that reveal must not be made to see it twice.
+fn migrate_15_to_16(value: &mut Value) {
+    let Some(root) = value.as_object_mut() else {
+        return;
+    };
+    let old = root.remove("contamination");
+    let reveal_seen = old
+        .as_ref()
+        .and_then(|block| block.get("revealSeen"))
+        .and_then(Value::as_bool)
+        .unwrap_or(false);
+    let fatal = old
+        .as_ref()
+        .and_then(|block| block.get("fatal"))
+        .and_then(Value::as_bool)
+        .unwrap_or(false);
+
+    // A run that had already survived the reveal has spent both buffs.
+    let exposure = json!({
+        "untestedImmunity": !reveal_seen,
+        "provingRestoreAvailable": !reveal_seen,
+        "fatal": fatal,
+    });
+
+    let survival = root
+        .entry("heroSurvival".to_string())
+        .or_insert_with(|| json!({}));
+    if let Some(survival) = survival.as_object_mut() {
+        survival.insert("exposure".to_string(), exposure);
+        // Measured against a scale 60 times smaller. Resume with full
+        // protection rather than with a number that no longer means anything.
+        survival.insert("viralLoadRatio".to_string(), json!(0.0));
+    }
+}
 
 /// Why a save could not be migrated.
 #[derive(Debug, Clone, PartialEq, Eq)]

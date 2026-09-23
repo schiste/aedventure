@@ -619,15 +619,13 @@ const baseManagementState = createModuleMemo<AddBaseManagementState | null>(() =
 // ---------------------------------------------------------------------------
 // Contamination.
 //
-// The quantity itself is authoritative and lives in the save: how long the Hero
-// has been beyond the field, whether he has already been certain once, and
-// whether the static has finally taken him. A death a reload undoes is not a
-// death, so none of that is decided here. This file only draws it.
+// The quantity is authoritative and lives in the save, as the fraction of his
+// protection the Hero has spent. His endurance is authored at 24 game hours,
+// less the 18 withheld until his immunity is proven, so the first walk runs on
+// six — and spending all of it is the reveal the first time and the end of the
+// run the second. A death a reload undoes is not a death, so none of that is
+// decided here. This file only draws it.
 // ---------------------------------------------------------------------------
-
-/** Mirrors `ContaminationState` in add-core; the scale depends on the reveal. */
-const CONTAMINATION_INTRO_SCALE_SECONDS = 6 * 60
-const CONTAMINATION_SETTLED_SCALE_SECONDS = 24 * 60
 
 /**
  * The first half has to be watchable, not merely present.
@@ -654,17 +652,19 @@ const [heroAside, setHeroAside] = createSignal<string | null>(null)
 const CONTAMINATION_REVEAL_LINE = "what the... oh no..."
 const CONTAMINATION_REVEAL_HOLD_MS = 4200
 
+/**
+ * The haze reads the Hero's spent protection directly. There is no second
+ * scale to divide by any more: the simulation sizes the budget from his
+ * authored endurance and his one-time buffs, and `viralLoadRatio` is how much
+ * of it he has spent — the same number the debuff tiers and the point of no
+ * return read. It falls as he recovers, so the red recedes when he gets home.
+ */
 function contaminationRatio(): number {
-  const contamination = snapshot()?.contamination
-  if (!contamination) return 0
-  const scale = contamination.revealSeen
-    ? CONTAMINATION_SETTLED_SCALE_SECONDS
-    : CONTAMINATION_INTRO_SCALE_SECONDS
-  return Math.min(1, Math.max(0, contamination.exposureSeconds / scale))
+  return Math.min(1, Math.max(0, snapshot()?.heroSurvival.viralLoadRatio ?? 0))
 }
 
 function contaminationFatal(): boolean {
-  return snapshot()?.contamination.fatal ?? false
+  return snapshot()?.heroSurvival.exposure.fatal ?? false
 }
 
 /**
@@ -674,7 +674,8 @@ function contaminationFatal(): boolean {
  */
 let contaminationRevealAnnounced = false
 createModuleEffect(() => {
-  const revealed = snapshot()?.contamination.revealSeen ?? false
+  const survival = snapshot()?.heroSurvival
+  const revealed = survival ? !survival.exposure.untestedImmunity : false
   if (!revealed || contaminationRevealAnnounced) return
   contaminationRevealAnnounced = true
   setHeroAside(CONTAMINATION_REVEAL_LINE)

@@ -24,7 +24,6 @@ use crate::game_data::{
     station_def, stations, story_beat_def, story_beats, tile_def, world_action_def, world_actions,
 };
 use crate::state::{
-    ContaminationState,
     CombatJob, CombatLogEntry, ConstructionJob, CrystalTuningTrackState, ExpeditionJob,
     ExpeditionReport, ExpeditionRiskState, ForcedReturnPhase, ForcedReturnState, GRID_RADIUS,
     GameState, HeroLocationState, HexCoordState, HexState, HexVisualState, ResonanceJob,
@@ -1046,11 +1045,44 @@ impl Simulation {
         self.state.hero_survival.forced_return.is_some()
     }
 
+    /// The Hero's exposure profile: authored hours, his one-time reduction, and
+    /// whatever Sustain has bought him.
+    fn hero_exposure_profile(&self) -> crate::exposure::ExposureProfile {
+        let survival = self.balance().survival;
+        crate::exposure::ExposureProfile {
+            base_game_hours: survival.hero_exposure_game_hours,
+            untested_reduction_game_hours: survival
+                .hero_untested_immunity_reduction_game_hours,
+            endurance_multiplier: 1.0
+                + f64::from(self.state.hero_survival.sustain) * survival.sustain_bonus_per_level,
+        }
+    }
+
+    /// Seconds the Hero can spend beyond the field before his protection is
+    /// gone. `viral_load_ratio` is the spent fraction of exactly this.
     fn hero_outside_time_seconds_0_to_1(&self) -> f64 {
-        self.balance().survival.hero_time_seconds_0_to_1
-            * (1.0
-                + f64::from(self.state.hero_survival.sustain)
-                    * self.balance().survival.sustain_bonus_per_level)
+        crate::exposure::endurance_seconds(
+            self.hero_exposure_profile(),
+            &self.state.hero_survival.exposure,
+        )
+    }
+
+    /// The same budget for anyone who is not the Hero. Nothing in the
+    /// simulation models an individual survivor yet, so this has no caller
+    /// beyond the tests that hold the authored gap in place — it is here
+    /// because the rule is a property of the archetype, not of him.
+    pub fn exposure_endurance_seconds(&self, archetype: crate::exposure::ExposureArchetype) -> f64 {
+        match archetype {
+            crate::exposure::ExposureArchetype::Hero => self.hero_outside_time_seconds_0_to_1(),
+            crate::exposure::ExposureArchetype::NormalHuman => crate::exposure::endurance_seconds(
+                crate::exposure::ExposureProfile {
+                    base_game_hours: self.balance().survival.normal_human_exposure_game_hours,
+                    untested_reduction_game_hours: 0.0,
+                    endurance_multiplier: 1.0,
+                },
+                &crate::exposure::ExposureState::new(),
+            ),
+        }
     }
 
     fn hero_recovery_time_seconds_1_to_0(&self) -> f64 {
@@ -1337,46 +1369,64 @@ impl Simulation {
         distance > self.state.bubble.reach_from_base
     }
 
-    /// Accrue the Hero's certainty that the static is killing him.
+    /// Protection reaching zero.
     ///
-    /// The first fill is survived and resets the clock onto the longer scale;
-    /// the second ends the run. Both are authoritative and saved, because a
-    /// death a reload undoes is not a death.
-    fn progress_contamination(&mut self, seconds: f64) {
-        if self.state.contamination.fatal {
-            return;
+    /// The first time is survived: the proving restore hands the budget back in
+    /// full, and because the untested reduction is spent at the same moment the
+    /// budget he gets back is the larger one. The second time ends the run.
+    /// Returns true when the Hero is gone.
+    fn resolve_exposure_exhaustion(&mut self) -> bool {
+        if self.state.hero_survival.exposure.fatal {
+            return true;
         }
-        // A whole absence arrives as one enormous step. Dread is something the
-        // player sits through, not something that accrues while the game is shut.
-        if seconds > ContaminationState::MAX_STEP_SECONDS {
-            return;
+        if !crate::exposure::is_spent(self.state.hero_survival.viral_load_ratio) {
+            return false;
         }
-        if !self.hero_beyond_the_field() {
-            return;
+        match crate::exposure::exhaust(&mut self.state.hero_survival.exposure) {
+            crate::exposure::Exhaustion::Survived => {
+                self.state.hero_survival.viral_load_ratio = 0.0;
+                self.refresh_hero_survival_state();
+                self.push_event(crate::state::GameEvent::ContaminationRevealed);
+                false
+            }
+            crate::exposure::Exhaustion::Fatal => {
+                self.push_event(crate::state::GameEvent::ContaminationFatal);
+                self.push_note("The static took him.".to_string());
+                true
+            }
         }
+    }
 
-        let scale = self.state.contamination.scale_seconds();
-        let next = self.state.contamination.exposure_seconds + seconds;
-        if next < scale {
-            self.state.contamination.exposure_seconds = next;
-            return;
+    /// How much of this step the Hero spends beyond the field.
+    ///
+    /// Keyed on the map rather than on the location enum, because the enum only
+    /// moves when an authored action moves it: walking the overworld leaves it
+    /// reading `Studio` for the whole crossing, and exposure that trusted it
+    /// would let the player wander the wasteland for free.
+    fn exposed_seconds_in_step(&self, seconds: f64) -> f64 {
+        // A walk home in progress is authored, and the authored split wins: its
+        // `return_to_bubble` leg is spent outside and costs protection, its
+        // `return_to_studio` leg is walked inside the field and does not. The
+        // action's author decided where the field's edge falls on that walk, so
+        // the map does not get to charge the sheltered half of it.
+        let journey = self.state.hero_survival.return_journey_seconds;
+        if journey > 0.0 {
+            let to_the_edge =
+                (journey - self.state.hero_survival.return_to_studio_seconds).max(0.0);
+            return seconds.min(to_the_edge);
         }
-
-        self.state.contamination.exposure_seconds = scale;
-        if self.state.contamination.reveal_seen {
-            self.state.contamination.fatal = true;
-            self.push_event(crate::state::GameEvent::ContaminationFatal);
-            self.push_note("The static took him.".to_string());
-            return;
+        match self.state.hero_survival.location {
+            HeroLocationState::OutsideBubble => seconds,
+            HeroLocationState::Studio | HeroLocationState::Bubble => {
+                if self.hero_beyond_the_field() { seconds } else { 0.0 }
+            }
         }
-
-        self.state.contamination.reveal_seen = true;
-        self.state.contamination.exposure_seconds = 0.0;
-        self.push_event(crate::state::GameEvent::ContaminationRevealed);
     }
 
     fn progress_hero_survival(&mut self, seconds: f64) {
-        self.progress_contamination(seconds);
+        if self.state.hero_survival.exposure.fatal {
+            return;
+        }
         if self.state.hero_survival.forced_return.is_some() {
             self.progress_forced_return(seconds);
             self.refresh_hero_survival_state();
@@ -1404,21 +1454,12 @@ impl Simulation {
     }
 
     fn progress_hero_survival_leg(&mut self, seconds: f64) {
+        let exposed = self.exposed_seconds_in_step(seconds);
+
+        // The walk home is a timer rather than a map move, so it advances here.
         match self.state.hero_survival.location {
             HeroLocationState::OutsideBubble => {
-                // The walk home has two legs, the same split the forced return
-                // uses: `return_to_bubble` is spent outside and costs exposure,
-                // `return_to_studio` is walked inside the field and does not.
                 let journey = self.state.hero_survival.return_journey_seconds;
-                let exposed = if journey > 0.0 {
-                    let to_the_edge =
-                        (journey - self.state.hero_survival.return_to_studio_seconds).max(0.0);
-                    seconds.min(to_the_edge)
-                } else {
-                    seconds
-                };
-                self.state.hero_survival.viral_load_ratio +=
-                    exposed / self.hero_outside_time_seconds_0_to_1();
                 if journey > 0.0 {
                     let left = (journey - seconds).max(0.0);
                     self.state.hero_survival.return_journey_seconds = left;
@@ -1440,12 +1481,6 @@ impl Simulation {
                             .required_time_to_reenter_bubble_seconds = 0.0;
                     }
                 }
-                self.refresh_hero_survival_state();
-                if self.state.hero_survival.viral_load_ratio
-                    >= self.state.hero_survival.point_of_no_return_ratio
-                {
-                    self.trigger_forced_return();
-                }
             }
             HeroLocationState::Studio | HeroLocationState::Bubble => {
                 if self.state.hero_survival.return_journey_seconds > 0.0 {
@@ -1456,16 +1491,47 @@ impl Simulation {
                         self.state.hero_survival.return_to_studio_seconds = 0.0;
                     }
                 }
-                let recovery_multiplier = self.hero_recovery_rate_multiplier();
-                if recovery_multiplier > 0.0 {
-                    self.state.hero_survival.viral_load_ratio =
-                        (self.state.hero_survival.viral_load_ratio
-                            - (seconds / self.hero_recovery_time_seconds_1_to_0())
-                                * recovery_multiplier)
-                            .max(0.0);
-                }
-                self.refresh_hero_survival_state();
             }
+        }
+
+        if exposed > 0.0 {
+            self.state.hero_survival.viral_load_ratio +=
+                exposed / self.hero_outside_time_seconds_0_to_1();
+            // A whole absence arrives as one enormous step. It still costs him,
+            // but it stops at the brink: the step that kills is always one the
+            // player was there for.
+            if seconds > crate::exposure::MAX_ACCRUAL_STEP_SECONDS {
+                self.state.hero_survival.viral_load_ratio = self
+                    .state
+                    .hero_survival
+                    .viral_load_ratio
+                    .min(crate::exposure::ABSENCE_CEILING_RATIO);
+            }
+            self.refresh_hero_survival_state();
+            if self.resolve_exposure_exhaustion() {
+                return;
+            }
+            if self.state.hero_survival.viral_load_ratio
+                >= self.state.hero_survival.point_of_no_return_ratio
+            {
+                self.trigger_forced_return();
+            }
+        } else if self.hero_beyond_the_field() {
+            // Still out there but accruing nothing: either the sheltered leg of
+            // the walk home, or an offline span this step is too coarse to
+            // charge. Recovering here would hand back protection while he
+            // stands in the static, so the budget simply holds.
+            self.refresh_hero_survival_state();
+        } else {
+            let recovery_multiplier = self.hero_recovery_rate_multiplier();
+            if recovery_multiplier > 0.0 {
+                self.state.hero_survival.viral_load_ratio =
+                    (self.state.hero_survival.viral_load_ratio
+                        - (seconds / self.hero_recovery_time_seconds_1_to_0())
+                            * recovery_multiplier)
+                        .max(0.0);
+            }
+            self.refresh_hero_survival_state();
         }
     }
 

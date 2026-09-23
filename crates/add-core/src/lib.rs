@@ -1,4 +1,5 @@
 pub mod command;
+pub mod exposure;
 pub mod game_data;
 #[rustfmt::skip]
 mod generated_ink;
@@ -1526,7 +1527,16 @@ mod tests {
             simulation.state().hero_survival.location,
             HeroLocationState::Studio
         );
-        assert_eq!(simulation.state().hero_survival.viral_load_ratio, 0.0);
+        // The action itself never sends him out: what little these three
+        // seconds cost is the price of standing in the wild before there is any
+        // field to stand inside, which every pre-arrival action shares.
+        let endurance =
+            simulation.exposure_endurance_seconds(crate::exposure::ExposureArchetype::Hero);
+        assert!(
+            (simulation.state().hero_survival.viral_load_ratio - 3.0 / endurance).abs() < 1e-9,
+            "a safe action must add nothing of its own, got {}",
+            simulation.state().hero_survival.viral_load_ratio
+        );
         assert!(simulation.state().active_world_action.is_some());
     }
 
@@ -1541,13 +1551,23 @@ mod tests {
         simulation.apply(GameCommand::StartWorldAction {
             action_id: WORLD_ACTION_EXPLORE_BASE.to_string(),
         });
+        let before = simulation.state().hero_survival.viral_load_ratio;
         simulation.apply(GameCommand::Tick { seconds: 4.0 });
 
         assert_eq!(
             simulation.state().hero_survival.location,
             HeroLocationState::OutsideBubble
         );
-        assert!(simulation.state().hero_survival.viral_load_ratio > 0.15);
+        // Four seconds outside spends four seconds of the authored budget,
+        // whatever that budget is — the assertion should survive a rebalance.
+        // Measured as a delta because the intro has been costing him all along.
+        let endurance =
+            simulation.exposure_endurance_seconds(crate::exposure::ExposureArchetype::Hero);
+        let spent = simulation.state().hero_survival.viral_load_ratio - before;
+        assert!(
+            (spent - 4.0 / endurance).abs() < 1e-9,
+            "expected 4s of the {endurance}s budget, spent {spent}"
+        );
         assert!(simulation.state().active_world_action.is_some());
     }
 
@@ -1557,11 +1577,24 @@ mod tests {
         state.hero_survival.location = HeroLocationState::OutsideBubble;
         state.hero_survival.required_time_to_reenter_bubble_seconds = 6.0;
         state.hero_survival.return_to_studio_seconds = 4.0;
-        state.hero_survival.viral_load_ratio = 0.74;
         state.roster.hero_assigned = true;
 
+        // Let the simulation publish the threshold for the authored endurance,
+        // then stand the Hero just inside it. The mechanism under test is the
+        // crossing, not the constant, so nothing here hardcodes a scale.
         let mut simulation = Simulation::from_state(state);
-        simulation.apply(GameCommand::Tick { seconds: 0.3 });
+        simulation.apply(GameCommand::Tick { seconds: 0.001 });
+        let threshold = simulation.state().hero_survival.point_of_no_return_ratio;
+        assert!(
+            threshold < 1.0,
+            "an outdoor action owing a walk home must have a real threshold"
+        );
+
+        let mut seeded = simulation.state().clone();
+        seeded.hero_survival.viral_load_ratio = threshold - 0.0005;
+        seeded.roster.hero_assigned = true;
+        let mut simulation = Simulation::from_state(seeded);
+        simulation.apply(GameCommand::Tick { seconds: 1.0 });
 
         let forced_return = simulation
             .state()
@@ -1635,7 +1668,34 @@ mod tests {
             elapsed_seconds: 6.0,
         });
 
-        assert!(simulation.state().hero_survival.viral_load_ratio > 0.2);
+        let endurance =
+            simulation.exposure_endurance_seconds(crate::exposure::ExposureArchetype::Hero);
+        assert!(
+            (simulation.state().hero_survival.viral_load_ratio - 6.0 / endurance).abs() < 1e-9,
+            "six seconds away are still six seconds in the static"
+        );
+    }
+
+    #[test]
+    fn a_long_absence_stops_at_the_brink() {
+        // Time away counts, but it must not be what kills him: the step that
+        // ends the run is always one the player was present for.
+        let mut state = GameState::new();
+        state.hero_survival.location = HeroLocationState::OutsideBubble;
+        let mut simulation = Simulation::from_state(state);
+
+        simulation.apply(GameCommand::RunOfflineCatchup { elapsed_seconds: 40_000.0 });
+
+        assert_eq!(
+            simulation.state().hero_survival.viral_load_ratio,
+            crate::exposure::ABSENCE_CEILING_RATIO,
+            "an absence long enough to fill the budget stops just short"
+        );
+        assert!(!simulation.state().hero_survival.exposure.fatal);
+        assert!(
+            !simulation.state().hero_survival.exposure.immunity_proven(),
+            "and does not spend the reveal either"
+        );
     }
 
     #[test]
@@ -2428,7 +2488,19 @@ mod tests {
         );
         assert!(catalog.balance.recruitment.t1_minutes > 0.0);
         assert!(super::recruit_cost_for_index(1) > 0.0);
-        assert!(catalog.balance.survival.hero_time_seconds_0_to_1 > 0.0);
+        assert!(catalog.balance.survival.hero_exposure_game_hours > 0.0);
+        // The ordinary-survivor budget has to stay authored and smaller: the
+        // Hero's advantage is the whole premise.
+        assert!(
+            catalog.balance.survival.normal_human_exposure_game_hours > 0.0
+                && catalog.balance.survival.normal_human_exposure_game_hours
+                    < catalog.balance.survival.hero_exposure_game_hours
+        );
+        assert!(
+            catalog.balance.survival.hero_untested_immunity_reduction_game_hours
+                < catalog.balance.survival.hero_exposure_game_hours,
+            "withholding the whole budget would leave him no scale at all"
+        );
     }
 
     #[test]
@@ -2666,74 +2738,193 @@ mod tests {
         assert_eq!(sim.quality("hope"), 1);
     }
 
+
     #[test]
-    fn contamination_reveals_once_then_kills() {
+    fn untested_hero_has_six_of_his_twenty_four_hours() {
+        // 24 authored hours less the 18 withheld while his immunity is
+        // unproven. One hex crossing costs an hour, so this is six crossings.
+        let simulation = Simulation::new();
+        assert_eq!(
+            simulation.exposure_endurance_seconds(crate::exposure::ExposureArchetype::Hero),
+            6.0 * 60.0
+        );
+        // The gap that makes him worth following: anyone else gets four.
+        assert_eq!(
+            simulation.exposure_endurance_seconds(crate::exposure::ExposureArchetype::NormalHuman),
+            4.0 * 60.0
+        );
+    }
+
+    #[test]
+    fn wandering_the_map_spends_protection() {
+        // Exposure used to key on `hero_survival.location`, which only moves
+        // when an authored action moves it — so walking the overworld cost
+        // nothing at all. It keys on the map now.
+        let mut simulation = Simulation::new();
+        assert_eq!(simulation.state().hero_survival.location, HeroLocationState::Studio);
+        assert!(simulation.state().hero_survival.viral_load_ratio.abs() < f64::EPSILON);
+
+        simulation.apply(GameCommand::Tick { seconds: 60.0 });
+        assert!(
+            simulation.state().hero_survival.viral_load_ratio > 0.0,
+            "a crossing spent beyond the field has to cost him something"
+        );
+    }
+
+    #[test]
+    fn exhaustion_reveals_once_then_kills() {
         // The Hero starts at the Survivor Cave, six hexes from the field, so he
         // is exposed from the first tick.
         let mut simulation = Simulation::new();
-        assert_eq!(simulation.state().contamination.exposure_seconds, 0.0);
-
-        // A step larger than the cap is offline catch-up, not play. Coming back
-        // to the game must not find him dead of an absence.
-        simulation.apply(GameCommand::Tick { seconds: 4000.0 });
-        assert_eq!(
-            simulation.state().contamination.exposure_seconds, 0.0,
-            "an absence must not accrue dread"
-        );
+        assert!(!simulation.state().hero_survival.exposure.immunity_proven());
 
         // Six hours out there and he is certain. He is also wrong.
         for _ in 0..6 {
             simulation.apply(GameCommand::Tick { seconds: 60.0 });
         }
-        assert!(simulation.state().contamination.reveal_seen);
-        assert!(!simulation.state().contamination.fatal, "the first fill is survived");
-        assert_eq!(
-            simulation.state().contamination.exposure_seconds, 0.0,
-            "surviving it clears the clock"
-        );
+        assert!(simulation.state().hero_survival.exposure.immunity_proven());
         assert!(
-            simulation.state().contamination.scale_seconds()
-                > crate::state::ContaminationState::INTRO_SCALE_SECONDS,
-            "and moves him onto the longer scale"
+            !simulation.state().hero_survival.exposure.fatal,
+            "the first exhaustion is survived"
+        );
+        assert_eq!(
+            simulation.state().hero_survival.viral_load_ratio, 0.0,
+            "the proving restore hands the budget back in full"
+        );
+        assert_eq!(
+            simulation.exposure_endurance_seconds(crate::exposure::ExposureArchetype::Hero),
+            24.0 * 60.0,
+            "and the withheld hours come back with it"
         );
 
         // Twenty-four hours this time, and it means what he thought it meant.
         for _ in 0..24 {
             simulation.apply(GameCommand::Tick { seconds: 60.0 });
         }
-        assert!(simulation.state().contamination.fatal);
+        assert!(simulation.state().hero_survival.exposure.fatal);
 
         // Death is terminal: further time changes nothing.
-        let at_death = simulation.state().contamination.exposure_seconds;
+        let at_death = simulation.state().hero_survival.viral_load_ratio;
         simulation.apply(GameCommand::Tick { seconds: 60.0 });
-        assert_eq!(simulation.state().contamination.exposure_seconds, at_death);
+        assert_eq!(simulation.state().hero_survival.viral_load_ratio, at_death);
     }
 
     #[test]
-    fn contamination_survives_a_save_round_trip() {
-        // The whole point of moving this into the simulation: a reload must not
-        // undo a death.
+    fn exhaustion_survives_a_save_round_trip() {
+        // The whole point of it being simulation state: a reload must not undo
+        // a death.
+        let mut simulation = Simulation::new();
+        for _ in 0..30 {
+            simulation.apply(GameCommand::Tick { seconds: 60.0 });
+        }
+        assert!(simulation.state().hero_survival.exposure.fatal);
+
+        let saved = serde_json::to_string(simulation.state()).expect("state serializes");
+        let restored: GameState = serde_json::from_str(&saved).expect("state restores");
+        assert!(restored.hero_survival.exposure.fatal, "a reload must not undo a death");
+        assert!(restored.hero_survival.exposure.immunity_proven());
+    }
+
+    #[test]
+    fn a_v15_save_keeps_the_reveal_it_already_saw() {
+        // v15 held contamination in its own top-level block on a scale this
+        // build no longer has. The seconds are dropped, but a player who has
+        // already been certain once must not be made to feel it twice.
         let mut simulation = Simulation::new();
         for _ in 0..6 {
             simulation.apply(GameCommand::Tick { seconds: 60.0 });
         }
-        for _ in 0..24 {
+        let mut v15: serde_json::Value =
+            serde_json::from_str(&serde_json::to_string(simulation.state()).expect("serializes"))
+                .expect("value");
+        {
+            let root = v15.as_object_mut().expect("object");
+            root.insert("schemaVersion".to_string(), serde_json::json!(15));
+            root.insert(
+                "contamination".to_string(),
+                serde_json::json!({
+                    "exposureSeconds": 120.0,
+                    "revealSeen": true,
+                    "fatal": false,
+                }),
+            );
+            root.get_mut("heroSurvival")
+                .and_then(|survival| survival.as_object_mut())
+                .expect("heroSurvival object")
+                .remove("exposure");
+        }
+
+        let restored = crate::save::import_save(&v15.to_string()).expect("v15 loads");
+        assert!(
+            restored.hero_survival.exposure.immunity_proven(),
+            "the reveal he already saw has to carry forward"
+        );
+        assert!(!restored.hero_survival.exposure.proving_restore_available);
+        assert!(!restored.hero_survival.exposure.fatal);
+    }
+
+    #[test]
+    fn a_v15_save_does_not_resume_one_tick_from_death() {
+        // v15's ratio was a fraction of a 24-second budget. Read as a fraction
+        // of 24 game hours it would put a merely-debuffed Hero at death's door,
+        // so the migration clears it.
+        let mut simulation = Simulation::new();
+        for _ in 0..6 {
             simulation.apply(GameCommand::Tick { seconds: 60.0 });
         }
-        assert!(simulation.state().contamination.fatal);
+        let mut v15: serde_json::Value =
+            serde_json::from_str(&serde_json::to_string(simulation.state()).expect("serializes"))
+                .expect("value");
+        {
+            let root = v15.as_object_mut().expect("object");
+            root.insert("schemaVersion".to_string(), serde_json::json!(15));
+            root.insert(
+                "contamination".to_string(),
+                serde_json::json!({ "exposureSeconds": 1.0, "revealSeen": true, "fatal": false }),
+            );
+            let survival = root
+                .get_mut("heroSurvival")
+                .and_then(|survival| survival.as_object_mut())
+                .expect("heroSurvival object");
+            survival.remove("exposure");
+            survival.insert("viralLoadRatio".to_string(), serde_json::json!(0.999));
+        }
 
-        let saved = serde_json::to_string(simulation.state()).expect("state serializes");
-        let restored: GameState = serde_json::from_str(&saved).expect("state restores");
-        assert!(restored.contamination.fatal, "a reload must not undo a death");
-        assert!(restored.contamination.reveal_seen);
+        let restored = crate::save::import_save(&v15.to_string()).expect("v15 loads");
+        assert_eq!(
+            restored.hero_survival.viral_load_ratio, 0.0,
+            "a units change must not be lethal"
+        );
 
-        // A save written before contamination existed loads as an untouched run
-        // rather than being rejected.
-        let mut older: serde_json::Value = serde_json::from_str(&saved).expect("value");
-        older.as_object_mut().expect("object").remove("contamination");
-        let legacy: GameState =
-            serde_json::from_value(older).expect("older saves still load");
-        assert_eq!(legacy.contamination, crate::state::ContaminationState::new());
+        // And the very next tick must not finish him.
+        let mut resumed = Simulation::from_state(restored);
+        resumed.apply(GameCommand::Tick { seconds: 60.0 });
+        assert!(!resumed.state().hero_survival.exposure.fatal);
+    }
+
+    #[test]
+    fn a_v15_save_that_never_revealed_keeps_both_buffs() {
+        let mut simulation = Simulation::new();
+        simulation.apply(GameCommand::Tick { seconds: 60.0 });
+        let mut v15: serde_json::Value =
+            serde_json::from_str(&serde_json::to_string(simulation.state()).expect("serializes"))
+                .expect("value");
+        {
+            let root = v15.as_object_mut().expect("object");
+            root.insert("schemaVersion".to_string(), serde_json::json!(15));
+            root.insert(
+                "contamination".to_string(),
+                serde_json::json!({ "exposureSeconds": 60.0, "revealSeen": false, "fatal": false }),
+            );
+            root.get_mut("heroSurvival")
+                .and_then(|survival| survival.as_object_mut())
+                .expect("heroSurvival object")
+                .remove("exposure");
+        }
+
+        let restored = crate::save::import_save(&v15.to_string()).expect("v15 loads");
+        assert!(!restored.hero_survival.exposure.immunity_proven());
+        assert!(restored.hero_survival.exposure.proving_restore_available);
     }
 
     #[test]
@@ -2797,10 +2988,14 @@ mod tests {
             seconds: def.return_to_studio_seconds,
         });
         assert_eq!(sim.state().hero_survival.location, HeroLocationState::Studio);
-        assert!(
-            sim.state().hero_survival.viral_load_ratio < at_the_field,
-            "inside the field the Hero recovers instead of accruing"
+        assert_eq!(
+            sim.state().hero_survival.viral_load_ratio, at_the_field,
+            "the sheltered leg costs nothing"
         );
+        // It does not hand anything back either. Recovery needs a field to sit
+        // inside, and this early there is not one: the map still has him out at
+        // the cave whatever the location enum says.
+        assert!(sim.state().hero_survival.viral_load_ratio > 0.0);
         assert_eq!(sim.state().hero_survival.return_journey_seconds, 0.0);
     }
 

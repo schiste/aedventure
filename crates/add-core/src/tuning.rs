@@ -43,7 +43,13 @@ pub fn apply_balance_override(balance: &mut BalanceSnapshot, path: &str, value: 
         "bubble.fieldKBase" => balance.bubble.field_k_base = value,
 
         // Survival
-        "survival.heroTimeSeconds0To1" => balance.survival.hero_time_seconds_0_to_1 = value,
+        "survival.heroExposureGameHours" => balance.survival.hero_exposure_game_hours = value,
+        "survival.normalHumanExposureGameHours" => {
+            balance.survival.normal_human_exposure_game_hours = value
+        }
+        "survival.heroUntestedImmunityReductionGameHours" => {
+            balance.survival.hero_untested_immunity_reduction_game_hours = value
+        }
         "survival.recoveryTimeSeconds1To0" => balance.survival.recovery_time_seconds_1_to_0 = value,
 
         _ => return false,

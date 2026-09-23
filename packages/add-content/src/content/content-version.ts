@@ -8,7 +8,7 @@
 export const ADD_CONTENT_VERSION = {
   contentSchemaVersion: 1,
   catalogVersion: 1,
-  saveSchemaVersion: 15,
+  saveSchemaVersion: 16,
 } as const
 
 export type AddContentVersion = typeof ADD_CONTENT_VERSION

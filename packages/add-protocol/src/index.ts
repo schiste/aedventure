@@ -63,6 +63,21 @@ export interface HeroSurvivalSnapshot {
   encounterRateMultiplier: number
   wounds: WoundTrackSnapshot
   forcedReturn: ForcedReturnSnapshot | null
+  /** One-time exposure buffs, and whether the static has taken him. */
+  exposure: ExposureSnapshot
+}
+
+/**
+ * A character's exposure buffs. `viralLoadRatio` beside this is the spent
+ * fraction of the budget they size, so there is one clock, not two.
+ */
+export interface ExposureSnapshot {
+  /** While true the character is short the authored withheld hours. */
+  untestedImmunity: boolean
+  /** While true the next exhaustion restores protection instead of killing. */
+  provingRestoreAvailable: boolean
+  /** Protection reached zero with no restore left. The run is over. */
+  fatal: boolean
 }
 
 /** One line of ink dialogue with the presentation tags authored beside it. */
@@ -379,12 +394,6 @@ export interface CombatJobSnapshot {
  * the first fill is survived and teaches him he is immune, the second ends the
  * run. Distinct from `heroSurvival.viralLoadRatio`, which is the real thing.
  */
-export interface ContaminationSnapshot {
-  exposureSeconds: number
-  revealSeen: boolean
-  fatal: boolean
-}
-
 export interface SimulationSnapshot {
   schemaVersion: number
   /** Content catalog identity this save was authored against (see save migration). */
@@ -400,7 +409,6 @@ export interface SimulationSnapshot {
   roster: RosterSnapshot
   heroProgress: HeroProgressSnapshot
   heroSurvival: HeroSurvivalSnapshot
-  contamination: ContaminationSnapshot
   narrative: NarrativeSnapshot
   crystalCircle: CrystalCircleSnapshot
   processing: ProcessingSnapshot
@@ -1069,8 +1077,9 @@ export interface CombatBalance {
 }
 
 export interface SurvivalBalance {
-  heroTimeSeconds0To1: number
-  normalHumanTimeSeconds0To1: number
+  heroExposureGameHours: number
+  normalHumanExposureGameHours: number
+  heroUntestedImmunityReductionGameHours: number
   recoveryTimeSeconds1To0: number
   sustainBonusPerLevel: number
   tierOneThresholdRatio: number

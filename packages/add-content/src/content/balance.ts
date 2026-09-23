@@ -73,8 +73,9 @@ export const BALANCE: BalanceSnapshot = {
     "defeatExtraWoundUnits": 3
   },
   "survival": {
-    "heroTimeSeconds0To1": 24,
-    "normalHumanTimeSeconds0To1": 4,
+    "heroExposureGameHours": 24,
+    "normalHumanExposureGameHours": 4,
+    "heroUntestedImmunityReductionGameHours": 18,
     "recoveryTimeSeconds1To0": 240,
     "sustainBonusPerLevel": 0.05,
     "tierOneThresholdRatio": 0.5,

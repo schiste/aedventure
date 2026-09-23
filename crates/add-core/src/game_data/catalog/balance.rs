@@ -74,8 +74,9 @@ pub(in crate::game_data) const BALANCE: BalanceSnapshot = BalanceSnapshot {
         defeat_extra_wound_units: 3.0,
     },
     survival: SurvivalBalance {
-        hero_time_seconds_0_to_1: 24.0,
-        normal_human_time_seconds_0_to_1: 4.0,
+        hero_exposure_game_hours: 24.0,
+        normal_human_exposure_game_hours: 4.0,
+        hero_untested_immunity_reduction_game_hours: 18.0,
         recovery_time_seconds_1_to_0: 240.0,
         sustain_bonus_per_level: 0.05,
         tier_one_threshold_ratio: 0.5,

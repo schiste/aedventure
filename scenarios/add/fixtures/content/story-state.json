@@ -2,7 +2,7 @@
   "fixtureSchemaVersion": 1,
   "contentSchemaVersion": 1,
   "catalogVersion": 1,
-  "saveSchemaVersion": 15,
+  "saveSchemaVersion": 16,
   "kind": "story_state",
   "entryBeatId": "story.beat.road_to_base",
   "activeBeatId": "story.beat.road_to_base",
