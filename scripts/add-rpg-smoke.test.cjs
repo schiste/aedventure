@@ -1662,6 +1662,31 @@ async function exerciseBaseManagementSurface(page, consoleErrors) {
       `Station machine panel should include ${expectedText}.`,
     )
   })
+  // `ui.panel.power` names two resources and two stations in its `relatedIds`,
+  // and the panel renders them through the entity registry. Nothing in the app
+  // source lists them, so this asserts the schema path end to end: a row that
+  // fails to render does so silently, which is how the first version of this
+  // panel shipped empty with the suite still green.
+  const schemaPanelRows = await page.evaluate(() => {
+    const panel = document.querySelector('[data-qa="schema-panel-ui-panel-power"]')
+    if (!panel) return null
+    return {
+      resources: panel.querySelectorAll('[data-entity="resource"]').length,
+      stations: panel.querySelectorAll('[data-entity="station"]').length,
+    }
+  })
+  assert.ok(schemaPanelRows, "The schema-driven power panel should be on screen.")
+  assert.equal(
+    schemaPanelRows.resources,
+    2,
+    "The power panel should draw the two resources its catalog entry names.",
+  )
+  assert.equal(
+    schemaPanelRows.stations,
+    2,
+    "The power panel should draw the two stations its catalog entry names.",
+  )
+
   await assertNonBlankNamedAppScreenshot(
     page,
     "add-rpg-station-machine-smoke.png",

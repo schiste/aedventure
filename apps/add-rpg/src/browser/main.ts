@@ -23,6 +23,7 @@ import {
   baseStationMachineSummary,
   ConstructionControls,
   Disclosure,
+  type EntityRendererRegistry,
   EconomyForecastCard,
   expeditionActiveJobRows,
   formatAffordabilityTime,
@@ -47,18 +48,23 @@ import {
   offlineReturnResourceRows,
   PerkControls,
   resonanceMaterialCard,
+  projectEntityRow,
+  resourceEntityRow,
+  roleEntityRow,
   selectedTileLinkRows,
   selectedTileUsefulnessRows,
   selectedTileUsefulnessSummary,
   shouldRevealCopyDetail,
   signedRateCopy,
   socialPendingArrivalRows,
+  stationEntityRow,
   storyBrowserBeatRows,
   storyBrowserChoiceRows,
   storyBrowserCommandRows,
   storyBrowserEligibilityRows,
   storyBrowserQualityRows,
   travelDialogActions,
+  worldActionEntityRow,
   titleCase,
   SchemaPanel,
   Stat,
@@ -3847,7 +3853,12 @@ function baseManagementLeadPanel(state: AddBaseManagementState): unknown {
       return baseStaffingCommandPanel(state)
     case "power":
     case "processing":
-      return [schemaPowerPanel(), baseStationMachineSummary(() => state)]
+      return [
+        schemaPanel("ui.panel.power", () =>
+          snapshot()?.power.brownoutActive ? "danger" : "neutral",
+        ),
+        baseStationMachineSummary(() => state),
+      ]
     case "social":
     case "expeditions":
     case "resonance":
@@ -3975,6 +3986,10 @@ function baseCrystalPanel(state: AddBaseManagementState): unknown {
   )
   return html`
     <div class="base-card-list">
+      ${/* One line, and no component written for it: `ui.panel.crystal` names
+          its station and resources, and the entity registry already knows how
+          to draw both kinds. This is what the schema path is for. */ ""}
+      ${schemaPanel("ui.panel.crystal")}
       ${baseResourceRows(() => crystalResources)}
       ${baseSlotPoolRows(() => state.staffing.slotPools.filter((pool) => pool.id === "crystal_circle"))}
       ${() => baseRoleRows(crystalRoles, state)}
@@ -4544,38 +4559,52 @@ const schemaVisibility = createModuleMemo(() => {
  * The numbers are still supplied here. The schema says whether and what it is
  * called; it does not say how to draw a rate.
  */
-function schemaPowerPanel(): unknown {
-  // Getters, not functions. A component prop is a value read reactively, so
-  // passing `() => element` hands the component the function itself — which is
-  // how the first attempt rendered nothing at all, silently, with no error.
+/**
+ * How to draw each kind of entity a panel can name.
+ *
+ * This is the whole point of the schema path: a panel's body is its related
+ * entities, so a new panel is an authored catalog entry rather than a new
+ * component. Adding a *kind* means one entry here; adding a panel means none.
+ */
+const schemaEntityRenderers: EntityRendererRegistry = {
+  resource: (id) =>
+    resourceEntityRow(() => uiState()?.resources.find((resource) => resource.id === id)),
+  role: (id) =>
+    roleEntityRow(() => uiState()?.roleAssignments.find((role) => role.id === id)),
+  station: (id) =>
+    stationEntityRow(() =>
+      baseManagementState()?.stationMachine.cards.find((station) => station.id === id),
+    ),
+  // Projects are authored under two prefixes, `project.` and `construction.`,
+  // and both name the same kind of thing.
+  project: (id) =>
+    projectEntityRow(() => uiState()?.constructionOptions.find((option) => option.id === id)),
+  construction: (id) =>
+    projectEntityRow(() => uiState()?.constructionOptions.find((option) => option.id === id)),
+  world_action: (id) =>
+    worldActionEntityRow(() =>
+      uiState()?.availableWorldActions.find((action) => action.id === id),
+    ),
+}
+
+/**
+ * A panel drawn entirely from the catalog: label, player hint, visibility, and
+ * contents. Adding one is this call and nothing else — no component is written,
+ * and there is none to extract later.
+ */
+function schemaPanel(elementId: string, tone?: () => "neutral" | "danger"): unknown {
   return createComponent(SchemaPanel, {
+    // Getters, not functions. A component prop is a value read reactively, so
+    // passing `() => element` hands the component the function itself — which
+    // is how the first schema panel rendered nothing at all, silently.
     get element() {
-      return catalog()?.uiElements.find((entry) => entry.id === "ui.panel.power")
+      return catalog()?.uiElements.find((entry) => entry.id === elementId)
     },
     context: schemaVisibility,
-    qa: "schema-power-panel",
+    qa: `schema-panel-${elementId.replaceAll(".", "-")}`,
+    renderers: schemaEntityRenderers,
     get tone(): "neutral" | "danger" {
-      return snapshot()?.power.brownoutActive ? "danger" : "neutral"
-    },
-    get children() {
-      return createComponent(
-        () =>
-          html`<div class="ui-stat-row">
-            ${createComponent(Stat, {
-              label: "Active upkeep",
-              get value() {
-                return `${formatResource(snapshot()?.power.activeUpkeepPerSecond ?? 0)} Chorus/s`
-              },
-            })}
-            ${createComponent(Stat, {
-              label: "Requested",
-              get value() {
-                return `${formatResource(snapshot()?.power.requestedUpkeepPerSecond ?? 0)} Chorus/s`
-              },
-            })}
-          </div>`,
-        {},
-      )
+      return tone?.() ?? "neutral"
     },
   })
 }
