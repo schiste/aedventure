@@ -42,6 +42,7 @@ import {
   leadUiCopy,
   normalizeUiCopy,
   ObjectiveSteps,
+  showWhen,
   offlineReturnBlockerRows,
   offlineReturnHighlights,
   offlineReturnJobKindLabel,
@@ -655,14 +656,37 @@ const CONTAMINATION_LIGHT_CUE_ALPHA = 0.32
 const CONTAMINATION_FULL_ALPHA = 0.82
 
 const [contaminationSeconds, setContaminationSeconds] = createSignal(0)
+/** What the Hero says to himself the first time he is certain he is dying. */
+const [heroAside, setHeroAside] = createSignal<string | null>(null)
+const [contaminationFatal, setContaminationFatal] = createSignal(false)
+/**
+ * The first time contamination reaches full is the reveal, and it is survived.
+ * Every time after that it kills, because by then he knows what it should mean.
+ */
+const [contaminationRevealSeen, setContaminationRevealSeen] = createSignal(false)
 let lastContaminationClock: number | null = null
-let contaminationIntroCleared = false
 
-/** Has the Hero reached the field? Before that, every hour outside counts. */
-const STORY_BEAT_ENTER_THE_BUBBLE = "story.beat.enter_the_bubble"
+/**
+ * Not a line of dialogue with anybody — he is alone, and this is the sound a
+ * person makes when a private certainty turns out to be wrong.
+ */
+const CONTAMINATION_REVEAL_LINE = "what the... oh no..."
+const CONTAMINATION_REVEAL_HOLD_MS = 4200
 
+/**
+ * The largest clock jump that counts as exposure.
+ *
+ * A crossing advances the clock a game hour in one step, so the limit has to
+ * clear that comfortably. Offline catch-up advances it by however long the game
+ * was closed, which is thousands — and letting that through meant returning to
+ * the game to find the Hero had died while it was shut. Dread is something you
+ * sit through, not something that accrues in your absence.
+ */
+const CONTAMINATION_MAX_STEP_SECONDS = 180
+
+/** Before the reveal every hour outside counts, and on the shorter scale. */
 function contaminationIntroActive(): boolean {
-  return !(snapshot()?.narrative.completedBeatIds ?? []).includes(STORY_BEAT_ENTER_THE_BUBBLE)
+  return !contaminationRevealSeen()
 }
 
 /**
@@ -677,21 +701,47 @@ createModuleEffect(() => {
   lastContaminationClock = clock
   if (previous === null || clock < previous) return
 
+  if (contaminationFatal()) return
+
+  // Out in the world is out in the world, before the reveal and after it. Tying
+  // this to `heroSurvival.location` alone was wrong: that reads "studio" for
+  // the whole overworld crossing, so after the reveal the dread would clear and
+  // never return however far the Hero walked. The bubble's own field is the
+  // only place it stops.
   const intro = contaminationIntroActive()
-  if (!intro && !contaminationIntroCleared) {
-    // Reaching the field is the reveal: he steps inside, nothing has happened
-    // to him, and the fear he walked in with lifts. Clearing it here is the
-    // payoff for a screen that has been reddening for the whole crossing.
-    contaminationIntroCleared = true
-    setContaminationSeconds(0)
+  const sheltered =
+    mapMode() !== "overworld_hex" || currentTravelRisk() === "safe_field"
+  const exposed =
+    currentSnapshot.heroSurvival.location === "outside_bubble" || !sheltered
+  if (!exposed) return
+
+  const step = clock - previous
+  if (step > CONTAMINATION_MAX_STEP_SECONDS) return
+
+  const scale = intro
+    ? CONTAMINATION_INTRO_SCALE_SECONDS
+    : CONTAMINATION_SETTLED_SCALE_SECONDS
+  const next = contaminationSeconds() + step
+  if (next < scale) {
+    setContaminationSeconds(next)
     return
   }
 
-  // Crossing the wasteland is exposure in itself during the opening. After it,
-  // only genuinely standing outside the field counts.
-  const exposed = intro || currentSnapshot.heroSurvival.location === "outside_bubble"
-  if (!exposed) return
-  setContaminationSeconds((held) => held + (clock - previous))
+  setContaminationSeconds(scale)
+  if (!contaminationRevealSeen()) {
+    // He has counted the hours, he is certain, and then nothing happens. The
+    // screen holds at its worst for the length of the line, then lets go.
+    setContaminationRevealSeen(true)
+    setHeroAside(CONTAMINATION_REVEAL_LINE)
+    window.setTimeout(() => {
+      setHeroAside(null)
+      setContaminationSeconds(0)
+    }, CONTAMINATION_REVEAL_HOLD_MS)
+    return
+  }
+
+  // Second time he knows exactly what it means, and this time it is true.
+  setContaminationFatal(true)
 })
 
 function contaminationRatio(): number {
@@ -1262,9 +1312,34 @@ function AddRpgApp() {
           <div
             class="toxicity-haze"
             data-risk=${travelRisk}
+            data-fatal=${() => (contaminationFatal() ? "true" : "false")}
             style=${toxicityStyle}
             aria-hidden="true"
           />
+          ${() =>
+            showWhen(
+              heroAside,
+              (line) => html`
+                <p class="hero-aside" role="status" aria-live="polite">${() => line()}</p>
+              `,
+            )}
+          ${() =>
+            showWhen(
+              contaminationFatal,
+              () => html`
+                <div class="contamination-death" role="alertdialog" aria-label="The Hero is gone">
+                  <p class="contamination-death-line">The static took him.</p>
+                  <button
+                    id="contamination-restart"
+                    type="button"
+                    class="primary-action"
+                    onClick=${() => void resetRuntime()}
+                  >
+                    Start again
+                  </button>
+                </div>
+              `,
+            )}
           <div
             class=${() =>
               baseViewTransition() === "idle"

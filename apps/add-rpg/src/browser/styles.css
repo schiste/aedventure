@@ -5571,3 +5571,79 @@ h1 {
   border-radius: var(--radius-ui);
   background: rgb(var(--surface-deep-rgb) / 24%);
 }
+
+/* ==========================================================================
+   The reveal, and the end
+   ========================================================================== */
+
+/*
+ * Said to nobody, so it sits in the middle of the world rather than in a panel
+ * — no border, no box, no dismiss. It arrives late and leaves on its own.
+ */
+.hero-aside {
+  position: absolute;
+  /* Below the map's own labels: centred on the Hero it landed on top of the
+     nearest landmark caption, and two pieces of text in the same place read as
+     a bug rather than a thought. */
+  top: 74%;
+  left: 50%;
+  z-index: 7;
+  margin: 0;
+  color: rgb(var(--paper-rgb) / 92%);
+  font-size: 1.32rem;
+  font-style: italic;
+  letter-spacing: 0.01em;
+  text-shadow: 0 2px 18px rgb(var(--shadow-rgb) / 70%);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  animation: hero-aside-breathe 4.2s ease-in-out both;
+}
+
+@keyframes hero-aside-breathe {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -46%);
+  }
+
+  18%,
+  74% {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -53%);
+  }
+}
+
+/* Once it is fatal the lattice stops breathing and simply fills the frame. */
+.toxicity-haze[data-fatal="true"]::after {
+  animation: none;
+  mask-image: none;
+  opacity: 1;
+}
+
+.toxicity-haze[data-fatal="true"] {
+  background: rgb(var(--contamination-rgb) / 82%);
+}
+
+.contamination-death {
+  position: absolute;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  align-items: center;
+  justify-content: center;
+  background: rgb(var(--contamination-rgb) / 34%);
+  inset: 0;
+}
+
+.contamination-death-line {
+  margin: 0;
+  color: rgb(var(--paper-rgb) / 96%);
+  font-size: 1.6rem;
+  letter-spacing: 0.02em;
+  text-shadow: 0 2px 24px rgb(var(--shadow-rgb) / 80%);
+}
