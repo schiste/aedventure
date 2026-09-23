@@ -216,3 +216,61 @@ export function storyBeatEntityRow(beat: () => StoryBeatRowView | undefined): un
     </article>
   `
 }
+
+export interface TileRowView {
+  readonly label: string
+  readonly terrain: string
+  readonly feature: string
+  readonly impedance: number
+  readonly isBlocker: boolean
+  readonly dungeonIds: readonly string[]
+  readonly areaIds: readonly string[]
+}
+
+/**
+ * What a tile costs to cross, or that it cannot be.
+ *
+ * Impedance is a multiplier on travel time, so 1 is ordinary ground and saying
+ * "1x slower" would be noise. A blocker is not slow, it is impassable, and the
+ * two must not read as points on the same scale.
+ */
+export function tileTraversalCopy(tile: TileRowView): string {
+  if (tile.isBlocker) return "Impassable"
+  if (tile.impedance <= 1) return "Open ground"
+  return `${tile.impedance.toFixed(1)}x slower`
+}
+
+/** Sub-maps a tile leads into, which is what makes it worth travelling to. */
+export function tileLinkCount(tile: TileRowView): number {
+  return tile.dungeonIds.length + tile.areaIds.length
+}
+
+export function tileEntityRow(tile: () => TileRowView | undefined): unknown {
+  return () => {
+    const current = tile()
+    if (!current) return null
+    const links = tileLinkCount(current)
+    return html`
+      <article
+        class="ui-row"
+        data-tone=${current.isBlocker ? "muted" : "neutral"}
+        data-entity="tile"
+        data-terrain=${current.terrain}
+      >
+        <span class="ui-row-label">
+          ${current.label}
+          <small class="ui-row-detail">
+            ${current.feature === "none" ? current.terrain : current.feature.replaceAll("_", " ")}
+            ${" · "}
+            ${tileTraversalCopy(current)}
+          </small>
+        </span>
+        ${links > 0
+          ? html`<strong class="ui-row-trailing">
+              ${`${links} ${links === 1 ? "route" : "routes"}`}
+            </strong>`
+          : null}
+      </article>
+    `
+  }
+}

@@ -24,6 +24,7 @@ import {
   ConstructionControls,
   Disclosure,
   type EntityRendererRegistry,
+  MAX_PANEL_NESTING_DEPTH,
   EconomyForecastCard,
   expeditionActiveJobRows,
   formatAffordabilityTime,
@@ -59,6 +60,7 @@ import {
   socialPendingArrivalRows,
   stationEntityRow,
   storyBeatEntityRow,
+  tileEntityRow,
   storyBrowserBeatRows,
   storyBrowserChoiceRows,
   storyBrowserCommandRows,
@@ -2621,10 +2623,15 @@ function adminStoryBrowserPanel(): unknown {
         state; beat eligibility is a TS best-effort diagnostic mirror.
       </p>
 
-      ${/* `ui.panel.narrative` names the five beats of the opening arc. Nothing
-          here lists them: the panel, its label, its hint and its rows all come
-          from the catalog, through the story renderer. */ ""}
+      ${/* Catalog-driven panels, shown here as a diagnostic: their labels,
+          hints, visibility and every row come from `ui_elements`, and nothing
+          in this file lists what they contain. `ui.panel.narrative` names the
+          five beats of the opening arc; `ui.panel.map` names a tile, a resource
+          and `ui.map.cave_gate`, which is itself an element and is drawn nested
+          with its own visibility. Where these belong in the product is a design
+          decision; this is where they are verified. */ ""}
       ${schemaPanel("ui.panel.narrative")}
+      ${schemaPanel("ui.panel.map")}
 
       <div class="story-browser-summary" aria-label="Story content summary">
         <article>
@@ -4597,6 +4604,15 @@ const schemaEntityRenderers: EntityRendererRegistry = {
     storyBeatEntityRow(() =>
       uiState()?.storyProgression.allBeats.find((beat) => beat.id === id),
     ),
+  tile: (id) => tileEntityRow(() => catalog()?.tiles.find((tile) => tile.id === id)),
+  // Panels compose: an element may name another element, which is drawn inside
+  // it with its own label, hint and visibility. The depth is what stops a cycle
+  // — `ui.panel.map` names `ui.map.cave_gate`, and nothing prevents an author
+  // from pointing the two at each other.
+  ui: (id, context) =>
+    context.depth >= MAX_PANEL_NESTING_DEPTH
+      ? null
+      : schemaPanel(id, undefined, context.depth + 1),
 }
 
 /**
@@ -4604,8 +4620,13 @@ const schemaEntityRenderers: EntityRendererRegistry = {
  * contents. Adding one is this call and nothing else — no component is written,
  * and there is none to extract later.
  */
-function schemaPanel(elementId: string, tone?: () => "neutral" | "danger"): unknown {
+function schemaPanel(
+  elementId: string,
+  tone?: () => "neutral" | "danger",
+  depth = 0,
+): unknown {
   return createComponent(SchemaPanel, {
+    depth,
     // Getters, not functions. A component prop is a value read reactively, so
     // passing `() => element` hands the component the function itself — which
     // is how the first schema panel rendered nothing at all, silently.

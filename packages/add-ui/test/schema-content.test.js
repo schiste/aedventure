@@ -102,4 +102,48 @@ assert.deepEqual(
   [],
 )
 
+// --- nesting depth ---------------------------------------------------------
+// Elements name other elements, so panels compose through the same mechanism.
+// Dropping self-references is not enough: A can name B which names A.
+
+const depthsSeen = []
+renderPanelContent(element("ui.panel.a", ["resource.stone"]), {
+  resource: (id, context) => {
+    depthsSeen.push(context.depth)
+    return id
+  },
+})
+assert.deepEqual(depthsSeen, [0], "a root panel renders at depth zero")
+
+const nestedDepths = []
+renderPanelContent(
+  element("ui.panel.a", ["resource.stone"]),
+  {
+    resource: (id, context) => {
+      nestedDepths.push(context.depth)
+      return id
+    },
+  },
+  { depth: 3 },
+)
+assert.deepEqual(nestedDepths, [3], "a nested panel passes its depth to its renderers")
+
+// A renderer that recurses must be able to stop, and the depth is what lets it.
+const { MAX_PANEL_NESTING_DEPTH } = require("../dist/schema-content.js")
+assert.ok(MAX_PANEL_NESTING_DEPTH >= 1, "nesting one level deep has to be possible")
+
+const cyclic = { a: element("ui.a", ["ui.b"]), b: element("ui.b", ["ui.a"]) }
+let renders = 0
+const renderUi = (id, context) => {
+  renders += 1
+  if (context.depth >= MAX_PANEL_NESTING_DEPTH) return null
+  const next = id === "ui.a" ? cyclic.b : cyclic.a
+  return renderPanelContent(next, { ui: renderUi }, { depth: context.depth + 1 })
+}
+renderPanelContent(cyclic.a, { ui: renderUi })
+assert.ok(
+  renders <= MAX_PANEL_NESTING_DEPTH + 1,
+  `a cycle must terminate; rendered ${renders} times`,
+)
+
 console.log("add-ui schema-content: all assertions passed")

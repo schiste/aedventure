@@ -23,6 +23,8 @@ export interface SchemaPanelProps {
    */
   renderers?: EntityRendererRegistry
   schemasById?: ReadonlyMap<string, EntitySchemaDef>
+  /** How deep this panel sits inside other panels. Roots omit it. */
+  depth?: number
   /** Supplied instead of, or in addition to, the catalog-driven content. */
   children?: JSX.Element
 }
@@ -58,6 +60,7 @@ export function SchemaPanel(props: SchemaPanelProps): JSX.Element {
             // no JSX type; the cast is the same one the list helpers make.
             renderPanelContent(element(), props.renderers ?? {}, {
               schemasById: props.schemasById,
+              depth: props.depth ?? 0,
             }) as unknown as JSX.Element
           }
         </Show>

@@ -834,6 +834,41 @@ async function assertAdminDeveloperSeparation(page, consoleErrors) {
     )}.`,
   )
 
+  // `ui.panel.map` names a tile, a resource, and `ui.map.cave_gate` — itself an
+  // element, drawn nested with its own label and visibility. That nesting is
+  // what makes panels compose, and the depth guard is what stops a cycle.
+  const mapPanel = await page.evaluate(() => {
+    const panel = document.querySelector('[data-qa="schema-panel-ui-panel-map"]')
+    if (!panel) return null
+    return {
+      // Scoped to this panel's own rows: the nested element names
+      // `resource.bassline` too, so a descendant query counts it twice.
+      tiles: [...panel.querySelectorAll('[data-entity="tile"]')].filter(
+        (row) => row.closest("[data-qa]") === panel,
+      ).length,
+      resources: [...panel.querySelectorAll('[data-entity="resource"]')].filter(
+        (row) => row.closest("[data-qa]") === panel,
+      ).length,
+      nestedResources: [...panel.querySelectorAll('[data-entity="resource"]')].filter(
+        (row) => row.closest("[data-qa]") !== panel,
+      ).length,
+      nested: panel.querySelectorAll('[data-qa="schema-panel-ui-map-cave_gate"]').length,
+    }
+  })
+  assert.ok(mapPanel, "The catalog-driven map panel should be on screen.")
+  assert.equal(mapPanel.tiles, 1, "The map panel should draw the tile its catalog entry names.")
+  assert.equal(mapPanel.resources, 1, "The map panel should draw the resource it names.")
+  assert.equal(
+    mapPanel.nested,
+    1,
+    "The map panel should draw ui.map.cave_gate nested inside it.",
+  )
+  assert.equal(
+    mapPanel.nestedResources,
+    1,
+    "The nested cave-gate element should draw the resource it names, inside itself.",
+  )
+
   assert.equal(await page.locator("#save-payload").isVisible(), false)
   assert.equal(await page.locator("#dev-view").isVisible(), false)
   await assertNonBlankNamedAppScreenshot(

@@ -110,3 +110,41 @@ assert.equal(storyBeatTone(beat({ status: "current" })), "accent")
 assert.equal(storyBeatTone(beat({ status: "upcoming" })), "neutral")
 
 console.log("add-ui story beat rows: all assertions passed")
+
+// --- tiles -----------------------------------------------------------------
+
+const { tileTraversalCopy, tileLinkCount } = require("../dist/entity-rows.js")
+
+const tile = (over) => ({
+  label: "Scrub",
+  terrain: "scrub",
+  feature: "none",
+  impedance: 1,
+  isBlocker: false,
+  dungeonIds: [],
+  areaIds: [],
+  ...over,
+})
+
+// Impassable is not a point on the slowness scale, it is off it.
+assert.equal(tileTraversalCopy(tile({ isBlocker: true, impedance: 4 })), "Impassable")
+assert.equal(
+  tileTraversalCopy(tile({ impedance: 1 })),
+  "Open ground",
+  "ordinary ground is not '1.0x slower', which would be noise on every tile",
+)
+assert.equal(
+  tileTraversalCopy(tile({ impedance: 0.8 })),
+  "Open ground",
+  "faster than ordinary still reads as open rather than inviting a comparison",
+)
+assert.equal(tileTraversalCopy(tile({ impedance: 2.5 })), "2.5x slower")
+
+assert.equal(tileLinkCount(tile()), 0)
+assert.equal(
+  tileLinkCount(tile({ dungeonIds: ["a"], areaIds: ["b", "c"] })),
+  3,
+  "dungeons and areas are both routes in, and count together",
+)
+
+console.log("add-ui tile rows: all assertions passed")
