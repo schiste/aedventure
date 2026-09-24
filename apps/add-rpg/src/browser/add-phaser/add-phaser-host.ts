@@ -116,7 +116,12 @@ function createPhaserGame(
   const game = new Phaser.Game({
     type: rendererType,
     parent,
-    backgroundColor: "#e6dec2",
+    // Direction §3.4: "Le fond du monde est sombre et verdâtre, avec une
+    // lumière ambiante faible", and explicitly not a "ciel bleu de carte
+    // touristique". This was #e6dec2 — a pale warm beige that read as a
+    // sunlit tourist map and left the hex grid nearly invisible against it.
+    // `ink` from the palette table (§4.1).
+    backgroundColor: "#101917",
     transparent: true,
     width: parent.clientWidth || 720,
     height: parent.clientHeight || 520,

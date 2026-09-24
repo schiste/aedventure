@@ -767,7 +767,10 @@ h1 {
   background:
     radial-gradient(circle at 48% 42%, rgb(var(--wash-rgb)/ 14%) 0%, transparent 34%),
     linear-gradient(135deg, rgb(var(--wash-rgb)/ 7%) 0 1px, transparent 1px 18px),
-    linear-gradient(180deg, #c7bea1 0%, #b4ad91 100%);
+    /* Direction §3.4: the world's ground is dark and greenish under low
+     * ambient light, not the sunlit #c7bea1 → #b4ad91 wash this used to be.
+     * `field` → `ink` from the palette table (§4.1). */
+    linear-gradient(180deg, #182622 0%, #101917 100%);
   background-size: auto, 18px 18px, auto;
   box-shadow:
     inset 0 0 0 1px rgb(var(--white-rgb)/ 18%),

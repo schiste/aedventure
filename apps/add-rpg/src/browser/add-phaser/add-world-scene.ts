@@ -1289,7 +1289,7 @@ export class AddRpgHexScene extends Phaser.Scene {
     }
 
     if (context.topologyKind === "hex") {
-      graphics.lineStyle(1, 0x315f63, 0.05)
+      graphics.lineStyle(1, 0x5fd1d8, 0.07)
       for (let offset = -120; offset < this.scale.width + 180; offset += 44) {
         graphics.lineBetween(context.origin.x + offset, context.origin.y - 240, context.origin.x + offset + 180, context.origin.y + this.scale.height + 120)
       }
@@ -1477,21 +1477,27 @@ export class AddRpgHexScene extends Phaser.Scene {
     context: RenderContext,
   ): void {
     const pulse = (Math.sin(this.frameCount / 24 + center.x * 0.017 + center.y * 0.011) + 1) / 2
+    // Cells read *lighter* than the field now, not darker. The old fill was
+    // `ink` at 9% over a pale beige background; against the dark world of
+    // direction §3.4 that inverts to invisible. `field-2` is the palette's
+    // "terrain secondaire, surfaces de carte" (§4.1), which is exactly this.
     if (context.topologyKind === "hex" && context.map.topology.kind === "hex") {
       drawHexPath(graphics, center, context.map.topology.radius * (0.82 + pulse * 0.04))
-      graphics.fillStyle(0x111817, 0.09 + pulse * 0.035)
+      graphics.fillStyle(0x263b34, 0.62 + pulse * 0.10)
       graphics.fillPath()
       drawHexPath(graphics, center, context.map.topology.radius * (0.88 + pulse * 0.05))
-      graphics.lineStyle(1.1, 0xd9e5bf, 0.12 + pulse * 0.10)
+      // §3.3: the hexes must stay legible as a map. A stroke at 12% did that
+      // against beige and would not against ink.
+      graphics.lineStyle(1.1, 0xd9e5bf, 0.20 + pulse * 0.10)
       graphics.strokePath()
       return
     }
 
     const size = squareCellSize(context)
-    graphics.fillStyle(0x111817, 0.10 + pulse * 0.03)
-    graphics.fillRoundedRect(center.x - size * 0.38, center.y - size * 0.38, size * 0.76, size * 0.76, 6)
-    graphics.lineStyle(1.1, 0xd9e5bf, 0.12 + pulse * 0.10)
-    graphics.strokeRoundedRect(center.x - size * 0.40, center.y - size * 0.40, size * 0.80, size * 0.80, 6)
+    graphics.fillStyle(0x263b34, 0.62 + pulse * 0.08)
+    graphics.fillRoundedRect(center.x - size * 0.38, center.y - size * 0.38, size * 0.76, size * 0.76, 8)
+    graphics.lineStyle(1.1, 0xd9e5bf, 0.20 + pulse * 0.10)
+    graphics.strokeRoundedRect(center.x - size * 0.40, center.y - size * 0.40, size * 0.80, size * 0.80, 8)
   }
 
   private drawReachableCellGlow(
