@@ -539,6 +539,7 @@ const FILES = [
             { name: "feature", kind: "enum", rustEnum: "TileFeature" },
             { name: "impedance", kind: "f64" },
             { name: "is_blocker", kind: "bool" },
+            { name: "shelter_ratio", from: "shelterRatio", kind: "f64" },
             { name: "tags", kind: "enumArray", rustEnum: "TileTag" },
             { name: "flora_ids", kind: "idConstArray" },
             { name: "structure_ids", kind: "idConstArray" },

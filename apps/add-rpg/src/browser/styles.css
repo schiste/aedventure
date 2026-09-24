@@ -5824,3 +5824,338 @@ h1 {
 .settings-start-over-row strong {
   color: rgb(var(--danger-rgb) / 92%);
 }
+
+.start-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  align-items: center;
+  overflow: auto;
+  isolation: isolate;
+  background:
+    linear-gradient(90deg, rgb(16 19 13 / 88%) 0%, rgb(26 24 16 / 72%) 19%, rgb(31 27 17 / 40%) 42%, rgb(12 16 12 / 18%) 76%, rgb(12 15 12 / 30%) 100%),
+    linear-gradient(0deg, rgb(10 14 11 / 38%), transparent 42%, rgb(255 232 180 / 8%)),
+    url("./menu-background.webp") center center / cover no-repeat;
+  color: #f8e7c3;
+}
+
+.start-screen::before {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(circle at 19% 49%, transparent 0 18%, rgb(6 12 9 / 28%) 54%, rgb(5 9 7 / 52%) 100%),
+    linear-gradient(90deg, transparent 0 68%, rgb(255 235 181 / 7%) 100%);
+  content: "";
+  pointer-events: none;
+}
+
+.start-screen-content {
+  position: relative;
+  display: grid;
+  width: min(32rem, calc(100vw - 3rem));
+  gap: 1.1rem;
+  margin-left: clamp(2rem, 8vw, 9rem);
+  padding: clamp(1.5rem, 4vw, 3.5rem) 0;
+  animation: start-content-arrive 820ms 90ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
+}
+
+.start-screen-brand {
+  display: grid;
+  gap: 0.68rem;
+  border-left: 1px solid rgb(248 231 195 / 68%);
+  padding-left: clamp(1rem, 2.4vw, 1.65rem);
+}
+
+.start-screen-kicker {
+  margin: 0;
+  color: rgb(244 185 99 / 92%);
+  font-size: 0.68rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.start-screen-brand h1 {
+  margin: 0;
+  color: #fff2d2;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(3.2rem, 8vw, 6.9rem);
+  font-weight: 500;
+  letter-spacing: -0.055em;
+  line-height: 0.88;
+  text-shadow: 0 12px 30px rgb(0 0 0 / 32%);
+}
+
+.start-screen-tagline {
+  max-width: 25rem;
+  margin: 0;
+  color: rgb(255 243 214 / 80%);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1rem, 1.8vw, 1.28rem);
+  line-height: 1.25;
+}
+
+.start-screen-home,
+.start-screen-subview {
+  width: min(28rem, 100%);
+  padding-left: clamp(1rem, 2.4vw, 1.65rem);
+}
+
+.start-screen-intro {
+  max-width: 25rem;
+  margin: 0 0 0.25rem;
+  color: rgb(255 243 214 / 66%);
+  font-size: 0.78rem;
+  font-weight: 650;
+  line-height: 1.5;
+}
+
+.start-menu {
+  display: grid;
+  width: min(24rem, 100%);
+  margin-top: 0.8rem;
+}
+
+.start-menu-button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: center;
+  min-height: 4.25rem;
+  border: 0;
+  border-top: 1px solid rgb(255 238 199 / 28%);
+  border-radius: 0;
+  padding: 0.8rem 0.25rem 0.8rem 0;
+  background: transparent;
+  color: #f8e7c3;
+  box-shadow: none;
+  text-align: left;
+}
+
+.start-menu-button:last-child {
+  border-bottom: 1px solid rgb(255 238 199 / 28%);
+}
+
+.start-menu-button > span:first-child {
+  display: grid;
+  min-width: 0;
+  gap: 0.18rem;
+}
+
+.start-menu-button strong {
+  color: #fff2d2;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.14rem;
+  font-weight: 500;
+  line-height: 1.05;
+}
+
+.start-menu-button small {
+  overflow: hidden;
+  color: rgb(255 243 214 / 62%);
+  font-size: 0.7rem;
+  font-weight: 650;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.start-menu-button i {
+  border-left: 1px solid rgb(255 238 199 / 24%);
+  padding-left: 0.72rem;
+  color: rgb(255 243 214 / 55%);
+  font-size: 0.58rem;
+  font-style: normal;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.start-menu-button.primary {
+  border-top-color: rgb(244 185 99 / 74%);
+}
+
+.start-menu-button.primary strong,
+.start-menu-button.primary i {
+  color: #f4b963;
+}
+
+.start-menu-button:hover:not(:disabled),
+.start-menu-button:focus-visible {
+  transform: translateX(0.45rem);
+  border-color: rgb(255 238 199 / 55%);
+  background: linear-gradient(90deg, rgb(255 238 199 / 13%), transparent 82%);
+}
+
+.start-menu-button.primary:hover:not(:disabled),
+.start-menu-button.primary:focus-visible {
+  border-color: rgb(244 185 99 / 92%);
+  background: linear-gradient(90deg, rgb(244 185 99 / 16%), transparent 82%);
+}
+
+.start-menu-button:disabled {
+  cursor: wait;
+  opacity: 0.5;
+}
+
+.start-screen-footer {
+  display: flex;
+  justify-content: space-between;
+  width: min(24rem, calc(100% - 1rem));
+  border-top: 1px solid rgb(255 238 199 / 15%);
+  padding: 0.72rem 0 0 0.1rem;
+  color: rgb(255 243 214 / 48%);
+  font-size: 0.6rem;
+  font-weight: 750;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.start-screen-footer span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+}
+
+.start-screen-status-dot {
+  display: inline-block;
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: 50%;
+  background: #f4b963;
+  box-shadow: 0 0 0 3px rgb(244 185 99 / 18%);
+}
+
+.start-screen-status-dot[data-state="loading"] {
+  background: rgb(255 243 214 / 55%);
+  box-shadow: 0 0 0 3px rgb(255 243 214 / 10%);
+  animation: start-status-pulse 1.2s ease-in-out infinite;
+}
+
+.start-screen-subview {
+  display: grid;
+  max-height: min(70vh, 40rem);
+  gap: 1rem;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding-top: 0.15rem;
+  scrollbar-color: rgb(244 185 99 / 48%) transparent;
+  scrollbar-width: thin;
+}
+
+.start-screen-back {
+  width: max-content;
+  min-height: 1.7rem;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+  color: rgb(255 243 214 / 62%);
+  box-shadow: none;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.start-screen-back span {
+  margin-right: 0.28rem;
+  color: #f4b963;
+  font-size: 0.9rem;
+}
+
+.start-screen-back:hover:not(:disabled) {
+  transform: translateX(-0.15rem);
+  background: transparent;
+  color: #fff2d2;
+}
+
+.start-screen-subview-heading {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.start-screen-subview-heading .start-screen-kicker {
+  margin-bottom: 0.1rem;
+}
+
+.start-screen-subview-heading h2 {
+  margin: 0;
+  color: #fff2d2;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.8rem, 4vw, 2.7rem);
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  line-height: 0.98;
+}
+
+.start-screen-subview-heading p:last-child {
+  margin: 0;
+  color: rgb(255 243 214 / 66%);
+  font-size: 0.76rem;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.start-save-readout {
+  display: grid;
+  gap: 0.28rem;
+  border-left: 2px solid rgb(244 185 99 / 80%);
+  padding: 0.9rem 1rem;
+  background: linear-gradient(90deg, rgb(244 185 99 / 14%), transparent 92%);
+}
+
+.start-save-readout.empty {
+  border-left-color: rgb(255 243 214 / 32%);
+  background: linear-gradient(90deg, rgb(255 243 214 / 7%), transparent 92%);
+}
+
+.start-save-readout span,
+.start-option-group-heading span {
+  color: rgb(255 243 214 / 53%);
+  font-size: 0.6rem;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.start-save-readout strong {
+  color: #fff2d2;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.08rem;
+  font-weight: 500;
+}
+
+.start-save-readout small,
+.start-option-group-heading small {
+  color: rgb(255 243 214 / 62%);
+  font-size: 0.68rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.start-screen-subview-actions {
+  display: grid;
+  gap: 0.42rem;
+}
+
+.start-secondary-action,
+.start-text-action {
+  width: max-content;
+  min-height: 1.9rem;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+  color: rgb(255 243 214 / 62%);
+  box-shadow: none;
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.start-secondary-action:hover:not(:disabled),
+.start-text-action:hover:not(:disabled) {
+  transform: translateX(0.2rem);
+  background: transparent;
+  color: #fff2d2;
+}

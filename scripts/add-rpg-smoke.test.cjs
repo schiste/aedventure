@@ -77,6 +77,9 @@ async function main() {
     }, { autosaveStorageKey: ADD_AUTOSAVE_STORAGE_KEY, settingsStorageKey: ADD_SETTINGS_STORAGE_KEY })
 
     await page.goto(`${url}/app`, { waitUntil: "domcontentloaded" })
+    // The title screen is the first view now: exercise its subviews, then
+    // start a new game, which is also how a player reaches the opening.
+    await launchNewGameFromTitleScreen(page)
     await dismissOpeningCinematic(page, { timeoutMs: qaTimeout(20000) })
     const initial = await runScenario("boot and render text contract", () =>
       assertBootAndRenderTextContract(page, consoleErrors),
@@ -2970,6 +2973,10 @@ async function exerciseSaveReloadOfflineAndReset(
     { key: ADD_AUTOSAVE_STORAGE_KEY },
   )
   await page.reload({ waitUntil: "domcontentloaded" })
+  // Every load lands on the title screen now, including this one. Resume the
+  // saved run the way a returning player does, or every click after this is
+  // aimed at the menu.
+  await loadAutosaveFromTitleScreen(page)
   const reloaded = await waitForTextState(
     page,
     (state) =>
@@ -3212,6 +3219,38 @@ async function openAdmin(page, consoleErrors) {
       nextState.shell?.devToolsOpen === false,
     consoleErrors,
   )
+}
+
+async function launchNewGameFromTitleScreen(page) {
+  await assertVisibleText(page, "#start-screen", ["New game", "Load game", "Options"])
+  await page.locator("#start-options").click()
+  await page.locator("#start-options-title").waitFor({ state: "visible" })
+  await assertVisibleText(page, "#start-screen", ["Options", "Sound", "Comfort"])
+  await page.locator("#start-options-back").click()
+  await page.locator("#start-load-game").click()
+  await page.locator("#start-load-title").waitFor({ state: "visible" })
+  await assertVisibleText(page, "#start-load-title", ["Load your last road"])
+  await page.locator("#start-load-back").click()
+  await page.locator("#start-new-game").click()
+  await page.locator("#start-screen").waitFor({ state: "detached" })
+}
+
+async function loadAutosaveFromTitleScreen(page) {
+  await assertVisibleText(page, "#start-screen", ["New game", "Load game", "Options"])
+  await page.locator("#start-load-game").click()
+  await page.locator("#start-load-title").waitFor({ state: "visible" })
+  await page.evaluate(
+    ({ key }) => {
+      const raw = window.localStorage.getItem(key)
+      if (!raw) throw new Error("Missing ADD autosave before title-screen load")
+      const record = JSON.parse(raw)
+      record.savedAtMs = Date.now() - 60 * 60 * 1000
+      window.localStorage.setItem(key, JSON.stringify(record))
+    },
+    { key: ADD_AUTOSAVE_STORAGE_KEY },
+  )
+  await page.locator("#start-load-autosave").click()
+  await page.locator("#start-screen").waitFor({ state: "detached" })
 }
 
 async function openSettings(page, consoleErrors) {

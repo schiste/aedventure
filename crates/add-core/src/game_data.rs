@@ -1385,6 +1385,9 @@ pub struct TileDef {
     pub feature: TileFeature,
     pub impedance: f64,
     pub is_blocker: bool,
+    /// How much of the static this tile keeps off whoever stands on it, 0..1.
+    /// See the authored `shelterRatio`.
+    pub shelter_ratio: f64,
     pub tags: &'static [TileTag],
     pub flora_ids: &'static [&'static str],
     pub structure_ids: &'static [&'static str],

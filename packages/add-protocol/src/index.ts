@@ -533,6 +533,14 @@ export interface TileDef {
   feature: 'none' | 'base' | 'survivor_cave'
   impedance: number
   isBlocker: boolean
+  /**
+   * How much of the static this tile keeps off you, 0..1.
+   *
+   * 0 is open ground and costs full exposure; 1 would stop the clock entirely.
+   * Shelter is what turns a crossing from a countdown into a rhythm: somewhere
+   * to wait out the worst of it without walking all the way home.
+   */
+  shelterRatio: number
   tags: TileTag[]
   floraIds: string[]
   structureIds: string[]

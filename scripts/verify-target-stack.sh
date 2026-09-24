@@ -136,6 +136,11 @@ npm run smoke:engine-sandbox:built
 echo "Running ADD RPG smoke..."
 npm run smoke:add-rpg:built
 
+echo "Checking ADD RPG asset budgets..."
+# Gated from Sep 2026. The WASM had been over its budget on main for some time
+# and nobody saw it, because this check existed but nothing ran it.
+npm run qa:add-rpg:size:built
+
 echo "Running office browser smoke..."
 npm run smoke:office:built
 

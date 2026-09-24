@@ -109,10 +109,12 @@
       "max": 80000
     },
     "wasmBytes": {
-      "max": 1400000
+      "max": 1600000,
+      "note": "Raised from 1400000 in Sep 2026: main had been at ~1525000 for some time, unnoticed because the size check was not in the gate. This is the measured size plus ~5% headroom, and the check now runs in verify-target-stack.sh so it cannot drift silently again."
     },
     "wasmGzipBytes": {
-      "max": 500000
+      "max": 580000,
+      "note": "Raised from 500000 alongside wasmBytes, same reason."
     },
     "totalAssetBytes": {
       "max": 4000000

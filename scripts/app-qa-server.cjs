@@ -30,7 +30,20 @@ async function startStaticAppServer(options) {
       response.end("Forbidden")
       return
     }
-    if (!fs.existsSync(filePath)) {
+    // A directory is not a 200. Streaming one raises EISDIR from a read that
+    // nothing was listening for, which took down the whole server — one
+    // mistyped asset path and every later request was refused, including the
+    // QA suites'. `stat` also answers "exists" for us, so this replaces the
+    // check rather than adding to it.
+    let stats
+    try {
+      stats = fs.statSync(filePath)
+    } catch {
+      response.writeHead(404)
+      response.end("Not found")
+      return
+    }
+    if (!stats.isFile()) {
       response.writeHead(404)
       response.end("Not found")
       return
@@ -40,7 +53,10 @@ async function startStaticAppServer(options) {
       "content-type": contentTypeFor(filePath),
       "cache-control": "no-store",
     })
-    fs.createReadStream(filePath).pipe(response)
+    const stream = fs.createReadStream(filePath)
+    // A client that goes away mid-download must not be able to kill the host.
+    stream.on("error", () => response.destroy())
+    stream.pipe(response)
   })
 
   await new Promise((resolve, reject) => {

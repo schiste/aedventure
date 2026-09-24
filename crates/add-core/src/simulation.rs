@@ -1408,6 +1408,22 @@ impl Simulation {
     /// moves when an authored action moves it: walking the overworld leaves it
     /// reading `Studio` for the whole crossing, and exposure that trusted it
     /// would let the player wander the wasteland for free.
+    /// How much of the static the Hero's current hex keeps off him, 0..1.
+    ///
+    /// Read from the map, like exposure itself. A tile the catalog no longer
+    /// has shelters nobody — an unknown tile must never be safer than open
+    /// ground, or a content change could quietly make the wasteland harmless.
+    fn hero_shelter_ratio(&self) -> f64 {
+        let hero = self.state.hero_map;
+        self.state
+            .hexes
+            .iter()
+            .find(|hex| hex.q == hero.q && hex.r == hero.r)
+            .and_then(|hex| self.tile_for_hex(hex))
+            .map(|tile| tile.shelter_ratio.clamp(0.0, 1.0))
+            .unwrap_or(0.0)
+    }
+
     fn exposed_seconds_in_step(&self, seconds: f64) -> f64 {
         // A walk home in progress is authored, and the authored split wins: its
         // `return_to_bubble` leg is spent outside and costs protection, its
@@ -1421,9 +1437,15 @@ impl Simulation {
             return seconds.min(to_the_edge);
         }
         match self.state.hero_survival.location {
+            // An authored outdoor action states its own exposure; the tile the
+            // Hero happens to be standing on does not get to discount it.
             HeroLocationState::OutsideBubble => seconds,
             HeroLocationState::Studio | HeroLocationState::Bubble => {
-                if self.hero_beyond_the_field() { seconds } else { 0.0 }
+                if self.hero_beyond_the_field() {
+                    seconds * (1.0 - self.hero_shelter_ratio())
+                } else {
+                    0.0
+                }
             }
         }
     }

@@ -340,6 +340,8 @@ type AddFocusedRegion =
 
 type BaseViewTransitionState = "idle" | "opening" | "settling"
 
+type StartScreenView = "home" | "load" | "options"
+
 declare global {
   interface Window {
     addSettings?: () => AddSettings
@@ -450,6 +452,16 @@ const [ready, setReady] = createSignal(false)
 const [autoTick, setAutoTick] = createSignal(true)
 const [timeSpeed, setTimeSpeed] = createSignal(1)
 const [playerSettings, setPlayerSettings] = createSignal<AddSettings>(initialPlayerSettings)
+/**
+ * Is the start screen the current view?
+ *
+ * True on load, always: the start screen is where the game begins and where
+ * "Start over" returns you. It is presentation — the simulation neither knows
+ * nor cares — but the world clock is held while it is up, so a player reading
+ * the menu is not quietly spending the Hero's exposure.
+ */
+const [startScreenOpen, setStartScreenOpen] = createSignal(true)
+const [startScreenView, setStartScreenView] = createSignal<StartScreenView>("home")
 const [settingsOpen, setSettingsOpen] = createSignal(false)
 /**
  * Whether "Start over" has been armed and is waiting for confirmation.
@@ -768,6 +780,10 @@ createModuleEffect(() => {
   // it, the flag had been cleared, and nothing ever re-evaluated to notice.
   const alreadyPlaying = Boolean(state?.cinematics.active)
   const alreadySeen = state?.cinematics.seen.includes(INTRO_CINEMATIC_ID) ?? true
+  // Read before the early return, like the rest: the menu closing has to be
+  // able to wake this effect.
+  const behindTheMenu = startScreenOpen()
+  if (behindTheMenu) return
   if (!state || alreadyPlaying || alreadySeen) {
     // A run that has forgotten the opening may ask for it again.
     if (!alreadySeen && !alreadyPlaying) introRequested = false
@@ -1266,7 +1282,7 @@ function AddRpgApp() {
   // 1000/timeSpeed ms. Re-runs when play/pause, readiness, or speed changes,
   // recreating the interval at the new cadence (step size stays 1s for fidelity).
   createEffect(() => {
-    const playing = autoTick() && ready()
+    const playing = autoTick() && ready() && !startScreenOpen()
     const speed = timeSpeed()
     // Overworld runs compressed (1 in-game minute / real second); dungeons run
     // ~real-time (1 in-game second / real second).
@@ -1279,7 +1295,7 @@ function AddRpgApp() {
     if (!playing || speed <= 0) return
     const periodMs = Math.max(1, Math.round(1000 / speed))
     autoTickTimer = window.setInterval(() => {
-      if (autoTick() && ready() && travelExperience()?.phase !== "traveling") {
+      if (autoTick() && ready() && !startScreenOpen() && travelExperience()?.phase !== "traveling") {
         void tickRuntime(ambientStep)
       }
     }, periodMs)
@@ -1364,6 +1380,7 @@ function AddRpgApp() {
                 </div>
               `,
             )}
+          ${() => (startScreenOpen() ? startScreenMarkup() : null)}
           ${() =>
             createComponent(CinematicStage, {
               get beat() {
@@ -2402,6 +2419,283 @@ function settingsVolumeRow(
   `
 }
 
+function startScreenMarkup() {
+  return html`
+    <section
+      id="start-screen"
+      class="start-screen"
+      data-start-screen-view=${() => startScreenView()}
+      data-runtime-ready=${() => ready()}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="start-screen-title"
+      aria-describedby="start-screen-tagline"
+    >
+      <div class="start-screen-content">
+        <header class="start-screen-brand">
+          <p class="start-screen-kicker">Aedventure · field log 01</p>
+          <h1 id="start-screen-title">Aedventure</h1>
+          <p id="start-screen-tagline" class="start-screen-tagline">
+            There is still a road through the quiet places.
+          </p>
+        </header>
+
+        ${() =>
+          startScreenView() === "home"
+            ? html`
+                <div class="start-screen-home">
+                  <p class="start-screen-intro">
+                    The old world left tools, stories, and one more morning. Make a place for
+                    yourself in what comes next.
+                  </p>
+                  <nav class="start-menu" aria-label="Main menu">
+                    <button
+                      id="start-new-game"
+                      type="button"
+                      class="start-menu-button primary"
+                      onClick=${() => void beginNewGame()}
+                      disabled=${() => !ready()}
+                    >
+                      <span>
+                        <strong>New game</strong>
+                        <small>Start from the first light</small>
+                      </span>
+                      <i aria-hidden="true">Begin</i>
+                    </button>
+                    <button
+                      id="start-load-game"
+                      type="button"
+                      class="start-menu-button"
+                      onClick=${() => openStartScreenView("load")}
+                      disabled=${() => !ready()}
+                    >
+                      <span>
+                        <strong>Load game</strong>
+                        <small>${() => (autosaveRecord() ? "Resume your last expedition" : "No save recorded yet")}</small>
+                      </span>
+                      <i aria-hidden="true">Open</i>
+                    </button>
+                    <button
+                      id="start-options"
+                      type="button"
+                      class="start-menu-button"
+                      onClick=${() => openStartScreenView("options")}
+                    >
+                      <span>
+                        <strong>Options</strong>
+                        <small>Sound, comfort, and pacing</small>
+                      </span>
+                      <i aria-hidden="true">Tune</i>
+                    </button>
+                  </nav>
+                </div>
+              `
+            : startScreenView() === "load"
+              ? startScreenLoadMarkup()
+              : startScreenOptionsMarkup()}
+
+        <footer class="start-screen-footer">
+          <span>
+            <i class="start-screen-status-dot" data-state=${() => (ready() ? "ready" : "loading")} aria-hidden="true" />
+            ${() => (ready() ? "World ready" : "Waking the world")}
+          </span>
+          <span>Build 0.1.0</span>
+        </footer>
+      </div>
+    </section>
+  `
+}
+
+function startScreenLoadMarkup() {
+  return html`
+    <section class="start-screen-subview" aria-labelledby="start-load-title">
+      <button
+        id="start-load-back"
+        type="button"
+        class="start-screen-back"
+        onClick=${() => openStartScreenView("home")}
+      >
+        <span aria-hidden="true">←</span> Back
+      </button>
+      <div class="start-screen-subview-heading">
+        <p class="start-screen-kicker">Save ledger</p>
+        <h2 id="start-load-title">Load your last road</h2>
+        <p>Pick up where the campfire went quiet.</p>
+      </div>
+      ${() =>
+        autosaveRecord()
+          ? html`
+              <div class="start-save-readout">
+                <span>Browser autosave</span>
+                <strong>${() => formatSaveTimestamp(autosaveRecord())}</strong>
+                <small>Your most recent expedition is kept on this device.</small>
+              </div>
+            `
+          : html`
+              <div class="start-save-readout empty">
+                <span>No save found</span>
+                <strong>The road is still yours to choose.</strong>
+                <small>Start a new game and an autosave will be created after your first step.</small>
+              </div>
+            `}
+      <div class="start-screen-subview-actions">
+        <button
+          id="start-load-autosave"
+          type="button"
+          class="start-menu-button primary"
+          onClick=${() => void beginLoadedGame()}
+          disabled=${() => !ready() || !autosaveRecord()}
+        >
+          <span>
+            <strong>Load autosave</strong>
+            <small>${() => (ready() ? "Return to the last recorded camp" : "Waiting for the world")}</small>
+          </span>
+          <i aria-hidden="true">Resume</i>
+        </button>
+        <button
+          id="start-load-new-game"
+          type="button"
+          class="start-secondary-action"
+          onClick=${() => void beginNewGame()}
+          disabled=${() => !ready()}
+        >
+          Start a new game instead
+        </button>
+      </div>
+    </section>
+  `
+}
+
+function startScreenOptionsMarkup() {
+  return html`
+    <section class="start-screen-subview start-screen-options" aria-labelledby="start-options-title">
+      <button
+        id="start-options-back"
+        type="button"
+        class="start-screen-back"
+        onClick=${() => openStartScreenView("home")}
+      >
+        <span aria-hidden="true">←</span> Back
+      </button>
+      <div class="start-screen-subview-heading">
+        <p class="start-screen-kicker">Field settings</p>
+        <h2 id="start-options-title">Options</h2>
+        <p>Make the road comfortable before you set out.</p>
+      </div>
+      <div class="start-option-group">
+        <div class="start-option-group-heading">
+          <span>Sound</span>
+          <small>${() => soundStatusLabel()}</small>
+        </div>
+        <button
+          id="start-mute-toggle"
+          type="button"
+          class="start-option-toggle"
+          onClick=${() => updatePlayerSettings({ muted: !playerSettings().muted })}
+          aria-pressed=${() => playerSettings().muted}
+        >
+          <span>
+            <strong>Mute all</strong>
+            <small>Silence music and interface sounds.</small>
+          </span>
+          <b>${() => (playerSettings().muted ? "Muted" : "On")}</b>
+        </button>
+        ${startScreenVolumeRow("Master volume", "Overall game audio level.", "masterVolume")}
+        ${startScreenVolumeRow("Music", "World ambience and story stingers.", "musicVolume")}
+        ${startScreenVolumeRow("Effects", "Interface cues and future world sounds.", "sfxVolume")}
+        <button
+          id="start-reset-audio"
+          type="button"
+          class="start-text-action"
+          onClick=${resetAudioSettings}
+        >
+          Reset sound
+        </button>
+      </div>
+      <div class="start-option-group">
+        <div class="start-option-group-heading">
+          <span>Comfort</span>
+          <small>Saved on this device</small>
+        </div>
+        <button
+          id="start-reduced-motion"
+          type="button"
+          class="start-option-toggle"
+          onClick=${() => updatePlayerSettings({ reducedMotion: !playerSettings().reducedMotion })}
+          aria-pressed=${() => playerSettings().reducedMotion}
+        >
+          <span>
+            <strong>Reduce motion</strong>
+            <small>Keep transitions quiet and immediate.</small>
+          </span>
+          <b>${() => (playerSettings().reducedMotion ? "On" : "Off")}</b>
+        </button>
+      </div>
+    </section>
+  `
+}
+
+function startScreenVolumeRow(
+  label: string,
+  detail: string,
+  key: "masterVolume" | "musicVolume" | "sfxVolume",
+) {
+  const inputId = `start-${key.replace("Volume", "-volume").toLowerCase()}`
+  return html`
+    <label class="start-setting-row" for=${inputId}>
+      <span>
+        <strong>${label}</strong>
+        <small>${detail}</small>
+      </span>
+      <span class="start-setting-control">
+        <input
+          id=${inputId}
+          type="range"
+          min="0"
+          max="1"
+          step="0.05"
+          value=${() => playerSettings()[key]}
+          onInput=${(event: Event) =>
+            updateSettingsVolume(key, Number((event.currentTarget as HTMLInputElement).value))}
+          aria-label=${`${label} volume`}
+        />
+        <output>${() => settingsVolumePercent(key)}</output>
+      </span>
+    </label>
+  `
+}
+
+function openStartScreenView(view: StartScreenView): void {
+  setStartScreenView(view)
+  const focusId =
+    view === "home"
+      ? "start-new-game"
+      : view === "load"
+        ? "start-load-autosave"
+        : "start-mute-toggle"
+  focusElementById(focusId)
+}
+
+async function beginNewGame(): Promise<void> {
+  if (!ready()) return
+  setLastError(null)
+  setStorageError(null)
+  await resetRuntime()
+  if (lastError()) return
+  setStartScreenOpen(false)
+  setStartScreenView("home")
+}
+
+async function beginLoadedGame(): Promise<void> {
+  if (!ready() || !autosaveRecord()) return
+  setLastError(null)
+  setStorageError(null)
+  await loadAutosave()
+  if (lastError() || storageError()) return
+  setStartScreenOpen(false)
+  setStartScreenView("home")
+}
+
 function openAdminView(): void {
   setShellMenuOpen(false)
   setSettingsOpen(false)
@@ -2424,11 +2718,16 @@ function closeSettingsView(): void {
   setStartOverArmed(false)
 }
 
-/** Throw the run away and come back at the opening. */
+/** Throw the run away and come back to the menu. */
 async function startOver(): Promise<void> {
   setStartOverArmed(false)
-  await resetRuntime()
   closeSettingsView()
+  // Before the reset, not after: the opening asks for itself as soon as a
+  // fresh snapshot lands, and with the menu still closed it would start
+  // playing behind the menu the player is about to be shown.
+  setStartScreenOpen(true)
+  setStartScreenView("home")
+  await resetRuntime()
 }
 
 function closeAdminView(): void {

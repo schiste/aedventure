@@ -1528,12 +1528,18 @@ mod tests {
             HeroLocationState::Studio
         );
         // The action itself never sends him out: what little these three
-        // seconds cost is the price of standing in the wild before there is any
-        // field to stand inside, which every pre-arrival action shares.
+        // seconds cost is the price of standing where he stands, which every
+        // pre-arrival action shares. He is on the Survivor Cave, so its shelter
+        // is part of that price — derived here rather than hardcoded, so
+        // retuning the tile does not silently retune this assertion.
         let endurance =
             simulation.exposure_endurance_seconds(crate::exposure::ExposureArchetype::Hero);
+        let shelter = crate::game_data::tile_def("tile.survivor_cave")
+            .expect("the spawn tile is authored")
+            .shelter_ratio;
+        let expected = 3.0 * (1.0 - shelter) / endurance;
         assert!(
-            (simulation.state().hero_survival.viral_load_ratio - 3.0 / endurance).abs() < 1e-9,
+            (simulation.state().hero_survival.viral_load_ratio - expected).abs() < 1e-9,
             "a safe action must add nothing of its own, got {}",
             simulation.state().hero_survival.viral_load_ratio
         );
@@ -3005,6 +3011,97 @@ mod tests {
         );
     }
 
+    // -- Shelter ------------------------------------------------------------
+
+    #[test]
+    fn shelter_slows_the_clock_without_stopping_the_wild() {
+        // The Survivor Cave shelters heavily; open plains not at all. Standing
+        // in cover has to cost *something* still, or waiting becomes free.
+        let cave = crate::game_data::tile_def("tile.survivor_cave").expect("authored");
+        let plains = crate::game_data::tile_def("tile.plains_open").expect("authored");
+        assert!(cave.shelter_ratio > plains.shelter_ratio);
+        assert!(cave.shelter_ratio < 1.0, "no tile outside the field may be free");
+        assert_eq!(plains.shelter_ratio, 0.0, "open ground is the baseline");
+    }
+
+    #[test]
+    fn standing_in_cover_spends_less_than_standing_in_the_open() {
+        // The Hero starts on the Survivor Cave, which shelters.
+        let mut sheltered = Simulation::new();
+        sheltered.apply(GameCommand::Tick { seconds: 60.0 });
+        let in_cover = sheltered.state().hero_survival.viral_load_ratio;
+
+        // Same tick, same distance, but standing on open ground.
+        let mut exposed_state = GameState::new();
+        let hero = exposed_state.hero_map;
+        for hex in &mut exposed_state.hexes {
+            if hex.q == hero.q && hex.r == hero.r {
+                hex.tile_id = "tile.plains_open".to_string();
+            }
+        }
+        let mut exposed = Simulation::from_state(exposed_state);
+        exposed.apply(GameCommand::Tick { seconds: 60.0 });
+        let in_the_open = exposed.state().hero_survival.viral_load_ratio;
+
+        assert!(
+            in_cover < in_the_open,
+            "cover has to be worth walking to: {in_cover} vs {in_the_open}"
+        );
+        assert!(in_cover > 0.0, "and it must not stop the clock outright");
+    }
+
+    #[test]
+    fn an_unknown_tile_shelters_nobody() {
+        // A save can outlive the tile it names. Treating that as cover would
+        // let a content change quietly make the wasteland harmless.
+        let mut state = GameState::new();
+        let hero = state.hero_map;
+        for hex in &mut state.hexes {
+            if hex.q == hero.q && hex.r == hero.r {
+                hex.tile_id = "tile.removed_by_a_later_build".to_string();
+            }
+        }
+        let mut simulation = Simulation::from_state(state);
+        simulation.apply(GameCommand::Tick { seconds: 60.0 });
+
+        let mut open = GameState::new();
+        let hero = open.hero_map;
+        for hex in &mut open.hexes {
+            if hex.q == hero.q && hex.r == hero.r {
+                open_tile(hex);
+            }
+        }
+        let mut baseline = Simulation::from_state(open);
+        baseline.apply(GameCommand::Tick { seconds: 60.0 });
+
+        assert_eq!(
+            simulation.state().hero_survival.viral_load_ratio,
+            baseline.state().hero_survival.viral_load_ratio,
+            "an unknown tile must cost exactly what open ground costs"
+        );
+    }
+
+    fn open_tile(hex: &mut crate::state::HexState) {
+        hex.tile_id = "tile.plains_open".to_string();
+    }
+
+    /// A run standing on open ground.
+    ///
+    /// The Hero spawns on the Survivor Cave, which shelters heavily — correct
+    /// for the fiction, and the reason the wild only really costs him once he
+    /// leaves it. Tests about the *exposure* rule put him in the open so the
+    /// shelter rule is not silently under test as well.
+    fn simulation_in_the_open() -> Simulation {
+        let mut state = GameState::new();
+        let hero = state.hero_map;
+        for hex in &mut state.hexes {
+            if hex.q == hero.q && hex.r == hero.r {
+                open_tile(hex);
+            }
+        }
+        Simulation::from_state(state)
+    }
+
     #[test]
     fn untested_hero_has_six_of_his_twenty_four_hours() {
         // 24 authored hours less the 18 withheld while his immunity is
@@ -3039,9 +3136,9 @@ mod tests {
 
     #[test]
     fn exhaustion_reveals_once_then_kills() {
-        // The Hero starts at the Survivor Cave, six hexes from the field, so he
-        // is exposed from the first tick.
-        let mut simulation = Simulation::new();
+        // Standing in the open, six hexes from the field: exposed from the
+        // first tick, with no shelter discounting it.
+        let mut simulation = simulation_in_the_open();
         assert!(!simulation.state().hero_survival.exposure.immunity_proven());
 
         // Six hours out there and he is certain. He is also wrong.
@@ -3079,7 +3176,7 @@ mod tests {
     fn exhaustion_survives_a_save_round_trip() {
         // The whole point of it being simulation state: a reload must not undo
         // a death.
-        let mut simulation = Simulation::new();
+        let mut simulation = simulation_in_the_open();
         for _ in 0..30 {
             simulation.apply(GameCommand::Tick { seconds: 60.0 });
         }

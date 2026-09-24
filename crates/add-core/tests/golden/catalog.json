@@ -2312,6 +2312,7 @@
       "feature": "base",
       "impedance": 1.0,
       "isBlocker": false,
+      "shelterRatio": 1.0,
       "tags": [
         "base",
         "sanctuary",
@@ -2336,6 +2337,7 @@
       "feature": "none",
       "impedance": 1.0,
       "isBlocker": false,
+      "shelterRatio": 0.0,
       "tags": [
         "open_ground"
       ],
@@ -2353,6 +2355,7 @@
       "feature": "none",
       "impedance": 0.35,
       "isBlocker": false,
+      "shelterRatio": 0.1,
       "tags": [
         "water_source",
         "easy_propagation"
@@ -2373,6 +2376,7 @@
       "feature": "none",
       "impedance": 1.6,
       "isBlocker": false,
+      "shelterRatio": 0.25,
       "tags": [
         "brush",
         "harvestable"
@@ -2393,6 +2397,7 @@
       "feature": "none",
       "impedance": 2.4,
       "isBlocker": false,
+      "shelterRatio": 0.45,
       "tags": [
         "elevated",
         "high_impedance"
@@ -2411,6 +2416,7 @@
       "feature": "none",
       "impedance": 99.0,
       "isBlocker": true,
+      "shelterRatio": 0.0,
       "tags": [
         "blocker",
         "wall"
@@ -2429,6 +2435,7 @@
       "feature": "survivor_cave",
       "impedance": 1.0,
       "isBlocker": false,
+      "shelterRatio": 0.9,
       "tags": [
         "landmark",
         "recruitment_source"
