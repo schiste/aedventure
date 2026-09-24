@@ -721,13 +721,29 @@ async function assertAdminDeveloperSeparation(page, consoleErrors) {
     const style = getComputedStyle(element)
     return {
       clipPath: style.clipPath,
+      borderRadius: style.borderRadius,
       position: style.position,
       visibility: style.visibility,
     }
   })
   assert.equal(settingsStyle.position, "fixed")
   assert.equal(settingsStyle.visibility, "visible")
-  assert.match(settingsStyle.clipPath, /polygon/i, "Settings should render as a hex-shaped window.")
+  // Was "Settings should render as a hex-shaped window" (Sep 18). The creative
+  // direction adopted two days later supersedes it: §3.3 says HTML panels may
+  // be rectangular and precise, and that irregularity belongs to stone, wood
+  // and cables — "pas aux alignements ni aux zones cliquables". The hex clip
+  // also cost about a third of the window in padding that existed only to
+  // clear its diagonals.
+  assert.equal(
+    settingsStyle.clipPath,
+    "none",
+    "Settings is a rectangular panel: irregularity does not belong to clickable areas.",
+  )
+  assert.match(
+    settingsStyle.borderRadius,
+    /^8px/,
+    "Panels use the direction's modest ~8px radius, not a SaaS-style rounded card.",
+  )
   await page.locator("#close-settings").focus()
   await waitForTextState(
     page,
