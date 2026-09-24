@@ -19,6 +19,31 @@
   --mode-dungeon-strong-rgb: 214 225 234;
   --mode-return-rgb: 255 211 127;
   --danger-rgb: 200 101 75;
+
+  /* Layer hierarchy, direction §5.2. The ladder was ad hoc — 13, 14, 16, 24,
+   * 28, 32, 33, 34, 40, 60 — with no relationship to the tiers the markup
+   * already declares in `data-interface-tier`. Naming the rungs means a new
+   * surface picks a *layer* rather than guessing a number one higher than
+   * whatever it happened to sit under.
+   *
+   * Primary   the Phaser world: always legible and targetable
+   * Secondary panels answering the current decision
+   * Tertiary  map modes, status, resources, time, zoom, menu
+   * Transient travel confirmation, offline return, story choice, settings
+   * Tools     Admin and Dev, never confused with the player's path
+   * Moment    a cinematic or the title screen: the game has stopped for this
+   */
+  --layer-primary: 1;
+  --layer-secondary: 14;
+  --layer-tertiary: 16;
+  /* Transients outrank tools. The doc lists Outils as a separate *category* —
+   * "visuellement séparés, jamais confondus avec le parcours joueur" — not as
+   * a higher stack. Ordering tools above transients let the admin backdrop
+   * cover the settings window, which made settings unclickable. A transient is
+   * a modal interruption: if it is open, it must be the thing you can act on. */
+  --layer-tools: 28;
+  --layer-transient: 34;
+  --layer-moment: 60;
   --contamination-rgb: 178 34 28;
   --surface-deep-rgb: 7 12 12;
   --surface-shade-rgb: 11 17 16;
@@ -199,7 +224,7 @@ button[aria-disabled="true"] {
   position: fixed;
   top: 8px;
   left: 8px;
-  z-index: 40;
+  z-index: var(--layer-moment); /* the run ended; nothing outranks it */
   transform: translateY(calc(-100% - 16px));
   border: 1px solid rgb(var(--mode-return-rgb)/ 70%);
   border-radius: 8px;
@@ -261,7 +286,7 @@ button[aria-disabled="true"] {
   top: 0;
   right: 0;
   left: 0;
-  z-index: 16;
+  z-index: var(--layer-tertiary); /* topbar: compact, stable, non-decorative */
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -615,7 +640,7 @@ h1 {
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
-  z-index: 24;
+  z-index: var(--layer-tertiary); /* the menu belongs with status, not above dialogs */
   display: none;
   width: min(360px, calc(100vw - 18px));
   border: 0;
@@ -803,7 +828,7 @@ h1 {
 }
 
 .shell-state-layer.error {
-  z-index: 13;
+  z-index: var(--layer-secondary); /* state layer sits with the panels it reports on */
   border-color: rgb(var(--danger-rgb)/ 46%);
   background:
     linear-gradient(180deg, rgb(var(--danger-rgb)/ 16%), rgb(var(--wash-rgb)/ 7%)),
@@ -3300,7 +3325,7 @@ h1 {
 .travel-dialog-backdrop {
   position: absolute;
   inset: 0;
-  z-index: 28;
+  z-index: var(--layer-transient); /* travel confirmation */
   display: block;
   padding: 18px;
   background:
@@ -3391,7 +3416,7 @@ h1 {
   top: var(--floating-panel-y, 54px);
   right: auto;
   left: var(--floating-panel-x, auto);
-  z-index: 14;
+  z-index: var(--layer-secondary); /* offline return answers the current decision */
   display: grid;
   width: min(430px, calc(100vw - 430px));
   min-width: 320px;
@@ -3655,7 +3680,7 @@ h1 {
 .admin-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 32;
+  z-index: var(--layer-tools); /* admin backdrop */
   background: rgb(var(--shadow-rgb)/ 0%);
   opacity: 0;
   pointer-events: none;
@@ -3675,7 +3700,7 @@ h1 {
   top: 0;
   right: 0;
   bottom: 0;
-  z-index: 33;
+  z-index: var(--layer-tools); /* admin view */
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -3764,7 +3789,7 @@ h1 {
   position: fixed;
   top: var(--floating-panel-y, 50%);
   left: var(--floating-panel-x, 50%);
-  z-index: 34;
+  z-index: var(--layer-transient); /* settings is transient, not a tool */
   display: block;
   width: min(760px, calc(100vw - 24px));
   height: min(calc(100vh - 28px), 720px);
@@ -5570,7 +5595,7 @@ h1 {
 
 .ui-dialog-scrim {
   position: fixed;
-  z-index: 60;
+  z-index: var(--layer-moment); /* title screen and cinematic stage */
   display: grid;
   background: rgb(var(--shadow-rgb) / 52%);
   inset: 0;
@@ -5710,7 +5735,7 @@ h1 {
 
 .contamination-death {
   position: absolute;
-  z-index: 40;
+  z-index: var(--layer-moment); /* the run ended; nothing outranks it */
   display: flex;
   flex-direction: column;
   gap: 18px;
@@ -5738,7 +5763,7 @@ h1 {
 
 .cinematic-stage {
   position: absolute;
-  z-index: 60; /* over the contamination haze and the death overlay */
+  z-index: var(--layer-moment); /* title screen and cinematic stage */ /* over the contamination haze and the death overlay */
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -5853,7 +5878,7 @@ h1 {
 .start-screen {
   position: fixed;
   inset: 0;
-  z-index: 60;
+  z-index: var(--layer-moment); /* title screen and cinematic stage */
   display: grid;
   align-items: center;
   overflow: auto;
