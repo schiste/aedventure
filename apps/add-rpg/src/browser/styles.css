@@ -1992,6 +1992,8 @@ h1 {
 
 .base-section-summary[data-severity="warning"] {
   border-color: rgb(var(--mode-base-warm-rgb)/ 34%);
+  border-left-style: solid;
+  border-left-width: 3px;
 }
 
 .base-bottleneck-strip {
@@ -2017,6 +2019,7 @@ h1 {
 
 .base-bottleneck-strip[data-severity="danger"] {
   border-color: rgb(var(--danger-rgb)/ 42%);
+  border-style: dashed;
   background:
     linear-gradient(180deg, rgb(var(--danger-rgb)/ 17%), rgb(var(--wash-rgb)/ 5%)),
     rgb(var(--surface-shade-rgb)/ 58%);
@@ -6180,4 +6183,47 @@ h1 {
   transform: translateX(0.2rem);
   background: transparent;
   color: #fff2d2;
+}
+
+
+/* ---------------------------------------------------------------------------
+ * Severity is never colour alone.
+ *
+ * Direction §4.2: "Ne jamais distinguer disponible, insuffisant, verrouillé ou
+ * dangereux par la seule couleur." Every `data-severity` and `data-risk`
+ * surface was previously distinguished only by background, border-colour and
+ * text colour — invisible to a colour-blind player, and to anyone on a
+ * washed-out screen.
+ *
+ * The marker is a glyph, not a hue, and it is `aria-hidden` by nature: the
+ * label beside it already carries the state in words ("Blocked", "Ready"), so
+ * this adds a second visual channel rather than a second reading for a screen
+ * reader.
+ * ------------------------------------------------------------------------- */
+
+:is([data-severity="warning"], [data-severity="danger"], [data-risk="high"])::after {
+  content: "";
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 8px;
+  height: 8px;
+  border: 2px solid currentcolor;
+  opacity: 0.72;
+}
+
+[data-severity="warning"]::after,
+[data-risk="high"]::after {
+  /* A triangle: the shape says "attention" without borrowing the hue. */
+  border-width: 0 4px 8px;
+  border-color: transparent transparent currentcolor;
+}
+
+[data-severity="danger"]::after {
+  /* A square reads as a stop, distinct from the warning triangle at a glance. */
+  border-radius: 1px;
+}
+
+:is([data-severity="warning"], [data-severity="danger"], [data-risk="high"]) {
+  position: relative;
 }
