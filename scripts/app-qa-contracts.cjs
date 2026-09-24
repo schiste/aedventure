@@ -145,6 +145,45 @@ async function captureNonBlankImage(target, screenshotPath, label, options = {})
 }
 
 /**
+ * Get past the title screen, the way a player does.
+ *
+ * Every load lands here now, and it is a modal that intercepts pointer events
+ * — so a suite that skips it spends its whole budget clicking at the menu.
+ * "New game" is the route a player takes to reach the map, and it resets the
+ * run, which is what a QA scenario wants anyway.
+ *
+ * Tolerant: a build without the screen, or a run already past it, shows
+ * nothing and that is not a failure.
+ */
+async function dismissStartScreen(page, { timeoutMs = 20000 } = {}) {
+  await page.waitForFunction(
+    () => typeof window.render_game_to_text === "function",
+    undefined,
+    { timeout: timeoutMs },
+  )
+
+  const deadline = Date.now() + timeoutMs
+  let clearRuns = 0
+  while (Date.now() < deadline) {
+    if (page.isClosed()) return
+    const begin = page.locator("#start-new-game")
+    if (await begin.count()) {
+      try {
+        await begin.click({ timeout: Math.min(2000, timeoutMs) })
+      } catch {
+        // The screen can close between the count and the click.
+      }
+    }
+    // Two clear looks, for the same reason the cinematic helper wants them:
+    // a screen that has not rendered yet is not a screen that is gone.
+    clearRuns = (await page.locator("#start-screen").count()) ? 0 : clearRuns + 1
+    if (clearRuns >= 2) return
+    await page.waitForTimeout(150)
+  }
+  throw new Error("The title screen never cleared; every later scenario would be blocked by it.")
+}
+
+/**
  * Get past the opening cinematic, the way a player does.
  *
  * A fresh run opens on `cinematic.intro`, a modal over the whole interface, so
@@ -191,6 +230,7 @@ async function dismissOpeningCinematic(page, { timeoutMs = 20000 } = {}) {
 
 module.exports = {
   dismissOpeningCinematic,
+  dismissStartScreen,
   SHARED_ENGINE_PACKAGES,
   assertNonBlankImageBuffer,
   assertOfficeRenderGameContract,

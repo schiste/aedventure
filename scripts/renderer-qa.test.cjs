@@ -8,6 +8,7 @@ const {
   assertNonBlankImageBuffer,
   captureNonBlankImage,
   dismissOpeningCinematic,
+  dismissStartScreen,
   assertOfficeRenderGameContract,
 } = require("./app-qa-contracts.cjs")
 const { startStaticAppServer } = require("./app-qa-server.cjs")
@@ -1031,8 +1032,10 @@ async function verifyAddRendererTopologyFixtures(browser, report) {
 
   try {
     await page.goto(`${url}/app`, { waitUntil: "domcontentloaded" })
-    // The opening cinematic is a modal; without this every click below lands
-    // on the dialog instead of the map.
+    // Two modals stand between a fresh load and the map: the title screen and
+    // then the opening. Both have to go, in that order, or every click below
+    // lands on a dialog.
+    await dismissStartScreen(page, { timeoutMs: Math.round(20000 * QA_TIMEOUT_SCALE) })
     await dismissOpeningCinematic(page, { timeoutMs: Math.round(20000 * QA_TIMEOUT_SCALE) })
     const hexState = await waitForTextState(
       page,
