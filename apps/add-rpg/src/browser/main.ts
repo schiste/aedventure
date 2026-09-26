@@ -590,7 +590,7 @@ const runtimeBridge = new AddRuntimeBridge({
     setCatalog(nextCatalog)
     setLastEvent("ready")
     setLastError(null)
-    maybeRestoreAutosaveOnBoot(nextSnapshot)
+    prepareAutosaveOnBoot(nextSnapshot)
   },
   onSnapshot(nextSnapshot) {
     setSnapshot(nextSnapshot)
@@ -4436,7 +4436,7 @@ function interfaceHierarchyState(): AddInterfaceHierarchyState {
       label: "Settings",
       hiddenByDefault: true,
       open: settingsOpen(),
-      presentation: "hex_window",
+      presentation: "rectangular_window",
       motion: reducedMotionMode(),
       autosave: autosaveEnabled(),
       audio: {
@@ -7516,26 +7516,18 @@ function handleOffline(): void {
   setOnline(false)
 }
 
-function maybeRestoreAutosaveOnBoot(_initialSnapshot: SimulationSnapshot): void {
+function prepareAutosaveOnBoot(_initialSnapshot: SimulationSnapshot): void {
   if (autosaveRestoreAttempted) return
   autosaveRestoreAttempted = true
 
   const record = refreshAutosaveFromStorage()
   if (!record) {
     setSaveStatus("No autosave")
-    maybeRequestAutosave()
     return
   }
 
-  queuedOfflineCatchupSeconds = offlineCatchupSecondsFor(record)
   setSavePayload(record.payload)
-  setLastCommand("load_autosave")
-  setSaveStatus(
-    queuedOfflineCatchupSeconds > 0
-      ? `Loading autosave +${formatDuration(queuedOfflineCatchupSeconds)}`
-      : "Loading autosave",
-  )
-  sendWorkerRequest({ type: "importSave", payload: record.payload })
+  setSaveStatus("Autosave ready")
 }
 
 function maybeRunQueuedOfflineCatchup(): boolean {
@@ -7585,7 +7577,7 @@ function maybeFinalizeOfflineReturnSummary(after: SimulationSnapshot): void {
 }
 
 function maybeRequestAutosave(): void {
-  if (!ready() || !autosaveEnabled()) return
+  if (!ready() || !autosaveEnabled() || startScreenOpen()) return
   const now = Date.now()
   if (now - lastAutosaveRequestMs < 3000) return
   lastAutosaveRequestMs = now

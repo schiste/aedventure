@@ -84,6 +84,7 @@ async function main() {
     const initial = await runScenario("boot and render text contract", () =>
       assertBootAndRenderTextContract(page, consoleErrors),
     )
+    assert.equal(initial.shell?.questPanel?.visible, false)
     await capturePhase5Fixture(page, phase5Evidence, "add.boot", initial)
     await runScenario("admin and developer tools separation", () =>
       assertAdminDeveloperSeparation(page, consoleErrors),
@@ -115,6 +116,9 @@ async function main() {
       return state
     })
     await runScenario("mobile presentation", () => assertMobilePresentation(browser, url))
+    await runScenario("objective tracker opt-in", () =>
+      enableObjectiveTrackerForSmoke(page, consoleErrors),
+    )
     const questHud = await runScenario("quest HUD keyboard movement and collapse", () =>
       exerciseQuestHud(page, consoleErrors),
     )
@@ -589,12 +593,16 @@ async function assertBootAndRenderTextContract(page, consoleErrors) {
     source: ["first_playable", "discovery"],
   })
   assert.equal(await page.locator(".skip-link").count(), 1)
-  assert.equal(await page.locator(".skip-link").getAttribute("href"), "#first-playable-panel")
+  assert.equal(await page.locator(".skip-link").getAttribute("href"), "#add-world")
   assert.equal(await page.locator("#current-action-surface").count(), 0)
   assert.equal(await page.locator("#discovery-panel").count(), 0)
   assert.equal(await page.locator("#first-playable-panel[aria-describedby]").count(), 1)
   assert.equal(await page.locator("#first-playable-body").isHidden(), true)
-  await assertVisibleText(page, "#first-playable-panel", ["Reach the Studio", "0/11", "Show"])
+  assert.equal(
+    await page.locator("#first-playable-panel").evaluate((element) => element.hidden),
+    true,
+    "The objective tracker should stay hidden until the player enables it.",
+  )
   assert.equal(await page.locator(".first-playable-drag-handle[tabindex='0']").count(), 1)
   assert.equal(await page.locator("#add-world[data-visual-surface='map-stage']").count(), 1)
   assert.equal(await page.locator(".map-topbar[data-visual-surface='status']").count(), 1)
@@ -712,7 +720,7 @@ async function assertAdminDeveloperSeparation(page, consoleErrors) {
   assert.equal(settings.shell.adminOpen, false)
   assert.equal(settings.shell.devToolsOpen, false)
   assert.equal(settings.shell.interfaceHierarchy.settings.open, true)
-  assert.equal(settings.shell.interfaceHierarchy.settings.presentation, "hex_window")
+  assert.equal(settings.shell.interfaceHierarchy.settings.presentation, "rectangular_window")
   assert.equal(settings.shell.interfaceHierarchy.settings.audio.muted, false)
   assert.equal(settings.shell.interfaceHierarchy.settings.audio.masterVolume, 0.8)
   assert.equal(settings.shell.interfaceHierarchy.settings.audio.musicVolume, 0.6)
@@ -2165,8 +2173,14 @@ async function assertMobileLayoutComposition(page, viewport) {
 
   assert.ok(metrics.topbar, `${viewport.name}: expected compact topbar`)
   assert.equal(metrics.context, null, `${viewport.name}: overworld should not mount a contextual bottom sheet`)
-  assert.ok(metrics.questPanel, `${viewport.name}: expected objective tracker`)
-  assert.ok(metrics.cameraControls, `${viewport.name}: expected camera controls`)
+  assert.ok(metrics.questPanel, "Expected objective tracker node")
+  assert.equal(
+    state.shell?.questPanel?.visible,
+    false,
+    "Objective tracker should be hidden by default on mobile",
+  )
+  assert.equal(metrics.questPanel.height, 0, "Hidden objective tracker should not occupy map space")
+  assert.ok(metrics.cameraControls, "Expected camera controls")
   assert.equal(metrics.currentAction, null, `${viewport.name}: overworld should not mount a current action panel`)
   assert.equal(metrics.detailToggle, null, `${viewport.name}: discovery detail snap control should not be visible`)
   assert.equal(metrics.width, viewport.width)
@@ -2191,12 +2205,7 @@ async function assertMobileLayoutComposition(page, viewport) {
     "number",
     `${viewport.name}: renderer should expose mobile edge label culling telemetry`,
   )
-  assert.ok(metrics.topbar.height <= 46, `${viewport.name}: topbar is too tall`)
-  assert.ok(metrics.questPanel.height <= 48, `${viewport.name}: objective tracker should start as a compact chip`)
-  assert.ok(
-    metrics.questPanel.top >= metrics.topbar.bottom + 2,
-    `${viewport.name}: objective tracker overlaps the topbar`,
-  )
+  assert.ok(metrics.topbar.height <= 92, `${viewport.name}: topbar should stay within two compact rows`)
   assert.ok(
     metrics.cameraControls.bottom <= viewport.height - 6,
     `${viewport.name}: camera controls should stay inside the viewport`,
@@ -2249,7 +2258,10 @@ async function assertLayoutHierarchy(
       const seen = await page.evaluate((panelId) => {
         const panel = document.getElementById(panelId)
         if (!(panel instanceof HTMLElement)) {
-          return { present: false }
+          return {
+            present: false,
+            panelIds: Array.from(document.querySelectorAll("[id$='-panel']"), (element) => element.id),
+          }
         }
         const style = window.getComputedStyle(panel)
         const rect = panel.getBoundingClientRect()
@@ -2259,16 +2271,26 @@ async function assertLayoutHierarchy(
           visibility: style.visibility,
           opacity: style.opacity,
           animationName: style.animationName,
-          w: Math.round(rect.width),
-          h: Math.round(rect.height),
-          anims: panel.getAnimations().map((a) => ({
-            state: a.playState,
-            t: a.currentTime,
+          width: rect.width,
+          height: rect.height,
+          animations: panel.getAnimations().map((animation) => ({
+            name: animation.animationName ?? String(animation.constructor.name),
+            playState: animation.playState,
+            currentTime: animation.currentTime,
           })),
         }
       }, expectedContextPanelId)
-      throw new Error(`${error.message} | ${expectedContextPanelId}: ${JSON.stringify(seen)}`)
+      throw new Error(
+        `${error.message} | panel ${expectedContextPanelId} diagnostic: ${JSON.stringify(seen)}`,
+      )
     })
+    const contextAnimationName = await page
+      .locator(`#${expectedContextPanelId}`)
+      .evaluate((element) => window.getComputedStyle(element).animationName)
+    assert.ok(
+      contextAnimationName === "none" || contextAnimationName === "",
+      `${expectedContextPanelId} should not replay an entrance animation during live updates (got ${contextAnimationName || "empty"}).`,
+    )
   }
 
   const hierarchy = await page.evaluate((expectedPanelId) => {
@@ -2489,9 +2511,10 @@ async function assertLayoutHierarchy(
   assert.equal(hierarchy.topbarSurface, "status")
   assert.equal(hierarchy.topbarVisible, true, "The top status/navigation bar should be visible.")
   assert.ok(hierarchy.topbar, "Top status/navigation bar should have layout bounds.")
+  const topbarBottomLimit = mobile ? 92 : 58
   assert.ok(
-    hierarchy.topbar.top >= -1 && hierarchy.topbar.bottom <= 58,
-    `Top status/navigation bar should stay pinned to the top edge, saw ${JSON.stringify(
+    hierarchy.topbar.top >= -1 && hierarchy.topbar.bottom <= topbarBottomLimit,
+    `Top status/navigation bar should stay pinned within its ${mobile ? "two-row mobile" : "desktop"} layout, saw ${JSON.stringify(
       hierarchy.topbar,
     )}.`,
   )
@@ -3267,6 +3290,26 @@ async function loadAutosaveFromTitleScreen(page) {
   )
   await page.locator("#start-load-autosave").click()
   await page.locator("#start-screen").waitFor({ state: "detached" })
+}
+
+async function enableObjectiveTrackerForSmoke(page, consoleErrors) {
+  const before = await renderGameToText(page)
+  assert.equal(before.shell?.questPanel?.visible, false)
+  await openSettings(page, consoleErrors)
+  const toggle = page.locator("#settings-toggle-objective")
+  await toggle.waitFor({ state: "visible" })
+  assert.equal(await toggle.getAttribute("aria-pressed"), "false")
+  await toggle.click()
+  const enabled = await waitForTextState(
+    page,
+    (state) =>
+      state.shell?.questPanel?.visible === true &&
+      state.shell?.interfaceHierarchy?.settings?.map?.showObjectiveTracker === true,
+    consoleErrors,
+  )
+  await page.locator("#first-playable-panel").waitFor({ state: "visible" })
+  await closeSettings(page, consoleErrors)
+  return enabled
 }
 
 async function openSettings(page, consoleErrors) {

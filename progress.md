@@ -3313,4 +3313,25 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
 - `npm run agent:verify:add-ui` passed after the telemetry type fix; `npm --workspace @aedventure/add-rpg run build:browser` passed.
 - The first gameplay screenshot exposed that `.first-playable-panel { display: grid }` overrode the native `hidden` styling; added an explicit `[hidden] { display: none }` rule and verified it through Vite HMR.
 - Chromium verified the Settings toggle in both directions, persisted hide state through reload, preserved the active route action, reported no console errors, and captured/visually inspected desktop (1440x900) and mobile (390x844) gameplay screenshots.
-- The existing ADD browser smoke spec is not edited or run: its file has uncommitted WIP owned by stale session 81 and its current assertions expect a visible-by-default tracker. Update the browser contract when that ownership clears.
+- After reviewing and recovering session 81's diagnostic WIP, updated the ADD browser smoke contract to assert the tracker is hidden by default, then opt into it for drag/collapse checks. The mobile topbar contract now accounts for the current two-row layout.
+- ADD browser smoke passed with `ADD_QA_TIMEOUT_SCALE=3`; desktop and mobile screenshots were inspected. The artifacts are under `/private/tmp/aedventure-session109-artifacts/screenshots`, outside the repo.
+
+## 2026-09-26 — stale-session recovery audit
+
+- Audited four stale live sessions and ten retained closed worktrees. The
+  uncommitted diagnostic, static-server, and start-screen QA changes in
+  sessions 81, 88, and 89 are present in integration; session 84's accepted
+  screenshot-contract commit is also integrated. Their remaining dirt is
+  generated `node_modules` or redundant diagnostics.
+- Sessions 27 and 33 contain old title-screen/style drafts. Recovered the
+  explicit autosave-choice behavior from session 27 and the live-panel
+  animation guard, rectangular Settings telemetry, and stronger smoke evidence
+  from session 33. Did not copy the superseded screen CSS or broad dependency
+  upgrades.
+- Removed 0.8 GiB of regenerable build output with the reviewed Aethyme reclaim
+  plan. The full `npm run agent:verify:add-ui` profile passed through the
+  session executor, and the built browser smoke passed with the timeout scale
+  needed for the shared host.
+- Aethyme's reviewed local-main apply remains blocked when main has zero
+  commits absent from integration, even though integration descends from main.
+  No direct branch or remote update is recorded here.

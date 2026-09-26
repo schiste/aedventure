@@ -7081,3 +7081,12 @@ h1 {
     font-size: 0.66rem;
   }
 }
+
+/* Live context panels update with the runtime. Keep their entrance motion from
+   replaying on each reactive refresh. */
+.add-app-shell .discovery-panel,
+.add-app-shell .base-management-panel,
+.add-app-shell .dungeon-context-panel,
+.add-app-shell .offline-return-panel {
+  animation: none;
+}

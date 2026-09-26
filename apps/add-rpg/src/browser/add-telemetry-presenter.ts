@@ -123,7 +123,7 @@ export interface AddInterfaceHierarchyState {
     readonly label: "Settings"
     readonly hiddenByDefault: true
     readonly open: boolean
-    readonly presentation: "hex_window"
+    readonly presentation: "rectangular_window"
     readonly motion: "system" | "reduced"
     readonly autosave: boolean
     readonly audio: {
