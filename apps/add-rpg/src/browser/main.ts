@@ -3421,7 +3421,122 @@ function contextualPanel(): unknown {
   if (offlineReturnSummary()) return offlineReturnPanel()
   if (mapMode() === "base_square") return baseManagementPanel()
   if (mapMode() === "dungeon_square") return dungeonContextPanel()
+  if (mapMode() === "overworld_hex" || mapMode() === "area_hex") return selectedTileContextPanel()
   return null
+}
+
+function selectedTileContextPanel(): unknown {
+  // Keep tile reads inside Show's owned subtree. contextualPanel() itself runs
+  // in a reactive thunk; eager discovery reads here would rebuild the panel
+  // with each runtime snapshot and restart its entrance animation.
+  const detail = () => discoveryState()?.tileDetail
+  return showWhen(detail, (selected) => html`
+    <section
+      id="selected-tile-context-panel"
+      class="panel selected-tile-context-panel"
+      data-interface-tier="secondary"
+      data-interface-answer="current-decision-action"
+      data-visual-surface="context"
+      data-visibility=${() => selected().visibility}
+      role="region"
+      aria-labelledby="selected-tile-context-title"
+    >
+      <div class="panel-heading selected-tile-context-heading">
+        <div>
+          <span>Selected tile</span>
+          <h2 id="selected-tile-context-title">${() => selected().label}</h2>
+        </div>
+        <span class="tile-context-exposure" data-risk=${() => selected().travel.risk}>
+          <small>Exposure</small>
+          <strong>${() => titleCase(selected().travel.risk.replaceAll("_", " "))}</strong>
+        </span>
+      </div>
+      <div class="tile-context-facts">
+        <div>
+          <small>Terrain</small>
+          <strong>${() => {
+            const terrain = selected().terrain
+            return terrain ? titleCase(terrain.replaceAll("_", " ")) : "Unscouted"
+          }}</strong>
+        </div>
+        <div>
+          <small>Travel</small>
+          <strong>${() => selected().travel.standingHere
+            ? "Here"
+            : selected().travel.canTravelNow
+              ? `${selected().travel.gameMinutes} min`
+              : selected().travel.adjacent
+                ? "Ready when adjacent"
+                : "Move closer"}</strong>
+        </div>
+      </div>
+      <p class="tile-context-summary" title=${() => selected().travel.copy}>
+        ${() => leadUiCopy(selected().travel.copy, 72)}
+      </p>
+      <div class="tile-context-actions" aria-label="Tile actions">
+        ${selectedTileContextActionRows(selected)}
+      </div>
+    </section>
+  `)
+}
+
+function selectedTileContextActionRows(detail: () => AddTileDetailSummary): unknown {
+  return indexList(
+    () => [...detail().actions].filter(tileActionShouldRender).sort(compareTileActionPriority),
+    (action) => {
+      const targetLink = () =>
+        action().linkId
+          ? detail().links.find((link) => link.id === action().linkId) ?? null
+          : null
+      const actionable = () => action().enabled && action().kind !== "inspect"
+      const preferred = () => selectPreferredTileAction(detail())?.id === action().id
+      const result = () => {
+        if (!action().enabled) return action().blockedReason ?? "Unavailable from this tile."
+        if (action().kind === "travel") {
+          return `${detail().travel.gameMinutes} min · ${titleCase(detail().travel.risk.replaceAll("_", " "))} exposure`
+        }
+        const destination = targetLink()?.label
+        return destination ? `Destination · ${destination}` : "Inspect this region."
+      }
+      return html`
+        <article
+          class="tile-context-action"
+          data-kind=${() => action().kind}
+          data-enabled=${() => (action().enabled ? "true" : "false")}
+          data-primary=${() => (preferred() ? "true" : "false")}
+        >
+          <div class="tile-context-action-copy">
+            <strong>${() => action().label}</strong>
+            <small>${() => result()}</small>
+          </div>
+          ${() => actionable()
+            ? html`
+                <button
+                  id=${() => `selected-tile-context-action-${safeElementId(action().id)}`}
+                  type="button"
+                  data-action-id=${() => action().id}
+                  data-target-map-mode=${() => targetLink()?.targetMapMode ?? ""}
+                  data-target-map-id=${() => targetLink()?.targetMapId ?? ""}
+                  class=${() => preferred()
+                    ? "primary-action tile-context-action-button"
+                    : "secondary-action tile-context-action-button"}
+                  onClick=${runCurrentTileDetailAction}
+                  disabled=${() => !action().enabled}
+                  aria-label=${() => `${action().label}. ${result()}`}
+                  title=${() => action().blockedReason ?? result()}
+                >
+                  ${() => action().kind === "travel"
+                    ? "Travel"
+                    : action().kind === "manage_base"
+                      ? "Open"
+                      : "Enter"}
+                </button>
+              `
+            : html`<span class="tile-context-action-note" role="note">No action from this position</span>`}
+        </article>
+      `
+    },
+  )
 }
 
 function worldErrorState(): unknown {
