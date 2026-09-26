@@ -4,8 +4,9 @@
 //   requestMusic({ source: "combat", priority: 5, mood: "tension" })
 //   releaseMusic("combat")
 //
-// Music uses the same recording for every intent. Playback still honors the
-// settings volume and starts after the first user gesture (autoplay policy).
+// Music uses the same recording for every intent. Playback honors the settings
+// volume, tries autoplay at page load, and resumes on first interaction if the
+// browser blocks audible autoplay.
 
 import {
   type AddSettings,
@@ -28,6 +29,7 @@ interface ActiveBed {
   filter: BiquadFilterNode
   fade: GainNode
   targetGain: number
+  playAttempt: Promise<boolean> | null
 }
 
 interface MusicTelemetry {
@@ -84,10 +86,32 @@ function buildBed(track: MusicTrack): ActiveBed | null {
   media.preload = "auto"
   const mediaSource = ctx.createMediaElementSource(media)
   mediaSource.connect(filter)
+  const bed = {
+    trackId: track.id,
+    media,
+    mediaSource,
+    filter,
+    fade,
+    targetGain: track.gain,
+    playAttempt: null,
+  }
   // Start synchronously from the first gesture before AudioContext resume.
-  void media.play().catch(() => {})
+  void playBed(bed)
+  return bed
+}
 
-  return { trackId: track.id, media, mediaSource, filter, fade, targetGain: track.gain }
+function playBed(bed: ActiveBed): Promise<boolean> {
+  if (bed.playAttempt) return bed.playAttempt
+  if (!bed.media.paused) return Promise.resolve(true)
+  let attempt: Promise<boolean>
+  attempt = bed.media.play().then(
+    () => true,
+    () => false,
+  ).finally(() => {
+    if (bed.playAttempt === attempt) bed.playAttempt = null
+  })
+  bed.playAttempt = attempt
+  return attempt
 }
 
 function fadeOut(bed: ActiveBed, ctx: AudioContext): void {
@@ -188,20 +212,58 @@ function attach(): void {
     }
   })
 
-  // Autoplay: resume on the first user gesture, then start the baseline bed.
+  const removeUnlockListeners = () => {
+    window.removeEventListener("pointerdown", unlock)
+    window.removeEventListener("keydown", unlock)
+  }
+
+  const completeResume = (ctx: AudioContext) => {
+    telemetry.contextState = ctx.state
+    if (ctx.state !== "running") return
+    reconcile()
+    const resumedBed = current
+    if (!resumedBed) return
+    void playBed(resumedBed).then((started) => {
+      if (started && ctx.state === "running" && current === resumedBed) {
+        removeUnlockListeners()
+      }
+    })
+  }
+
+  // Keep an autoplay attempt from the initial page load. If the browser blocks
+  // it, the bed remains available and the first user gesture retries play()
+  // synchronously before asking AudioContext to resume.
+  const attemptAutoplay = () => {
+    if (musicVolume <= 0) return
+    const ctx = ensureContext()
+    if (!ctx) return
+    reconcile(true)
+    void ctx
+      .resume()
+      .then(() => completeResume(ctx))
+      .catch(() => {
+        telemetry.contextState = ctx.state
+      })
+  }
+
+  // Autoplay fallback. The user gesture handler remains installed until the
+  // context actually runs, so a failed load-time attempt cannot consume it.
   const unlock = () => {
     const ctx = ensureContext()
     if (!ctx) return
     reconcile(true)
-    void ctx.resume().then(() => {
-      telemetry.contextState = ctx.state
-      reconcile()
-    })
-    window.removeEventListener("pointerdown", unlock)
-    window.removeEventListener("keydown", unlock)
+    if (current) void playBed(current)
+    void ctx
+      .resume()
+      .then(() => completeResume(ctx))
+      .catch(() => {
+        telemetry.contextState = ctx.state
+      })
   }
+
   window.addEventListener("pointerdown", unlock)
   window.addEventListener("keydown", unlock)
+  attemptAutoplay()
 }
 
 if (typeof window !== "undefined") {

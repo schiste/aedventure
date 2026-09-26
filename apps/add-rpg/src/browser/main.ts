@@ -1447,25 +1447,7 @@ function AddRpgApp() {
                 <small>${() => worldTimeSecondaryCopy()}</small>
                 <i style=${() => daylightMeterStyle()} aria-hidden="true" />
               </div>
-              <button
-                id="music-quick-toggle"
-                type="button"
-                class=${() =>
-                  playerSettings().musicMuted
-                    ? "music-quick-toggle muted"
-                    : "music-quick-toggle"}
-                onClick=${() =>
-                  updatePlayerSettings({ musicMuted: !playerSettings().musicMuted })}
-                aria-pressed=${() => playerSettings().musicMuted}
-                aria-label=${() =>
-                  playerSettings().musicMuted ? "Turn music on" : "Turn music off"}
-                title=${() =>
-                  playerSettings().musicMuted ? "Turn music back on" : "Turn the music off"}
-              >
-                <span aria-hidden="true">♫</span>
-                <span class="music-quick-toggle-label">${() =>
-                  playerSettings().musicMuted ? "Music off" : "Music on"}</span>
-              </button>
+              ${musicQuickToggleMarkup("music-quick-toggle")}
               <button
                 id="time-speed-control"
                 type="button"
@@ -2455,6 +2437,33 @@ function settingsVolumeRow(
   `
 }
 
+function musicQuickToggleMarkup(id: string, titleScreen = false) {
+  return html`
+    <button
+      id=${id}
+      type="button"
+      class=${() =>
+        [
+          "music-quick-toggle",
+          playerSettings().musicMuted ? "muted" : "",
+          titleScreen ? "start-screen-music-toggle" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      onClick=${() => updatePlayerSettings({ musicMuted: !playerSettings().musicMuted })}
+      aria-pressed=${() => playerSettings().musicMuted}
+      aria-label=${() =>
+        playerSettings().musicMuted ? "Turn music on" : "Turn music off"}
+      title=${() =>
+        playerSettings().musicMuted ? "Turn music back on" : "Turn the music off"}
+    >
+      <span aria-hidden="true">♫</span>
+      <span class="music-quick-toggle-label">${() =>
+        playerSettings().musicMuted ? "Music off" : "Music on"}</span>
+    </button>
+  `
+}
+
 function startScreenMarkup() {
   return html`
     <section
@@ -2529,6 +2538,14 @@ function startScreenMarkup() {
             : startScreenView() === "load"
               ? startScreenLoadMarkup()
               : startScreenOptionsMarkup()}
+
+        <div class="start-screen-audio-control">
+          ${musicQuickToggleMarkup("music-quick-toggle-title", true)}
+          <p class="start-screen-audio-note">
+            Theme music starts on page load when your browser allows it; if autoplay is blocked,
+            your first interaction starts it unless you mute it here.
+          </p>
+        </div>
 
         <footer class="start-screen-footer">
           <span>
