@@ -206,6 +206,11 @@ import {
   saveSettings,
 } from "./settings/settings-state"
 import {
+  getMusicTelemetry,
+  startMusicFromUserGesture,
+  type MusicPlaybackState,
+} from "./audio/music-director"
+import {
   ADD_BROWSER_QA_CONTRACT_VERSION,
   ADD_QA_ACTION_IDS,
   ADD_QA_SELECTORS,
@@ -452,6 +457,9 @@ const [ready, setReady] = createSignal(false)
 const [autoTick, setAutoTick] = createSignal(true)
 const [timeSpeed, setTimeSpeed] = createSignal(1)
 const [playerSettings, setPlayerSettings] = createSignal<AddSettings>(initialPlayerSettings)
+const [musicPlaybackState, setMusicPlaybackState] = createSignal<MusicPlaybackState>(
+  getMusicTelemetry().playbackState,
+)
 /**
  * Is the start screen the current view?
  *
@@ -1212,6 +1220,10 @@ function AddRpgApp() {
   let autoTickTimer: number | undefined
   let mapInfoTimer: number | undefined
   let autosaveTimer: number | undefined
+  const handleMusicPlaybackState = (event: Event) => {
+    const state = (event as CustomEvent<{ state: MusicPlaybackState }>).detail?.state
+    if (state) setMusicPlaybackState(state)
+  }
 
   onMount(() => {
     if (!mapElement) return
@@ -1255,6 +1267,7 @@ function AddRpgApp() {
     window.addEventListener("resize", clampFloatingPanelsToViewport)
     window.addEventListener("add-tuning-override", handleLiveTuningOverride)
     window.addEventListener("add-tuning-reset", handleLiveTuningReset)
+    window.addEventListener("add-music-playback-state", handleMusicPlaybackState)
     document.addEventListener("keydown", handleGlobalKeyboardShortcuts)
   })
 
@@ -1270,6 +1283,7 @@ function AddRpgApp() {
     window.removeEventListener("resize", clampFloatingPanelsToViewport)
     window.removeEventListener("add-tuning-override", handleLiveTuningOverride)
     window.removeEventListener("add-tuning-reset", handleLiveTuningReset)
+    window.removeEventListener("add-music-playback-state", handleMusicPlaybackState)
     document.removeEventListener("keydown", handleGlobalKeyboardShortcuts)
     if (liveTuningDashboardVisible()) {
       void setDevLiveTuningDashboardVisible(false)
@@ -2437,6 +2451,29 @@ function settingsVolumeRow(
   `
 }
 
+let pendingTitleMusicAction: "start" | "toggle" | null = null
+
+function titleMusicAction(): "start" | "toggle" {
+  return playerSettings().musicMuted || musicPlaybackState() !== "playing" ? "start" : "toggle"
+}
+
+function prepareTitleMusicAction(): void {
+  pendingTitleMusicAction = titleMusicAction()
+}
+
+function handleQuickMusicToggle(titleScreen: boolean): void {
+  if (titleScreen) {
+    const action = pendingTitleMusicAction ?? titleMusicAction()
+    pendingTitleMusicAction = null
+    if (action === "start") {
+      if (playerSettings().musicMuted) updatePlayerSettings({ musicMuted: false })
+      startMusicFromUserGesture()
+      return
+    }
+  }
+  updatePlayerSettings({ musicMuted: !playerSettings().musicMuted })
+}
+
 function musicQuickToggleMarkup(id: string, titleScreen = false) {
   return html`
     <button
@@ -2450,16 +2487,37 @@ function musicQuickToggleMarkup(id: string, titleScreen = false) {
         ]
           .filter(Boolean)
           .join(" ")}
-      onClick=${() => updatePlayerSettings({ musicMuted: !playerSettings().musicMuted })}
+      data-playback-state=${() => musicPlaybackState()}
+      onPointerDown=${() => {
+        if (titleScreen) prepareTitleMusicAction()
+      }}
+      onKeyDown=${(event: KeyboardEvent) => {
+        if (titleScreen && !event.repeat && (event.key === "Enter" || event.key === " ")) {
+          prepareTitleMusicAction()
+        }
+      }}
+      onClick=${() => handleQuickMusicToggle(titleScreen)}
       aria-pressed=${() => playerSettings().musicMuted}
       aria-label=${() =>
-        playerSettings().musicMuted ? "Turn music on" : "Turn music off"}
+        playerSettings().musicMuted
+          ? "Turn music on"
+          : titleScreen && musicPlaybackState() !== "playing"
+            ? "Start music"
+            : "Turn music off"}
       title=${() =>
-        playerSettings().musicMuted ? "Turn music back on" : "Turn the music off"}
+        playerSettings().musicMuted
+          ? "Turn music back on"
+          : titleScreen && musicPlaybackState() !== "playing"
+            ? "Start the theme music"
+            : "Turn the music off"}
     >
-      <span aria-hidden="true">♫</span>
+      <span aria-hidden="true">&#9835;</span>
       <span class="music-quick-toggle-label">${() =>
-        playerSettings().musicMuted ? "Music off" : "Music on"}</span>
+        playerSettings().musicMuted
+          ? "Music off"
+          : titleScreen && musicPlaybackState() !== "playing"
+            ? "Start music"
+            : "Music on"}</span>
     </button>
   `
 }
@@ -2478,12 +2536,21 @@ function startScreenMarkup() {
     >
       <div class="start-screen-content">
         <header class="start-screen-brand">
-          <p class="start-screen-kicker">Aedventure · field log 01</p>
+          <div class="start-screen-brandline">
+            <p class="start-screen-kicker">Aedventure · field log 01</p>
+            ${musicQuickToggleMarkup("music-quick-toggle-title", true)}
+          </div>
           <h1 id="start-screen-title">Aedventure</h1>
           <p id="start-screen-tagline" class="start-screen-tagline">
             There is still a road through the quiet places.
           </p>
         </header>
+
+        <div class="start-screen-audio-control">
+          <p class="start-screen-audio-note">
+            Your browser may block autoplay. Use Start music or choose any menu option to begin the theme.
+          </p>
+        </div>
 
         ${() =>
           startScreenView() === "home"
@@ -2538,14 +2605,6 @@ function startScreenMarkup() {
             : startScreenView() === "load"
               ? startScreenLoadMarkup()
               : startScreenOptionsMarkup()}
-
-        <div class="start-screen-audio-control">
-          ${musicQuickToggleMarkup("music-quick-toggle-title", true)}
-          <p class="start-screen-audio-note">
-            Theme music starts on page load when your browser allows it; if autoplay is blocked,
-            your first interaction starts it unless you mute it here.
-          </p>
-        </div>
 
         <footer class="start-screen-footer">
           <span>

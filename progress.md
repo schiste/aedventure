@@ -3272,3 +3272,13 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   volume 0.48 -> 0 -> 0.48 while SFX stayed at 0.64; the button state and
   aria-pressed updated and restored correctly.
 - Main-branch browser rebuild and local-server relaunch remain after promotion.
+
+
+## Title-screen music startup follow-up — 2026-09-26
+
+- Reproduced a fresh-page Chrome load: the best-effort `play()` call is rejected with `NotAllowedError`, while the first menu click starts the theme. The title toggle was present but small and below the menu, and it showed Music on while playback was blocked.
+- Added explicit playback state reporting from the music director. The title control now sits beside the title kicker, is larger, and says Start music while playback is waiting, blocked, or failed.
+- The title control captures the pre-gesture action and starts/resumes the theme in its trusted click or keyboard handler, so an autoplay-unlock pointer event cannot turn the first Start music click into a mute action.
+- The page-load autoplay attempt and first-gesture unlock remain in place. Browser build and local-page inspection are pending.
+- Verification: The Vite production bundle passed. A fresh Chrome page displayed Start music after a load-time NotAllowedError; clicking it started the MP3 and changed the label to Music on. The next click muted and persisted the setting; the following click resumed music. The desktop and 390x760 mobile title layouts were visually inspected with no horizontal overflow.
+- Browser policy note: audible autoplay is not forceable before a user gesture; the page-load attempt remains, while the title control now makes the required gesture obvious.

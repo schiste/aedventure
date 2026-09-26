@@ -38,7 +38,10 @@ interface MusicTelemetry {
   crossfades: number
   contextState: string
   intentCount: number
+  playbackState: MusicPlaybackState
 }
+
+export type MusicPlaybackState = "starting" | "blocked" | "playing" | "muted" | "failed" | "unavailable"
 
 // Intent stack keyed by source; the baseline is always present.
 const intents = new Map<string, MusicIntent>([[BASE_MUSIC_INTENT.source, BASE_MUSIC_INTENT]])
@@ -53,6 +56,19 @@ const telemetry: MusicTelemetry = {
   crossfades: 0,
   contextState: "uninitialized",
   intentCount: 1,
+  playbackState: musicVolume <= 0 ? "muted" : "starting",
+}
+
+function publishPlaybackState(playbackState: MusicPlaybackState): void {
+  if (telemetry.playbackState === playbackState) return
+  telemetry.playbackState = playbackState
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(
+      new CustomEvent<{ state: MusicPlaybackState }>("add-music-playback-state", {
+        detail: { state: playbackState },
+      }),
+    )
+  }
 }
 
 function ensureContext(): AudioContext | null {
@@ -105,8 +121,19 @@ function playBed(bed: ActiveBed): Promise<boolean> {
   if (!bed.media.paused) return Promise.resolve(true)
   let attempt: Promise<boolean>
   attempt = bed.media.play().then(
-    () => true,
-    () => false,
+    () => {
+      if (current === bed && musicVolume > 0 && context?.state === "running") {
+        publishPlaybackState("playing")
+      }
+      return true
+    },
+    (error: unknown) => {
+      if (current === bed && musicVolume > 0) {
+        const name = error && typeof error === "object" ? (error as { name?: string }).name : undefined
+        publishPlaybackState(name === "NotAllowedError" ? "blocked" : "failed")
+      }
+      return false
+    },
   ).finally(() => {
     if (bed.playAttempt === attempt) bed.playAttempt = null
   })
@@ -172,8 +199,22 @@ export function getMusicTelemetry(): MusicTelemetry {
   return { ...telemetry, contextState: context?.state ?? "uninitialized" }
 }
 
+let unlockFromUserGesture: (() => void) | null = null
+
+/** Start or resume the current bed from a trusted player gesture. */
+export function startMusicFromUserGesture(): void {
+  unlockFromUserGesture?.()
+}
+
 function setVolume(settings: AddSettings): void {
   musicVolume = effectiveMusicVolume(settings)
+  if (musicVolume <= 0) {
+    publishPlaybackState("muted")
+  } else if (current && context?.state === "running" && !current.media.paused) {
+    publishPlaybackState("playing")
+  } else if (telemetry.playbackState === "muted") {
+    publishPlaybackState("starting")
+  }
   if (context && masterGain) {
     const now = context.currentTime
     masterGain.gain.cancelScheduledValues(now)
@@ -219,11 +260,20 @@ function attach(): void {
 
   const completeResume = (ctx: AudioContext) => {
     telemetry.contextState = ctx.state
-    if (ctx.state !== "running") return
+    if (ctx.state !== "running") {
+      if (musicVolume > 0) publishPlaybackState("blocked")
+      return
+    }
     reconcile()
     const resumedBed = current
-    if (!resumedBed) return
+    if (!resumedBed) {
+      publishPlaybackState(musicVolume > 0 ? "starting" : "muted")
+      return
+    }
     void playBed(resumedBed).then((started) => {
+      if (current === resumedBed) {
+        publishPlaybackState(musicVolume <= 0 ? "muted" : started ? "playing" : "blocked")
+      }
       if (started && ctx.state === "running" && current === resumedBed) {
         removeUnlockListeners()
       }
@@ -234,15 +284,22 @@ function attach(): void {
   // it, the bed remains available and the first user gesture retries play()
   // synchronously before asking AudioContext to resume.
   const attemptAutoplay = () => {
-    if (musicVolume <= 0) return
+    if (musicVolume <= 0) {
+      publishPlaybackState("muted")
+      return
+    }
     const ctx = ensureContext()
-    if (!ctx) return
+    if (!ctx) {
+      publishPlaybackState("unavailable")
+      return
+    }
     reconcile(true)
     void ctx
       .resume()
       .then(() => completeResume(ctx))
       .catch(() => {
         telemetry.contextState = ctx.state
+        if (musicVolume > 0) publishPlaybackState("blocked")
       })
   }
 
@@ -250,7 +307,10 @@ function attach(): void {
   // context actually runs, so a failed load-time attempt cannot consume it.
   const unlock = () => {
     const ctx = ensureContext()
-    if (!ctx) return
+    if (!ctx) {
+      if (musicVolume > 0) publishPlaybackState("unavailable")
+      return
+    }
     reconcile(true)
     if (current) void playBed(current)
     void ctx
@@ -258,9 +318,11 @@ function attach(): void {
       .then(() => completeResume(ctx))
       .catch(() => {
         telemetry.contextState = ctx.state
+        if (musicVolume > 0) publishPlaybackState("blocked")
       })
   }
 
+  unlockFromUserGesture = unlock
   window.addEventListener("pointerdown", unlock)
   window.addEventListener("keydown", unlock)
   attemptAutoplay()

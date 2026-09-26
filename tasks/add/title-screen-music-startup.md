@@ -2,12 +2,12 @@
 
 ## Player outcome
 
-Players can see and control the Hush Afterwards theme before starting or loading a game. Playback is attempted as the title page loads and starts on the first interaction when the browser blocks audible autoplay.
+Players see a prominent, honest Hush Afterwards control on the title screen. The app attempts playback at page load, reports when audible autoplay is blocked, and starts the theme from the first player gesture without that gesture accidentally muting it.
 
 ## Authoritative layer
 
 - Owning layer/path: Live ADD browser app, `apps/add-rpg/src/browser/`.
-- Authoritative state or rule: Persisted audio preferences remain in `settings/settings-state.ts`; `audio/music-director.ts` owns playback lifecycle and intent resolution; the browser controls whether audible autoplay is permitted.
+- Authoritative state or rule: Persisted audio preferences remain in `settings/settings-state.ts`; `audio/music-director.ts` owns playback lifecycle, intent resolution, and playback-state reporting; the browser controls whether audible autoplay is permitted.
 - Browser/domain/renderer consumers: `main.ts` renders the title and in-game controls; `audio/boot.ts` starts the director.
 - Why this boundary is correct: Audio playback and title controls are browser lifecycle and player presentation behavior. This does not change gameplay authority or authored content.
 
@@ -19,26 +19,27 @@ Players can see and control the Hush Afterwards theme before starting or loading
 
 ## Acceptance scenarios
 
-1. Given the title screen is open, when the page loads, then the music control is visible and the music director attempts playback immediately.
-2. Given the browser blocks autoplay, when the player interacts with the page, then the theme retries playback without requiring the player to start a game.
-3. Given the music control is visible on the title screen or in-game, when the player toggles it, then the persisted music preference changes and the control remains reachable on the title home, load, and options views.
+1. Given the title screen is open, when the page loads, then a prominent music control appears beside the title kicker and the music director attempts playback immediately.
+2. Given the browser blocks audible autoplay, when the page settles, then the title control says Start music; clicking it starts the theme, and the first menu interaction also starts it.
+3. Given the blocked-autoplay Start music control is clicked, when its pointer or keyboard gesture unlocks audio, then the control starts music instead of muting it.
+4. Given the theme is playing, when the title or in-game quick control is activated, then the persisted music preference mutes it and the control remains reachable on the title home, load, and options views.
 
 ## Focused verification
 
-- First command: `AGENT_VERIFY_SMOKE=1 npm run agent:verify:add-ui`.
-- Additional command(s): `npm --workspace @aedventure/add-rpg run build:browser`; `npm run smoke:add-rpg:built`.
-- Browser/screenshot/state evidence, if presentation changes: Inspect the title screen at desktop and mobile widths, confirm the title toggle is exposed to accessibility queries, and verify the soundtrack request and persisted mute setting.
+- First command: `node apps/add-rpg/node_modules/vite/bin/vite.js build apps/add-rpg --config apps/add-rpg/vite.config.mjs` (UI-only bundle build; use the ADD UI profile when Rust/WASM inputs change).
+- Additional command(s): `AGENT_VERIFY_SMOKE=1 npm run agent:verify:add-ui`; `npm run smoke:add-rpg:built`.
+- Browser/screenshot/state evidence, if presentation changes: Inspect the title screen at desktop and mobile widths, confirm the Start music / Music on / Music off state is exposed to accessibility queries, and verify the soundtrack request and persisted mute setting.
 
 ## Acceptance evidence (required before completion)
 
 - Scenario/replay artifact: none; this is a browser audio and title-screen change with no gameplay mutation.
-- Focused command/result artifact: `AGENT_VERIFY_SMOKE=1 npm run agent:verify:add-ui` passed Rust tests (234 core, 20 scenario), content checks, WASM build, ADD types, and smoke syntax; it exited at the built-browser step because this fresh worktree lacked `dist-app`. `npm --workspace @aedventure/add-rpg run build:browser` then passed, followed by `ADD_QA_TIMEOUT_SCALE=3 npm run smoke:add-rpg:built` on the final bundle (passed).
-- Player-facing evidence (if applicable): Chrome DevTools snapshot and screenshot confirmed the labeled title toggle at 1365x768 and 390x760, and in the Load and Options views. Clicking it updates the visible title and in-game controls and persists `musicMuted`. A reload initiated an HTTP 200 request for `audio/music/hush-afterwards.mp3`.
-- Remaining risk or explicit reason: Audible autoplay remains subject to browser policy. The director attempts playback on load and retries on the first pointer or keyboard interaction when needed.
+- Focused command/result artifact: The Vite production build passed in the broker worktree. Chrome on the rebuilt local preview loaded the title UI and soundtrack path; a fresh isolated page got the expected autoplay `NotAllowedError`, then the Start music control started playback. No gameplay or WASM inputs changed.
+- Player-facing evidence (if applicable): The desktop title screenshot was inspected with a 121x44 Start music control beside the kicker. In a fresh browser context, Start music changed to Music on after `play()` succeeded; subsequent clicks changed it to Music off (persisted `musicMuted: true`) and back to Music on. A 390x760 mobile screenshot showed the control, note, and menu with no horizontal overflow.
+- Remaining risk or explicit reason: Browsers can block audible autoplay before a user gesture; the app cannot force sound before the player interacts. It attempts playback on load, tells the player when a gesture is needed, and starts on the control or first menu interaction.
 
 ## Likely follow-up
 
-No content or gameplay follow-up is required. Revisit audio readiness telemetry if the game later needs to distinguish a blocked attempt from active playback in player-facing status.
+No content or gameplay follow-up is required. Future audio work can reuse playback-state reporting if other surfaces need to reflect blocked or failed playback.
 
 ## Scope guard
 
