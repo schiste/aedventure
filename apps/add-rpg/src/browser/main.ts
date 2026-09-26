@@ -1448,6 +1448,25 @@ function AddRpgApp() {
                 <i style=${() => daylightMeterStyle()} aria-hidden="true" />
               </div>
               <button
+                id="music-quick-toggle"
+                type="button"
+                class=${() =>
+                  playerSettings().musicMuted
+                    ? "music-quick-toggle muted"
+                    : "music-quick-toggle"}
+                onClick=${() =>
+                  updatePlayerSettings({ musicMuted: !playerSettings().musicMuted })}
+                aria-pressed=${() => playerSettings().musicMuted}
+                aria-label=${() =>
+                  playerSettings().musicMuted ? "Turn music on" : "Turn music off"}
+                title=${() =>
+                  playerSettings().musicMuted ? "Turn music back on" : "Turn the music off"}
+              >
+                <span aria-hidden="true">♫</span>
+                <span class="music-quick-toggle-label">${() =>
+                  playerSettings().musicMuted ? "Music off" : "Music on"}</span>
+              </button>
+              <button
                 id="time-speed-control"
                 type="button"
                 data-action-id=${ADD_QA_ACTION_IDS.timeToggleSpeed}
@@ -1728,6 +1747,22 @@ function AddRpgApp() {
                   aria-pressed=${() => playerSettings().muted}
                 >
                   ${() => (playerSettings().muted ? "Muted" : "On")}
+                </button>
+              </div>
+              <div class="settings-row">
+                <span>
+                  <strong>Music only</strong>
+                  <small>Silence Hush Afterwards while keeping sound effects available.</small>
+                </span>
+                <button
+                  id="settings-toggle-music-mute"
+                  type="button"
+                  class="ghost-button"
+                  onClick=${() =>
+                    updatePlayerSettings({ musicMuted: !playerSettings().musicMuted })}
+                  aria-pressed=${() => playerSettings().musicMuted}
+                >
+                  ${() => (playerSettings().musicMuted ? "Muted" : "On")}
                 </button>
               </div>
               ${settingsVolumeRow("Master", "Overall game audio level.", "masterVolume")}
@@ -2363,6 +2398,7 @@ function resetAudioSettings(): void {
     musicVolume: DEFAULT_SETTINGS.musicVolume,
     sfxVolume: DEFAULT_SETTINGS.sfxVolume,
     muted: DEFAULT_SETTINGS.muted,
+    musicMuted: DEFAULT_SETTINGS.musicMuted,
   })
 }
 

@@ -524,6 +524,45 @@ h1 {
   color: rgb(var(--paper-rgb)/ 80%);
 }
 
+.music-quick-toggle {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 1.72rem;
+  border: 1px solid rgb(var(--aqua-rgb)/ 36%);
+  border-radius: 999px;
+  padding: 0 0.56rem;
+  background: rgb(var(--aqua-rgb)/ 14%);
+  color: #9ff4e9;
+  box-shadow: none;
+  font-size: 0.68rem;
+  font-weight: 850;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease,
+    color 0.12s ease;
+}
+
+.music-quick-toggle:hover:not(:disabled) {
+  background: rgb(var(--aqua-rgb)/ 24%);
+  border-color: rgb(var(--aqua-rgb)/ 56%);
+  transform: none;
+}
+
+.music-quick-toggle.muted {
+  border-color: rgb(var(--wash-rgb)/ 22%);
+  background: rgb(var(--wash-rgb)/ 9%);
+  color: rgb(var(--paper-rgb)/ 70%);
+}
+
+.music-quick-toggle-label {
+  font-size: inherit;
+}
+
 .time-speed-button {
   display: inline-flex;
   align-items: center;
@@ -5346,11 +5385,21 @@ h1 {
     left: 0.34rem;
   }
 
+  .music-quick-toggle,
   .time-speed-button,
   .shell-menu-toggle {
     min-height: 1.44rem;
     padding: 0 0.42rem;
     font-size: 0.61rem;
+  }
+
+  .music-quick-toggle {
+    padding: 0 0.38rem;
+    font-size: 0.68rem;
+  }
+
+  .music-quick-toggle-label {
+    display: none;
   }
 
   .resource-status-strip {

@@ -610,6 +610,18 @@ export class AddRpgHexScene extends Phaser.Scene {
 
     const mapChanged = this.lastRenderedMapId !== map.id
     if (mapChanged) {
+      // A topology switch can happen while the arrival animation and follow-pan
+      // from the previous map are still running. Both contain old-map world
+      // coordinates, so stop them before fitting the new map around its Hero.
+      this.cancelCameraPan()
+      this.characterTravel = null
+      this.pendingCharacterKeys.clear()
+      this.heldCharacterKeys.clear()
+      if (this.pendingCharacterMoveTimer !== null) {
+        window.clearTimeout(this.pendingCharacterMoveTimer)
+        this.pendingCharacterMoveTimer = null
+      }
+      this.followHero = true
       this.hoveredCoord = null
       this.selectedCoord = null
       this.characterCoord = null
@@ -906,6 +918,7 @@ export class AddRpgHexScene extends Phaser.Scene {
         accepted: null,
         blockedReason: null,
       }
+      this.characterFacing = "down"
       const entryFacing = entryFacingForContext(context)
       if (entryFacing) this.characterFacing = entryFacing
     }

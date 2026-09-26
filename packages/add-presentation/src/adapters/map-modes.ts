@@ -241,6 +241,7 @@ function baseSquareMap(): GameMap {
     height,
     cells,
     entities: [
+      hero("add.entity.base.hero-entry", "Hero", createSquareCoord(5, 5), "base_entry"),
       landmark("add.entity.base.core", "Base Core", createSquareCoord(5, 4), "base_core"),
       landmark(
         "add.entity.base.studio-dungeon-entrance",
@@ -291,6 +292,7 @@ function baseSquareMap(): GameMap {
         },
       },
     ],
+    entryFacing: "up",
   })
 }
 
@@ -305,6 +307,7 @@ function squareMap(input: {
   readonly zones: readonly GameZone[]
   readonly interactions?: readonly GameInteraction[]
   readonly gameplayReady?: boolean
+  readonly entryFacing?: "up" | "right" | "down" | "left"
 }): GameMap {
   const gameplayReady = input.gameplayReady ?? false
   const interactions: readonly GameInteraction[] = [
@@ -356,6 +359,7 @@ function squareMap(input: {
       mapMode: input.mode,
       fixture: false,
       gameplayReady,
+      ...(input.entryFacing ? { entryFacing: input.entryFacing } : {}),
     },
   }
 }
@@ -391,14 +395,19 @@ function landmark(
   }
 }
 
-function hero(id: string, label: string, coord: SquareCoord): GameEntity {
+function hero(
+  id: string,
+  label: string,
+  coord: SquareCoord,
+  sourceId = "dungeon_entry",
+): GameEntity {
   return {
     id,
     kind: "hero",
     label,
     coord,
     tags: ["add", "playable", "square"],
-    metadata: { sourceId: "dungeon_entry" },
+    metadata: { sourceId },
   }
 }
 

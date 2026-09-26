@@ -3255,3 +3255,20 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   The title screen screenshot was visually inspected.
 - Local main rebuild and relaunch on port 8800 remain as the handoff step after
   broker promotion.
+
+- 2026-09-26: Added a persistent music-only mute setting and a compact header
+  button; legacy settings normalize to music enabled, while global mute and SFX
+  remain independent. Diagnosed Studio arrival as a map-switch carryover: the
+  prior map's Hero travel and camera pan survived the map change, and the Studio
+  base map had no explicit Hero entry, so fallback spawned at the Base Core. The
+  Studio base now declares the Hero at (5, 5) facing up near the exit; renderer map
+  changes cancel old travel, input, and camera-pan state before fitting the new
+  map.
+- Verification passed: ADD_QA_TIMEOUT_SCALE=3 AGENT_VERIFY_SMOKE=1 npm run
+  agent:verify:add-ui completed, including the browser smoke and Studio Grounds
+  entry assertion. npm --workspace @aedventure/add-rpg run build:browser passed.
+  The Studio entry screenshot at tmp/add-rpg-studio-area-entry-smoke.png was
+  visually inspected. A real-browser toggle check confirmed effective music
+  volume 0.48 -> 0 -> 0.48 while SFX stayed at 0.64; the button state and
+  aria-pressed updated and restored correctly.
+- Main-branch browser rebuild and local-server relaunch remain after promotion.
