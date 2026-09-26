@@ -152,6 +152,7 @@ export class AddRpgHexScene extends Phaser.Scene {
   private lastTileActivation: AddTileActivationTelemetry | null = null
   private tooltipText?: Phaser.GameObjects.Text
   private minimapGraphics?: Phaser.GameObjects.Graphics
+  private minimapCamera?: Phaser.Cameras.Scene2D.Camera
   private lastRenderedMapId: string | null = null
   private dragging = false
   private dragMoved = false
@@ -219,10 +220,33 @@ export class AddRpgHexScene extends Phaser.Scene {
     this.tooltipText.setDepth(60)
     this.tooltipText.setVisible(false)
     setCrispText(this.tooltipText)
-    // Strategic minimap overlay (screen-space, overworld only).
+    // The world camera zooms every game object, even when its scroll factor
+    // is zero. Keep the minimap in true screen space on a transparent,
+    // unit-zoom camera, and prevent that camera from redrawing the world.
     this.minimapGraphics = this.add.graphics()
     this.minimapGraphics.setScrollFactor(0)
     this.minimapGraphics.setDepth(75)
+    this.cameras.main.ignore(this.minimapGraphics)
+    this.minimapCamera = this.cameras.add(
+      0,
+      0,
+      this.scale.width,
+      this.scale.height,
+      false,
+      "add-rpg-minimap",
+    )
+    this.minimapCamera.setScroll(0, 0)
+    this.minimapCamera.setZoom(1)
+    this.minimapCamera.setBackgroundColor("rgba(0, 0, 0, 0)")
+    this.minimapCamera.visible = false
+    this.minimapCamera.ignore(
+      this.children.list.filter((gameObject) => gameObject !== this.minimapGraphics),
+    )
+    this.events.on(
+      Phaser.Scenes.Events.ADDED_TO_SCENE,
+      this.excludeFromMinimapCamera,
+      this,
+    )
     this.ready = true
     this.cameras.main.setRoundPixels(false)
     this.input.on("pointermove", this.onPointerMove, this)
@@ -1593,7 +1617,9 @@ export class AddRpgHexScene extends Phaser.Scene {
     const context = this.context
     if (!g) return
     g.clear()
-    if (!context || context.topologyKind !== "hex") return
+    const showMinimap = Boolean(context && context.topologyKind === "hex")
+    if (this.minimapCamera) this.minimapCamera.visible = showMinimap
+    if (!showMinimap || !context) return
     const cells = context.terrainCells.filter((cell) =>
       this.cellPresentationPolicy.cellVisible(cell),
     )
@@ -1610,7 +1636,9 @@ export class AddRpgHexScene extends Phaser.Scene {
     const inset = 8
     const pad = 12
     const boxX = this.scale.width - size - pad
-    const boxY = pad
+    // The DOM top bar overlays the canvas. Leave a small gutter below it so
+    // the fixed-space minimap does not hide behind navigation and status.
+    const boxY = Math.min(56, this.scale.height - size - pad)
     const worldW = Math.max(1, maxX - minX)
     const worldH = Math.max(1, maxY - minY)
     const scale = Math.min((size - inset * 2) / worldW, (size - inset * 2) / worldH)
@@ -1640,6 +1668,11 @@ export class AddRpgHexScene extends Phaser.Scene {
     marker(context.baseCoord, 0x2f7d68, 3)
     marker(context.survivorCaveCoord, 0x8a4c2f, 3)
     marker(this.characterCoord, 0xffe066, 3.2)
+  }
+
+  private excludeFromMinimapCamera(gameObject: Phaser.GameObjects.GameObject): void {
+    if (gameObject === this.minimapGraphics) return
+    this.minimapCamera?.ignore(gameObject)
   }
 
   /** Tile facts stay in the side panel; the map keeps only silhouettes and state. */
@@ -1984,6 +2017,9 @@ export class AddRpgHexScene extends Phaser.Scene {
   }
 
   private onResize(): void {
+    this.minimapCamera?.setViewport(0, 0, this.scale.width, this.scale.height)
+    this.minimapCamera?.setScroll(0, 0)
+    this.minimapCamera?.setZoom(1)
     this.renderPendingWorld(true)
   }
 

@@ -3214,3 +3214,14 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   -p add-core`, `node scripts/multi-app-qa-contracts.test.cjs`, the required
   web-game Playwright client with no new console errors, and the full built ADD
   browser smoke with all seven fixtures passing.
+
+## ADD minimap zoom visibility — 2026-09-26
+
+- Original prompt: investigate why the minimap appears only when zoomed out and keep it visible at all zoom levels.
+- Reproduced the issue in the local built app: at camera zoom 1.68 the minimap frame is transformed offscreen; at zoom 0.65 it becomes visible. `setScrollFactor(0)` cancels scroll translation but leaves camera zoom applied.
+- Fix direction: render the existing minimap graphics through a dedicated, transparent, unit-zoom overlay camera and exclude other scene objects from that camera, preserving current known-cell and landmark rules.
+
+- Implemented the overlay-camera fix in `add-world-scene.ts`: the world camera ignores minimap graphics, a transparent zoom-1 camera draws them, and Phaser scene-add events exclude later world objects from that camera. The minimap now sits below the DOM top bar and reflows on viewport resize. Build and browser verification are pending.
+
+- Verification passed: `ADD_QA_TIMEOUT_SCALE=3 AGENT_VERIFY_SMOKE=1 npm run agent:verify:add-ui` completed successfully, including 234 add-core tests, 20 scenario tests, content/codegen, WASM, types, and built browser smoke. `npm --workspace @aedventure/add-rpg run build:browser` passed.
+- Visual acceptance passed at desktop zoom 0.55, fitted zoom 1.68, maximum zoom 2.2, and 390x844 mobile. The minimap frame stayed 156x156 below the top bar; switching to square Survivor Cave removed it. Browser console had no errors.
