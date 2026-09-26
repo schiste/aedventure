@@ -3271,7 +3271,7 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   visually inspected. A real-browser toggle check confirmed effective music
   volume 0.48 -> 0 -> 0.48 while SFX stayed at 0.64; the button state and
   aria-pressed updated and restored correctly.
-- Main-branch browser rebuild and local-server relaunch remain after promotion.
+- The updated local preview is served at http://127.0.0.1:4173/app/. Aethyme promoted the change to integration; main reconciliation refuses the ancestor-only plan with “main carries nothing aethyme/integration does not already contain.”
 
 
 ## Title-screen music startup follow-up — 2026-09-26
@@ -3282,3 +3282,5 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
 - The page-load autoplay attempt and first-gesture unlock remain in place. Browser build and local-page inspection are pending.
 - Verification: The Vite production bundle passed. A fresh Chrome page displayed Start music after a load-time NotAllowedError; clicking it started the MP3 and changed the label to Music on. The next click muted and persisted the setting; the following click resumed music. The desktop and 390x760 mobile title layouts were visually inspected with no horizontal overflow.
 - Browser policy note: audible autoplay is not forceable before a user gesture; the page-load attempt remains, while the title control now makes the required gesture obvious.
+- Follow-up: the title helper now changes from autoplay guidance to a playing, muted, failed, or unavailable message as playback state changes; its update is announced politely to assistive technology. Rebuild and final browser check pending.
+- Follow-up verification: the rebuilt preview showed Start music and autoplay guidance on reload; clicking it changed the control to Turn music off and the aria-live note to “Hush Afterwards is playing.”

@@ -2461,6 +2461,17 @@ function prepareTitleMusicAction(): void {
   pendingTitleMusicAction = titleMusicAction()
 }
 
+function titleMusicNote(): string {
+  const state = musicPlaybackState()
+  if (state === "playing") return "Hush Afterwards is playing."
+  if (playerSettings().musicMuted || state === "muted") {
+    return "Theme music is off. Select the music button to turn it on."
+  }
+  if (state === "failed") return "The theme could not start. Choose Start music to try again."
+  if (state === "unavailable") return "Audio playback is unavailable in this browser."
+  return "Your browser may block autoplay. Select Start music or any menu option to begin the theme."
+}
+
 function handleQuickMusicToggle(titleScreen: boolean): void {
   if (titleScreen) {
     const action = pendingTitleMusicAction ?? titleMusicAction()
@@ -2547,9 +2558,7 @@ function startScreenMarkup() {
         </header>
 
         <div class="start-screen-audio-control">
-          <p class="start-screen-audio-note">
-            Your browser may block autoplay. Use Start music or choose any menu option to begin the theme.
-          </p>
+          <p class="start-screen-audio-note" aria-live="polite">${() => titleMusicNote()}</p>
         </div>
 
         ${() =>

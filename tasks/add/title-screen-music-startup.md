@@ -23,10 +23,11 @@ Players see a prominent, honest Hush Afterwards control on the title screen. The
 2. Given the browser blocks audible autoplay, when the page settles, then the title control says Start music; clicking it starts the theme, and the first menu interaction also starts it.
 3. Given the blocked-autoplay Start music control is clicked, when its pointer or keyboard gesture unlocks audio, then the control starts music instead of muting it.
 4. Given the theme is playing, when the title or in-game quick control is activated, then the persisted music preference mutes it and the control remains reachable on the title home, load, and options views.
+5. When playback starts or changes to muted, failed, or unavailable, then the title helper text updates to match the current state.
 
 ## Focused verification
 
-- First command: `node apps/add-rpg/node_modules/vite/bin/vite.js build apps/add-rpg --config apps/add-rpg/vite.config.mjs` (UI-only bundle build; use the ADD UI profile when Rust/WASM inputs change).
+- First command: `node node_modules/vite/bin/vite.js build apps/add-rpg --config apps/add-rpg/vite.config.mjs` (UI-only bundle build; use the ADD UI profile when Rust/WASM inputs change).
 - Additional command(s): `AGENT_VERIFY_SMOKE=1 npm run agent:verify:add-ui`; `npm run smoke:add-rpg:built`.
 - Browser/screenshot/state evidence, if presentation changes: Inspect the title screen at desktop and mobile widths, confirm the Start music / Music on / Music off state is exposed to accessibility queries, and verify the soundtrack request and persisted mute setting.
 
@@ -34,7 +35,7 @@ Players see a prominent, honest Hush Afterwards control on the title screen. The
 
 - Scenario/replay artifact: none; this is a browser audio and title-screen change with no gameplay mutation.
 - Focused command/result artifact: The Vite production build passed in the broker worktree. Chrome on the rebuilt local preview loaded the title UI and soundtrack path; a fresh isolated page got the expected autoplay `NotAllowedError`, then the Start music control started playback. No gameplay or WASM inputs changed.
-- Player-facing evidence (if applicable): The desktop title screenshot was inspected with a 121x44 Start music control beside the kicker. In a fresh browser context, Start music changed to Music on after `play()` succeeded; subsequent clicks changed it to Music off (persisted `musicMuted: true`) and back to Music on. A 390x760 mobile screenshot showed the control, note, and menu with no horizontal overflow.
+- Player-facing evidence (if applicable): The desktop title screenshot was inspected with a 121x44 Start music control beside the kicker. In a fresh browser context, Start music changed to Music on after `play()` succeeded; subsequent clicks changed it to Music off (persisted `musicMuted: true`) and back to Music on. A 390x760 mobile screenshot showed the control, note, and menu with no horizontal overflow. After the latest preview reload, the aria-live note changed to “Hush Afterwards is playing” on the first Start music click.
 - Remaining risk or explicit reason: Browsers can block audible autoplay before a user gesture; the app cannot force sound before the player interacts. It attempts playback on load, tells the player when a gesture is needed, and starts on the control or first menu interaction.
 
 ## Likely follow-up
