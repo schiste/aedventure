@@ -4672,6 +4672,10 @@ h1 {
   gap: var(--space-panel);
 }
 
+.first-playable-panel[hidden] {
+  display: none;
+}
+
 .first-playable-overlay {
   position: absolute;
   top: var(--quest-panel-y, 54px);

@@ -1334,11 +1334,12 @@ function AddRpgApp() {
       onFocusIn=${handleShellFocusIn}
       onKeyDown=${handleShellKeyDown}
     >
-      <a class="skip-link" href="#first-playable-panel">Skip to objective</a>
+      <a class="skip-link" href="#add-world">Skip to game world</a>
       <section class="world-pane" data-interface-tier="primary" aria-label="Primary game world">
         <div
           id="add-world"
           class="add-world"
+          tabindex="-1"
           data-interface-tier="primary"
           data-visual-surface="map-stage"
           data-qa=${ADD_QA_SELECTORS.mapStage}
@@ -1565,6 +1566,7 @@ function AddRpgApp() {
           ${() => travelDialogView()}
           <section
             id="first-playable-panel"
+            hidden=${() => !playerSettings().showObjectiveTracker}
             data-interface-tier="secondary"
             data-interface-answer="objective-progress"
             class=${() =>
@@ -1829,16 +1831,19 @@ function AddRpgApp() {
               <div class="settings-row">
                 <span>
                   <strong>Objective tracker</strong>
-                  <small>Keep the map clear or show the full checklist.</small>
+                  <small>Show the route goal and checklist on the map.</small>
                 </span>
                 <button
                   id="settings-toggle-objective"
                   type="button"
                   class="ghost-button"
-                  onClick=${toggleFirstPlayablePanel}
-                  aria-pressed=${() => !firstPlayableCollapsed()}
+                  onClick=${() =>
+                    updatePlayerSettings({
+                      showObjectiveTracker: !playerSettings().showObjectiveTracker,
+                    })}
+                  aria-pressed=${() => playerSettings().showObjectiveTracker}
                 >
-                  ${() => (firstPlayableCollapsed() ? "Compact" : "Expanded")}
+                  ${() => (playerSettings().showObjectiveTracker ? "Hide" : "Show")}
                 </button>
               </div>
               <div class="settings-row">
@@ -4443,6 +4448,7 @@ function interfaceHierarchyState(): AddInterfaceHierarchyState {
         effectiveSfxVolume: effectiveSfxVolume(playerSettings()),
       },
       map: {
+        showObjectiveTracker: playerSettings().showObjectiveTracker,
         showTravelActionMarkers: playerSettings().showTravelActionMarkers,
       },
     },
@@ -8444,6 +8450,7 @@ function toTextState(): RuntimeTextState {
     focusedRegion: focusedRegion(),
     discoveryPanelCollapsed: discoveryPanelCollapsed(),
     firstPlayableCollapsed: firstPlayableCollapsed(),
+    firstPlayableVisible: playerSettings().showObjectiveTracker,
     floatingPanels: floatingPanelTelemetry(),
     questPanelPosition: questPanelPosition(),
     questPanelInteraction: {

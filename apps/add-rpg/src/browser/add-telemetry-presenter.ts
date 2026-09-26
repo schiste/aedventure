@@ -135,6 +135,7 @@ export interface AddInterfaceHierarchyState {
       readonly effectiveSfxVolume: number
     }
     readonly map: {
+      readonly showObjectiveTracker: boolean
       readonly showTravelActionMarkers: boolean
     }
   }
@@ -203,6 +204,7 @@ export interface AddRuntimeTelemetryPresenterInput {
     | "unknown"
   readonly discoveryPanelCollapsed: boolean
   readonly firstPlayableCollapsed: boolean
+  readonly firstPlayableVisible: boolean
   readonly questPanelPosition: {
     readonly x: number
     readonly y: number
@@ -274,6 +276,7 @@ export interface RuntimeTextState {
     readonly adminOpen: boolean
     readonly devToolsOpen: boolean
     readonly questPanel: {
+      readonly visible: boolean
       readonly collapsed: boolean
       readonly x: number
       readonly y: number
@@ -1186,6 +1189,7 @@ export function createAddRuntimeTextState(
       adminOpen: input.adminOpen,
       devToolsOpen: input.devToolsOpen,
       questPanel: {
+        visible: input.firstPlayableVisible,
         collapsed: input.firstPlayableCollapsed,
         x: input.questPanelPosition.x,
         y: input.questPanelPosition.y,

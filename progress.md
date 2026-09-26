@@ -3303,3 +3303,14 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   every size; the 320px title control no longer overlaps the title. Preview:
   http://127.0.0.1:4174/app/.
 - Follow-up: review the remaining C01-C20 UI anatomies deliberately.
+
+
+## ADD goal HUD visibility and contextualization direction — 2026-09-26
+
+- Interpreted “goal thing” as the floating First playable / Objective tracker. Hiding it by default is a local presentation preference; first-playable and dungeon objective state remain authoritative and active.
+- Added an optional persistent Settings control to show or hide the tracker, and exposed visibility through runtime telemetry.
+- Follow-up direction from the player: ground HUD cues in world objects and story moments so each element earns its place in-game.
+- `npm run agent:verify:add-ui` passed after the telemetry type fix; `npm --workspace @aedventure/add-rpg run build:browser` passed.
+- The first gameplay screenshot exposed that `.first-playable-panel { display: grid }` overrode the native `hidden` styling; added an explicit `[hidden] { display: none }` rule and verified it through Vite HMR.
+- Chromium verified the Settings toggle in both directions, persisted hide state through reload, preserved the active route action, reported no console errors, and captured/visually inspected desktop (1440x900) and mobile (390x844) gameplay screenshots.
+- The existing ADD browser smoke spec is not edited or run: its file has uncommitted WIP owned by stale session 81 and its current assertions expect a visible-by-default tracker. Update the browser contract when that ownership clears.

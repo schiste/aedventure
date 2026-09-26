@@ -18,6 +18,8 @@ export interface AddSettings {
   reducedMotion: boolean
   /** Daltonization filter applied to the whole app. */
   colorBlindMode: ColorBlindMode
+  /** Show the optional first-playable and dungeon objective overlay on the map. */
+  showObjectiveTracker: boolean
   /** Show default on-map Travel action markers for adjacent regions. */
   showTravelActionMarkers: boolean
   /** Root font scale 0.85..1.5 (drives rem-based sizing). */
@@ -38,6 +40,7 @@ export const DEFAULT_SETTINGS: AddSettings = {
   musicMuted: false,
   reducedMotion: false,
   colorBlindMode: "none",
+  showObjectiveTracker: false,
   showTravelActionMarkers: false,
   textScale: 1,
   language: "en",
@@ -77,6 +80,10 @@ export function normalizeSettings(raw: unknown): AddSettings {
         ? input.reducedMotion
         : DEFAULT_SETTINGS.reducedMotion,
     colorBlindMode,
+    showObjectiveTracker:
+      typeof input.showObjectiveTracker === "boolean"
+        ? input.showObjectiveTracker
+        : DEFAULT_SETTINGS.showObjectiveTracker,
     showTravelActionMarkers:
       typeof input.showTravelActionMarkers === "boolean"
         ? input.showTravelActionMarkers
