@@ -1461,7 +1461,6 @@ function AddRpgApp() {
                 <small>${() => worldTimeSecondaryCopy()}</small>
                 <i style=${() => daylightMeterStyle()} aria-hidden="true" />
               </div>
-              ${musicQuickToggleMarkup("music-quick-toggle")}
               <button
                 id="time-speed-control"
                 type="button"
@@ -1559,6 +1558,7 @@ function AddRpgApp() {
                   </div>
                 </div>
               </div>
+              ${musicQuickToggleMarkup("music-quick-toggle")}
             </div>
           </div>
           ${() => contextualPanel()}
@@ -2545,11 +2545,15 @@ function startScreenMarkup() {
       aria-labelledby="start-screen-title"
       aria-describedby="start-screen-tagline"
     >
+      <div class="start-screen-hud-slot" role="group" aria-label="Game controls">
+        <div class="status-actions start-screen-hud-actions">
+          ${musicQuickToggleMarkup("music-quick-toggle-title", true)}
+        </div>
+      </div>
       <div class="start-screen-content">
         <header class="start-screen-brand">
           <div class="start-screen-brandline">
             <p class="start-screen-kicker">Aedventure · field log 01</p>
-            ${musicQuickToggleMarkup("music-quick-toggle-title", true)}
           </div>
           <h1 id="start-screen-title">Aedventure</h1>
           <p id="start-screen-tagline" class="start-screen-tagline">

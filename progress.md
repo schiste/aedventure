@@ -3284,3 +3284,22 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
 - Browser policy note: audible autoplay is not forceable before a user gesture; the page-load attempt remains, while the title control now makes the required gesture obvious.
 - Follow-up: the title helper now changes from autoplay guidance to a playing, muted, failed, or unavailable message as playback state changes; its update is announced politely to assistive technology. Rebuild and final browser check pending.
 - Follow-up verification: the rebuilt preview showed Start music and autoplay guidance on reload; clicking it changed the control to Turn music off and the aria-live note to “Hush Afterwards is playing.”
+
+
+## ADD title music control and in-game visual alignment — 2026-09-26
+
+- Moved the title-screen music control into the same rightmost HUD slot as
+  gameplay, with equal fixed dimensions at desktop and mobile widths. The
+  gameplay control is now the far-right header action; narrow screens use a
+  two-row status header so the full music label and 40px target stay visible.
+- Aligned the live ADD chrome with the homepage: warm paper text, amber rules,
+  rectangular controls and panels, dark green surfaces, serif panel titles, and
+  sans-serif controls. Discovery, base, dungeon, and return colors retain their
+  meanings. Added a narrow 320px title layout to avoid overlapping the logo.
+- Vite production build passed. `npm run agent:verify:add-ui` passed: 234
+  add-core tests, 20 scenario tests, content/codegen, WASM, ADD types, and smoke
+  syntax. No browser smoke ran. Manual Chromium preview at 1440x900, 390x844,
+  and 320x568 had no page errors. Title/game music bounds matched exactly at
+  every size; the 320px title control no longer overlaps the title. Preview:
+  http://127.0.0.1:4174/app/.
+- Follow-up: review the remaining C01-C20 UI anatomies deliberately.
