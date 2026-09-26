@@ -1,30 +1,40 @@
-// Music as a first-class, abstracted entity. A `MusicTrack` is data — a named,
-// procedurally-synthesized bed (no audio assets) tagged with the moods it
-// serves. Callers never name a file or call play(): they express a *musical
-// intent* (a mood at a priority), and the director resolves the winning intent
-// to a track and crossfades. This file holds the data model + registry + the
-// pure resolver (unit-testable without WebAudio).
+// Music as a first-class, abstracted entity. A MusicTrack is a named
+// procedural bed or supplied audio asset tagged with the moods it serves.
+// Callers express a musical intent; the director resolves it to a track and
+// crossfades. This file holds the data model, registry, and pure resolver.
 
 export type Waveform = "sine" | "triangle" | "sawtooth" | "square"
 
-export interface MusicTrack {
+interface MusicTrackBase {
   readonly id: string
   readonly label: string
   /** Mood tags this track can satisfy (matched against intent.mood). */
   readonly moods: readonly string[]
   /** Tie-breaker when several tracks satisfy the same mood (higher wins). */
   readonly priority: number
+  /** Relative loudness 0..1 before master/music volume is applied. */
+  readonly gain: number
+}
+
+export interface SynthMusicTrack extends MusicTrackBase {
+  readonly type: "synth"
   /** Root pitch in Hz; `semitones` voices a pad/chord above it. */
   readonly rootHz: number
   readonly semitones: readonly number[]
   readonly waveform: Waveform
   /** Low-pass cutoff (Hz) shaping the bed's brightness. */
   readonly filterHz: number
-  /** Relative loudness 0..1 before master/music volume is applied. */
-  readonly gain: number
   /** Subtle detune (cents) spread across voices for movement. */
   readonly detuneCents?: number
 }
+
+export interface AudioMusicTrack extends MusicTrackBase {
+  readonly type: "audio"
+  /** Public asset URL resolved against Vite's configured app base path. */
+  readonly src: string
+}
+
+export type MusicTrack = SynthMusicTrack | AudioMusicTrack
 
 /**
  * A request to hear a mood (or a specific track). Sources push/replace their
@@ -47,6 +57,16 @@ export const BASE_MUSIC_INTENT: MusicIntent = {
 
 export const MUSIC_TRACKS: readonly MusicTrack[] = [
   {
+    type: "audio",
+    id: "music.hush_afterwards",
+    label: "Hush Afterwards",
+    moods: ["ambient"],
+    priority: 2,
+    src: import.meta.env.BASE_URL + "audio/music/hush-afterwards.mp3",
+    gain: 0.6,
+  },
+  {
+    type: "synth",
     id: "music.studio_calm",
     label: "Studio Calm",
     moods: ["ambient", "studio", "calm"],
@@ -59,6 +79,7 @@ export const MUSIC_TRACKS: readonly MusicTrack[] = [
     detuneCents: 4,
   },
   {
+    type: "synth",
     id: "music.frontier",
     label: "Frontier",
     moods: ["ambient", "explore", "overworld"],
@@ -71,6 +92,7 @@ export const MUSIC_TRACKS: readonly MusicTrack[] = [
     detuneCents: 6,
   },
   {
+    type: "synth",
     id: "music.night",
     label: "Night Watch",
     moods: ["night"],
@@ -83,6 +105,7 @@ export const MUSIC_TRACKS: readonly MusicTrack[] = [
     detuneCents: 5,
   },
   {
+    type: "synth",
     id: "music.tension",
     label: "Tension",
     moods: ["tension", "combat", "danger"],
@@ -95,6 +118,7 @@ export const MUSIC_TRACKS: readonly MusicTrack[] = [
     detuneCents: 9,
   },
   {
+    type: "synth",
     id: "music.triumph",
     label: "Triumph",
     moods: ["triumph", "victory", "uplift"],

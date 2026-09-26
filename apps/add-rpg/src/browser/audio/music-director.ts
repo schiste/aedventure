@@ -1,6 +1,6 @@
 // The Music Director: a self-contained adaptive-music engine. It keeps a stack
 // of musical *intents* (one per source), resolves the winner to a MusicTrack,
-// and crossfades a procedurally-synthesized bed. Any source steers it the same
+// and crossfades the active bed. Any source steers it the same
 // way — call requestMusic()/releaseMusic(), or dispatch the equivalent window
 // events from anywhere (story, sim-event bridge, time-of-day, an action button):
 //
@@ -29,6 +29,9 @@ const CROSSFADE_SECONDS = 2.5
 interface ActiveBed {
   trackId: string
   oscillators: OscillatorNode[]
+  media: HTMLAudioElement | null
+  mediaSource: MediaElementAudioSourceNode | null
+  filter: BiquadFilterNode
   fade: GainNode
   targetGain: number
 }
@@ -75,25 +78,39 @@ function buildBed(track: MusicTrack): ActiveBed | null {
 
   const filter = ctx.createBiquadFilter()
   filter.type = "lowpass"
-  filter.frequency.value = track.filterHz
+  filter.frequency.value = track.type === "audio" ? 20_000 : track.filterHz
 
   const fade = ctx.createGain()
   fade.gain.value = 0
   filter.connect(fade)
   fade.connect(masterGain)
 
-  const detune = track.detuneCents ?? 0
-  const oscillators = track.semitones.map((semi, index) => {
-    const osc = ctx.createOscillator()
-    osc.type = track.waveform
-    osc.frequency.value = track.rootHz * Math.pow(2, semi / 12)
-    osc.detune.value = (index - (track.semitones.length - 1) / 2) * detune
-    osc.connect(filter)
-    osc.start()
-    return osc
-  })
+  let oscillators: OscillatorNode[] = []
+  let media: HTMLAudioElement | null = null
+  let mediaSource: MediaElementAudioSourceNode | null = null
 
-  return { trackId: track.id, oscillators, fade, targetGain: track.gain }
+  if (track.type === "audio") {
+    media = new Audio(track.src)
+    media.loop = true
+    media.preload = "auto"
+    mediaSource = ctx.createMediaElementSource(media)
+    mediaSource.connect(filter)
+    // Start synchronously from the first gesture before AudioContext resume.
+    void media.play().catch(() => {})
+  } else {
+    const detune = track.detuneCents ?? 0
+    oscillators = track.semitones.map((semi, index) => {
+      const osc = ctx.createOscillator()
+      osc.type = track.waveform
+      osc.frequency.value = track.rootHz * Math.pow(2, semi / 12)
+      osc.detune.value = (index - (track.semitones.length - 1) / 2) * detune
+      osc.connect(filter)
+      osc.start()
+      return osc
+    })
+  }
+
+  return { trackId: track.id, oscillators, media, mediaSource, filter, fade, targetGain: track.gain }
 }
 
 function fadeOut(bed: ActiveBed, ctx: AudioContext): void {
@@ -108,6 +125,14 @@ function fadeOut(bed: ActiveBed, ctx: AudioContext): void {
       // already stopped
     }
   }
+  window.setTimeout(() => {
+    bed.media?.pause()
+    if (bed.media) bed.media.currentTime = 0
+    bed.mediaSource?.disconnect()
+    for (const osc of bed.oscillators) osc.disconnect()
+    bed.filter.disconnect()
+    bed.fade.disconnect()
+  }, (CROSSFADE_SECONDS + 0.1) * 1000)
 }
 
 function fadeIn(bed: ActiveBed, ctx: AudioContext): void {
@@ -118,10 +143,10 @@ function fadeIn(bed: ActiveBed, ctx: AudioContext): void {
 }
 
 /** Re-resolve the intent stack and crossfade if the winning track changed. */
-function reconcile(): void {
+function reconcile(allowSuspendedContext = false): void {
   telemetry.intentCount = intents.size
   const ctx = ensureContext()
-  if (!ctx || ctx.state !== "running") return
+  if (!ctx || (!allowSuspendedContext && ctx.state !== "running")) return
 
   const next = resolveMusicSelection([...intents.values()])
   const nextId = next?.id ?? null
@@ -198,6 +223,7 @@ function attach(): void {
   const unlock = () => {
     const ctx = ensureContext()
     if (!ctx) return
+    reconcile(true)
     void ctx.resume().then(() => {
       telemetry.contextState = ctx.state
       reconcile()

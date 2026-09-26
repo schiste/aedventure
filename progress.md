@@ -3221,7 +3221,19 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
 - Reproduced the issue in the local built app: at camera zoom 1.68 the minimap frame is transformed offscreen; at zoom 0.65 it becomes visible. `setScrollFactor(0)` cancels scroll translation but leaves camera zoom applied.
 - Fix direction: render the existing minimap graphics through a dedicated, transparent, unit-zoom overlay camera and exclude other scene objects from that camera, preserving current known-cell and landmark rules.
 
-- Implemented the overlay-camera fix in `add-world-scene.ts`: the world camera ignores minimap graphics, a transparent zoom-1 camera draws them, and Phaser scene-add events exclude later world objects from that camera. The minimap now sits below the DOM top bar and reflows on viewport resize. Build and browser verification are pending.
+- Implemented the overlay-camera fix in `add-world-scene.ts`: the world camera ignores minimap graphics, a transparent zoom-1 camera draws them, and Phaser scene-add events exclude later world objects from that camera. The minimap now sits below the DOM top bar and reflows on viewport resize. Build and browser verification passed.
 
 - Verification passed: `ADD_QA_TIMEOUT_SCALE=3 AGENT_VERIFY_SMOKE=1 npm run agent:verify:add-ui` completed successfully, including 234 add-core tests, 20 scenario tests, content/codegen, WASM, types, and built browser smoke. `npm --workspace @aedventure/add-rpg run build:browser` passed.
 - Visual acceptance passed at desktop zoom 0.55, fitted zoom 1.68, maximum zoom 2.2, and 390x844 mobile. The minimap frame stayed 156x156 below the top bar; switching to square Survivor Cave removed it. Browser console had no errors.
+
+
+## ADD main theme — 2026-09-26
+
+- Added the supplied Hush Afterward MP3 as the ambient baseline theme at apps/add-rpg/public/audio/music/hush-afterwards.mp3.
+- Extended the existing adaptive music director to play authored audio assets through its gain and crossfade graph while preserving the procedural night, tension, and triumph tracks.
+- The audio starts on the first user gesture, loops, uses the app's configured base URL, and follows the existing music/master volume settings. The supplied MP3 and M4A were found; no third format was present.
+
+- The ADD profile passed with ADD_QA_TIMEOUT_SCALE=3 and AGENT_VERIFY_SMOKE unset: diff checks, 234 add-core tests, 20 scenarios, content checks, WASM, TypeScript, and smoke syntax. The browser smoke stage first stopped because this fresh worktree had no dist-app yet.
+- Browser build passed, and ADD_QA_TIMEOUT_SCALE=3 npm run smoke:add-rpg:built passed every ADD smoke section.
+- Targeted Chrome playback check at the built app confirmed /app/audio/music/hush-afterwards.mp3 returned 200. After the first user gesture it played with loop enabled. While a tension intent was active no media track started; releasing that intent returned to the theme, with play() resolved, paused=false, readyState=4, and playback time advancing.
+- The QA static server reports the existing WASM MIME fallback warning because it serves WASM as application/octet-stream; the page had no JavaScript errors.
