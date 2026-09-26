@@ -3332,6 +3332,9 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   plan. The full `npm run agent:verify:add-ui` profile passed through the
   session executor, and the built browser smoke passed with the timeout scale
   needed for the shared host.
-- Aethyme's reviewed local-main apply remains blocked when main has zero
-  commits absent from integration, even though integration descends from main.
-  No direct branch or remote update is recorded here.
+- The local reconcile planner rejected the ancestor-only update because main had
+  no commits missing from integration. After reviewing the clean ancestry, local
+  main was fast-forwarded to integration at af502fb through the serialized
+  broker Git command; origin/main remains unchanged. The audited stale session
+  worktrees and redundant branches were pruned after recovering session 81's
+  useful smoke diagnostics.
