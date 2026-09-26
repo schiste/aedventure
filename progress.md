@@ -3237,3 +3237,21 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
 - Browser build passed, and ADD_QA_TIMEOUT_SCALE=3 npm run smoke:add-rpg:built passed every ADD smoke section.
 - Targeted Chrome playback check at the built app confirmed /app/audio/music/hush-afterwards.mp3 returned 200. After the first user gesture it played with loop enabled. While a tension intent was active no media track started; releasing that intent returned to the theme, with play() resolved, paused=false, readyState=4, and playback time advancing.
 - The QA static server reports the existing WASM MIME fallback warning because it serves WASM as application/octet-stream; the page had no JavaScript errors.
+
+## 2026-09-26 — Hush Afterwards as the sole music bed
+
+- Removed every procedural track and synth playback path. Every known mood and
+  unmatched intent now resolves to the supplied Hush Afterwards recording.
+  The existing first-gesture unlock, loop, and settings gain remain in place.
+- Browser build passed with npm --workspace @aedventure/add-rpg run
+  build:browser. The ADD UI profile passed with ADD_QA_TIMEOUT_SCALE=3 npm
+  run agent:verify:add-ui: 234 core tests, 20 scenario tests, content checks,
+  WASM, ADD types, and smoke syntax. The timeout scale is an environment
+  adjustment, not a pass result.
+- Chrome on http://127.0.0.1:8812/app/ loaded the MP3 with HTTP 200. After a
+  user gesture, it played unpaused and looping. Mood requests for ambient,
+  night, tension, combat, triumph, victory, an unknown mood, and an invalid
+  track ID made no additional play call; the same media time kept advancing.
+  The title screen screenshot was visually inspected.
+- Local main rebuild and relaunch on port 8800 remain as the handoff step after
+  broker promotion.

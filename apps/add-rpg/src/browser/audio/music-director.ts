@@ -1,16 +1,11 @@
-// The Music Director: a self-contained adaptive-music engine. It keeps a stack
-// of musical *intents* (one per source), resolves the winner to a MusicTrack,
-// and crossfades the active bed. Any source steers it the same
-// way — call requestMusic()/releaseMusic(), or dispatch the equivalent window
-// events from anywhere (story, sim-event bridge, time-of-day, an action button):
+// The music director tracks prioritized game intents and plays the supplied
+// soundtrack. Sources can request or release an intent from anywhere:
 //
 //   requestMusic({ source: "combat", priority: 5, mood: "tension" })
 //   releaseMusic("combat")
-//   window.dispatchEvent(new CustomEvent("add-music-intent",
-//     { detail: { source: "story:cave", priority: 4, mood: "triumph" } }))
 //
-// Volume comes from the T3.1 settings store; the bed only starts after a user
-// gesture (browser autoplay policy).
+// Music uses the same recording for every intent. Playback still honors the
+// settings volume and starts after the first user gesture (autoplay policy).
 
 import {
   type AddSettings,
@@ -28,9 +23,8 @@ const CROSSFADE_SECONDS = 2.5
 
 interface ActiveBed {
   trackId: string
-  oscillators: OscillatorNode[]
-  media: HTMLAudioElement | null
-  mediaSource: MediaElementAudioSourceNode | null
+  media: HTMLAudioElement
+  mediaSource: MediaElementAudioSourceNode
   filter: BiquadFilterNode
   fade: GainNode
   targetGain: number
@@ -78,39 +72,22 @@ function buildBed(track: MusicTrack): ActiveBed | null {
 
   const filter = ctx.createBiquadFilter()
   filter.type = "lowpass"
-  filter.frequency.value = track.type === "audio" ? 20_000 : track.filterHz
+  filter.frequency.value = 20_000
 
   const fade = ctx.createGain()
   fade.gain.value = 0
   filter.connect(fade)
   fade.connect(masterGain)
 
-  let oscillators: OscillatorNode[] = []
-  let media: HTMLAudioElement | null = null
-  let mediaSource: MediaElementAudioSourceNode | null = null
+  const media = new Audio(track.src)
+  media.loop = true
+  media.preload = "auto"
+  const mediaSource = ctx.createMediaElementSource(media)
+  mediaSource.connect(filter)
+  // Start synchronously from the first gesture before AudioContext resume.
+  void media.play().catch(() => {})
 
-  if (track.type === "audio") {
-    media = new Audio(track.src)
-    media.loop = true
-    media.preload = "auto"
-    mediaSource = ctx.createMediaElementSource(media)
-    mediaSource.connect(filter)
-    // Start synchronously from the first gesture before AudioContext resume.
-    void media.play().catch(() => {})
-  } else {
-    const detune = track.detuneCents ?? 0
-    oscillators = track.semitones.map((semi, index) => {
-      const osc = ctx.createOscillator()
-      osc.type = track.waveform
-      osc.frequency.value = track.rootHz * Math.pow(2, semi / 12)
-      osc.detune.value = (index - (track.semitones.length - 1) / 2) * detune
-      osc.connect(filter)
-      osc.start()
-      return osc
-    })
-  }
-
-  return { trackId: track.id, oscillators, media, mediaSource, filter, fade, targetGain: track.gain }
+  return { trackId: track.id, media, mediaSource, filter, fade, targetGain: track.gain }
 }
 
 function fadeOut(bed: ActiveBed, ctx: AudioContext): void {
@@ -118,18 +95,10 @@ function fadeOut(bed: ActiveBed, ctx: AudioContext): void {
   bed.fade.gain.cancelScheduledValues(now)
   bed.fade.gain.setValueAtTime(bed.fade.gain.value, now)
   bed.fade.gain.linearRampToValueAtTime(0, now + CROSSFADE_SECONDS)
-  for (const osc of bed.oscillators) {
-    try {
-      osc.stop(now + CROSSFADE_SECONDS + 0.05)
-    } catch {
-      // already stopped
-    }
-  }
   window.setTimeout(() => {
-    bed.media?.pause()
-    if (bed.media) bed.media.currentTime = 0
-    bed.mediaSource?.disconnect()
-    for (const osc of bed.oscillators) osc.disconnect()
+    bed.media.pause()
+    bed.media.currentTime = 0
+    bed.mediaSource.disconnect()
     bed.filter.disconnect()
     bed.fade.disconnect()
   }, (CROSSFADE_SECONDS + 0.1) * 1000)
