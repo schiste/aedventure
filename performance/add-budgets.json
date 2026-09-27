@@ -116,11 +116,17 @@
       "max": 580000,
       "note": "Raised from 500000 alongside wasmBytes, same reason."
     },
-    "totalAssetBytes": {
-      "max": 4000000
+    "totalNonAudioAssetBytes": {
+      "max": 4000000,
+      "note": "Application code, WASM, styles, and visual assets. Encoded music is measured separately because gzip does not meaningfully compress it."
     },
-    "totalAssetGzipBytes": {
-      "max": 1400000
+    "totalNonAudioAssetGzipBytes": {
+      "max": 1400000,
+      "note": "Application code, WASM, styles, and visual assets. Encoded music is measured separately because gzip does not meaningfully compress it."
+    },
+    "audioBytes": {
+      "max": 6000000,
+      "note": "Total encoded audio shipped with ADD. Audio formats such as MP3 are already compressed; keep them under this dedicated asset cap instead of counting their bytes against the gzip bundle budget."
     }
   },
   "narrative": {

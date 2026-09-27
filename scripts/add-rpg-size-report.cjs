@@ -24,6 +24,7 @@ function walk(directory) {
 }
 
 function category(file) {
+  if (/\.(mp3|ogg|opus|wav|m4a|aac|flac)$/i.test(file)) return "audio"
   if (file.endsWith(".wasm")) return "wasm"
   if (file.endsWith(".js")) return "javascript"
   if (file.endsWith(".css")) return "css"
@@ -55,8 +56,17 @@ function metricValues(files) {
     browserCssGzipBytes: sum(files, "gzip_bytes", (file) => file.source === "dist" && file.category === "css"),
     wasmBytes: sum(files, "bytes", (file) => file.category === "wasm"),
     wasmGzipBytes: sum(files, "gzip_bytes", (file) => file.category === "wasm"),
-    totalAssetBytes: sum(files, "bytes", (file) => file.source === "dist"),
-    totalAssetGzipBytes: sum(files, "gzip_bytes", (file) => file.source === "dist"),
+    totalNonAudioAssetBytes: sum(
+      files,
+      "bytes",
+      (file) => file.source === "dist" && file.category !== "audio",
+    ),
+    totalNonAudioAssetGzipBytes: sum(
+      files,
+      "gzip_bytes",
+      (file) => file.source === "dist" && file.category !== "audio",
+    ),
+    audioBytes: sum(files, "bytes", (file) => file.source === "dist" && file.category === "audio"),
   }
 }
 
