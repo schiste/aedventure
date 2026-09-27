@@ -2787,9 +2787,16 @@ async function completeFirstPlayableArc(page, consoleErrors) {
       state.shell.currentAction.actionId === "travel:selected-tile"
     ) {
       const beforeDigest = firstPlayableDigest(state)
+      const studioAnchorBeforeTravel = state.map?.landmarks?.baseCenterWorld
+      assert.ok(
+        studioAnchorBeforeTravel &&
+          Number.isFinite(studioAnchorBeforeTravel.x) &&
+          Number.isFinite(studioAnchorBeforeTravel.y),
+        "The Studio zone should have a world position before the Hero travels.",
+      )
       await clickVisibleCurrentAction(page, state)
       await resolveTravelDialogIfNeeded(page, consoleErrors)
-      await waitForTextState(
+      const travelState = await waitForTextState(
         page,
         (nextState) =>
           nextState.runtime?.error === null &&
@@ -2798,6 +2805,11 @@ async function completeFirstPlayableArc(page, consoleErrors) {
           firstPlayableDigest(nextState) !== beforeDigest,
         consoleErrors,
         12000,
+      )
+      assert.deepEqual(
+        travelState.map?.landmarks?.baseCenterWorld,
+        studioAnchorBeforeTravel,
+        "Revealing terrain during travel must not move Studio or other map objects in world space.",
       )
       continue
     }

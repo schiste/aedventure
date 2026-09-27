@@ -36,7 +36,17 @@ export function createRenderContext(map: GameMap, width: number, height: number)
           distanceMetric: map.topology.distanceMetric,
         })
       : null
-  const origin = originForCells(terrainCells, map, hexTopology, squareTopology, width, height)
+  const baseCell = terrainCells.find((cell) => isBaseFeature(featureForCell(cell)))
+  const baseCoord = baseCell?.coord ?? zoneCoord(map, "add.zone.base", "base")
+  const origin = originForCells(
+    terrainCells,
+    map,
+    baseCoord,
+    hexTopology,
+    squareTopology,
+    width,
+    height,
+  )
   const terrainByCoord = new Map(
     terrainCells.map((cell) => [addMapCoordKey(cell.coord), cell]),
   )
@@ -46,9 +56,7 @@ export function createRenderContext(map: GameMap, width: number, height: number)
       .filter((cell) => cell.coord.kind === "hex" && isBubbleEdgeCell(cell, map))
       .map((cell) => addMapCoordKey(cell.coord)),
   )
-  const baseCell = terrainCells.find((cell) => isBaseFeature(featureForCell(cell)))
   const caveCell = terrainCells.find((cell) => featureForCell(cell) === "survivor_cave")
-  const baseCoord = baseCell?.coord ?? zoneCoord(map, "add.zone.base", "base")
   const survivorCaveCoord =
     caveCell?.coord ?? zoneCoord(map, "add.zone.survivor_cave", "survivor_cave")
 
@@ -79,21 +87,21 @@ function zoneCoord(map: GameMap, id: string, kind: string): CellCoord | null {
 function originForCells(
   cells: readonly GameCellPlacement[],
   map: GameMap,
+  baseCoord: CellCoord | null,
   hexTopology: GridTopology<HexCoord> | null,
   squareTopology: GridTopology<SquareCoord> | null,
   width: number,
   height: number,
 ): Vector2 {
-  const baseCell = cells.find((cell) => isBaseFeature(featureForCell(cell)))
-  if (baseCell?.coord.kind === "hex" && hexTopology) {
-    const point = hexTopology.cellToWorld(baseCell.coord)
+  if (baseCoord?.kind === "hex" && hexTopology) {
+    const point = hexTopology.cellToWorld(baseCoord)
     return {
       x: width / 2 - point.x,
       y: height / 2 - point.y,
     }
   }
-  if (baseCell?.coord.kind === "square" && squareTopology) {
-    const point = squareTopology.cellToWorld(baseCell.coord)
+  if (baseCoord?.kind === "square" && squareTopology) {
+    const point = squareTopology.cellToWorld(baseCoord)
     const offset = map.topology.kind === "square" ? map.topology.cellSize / 2 : 0
     return {
       x: width / 2 - point.x - offset,

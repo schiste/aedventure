@@ -3338,3 +3338,34 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   broker Git command; origin/main remains unchanged. The audited stale session
   worktrees and redundant branches were pruned after recovering session 81's
   useful smoke diagnostics.
+
+
+## 2026-09-26 — Stable map origin when Studio is revealed
+
+- Traced the adjacent-to-Studio jump to the visibility-filtered base feature:
+  before reveal, the renderer centered from map bounds; when Studio became
+  known, it switched the world origin to the base hex. Existing camera and
+  travel coordinates then referred to the previous origin.
+- Updated the Phaser render context to use the stable base-zone coordinate from
+  the first frame, independent of tile visibility. Added
+  tasks/add/studio-neighbor-origin-stability.md with observable acceptance
+  scenarios and focused ADD verification.
+- Verification and the Studio arrival capture completed on 2026-09-27; see the
+  next section for the focused browser result and the later persistence-stage
+  timeout. Viewport resizing during active travel remains a follow-up.
+
+## 2026-09-27 — Studio reveal origin fix
+
+- Kept the overworld world origin anchored to the stable `add.zone.base`
+  coordinate when the Studio tile is still hidden. Revealing the Studio feature
+  no longer switches from visible-cell bounds to the base coordinate.
+- Added an ADD browser-smoke regression that compares the Studio world anchor
+  before and after every first-playable travel update. The Studio travel,
+  arrival, and tile-detail scenarios passed.
+- `npm run agent:verify:add-ui` passed (234 core tests, 20 scenario tests,
+  content checks, WASM, ADD types, and smoke syntax). The ADD browser production
+  build passed. The full browser smoke later timed out in the persistence/reset
+  section after the `#open-dev-menu` click; it did not fail the Studio checks.
+  Arrival screenshot inspected at
+  `/private/tmp/aedventure-session113-artifacts/screenshots/add-rpg-studio-arrival-handoff-smoke.png`.
+- Local main merge and app relaunch remain the handoff steps.
