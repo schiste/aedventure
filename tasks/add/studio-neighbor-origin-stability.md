@@ -59,10 +59,14 @@ the existing follow-camera movement intact.
   CARGO_BUILD_JOBS=1 and RUSTC_WRAPPER unset after one host-killed Rust
   compiler attempt.
 - Player-facing evidence: visually inspected
-  /private/tmp/aedventure-studio-neighbor-gate/screenshots/add-rpg-studio-adjacent-travel-smoke.png.
-  The Hero and map remain framed together after arriving beside Studio.
-- Remaining risk or explicit reason: the root preview still needs its stale
-  Sep 26 bundle rebuilt and relaunched from the current-main tree.
+  /private/tmp/aedventure-studio-neighbor-gate/screenshots/add-rpg-studio-adjacent-travel-smoke.png
+  and the relaunched-preview replay at
+  /private/tmp/aedventure-studio-adjacent/arrive-adjacent-4.png. The Studio
+  anchor remained at world position (590, 380) through the reveal and the Hero
+  entered hex:1,3 without the prior snap. The root preview was rebuilt from
+  d889bc6 and is serving at http://127.0.0.1:8800/app/.
+- Remaining risk or explicit reason: no known risk for the reported transition.
+  Active-travel viewport resizing remains the follow-up below.
 
 ## Likely follow-up
 
