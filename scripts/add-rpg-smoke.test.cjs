@@ -2746,9 +2746,11 @@ async function assertStudioAdjacentTravelContinuity(browser, url) {
       let sawMovement = false
       let previousScreenPoint = null
       let arrival = null
+      let lastObservedState = state
       const startedAt = Date.now()
       while (Date.now() - startedAt < qaTimeout(12000)) {
         const nextState = await renderGameToText(page)
+        lastObservedState = nextState
         assert.deepEqual(
           nextState.map?.landmarks?.baseCenterWorld,
           anchorBefore,
@@ -2772,14 +2774,46 @@ async function assertStudioAdjacentTravelContinuity(browser, url) {
             }
             previousScreenPoint = screenPoint
           }
-        } else if (sawMovement && nextState.map?.character?.cell === nextCell) {
+        } else if (
+          sawMovement &&
+          nextState.map?.character?.cell === nextCell &&
+          nextState.map?.character?.moving === false &&
+          nextState.travel?.active !== true &&
+          nextState.ui?.worldTime?.animating === false
+        ) {
           arrival = nextState
           break
         }
         await page.waitForTimeout(75)
       }
 
-      assert.ok(sawMovement, "Expected to observe Hero movement into " + nextCell + ".")
+      if (!sawMovement) {
+        const screenshotPath = path.join(
+          SMOKE_ARTIFACT_DIR,
+          "add-rpg-studio-adjacent-movement-failure.png",
+        )
+        await page.screenshot({ path: screenshotPath }).catch(() => {})
+        const visibleText = await page.locator("body").innerText().catch(() => "")
+        const observed = {
+          step,
+          fromCell,
+          nextCell,
+          distanceBefore,
+          distanceAfter,
+          hero: lastObservedState.map?.character,
+          travel: lastObservedState.travel,
+          currentAction: lastObservedState.shell?.currentAction,
+          mapCamera: lastObservedState.map?.camera,
+          worldTime: lastObservedState.ui?.worldTime,
+          visibleText,
+          consoleErrors,
+          screenshotPath,
+        }
+        throw new Error(
+          "Expected to observe Hero movement into " + nextCell +
+            ". Last observed browser state: " + JSON.stringify(observed, null, 2),
+        )
+      }
       assert.ok(arrival, "Hero did not settle on " + nextCell + ".")
       assert.equal(arrival.map.character.cell, nextCell)
       assert.equal(arrival.map.character.moving, false)
@@ -4109,6 +4143,11 @@ async function exerciseMainCharacterMovement(page, consoleErrors) {
     dx: 68,
     dy: 42,
   })
+  await assertNonBlankNamedAppScreenshot(
+    page,
+    "add-rpg-travel-dialog-smoke.png",
+    "ADD RPG travel confirmation pop-in screenshot",
+  )
   const draggedDialog = await renderGameToText(page)
   assert.equal(draggedDialog.shell.popins.travelDialog.lastAction, "dragged")
   assert.equal(draggedDialog.shell.popins.travelDialog.bounded, true)

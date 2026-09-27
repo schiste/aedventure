@@ -6539,7 +6539,7 @@ h1 {
   --surface-popin: rgb(13 23 20 / 98%);
   --border-popin: rgb(var(--homepage-paper-rgb) / 22%);
   --shadow-popin: 0 28px 76px rgb(0 0 0 / 42%);
-  --radius-popin: 3px;
+  --radius-popin: var(--radius-ui);
   --font-display: Georgia, "Times New Roman", serif;
   --status-slot-top: 7.75px;
   --status-slot-right: 10px;
@@ -7173,7 +7173,7 @@ h1 {
 }
 
 :is(.travel-dialog, .settings-hex-window, .ui-dialog, .offline-return-panel) button {
-  border-radius: 3px;
+  border-radius: var(--radius-ui);
   box-shadow: none;
   font-family: var(--font-ui, ui-sans-serif, system-ui, sans-serif);
 }
