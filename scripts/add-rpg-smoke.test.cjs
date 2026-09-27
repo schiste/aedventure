@@ -86,6 +86,9 @@ async function main() {
     )
     assert.equal(initial.shell?.questPanel?.visible, false)
     await capturePhase5Fixture(page, phase5Evidence, "add.boot", initial)
+    await runScenario("Studio-adjacent travel continuity", () =>
+      assertStudioAdjacentTravelContinuity(browser, url),
+    )
     await runScenario("admin and developer tools separation", () =>
       assertAdminDeveloperSeparation(page, consoleErrors),
     )
@@ -2691,6 +2694,115 @@ function initialDiscoveryShapeReady(state) {
     discovered.includes(cave) &&
     !discovered.includes(base)
   )
+}
+
+
+async function assertStudioAdjacentTravelContinuity(browser, url) {
+  const page = await browser.newPage({ viewport: { width: 1180, height: 760 } })
+  const consoleErrors = []
+  page.on("console", (message) => {
+    if (message.type() === "error") consoleErrors.push(message.text())
+  })
+  page.on("pageerror", (error) => {
+    consoleErrors.push(error.stack || error.message)
+  })
+
+  try {
+    await page.goto(url + "/app", { waitUntil: "domcontentloaded" })
+    await page.waitForFunction(
+      () => typeof window.render_game_to_text === "function",
+      undefined,
+      { timeout: qaTimeout(20000) },
+    )
+    await launchNewGameFromTitleScreen(page)
+    await dismissOpeningCinematic(page, { timeoutMs: qaTimeout(20000) })
+    await page.locator("#add-world canvas").waitFor({ state: "visible" })
+
+    let state = await renderGameToText(page)
+    const studioCell = "hex:" + state.map?.landmarks?.baseCenter
+    assert.match(studioCell, /^hex:-?\d+,-?\d+$/)
+    assert.equal(state.map?.character?.cell, "hex:" + state.map?.landmarks?.survivorCave)
+    const studioCoord = parseSmokeCell(studioCell)
+    assert.ok(state.map?.landmarks?.baseCenterWorld)
+
+    let enteredAdjacentCell = false
+    for (let step = 0; step < 8; step += 1) {
+      const fromCell = state.map.character.cell
+      const fromCoord = parseSmokeCell(fromCell)
+      const distanceBefore = hexDistance(fromCoord, studioCoord)
+      if (distanceBefore === 1) {
+        enteredAdjacentCell = true
+        break
+      }
+      assert.ok(distanceBefore > 1, "Expected the Hero to approach Studio by hex steps, got " + fromCell + ".")
+
+      const nextCell = nextHexStepToward(fromCell, studioCell)
+      const distanceAfter = hexDistance(parseSmokeCell(nextCell), studioCoord)
+      const anchorBefore = state.map.landmarks.baseCenterWorld
+      assert.ok(anchorBefore && Number.isFinite(anchorBefore.x) && Number.isFinite(anchorBefore.y))
+      await pressTravelKeys(page, keyboardKeysForCellStep(fromCell, nextCell))
+      await resolveTravelDialogIfNeeded(page, consoleErrors)
+
+      let sawMovement = false
+      let previousScreenPoint = null
+      let arrival = null
+      const startedAt = Date.now()
+      while (Date.now() - startedAt < qaTimeout(12000)) {
+        const nextState = await renderGameToText(page)
+        assert.deepEqual(
+          nextState.map?.landmarks?.baseCenterWorld,
+          anchorBefore,
+          "Studio world anchor moved while entering " + nextCell + " from " + fromCell + ".",
+        )
+
+        if (nextState.map?.character?.moving) {
+          sawMovement = true
+          if (distanceAfter === 1) {
+            const screenPoint = await characterScreenPoint(page, nextState)
+            if (previousScreenPoint) {
+              const jump = Math.hypot(
+                screenPoint.x - previousScreenPoint.x,
+                screenPoint.y - previousScreenPoint.y,
+              )
+              assert.ok(
+                jump <= 90,
+                "Hero/camera screen position jumped " + jump.toFixed(1) +
+                  "px while entering the Studio-adjacent hex " + nextCell + ".",
+              )
+            }
+            previousScreenPoint = screenPoint
+          }
+        } else if (sawMovement && nextState.map?.character?.cell === nextCell) {
+          arrival = nextState
+          break
+        }
+        await page.waitForTimeout(75)
+      }
+
+      assert.ok(sawMovement, "Expected to observe Hero movement into " + nextCell + ".")
+      assert.ok(arrival, "Hero did not settle on " + nextCell + ".")
+      assert.equal(arrival.map.character.cell, nextCell)
+      assert.equal(arrival.map.character.moving, false)
+      state = arrival
+
+      if (distanceAfter === 1) {
+        enteredAdjacentCell = true
+        await assertNonBlankNamedMapScreenshot(
+          page,
+          "add-rpg-studio-adjacent-travel-smoke.png",
+          "ADD RPG Studio-adjacent travel continuity screenshot",
+        )
+        break
+      }
+    }
+
+    assert.ok(enteredAdjacentCell, "The Hero should finish on a hex adjacent to Studio.")
+    assert.equal(hexDistance(parseSmokeCell(state.map.character.cell), studioCoord), 1)
+    assert.deepEqual(consoleErrors, [])
+    return state
+  } finally {
+    await page.close()
+  }
 }
 
 function assertInitialDiscoveryAnchors(state) {
