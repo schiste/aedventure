@@ -1088,6 +1088,17 @@ async function verifyAddRendererTopologyFixtures(browser, report) {
       1,
       "ADD renderer QA requires the stable map-controls selector.",
     )
+    // The optional tracker is intentionally hidden by default. Enable it
+    // through Player Settings for this fixture before exercising its control.
+    await page.locator("#open-shell-menu").click()
+    await page.locator("#open-settings").click()
+    const objectiveToggle = page.locator("#settings-toggle-objective")
+    await objectiveToggle.waitFor({ state: "visible" })
+    assert.equal(await objectiveToggle.getAttribute("aria-pressed"), "false")
+    await objectiveToggle.click()
+    await page.locator("#first-playable-panel").waitFor({ state: "visible" })
+    await page.locator("#close-settings").click()
+    await page.locator("#settings-view.open").waitFor({ state: "hidden" })
     await page.locator("#toggle-first-playable-panel").click({ timeout: 2500 })
     await page.waitForTimeout(180)
     report.topologyChecks.push(
