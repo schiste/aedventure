@@ -6536,6 +6536,10 @@ h1 {
   --homepage-paper-rgb: 248 231 195;
   --homepage-amber-rgb: 244 185 99;
   --homepage-rule: rgb(var(--homepage-paper-rgb) / 24%);
+  --surface-popin: rgb(13 23 20 / 98%);
+  --border-popin: rgb(var(--homepage-paper-rgb) / 22%);
+  --shadow-popin: 0 28px 76px rgb(0 0 0 / 42%);
+  --radius-popin: 3px;
   --font-display: Georgia, "Times New Roman", serif;
   --status-slot-top: 7.75px;
   --status-slot-right: 10px;
@@ -7089,4 +7093,347 @@ h1 {
 .add-app-shell .dungeon-context-panel,
 .add-app-shell .offline-return-panel {
   animation: none;
+}
+
+
+/* Player-facing pop-ins use the same field-green, paper, and amber language
+   as the homepage. Content remains flat and rectangular so warnings and actions
+   carry the hierarchy instead of gradients or nested cards. */
+:is(.travel-dialog, .settings-hex-window, .ui-dialog, .offline-return-panel) {
+  border: 1px solid var(--border-popin);
+  border-top: 2px solid rgb(var(--homepage-amber-rgb) / 82%);
+  border-radius: var(--radius-popin);
+  background: var(--surface-popin);
+  box-shadow:
+    var(--shadow-popin),
+    inset 0 1px 0 rgb(var(--homepage-paper-rgb) / 5%);
+  backdrop-filter: blur(16px);
+}
+
+:is(.travel-dialog-backdrop, .ui-dialog-scrim, .admin-backdrop.visible) {
+  background: rgb(5 12 10 / 66%);
+  backdrop-filter: blur(3px);
+}
+
+.travel-dialog {
+  gap: 13px;
+  padding: 20px;
+}
+
+.travel-dialog-handle {
+  gap: 6px;
+  border-bottom: 1px solid rgb(var(--homepage-paper-rgb) / 18%);
+  border-radius: 0;
+  padding-bottom: 12px;
+}
+
+.travel-dialog-eyebrow,
+.settings-hex-kicker {
+  color: rgb(var(--homepage-amber-rgb));
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+
+.travel-dialog h2,
+.ui-dialog-heading h2 {
+  color: var(--paper-bright);
+  font-family: var(--font-display);
+  font-size: 1.55rem;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  line-height: 1.12;
+}
+
+.travel-dialog p {
+  max-width: 56ch;
+  color: rgb(var(--homepage-paper-rgb) / 88%);
+  font-size: 0.92rem;
+  font-weight: 520;
+  line-height: 1.5;
+}
+
+.travel-dialog-actions {
+  justify-content: flex-end;
+  border-top: 1px solid rgb(var(--homepage-paper-rgb) / 18%);
+  padding-top: 12px;
+}
+
+.travel-dialog-actions button {
+  width: auto;
+  min-width: 8.4rem;
+  min-height: 44px;
+}
+
+:is(.travel-dialog, .settings-hex-window, .ui-dialog, .offline-return-panel)
+  :is(button, summary, [tabindex]):focus-visible {
+  outline: 2px solid rgb(var(--homepage-amber-rgb) / 90%);
+  outline-offset: 3px;
+}
+
+:is(.travel-dialog, .settings-hex-window, .ui-dialog, .offline-return-panel) button {
+  border-radius: 3px;
+  box-shadow: none;
+  font-family: var(--font-ui, ui-sans-serif, system-ui, sans-serif);
+}
+
+:is(.travel-dialog, .settings-hex-window, .ui-dialog, .offline-return-panel)
+  .primary-action {
+  border-color: rgb(var(--homepage-amber-rgb));
+  background: rgb(var(--homepage-amber-rgb));
+  color: #1a1812;
+}
+
+:is(.travel-dialog, .settings-hex-window, .ui-dialog, .offline-return-panel)
+  .primary-action:hover:not(:disabled) {
+  border-color: rgb(var(--paper-bright));
+  background: rgb(var(--paper-bright));
+  color: #1a1812;
+}
+
+.settings-hex-window {
+  padding: 0;
+  transform: translate(-50%, -47%);
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease,
+    visibility 180ms ease;
+}
+
+.settings-hex-window.open {
+  transform: translate(-50%, -50%);
+}
+
+.settings-hex-inner {
+  padding: 22px;
+  border-radius: 0;
+  background: var(--surface-popin);
+  backdrop-filter: none;
+}
+
+.settings-header {
+  border: 0;
+  border-bottom: 1px solid rgb(var(--homepage-paper-rgb) / 18%);
+  border-radius: 0;
+  padding: 0 4px 14px;
+  background: transparent;
+}
+
+.settings-header .admin-title {
+  color: var(--paper-bright);
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+}
+
+.settings-header small {
+  color: rgb(var(--homepage-paper-rgb) / 68%);
+  font-weight: 450;
+}
+
+.settings-hex-body {
+  gap: 0 24px;
+  padding: 0 4px 8px;
+}
+
+.settings-hex-window .settings-panel {
+  border: 0;
+  border-top: 1px solid rgb(var(--homepage-paper-rgb) / 16%);
+  border-radius: 0;
+  padding: 13px 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.settings-hex-window .settings-panel .panel-heading {
+  border-bottom: 1px solid rgb(var(--homepage-paper-rgb) / 12%);
+  padding-bottom: 8px;
+}
+
+.settings-panel-note {
+  border: 0;
+  border-left: 2px solid rgb(var(--aqua-rgb) / 74%);
+  border-radius: 0;
+  padding: 6px 10px;
+  background: rgb(var(--homepage-paper-rgb) / 4%);
+}
+
+.ui-dialog {
+  gap: 14px;
+  padding: 20px;
+}
+
+.ui-dialog-heading {
+  border-bottom: 1px solid rgb(var(--homepage-paper-rgb) / 18%);
+  padding-bottom: 12px;
+}
+
+.ui-dialog-heading h2 {
+  margin: 0;
+}
+
+.ui-dialog-actions {
+  border-top: 1px solid rgb(var(--homepage-paper-rgb) / 18%);
+  padding-top: 12px;
+}
+
+.offline-return-panel {
+  width: min(540px, calc(100vw - 32px));
+  min-width: min(320px, calc(100vw - 32px));
+  gap: 12px;
+  padding: 16px;
+}
+
+.offline-return-heading {
+  border-bottom: 1px solid rgb(var(--homepage-paper-rgb) / 18%);
+  padding-bottom: 10px;
+}
+
+.offline-return-heading h2 {
+  color: var(--paper-bright);
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  line-height: 1.12;
+}
+
+.offline-return-hero {
+  border: 0;
+  border-left: 2px solid var(--mode-return);
+  border-radius: 0;
+  padding: 8px 12px;
+  background: rgb(var(--mode-return-rgb) / 6%);
+  box-shadow: none;
+}
+
+.offline-return-highlights {
+  gap: 0;
+}
+
+.offline-return-highlights span {
+  border-left: 1px solid rgb(var(--homepage-paper-rgb) / 16%);
+  border-radius: 0;
+  padding: 7px 9px;
+  background: transparent;
+}
+
+.offline-return-highlights span:first-child {
+  border-left: 0;
+  padding-left: 0;
+}
+
+.offline-return-grid {
+  gap: 0 16px;
+}
+
+.offline-return-card {
+  border: 0;
+  border-top: 1px solid rgb(var(--homepage-paper-rgb) / 14%);
+  border-radius: 0;
+  padding: 10px 0;
+  background: transparent;
+}
+
+.offline-return-blockers {
+  border-top-color: rgb(var(--danger-rgb) / 48%);
+}
+
+.offline-return-next {
+  border-top: 2px solid rgb(var(--mode-return-rgb) / 76%);
+  padding-top: 12px;
+  background: rgb(var(--mode-return-rgb) / 4%);
+  box-shadow: none;
+}
+
+.offline-return-panel .primary-action {
+  background: rgb(var(--homepage-amber-rgb));
+}
+
+@media (max-width: 780px) {
+  .settings-hex-inner {
+    padding: 18px;
+  }
+
+  .offline-return-panel {
+    top: auto;
+    right: 12px;
+    bottom: 12px;
+    left: 12px;
+    width: auto;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 520px) {
+  .travel-dialog {
+    gap: 11px;
+    padding: 16px;
+  }
+
+  .travel-dialog h2,
+  .offline-return-heading h2 {
+    font-size: 1.28rem;
+  }
+
+  .travel-dialog-actions {
+    justify-content: stretch;
+  }
+
+  .travel-dialog-actions button {
+    width: auto;
+    flex: 1 1 8rem;
+    min-width: 0;
+  }
+
+  .settings-hex-inner {
+    padding: 16px;
+  }
+
+  .settings-hex-body {
+    gap: 0;
+  }
+
+  .settings-hex-window .settings-header {
+    align-items: stretch;
+    flex-direction: column;
+    padding-right: 4px;
+    padding-left: 4px;
+    text-align: left;
+  }
+
+  .settings-hex-window .settings-header > div {
+    width: 100%;
+  }
+
+  .settings-hex-window .settings-header > button {
+    align-self: flex-end;
+  }
+
+  .ui-dialog {
+    padding: 16px;
+  }
+
+  .offline-return-panel {
+    right: 8px;
+    bottom: 8px;
+    left: 8px;
+    padding: 12px;
+  }
+
+  .offline-return-highlights {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .offline-return-highlights span:nth-child(odd) {
+    border-left: 0;
+    padding-left: 0;
+  }
+
+  .offline-return-highlights span:nth-child(even) {
+    padding-left: 9px;
+  }
 }

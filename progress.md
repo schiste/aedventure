@@ -3369,3 +3369,15 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
   Arrival screenshot inspected at
   `/private/tmp/aedventure-session113-artifacts/screenshots/add-rpg-studio-arrival-handoff-smoke.png`.
 - Local main merge and app relaunch remain the handoff steps.
+
+
+## 2026-09-27 — In-game pop-in visual redesign
+
+- Original prompt: “remake the design of the ingame popin to meet the creative directions we now have and use in the homepage and should be using for everything”.
+- Scope: player-facing travel, settings, offline-return, and system-confirmation overlays. Existing gameplay state, actions, focus management, and keyboard controls remain authoritative.
+- Direction: shared deep-green surface, warm-paper type, thin amber rule, rectangular 3px geometry, system-sans body/controls, and Georgia for principal titles; remove nested gradient-card treatment from settings and return summaries.
+- Task brief: `tasks/add/in-game-popin-visual-redesign.md`.
+- Rebuilt the shared transient frame in `apps/add-rpg/src/browser/styles.css`: deep field green, paper text, thin amber rule, 3px rectangular corners, Georgia headings, flatter settings/return sections, and compact primary actions. Preserved semantic danger/return colors, drag and keyboard behavior, and scrolling.
+- Browser review: travel warning, Settings, and offline return were exercised in Chromium at 1280×800 and 390×844; screenshots under `/private/tmp/aedventure-popin-*-final.png`. Travel buttons share one row on desktop and fit on mobile; Settings header/sections align at x=287 desktop and x=29 mobile; return panel stays within the mobile viewport and scrolls. Escape advances travel to its expected acknowledgement beat. No page or console errors.
+- Verification: `npm run agent:verify:add-ui` passed after final CSS edits (234 core tests, 20 scenario tests, content/codegen, WASM, ADD types, smoke syntax). `npm --workspace @aedventure/add-rpg run build:browser` passed.
+- The existing generic C20 `ui-dialog` primitive receives the shared styles but has no current ADD call site; it was not opened end to end. No gameplay state or content changed.
