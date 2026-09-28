@@ -78,6 +78,10 @@ diff_check() {
 add_ui_checks() {
   diff_check
   run cargo test -p add-core
+  # Cheap, and it is the contract `README.md` calls the definition of a complete
+  # gameplay change. It is here because a content or balance edit can move a
+  # checkpoint, and nothing else in this profile would notice.
+  run cargo test -p add-scenario
   run npm run content:check
   run npm run wasm:build:add
   run npm --workspace @aedventure/add-rpg run build:types
@@ -97,7 +101,11 @@ types_check() {
 }
 
 focused_checks() {
-  if has_changed_match '^(apps/add-rpg/|packages/add-runtime-client/|scripts/add-rpg-smoke\.test\.cjs|crates/add-|package\.json|package-lock\.json|tsconfig\.json)'; then
+  # Authored content counts as ADD work. `packages/add-content/` used to be
+  # missing from this list, so a content edit fell through to the second branch
+  # and got `tsc -b` alone — no content validation, no generated-catalog drift
+  # check, no gameplay test.
+  if has_changed_match '^(apps/add-rpg/|packages/add-(content|presentation|protocol|ui|runtime-client)/|scripts/add-rpg-smoke\.test\.cjs|scripts/(build-add-content|add-content-|narrative-lint)|crates/add-|package\.json|package-lock\.json|tsconfig\.json)'; then
     echo "Detected ADD/app-layer changes; running ADD gameplay-focused checks."
     add_ui_checks
     return

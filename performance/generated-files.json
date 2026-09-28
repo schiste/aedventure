@@ -42,7 +42,7 @@
     {
       "id": "add-rust-catalog",
       "path": "crates/add-core/src/game_data/catalog/*.rs",
-      "source": "packages/add-runtime-client/src/content/*.ts",
+      "source": "packages/add-content/src/content/*.ts",
       "producer": "npm run content:build",
       "check": "npm run content:check",
       "tracked": true,
@@ -69,7 +69,7 @@
     {
       "id": "add-content-fixtures",
       "path": "scenarios/add/fixtures/content/*.json",
-      "source": "packages/add-runtime-client/src/content/*.ts",
+      "source": "packages/add-content/src/content/*.ts",
       "producer": "npm run content:fixtures",
       "check": "npm run content:fixtures:check",
       "tracked": true,
