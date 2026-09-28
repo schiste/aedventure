@@ -1103,6 +1103,17 @@ pub struct ConstructionJob {
     pub total_cost: f64,
     pub spent_cost: f64,
     pub per_worker_cost_per_second: f64,
+    /// Wall-clock seconds the Hero's current staffing needs to finish, computed
+    /// by the sim when the job starts.
+    ///
+    /// This used to be recomputed in TypeScript from `base_duration × tooling`,
+    /// which left out the construction-speed perk the sim divides by — so a
+    /// perked builder was shown a build time that was too long, and the
+    /// presentation kept a second copy of a gameplay formula. Optional because
+    /// saves written before this field existed must still load; the browser
+    /// falls back to "unknown" rather than guessing.
+    #[serde(default)]
+    pub estimated_completion_seconds: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

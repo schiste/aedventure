@@ -88,6 +88,18 @@ export interface AddBaseRoleManagementSummary extends AddRoleAssignmentSummary {
   readonly nextWorkerDeltaPerSecond: number
   readonly pressureCopy: string
   readonly slotPressure: "locked" | "empty" | "understaffed" | "staffed"
+  /**
+   * Whether the authoritative sim would accept more crew on this role.
+   *
+   * Read from the snapshot's Rust-computed `commandAvailability`, not derived
+   * here. The browser used to decide this from `freeCrew`, the role's own slot
+   * cap, and its pool, which missed expedition crew and the crystal-circle
+   * cross-role pool — so the staffing button could be live on a change the sim
+   * would reject. `null` on a snapshot with no availability map, where the
+   * caller should fall back to its local floor.
+   */
+  readonly crewCommandEnabled: boolean | null
+  readonly crewCommandBlockedReason: string | null
 }
 
 export type AddBaseStaffingPresetId =
@@ -834,7 +846,50 @@ function baseRoleSummary(
     nextWorkerDeltaPerSecond,
     pressureCopy: rolePressureCopy(role, slotPressure, outputResource?.label ?? null, nextWorkerDeltaPerSecond),
     slotPressure,
+    crewCommandEnabled: crewCommandEnabled(snapshot, role.id, suggestedCrewFor(role, slotPressure)),
+    crewCommandBlockedReason: crewCommandBlockedReason(
+      snapshot,
+      role.id,
+      suggestedCrewFor(role, slotPressure),
+    ),
   }
+}
+
+function suggestedCrewFor(
+  role: AddRoleAssignmentSummary,
+  slotPressure: AddBaseRoleManagementSummary["slotPressure"],
+): number {
+  const suggested = (role as { suggestedCrew?: number }).suggestedCrew ?? 0
+  return slotPressure === "locked" ? suggested : Math.max(suggested, role.crewAssigned + 1)
+}
+
+/** The staffing command the sim already priced for this role, if it has one. */
+function authoritativeCrewOutcome(
+  snapshot: SimulationSnapshot,
+  roleId: string,
+  crew: number,
+): { enabled: boolean; blockedReason: string | null } | null {
+  const outcome = snapshot.commandAvailability?.[`base:crew:${roleId}:${crew}`]
+  if (!outcome) return null
+  // `CommandOutcomeSnapshot` is what the sim itself evaluated: `accepted` is its
+  // answer and `blocker` the reason it would refuse. Nothing is re-derived here.
+  return { enabled: outcome.accepted, blockedReason: outcome.blocker }
+}
+
+function crewCommandEnabled(
+  snapshot: SimulationSnapshot,
+  roleId: string,
+  crew: number,
+): boolean | null {
+  return authoritativeCrewOutcome(snapshot, roleId, crew)?.enabled ?? null
+}
+
+function crewCommandBlockedReason(
+  snapshot: SimulationSnapshot,
+  roleId: string,
+  crew: number,
+): string | null {
+  return authoritativeCrewOutcome(snapshot, roleId, crew)?.blockedReason ?? null
 }
 
 function baseStationSummary(
@@ -954,7 +1009,8 @@ function constructionProjectCard(
     blockedReason: "Missing construction summary.",
   }
   const active = snapshot.activeConstruction?.optionId === option.id ? snapshot.activeConstruction : null
-  const totalWorkSeconds = active?.totalWorkSeconds ?? constructionDurationSeconds(snapshot, option.duration)
+  const totalWorkSeconds =
+    active?.totalWorkSeconds ?? constructionDurationSeconds(snapshot, option.id, option.duration)
   const remainingWorkSeconds = active?.remainingWorkSeconds ?? totalWorkSeconds
   const category = constructionCategoryFor(option)
   return {
@@ -986,19 +1042,37 @@ function constructionAssignedWorkers(snapshot: SimulationSnapshot): number {
     (snapshot.roster.heroAssigned && snapshot.roster.heroRoleId === ROLE_CONSTRUCTION ? 1 : 0)
 }
 
+/**
+ * Staffing-weighted build throughput, straight from the sim.
+ *
+ * This used to be recomputed here from `crewEfficiencyMultiplier` and
+ * `workEfficiencyMultiplier`. The sim already multiplies these with its own
+ * crew-counting rule, so a second copy could disagree with the rate the job
+ * actually advances at.
+ */
 function constructionWorkerThroughput(snapshot: SimulationSnapshot): number {
-  const crewThroughput = roleCrew(snapshot, ROLE_CONSTRUCTION) * snapshot.base.crewEfficiencyMultiplier
-  const heroThroughput =
-    snapshot.roster.heroAssigned && snapshot.roster.heroRoleId === ROLE_CONSTRUCTION
-      ? snapshot.base.crewEfficiencyMultiplier * snapshot.heroSurvival.workEfficiencyMultiplier
-      : 0
-  return crewThroughput + heroThroughput
+  return snapshot.construction?.workerThroughputPerSecond ?? 0
 }
 
+/**
+ * Authoritative build duration for an option, straight from the sim.
+ *
+ * This used to be recomputed here as `baseDuration × tooling`, which left out
+ * the construction-speed perk the sim divides by: a player holding a
+ * construction-speed perk was shown a build time too long by exactly the perk
+ * multiplier, and no test compared the two. `Simulation::construction_estimate`
+ * now publishes every option's duration, and this falls back to the old
+ * arithmetic only for a snapshot that predates the field.
+ */
 function constructionDurationSeconds(
   snapshot: SimulationSnapshot,
+  optionId: string,
   duration: DurationDef,
 ): number {
+  const authoritative = snapshot.construction?.durationSecondsByOption?.[optionId]
+  if (typeof authoritative === "number" && Number.isFinite(authoritative)) {
+    return authoritative
+  }
   const baseDuration =
     duration.kind === "fixed"
       ? duration.seconds ?? 0
@@ -1113,7 +1187,7 @@ function constructionBasslineRisk(
   }
   const remainingCost = active
     ? Math.max(0, active.totalCost - active.spentCost)
-    : constructionDurationSeconds(snapshot, option.duration) * (option.cost.amount ?? 0)
+    : constructionDurationSeconds(snapshot, option.id, option.duration) * (option.cost.amount ?? 0)
   if (snapshot.resources.bassline <= 0) {
     return {
       severity: "high",

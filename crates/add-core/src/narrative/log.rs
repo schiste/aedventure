@@ -335,10 +335,20 @@ fn expressed(act: &NarrativeActDef) -> Vec<(Value, f64)> {
 impl NarrativeLog {
     /// How close together two identical acts must be to become one entry.
     ///
-    /// One in-game hour. Long enough to absorb a burst of the same gameplay
-    /// action, short enough that two deliberate acts an afternoon apart stay
-    /// two events with their own ticks and their own decay.
-    pub const COALESCE_WINDOW_SECONDS: f64 = 60.0 * 60.0;
+    /// One in-game hour, taken from the engine's own clock rather than written
+    /// out again: the world clock advances one game minute per runtime second,
+    /// so a game hour is `exposure::GAME_HOUR_SECONDS` runtime seconds. Long
+    /// enough to absorb a burst of the same gameplay action, short enough that
+    /// two deliberate acts an afternoon apart stay two events with their own
+    /// ticks and their own decay.
+    ///
+    /// This was a bare `60.0 * 60.0`, which is sixty game hours — two and a half
+    /// game days. Under that value a promise broken now and the same promise
+    /// broken this evening folded into a single entry, which is the opposite of
+    /// what the comment above describes, and it silently swallowed the third
+    /// event in `scenarios/add/narrative/storylet-cast-follows-history.json`.
+    /// Deriving it from the clock means the two cannot drift apart again.
+    pub const COALESCE_WINDOW_SECONDS: f64 = crate::exposure::GAME_HOUR_SECONDS;
 
     pub fn append(&mut self, mut event: NarrativeEvent) -> u64 {
         if let Some(id) = self.coalesce(&event) {

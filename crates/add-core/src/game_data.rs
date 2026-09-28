@@ -1122,7 +1122,21 @@ pub struct BalanceSnapshot {
     pub water: WaterBalance,
     pub vibes: VibesBalance,
     pub recruitment: RecruitmentBalance,
+    pub travel: TravelBalance,
     pub notes_limit: usize,
+}
+
+/// The two numbers a build ETA is made of, both authoritative.
+///
+/// The browser used to recompute both, from a copy of the duration formula that
+/// left out the construction-speed perk the sim divides by.
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ConstructionEstimateSnapshot {
+    /// Staffing-weighted build work produced per runtime second, 0 when idle.
+    pub worker_throughput_per_second: f64,
+    /// Authoritative duration per construction option id.
+    pub duration_seconds_by_option: std::collections::BTreeMap<String, f64>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq)]
@@ -1323,6 +1337,20 @@ pub struct RecruitmentBalance {
     pub t30_total_good_vibes: f64,
     pub t500_total_good_vibes: f64,
     pub t1000_total_good_vibes: f64,
+}
+
+/// What movement costs.
+///
+/// This is balance rather than presentation because it is what spends the
+/// Hero's exposure: a game hour of walking is an hour his protection does not
+/// cover. `Simulation::move_hero_to` charges it.
+#[derive(Debug, Clone, Copy, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct TravelBalance {
+    /// Game minutes one overworld hex crossing costs.
+    pub hex_crossing_game_minutes: f64,
+    /// Game minutes one dungeon square step costs.
+    pub dungeon_step_game_minutes: f64,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]

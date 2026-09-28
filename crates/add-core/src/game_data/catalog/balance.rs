@@ -131,5 +131,9 @@ pub(in crate::game_data) const BALANCE: BalanceSnapshot = BalanceSnapshot {
         t500_total_good_vibes: 60000.0,
         t1000_total_good_vibes: 207510.0,
     },
+    travel: TravelBalance {
+        hex_crossing_game_minutes: 60.0,
+        dungeon_step_game_minutes: 0.05,
+    },
     notes_limit: 8,
 };

@@ -57,6 +57,8 @@
     "agent:verify:types": "scripts/agent-verify.sh types",
     "agent:verify:gate": "scripts/agent-verify.sh gate",
     "check": "scripts/verify-target-stack.sh",
+    "check:add": "scripts/verify-target-stack.sh add",
+    "check:office": "scripts/verify-target-stack.sh office",
     "check:target": "scripts/verify-target-stack.sh",
     "check:legacy": "SKIP_INSTALL=1 scripts/verify-skyoffice-baseline.sh",
     "build": "npm run wasm:build:add && tsc -b && npm --workspace @aedventure/web run build:browser",

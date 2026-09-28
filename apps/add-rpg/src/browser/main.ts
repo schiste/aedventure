@@ -198,8 +198,8 @@ import {
 import {
   ADD_DUNGEON_AMBIENT_RUNTIME_SECONDS_PER_TICK,
   ADD_DUNGEON_STEP_PRESENTATION,
-  ADD_TILE_TRAVEL_PRESENTATION,
   createAddClockAdvancePresentationTiming,
+  selectAddTileTravelPresentation,
 } from "./travel-presentation-timing"
 import {
   type AddSettings,
@@ -5410,10 +5410,26 @@ function currentBaseRole(roleId: string): AddBaseManagementState["roles"][number
   return baseManagementState()?.roles.find((role) => role.id === roleId) ?? null
 }
 
+/**
+ * Whether the `+1` staffing button should be live.
+ *
+ * This used to re-derive availability from `freeCrew`, the role's own
+ * `maxCrewSlots`, and its slot pool. The authoritative rule is
+ * `Simulation::max_crew_for_role`, which also counts crew sent on expeditions and
+ * enforces the crystal-circle cross-role pool — so the old version enabled a
+ * button the sim would reject with a blocker, and the player found out by
+ * clicking.
+ *
+ * `crewCommandEnabled` is read from the snapshot's Rust-computed
+ * `commandAvailability`, so asking it is asking the sim. The local checks remain
+ * only as a floor for a snapshot that carries no availability map.
+ */
 function canAddCrewToCurrentRole(roleId: string): boolean {
   const state = baseManagementState()
   const role = currentBaseRole(roleId)
-  return Boolean(state && role && canAddCrewToRole(role, state))
+  if (!state || !role) return false
+  if (!canAddCrewToRole(role, state)) return false
+  return role.crewCommandEnabled ?? true
 }
 
 async function adjustRoleCrew(roleId: string, delta: number): Promise<void> {
@@ -7792,9 +7808,12 @@ async function handleCharacterTravel(event: AddCharacterTravelEvent): Promise<vo
     travelClearTimer = undefined
   }
 
-  // Overworld hex = 1 in-game hour per tile; dungeon square = ~1 in-game second.
+  // Overworld hex = 1 in-game hour per tile (authored in balance, charged by the
+  // sim); dungeon square = ~1 in-game second.
   const travelTiming =
-    mapMode() === "overworld_hex" ? ADD_TILE_TRAVEL_PRESENTATION : ADD_DUNGEON_STEP_PRESENTATION
+    mapMode() === "overworld_hex"
+      ? selectAddTileTravelPresentation(catalog()?.balance)
+      : ADD_DUNGEON_STEP_PRESENTATION
   const fromClockSeconds = currentSnapshot.clockSeconds
   const toClockSeconds = fromClockSeconds + travelTiming.runtimeSeconds
   const startedAtMs = Date.now()
@@ -7817,13 +7836,12 @@ async function handleCharacterTravel(event: AddCharacterTravelEvent): Promise<vo
 
   mapController.setTravelLocked(true)
   try {
-    await Promise.all([
-      tickRuntime(travelTiming.runtimeSeconds, {
-        queue: true,
-        commandLabel: `travel:${event.direction}`,
-      }),
-      waitForTravelPresentation(startedAtMs, travelTiming.durationMs),
-    ])
+    // The crossing is charged by the sim, in `Simulation::move_hero_to`: it
+    // measures the hex distance and spends both the clock and the Hero's
+    // exposure. This layer no longer sends a `tick` to pay for the walk — that
+    // was the authority inversion, and doing both charged every crossing twice.
+    // What remains here is presentation: how long the slide is drawn.
+    await waitForTravelPresentation(startedAtMs, travelTiming.durationMs)
   } finally {
     mapController.setTravelLocked(false)
     // Settle the presentation clock to the authoritative clock at arrival so the

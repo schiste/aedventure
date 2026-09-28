@@ -11945,6 +11945,10 @@
       "t500TotalGoodVibes": 60000.0,
       "t1000TotalGoodVibes": 207510.0
     },
+    "travel": {
+      "hexCrossingGameMinutes": 60.0,
+      "dungeonStepGameMinutes": 0.05
+    },
     "notesLimit": 8
   }
 }

@@ -5,7 +5,8 @@ const ROOT = path.resolve(__dirname, "..")
 /**
  * The registry is the inspection/tooling view of authored content. It does
  * not become a second runtime catalog: every entry is loaded from the
- * add-domain build output and carries its authored source and Rust consumer.
+ * `packages/add-content` build output and carries its authored source and Rust
+ * consumer.
  */
 const CATALOG_SPECS = [
   spec("resources", "resource", "content/resources.js", "RESOURCES", "packages/add-content/src/content/resources.ts", "crates/add-core/src/game_data/catalog/resources.rs"),

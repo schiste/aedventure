@@ -16,6 +16,9 @@ function main() {
   const packageJson = readJson("package.json")
   const packageLock = readText("package-lock.json")
   const verifyTargetStack = readText("scripts/verify-target-stack.sh")
+  const verifyAddStack = readText("scripts/verify-add-stack.sh")
+  const verifyOfficeStack = readText("scripts/verify-office-stack.sh")
+  const stackGateCommon = readText("scripts/stack-gate-common.sh")
   const agentVerify = readText("scripts/agent-verify.sh")
   const agentGuide = readText("AGENTS.md")
   const addMain = readText("apps/add-rpg/src/browser/main.ts")
@@ -24,6 +27,16 @@ function main() {
     packageJson.scripts.check,
     "scripts/verify-target-stack.sh",
     "npm run check must remain the full target-stack verification gate.",
+  )
+  assert.equal(
+    packageJson.scripts["check:add"],
+    "scripts/verify-target-stack.sh add",
+    "npm run check:add must select the ADD game lane.",
+  )
+  assert.equal(
+    packageJson.scripts["check:office"],
+    "scripts/verify-target-stack.sh office",
+    "npm run check:office must select the office lane.",
   )
   assertScript(packageJson, "smoke:office", "scripts/frontend-smoke.test.cjs")
   assertScript(packageJson, "smoke:engine-sandbox", "@aedventure/engine-sandbox")
@@ -45,17 +58,49 @@ function main() {
   assertRetiredFragmentsAbsent("package.json", JSON.stringify(packageJson, null, 2))
   assertRetiredFragmentsAbsent("package-lock.json", packageLock)
 
-  assertStackStep(verifyTargetStack, "node \"$ROOT_DIR/scripts/build-add-rpg-wasm.cjs\"")
-  assertStackStep(verifyTargetStack, "cargo check --manifest-path \"$ROOT_DIR/Cargo.toml\"")
-  assertStackStep(verifyTargetStack, "npm run qa:multi-app")
-  assertStackStep(verifyTargetStack, "npm --workspace @aedventure/web run build:browser")
-  assertStackStep(verifyTargetStack, "npm --workspace @aedventure/engine-sandbox run build:browser")
-  assertStackStep(verifyTargetStack, "npm --workspace @aedventure/add-rpg run build:browser")
-  assertStackStep(verifyTargetStack, "npm run smoke:engine-sandbox:built")
-  assertStackStep(verifyTargetStack, "npm run smoke:add-rpg:built")
-  assertStackStep(verifyTargetStack, "npm run smoke:office:built")
-  assertStackStep(verifyTargetStack, "npm run qa:renderer:built")
+  // The dispatcher must stay a dispatcher: the two lanes carry the steps.
+  assertStackStep(verifyTargetStack, "verify-add-stack.sh")
+  assertStackStep(verifyTargetStack, "verify-office-stack.sh")
+
+  assertStackStep(verifyAddStack, "node \"$ROOT_DIR/scripts/build-add-rpg-wasm.cjs\"")
+  // `cargo test --workspace`, not `cargo check`: the committed deterministic
+  // scenarios in `crates/add-scenario` are the only multi-step cross-boundary
+  // playthroughs in the repository, and under `cargo check` they were compiled
+  // but never run — which is how the protected idle-loop contract stayed red on
+  // `main` unnoticed.
+  assertStackStep(verifyAddStack, "cargo test --workspace")
+  assert.ok(
+    !/(^|\n)\s*cargo check\b/.test(verifyAddStack),
+    "The ADD lane gate must not fall back to `cargo check`; it must execute the scenario tests.",
+  )
+  assertStackStep(verifyAddStack, "npm run smoke:add-rpg:built")
+  assertStackStep(verifyAddStack, "npm --workspace @aedventure/add-rpg run build:browser")
+  assertStackStep(verifyAddStack, "npm run qa:add-rpg:size:built")
+
+  assertStackStep(verifyOfficeStack, "npm --workspace @aedventure/web run build:browser")
+  assertStackStep(verifyOfficeStack, "npm --workspace @aedventure/engine-sandbox run build:browser")
+  assertStackStep(verifyOfficeStack, "npm run smoke:engine-sandbox:built")
+  assertStackStep(verifyOfficeStack, "npm run smoke:office:built")
+  assertStackStep(verifyOfficeStack, "npm run qa:renderer:built")
+  assertStackStep(stackGateCommon, "npm run qa:multi-app")
+  assertStackStep(verifyAddStack, "run_cross_app_contracts")
+  assertStackStep(verifyOfficeStack, "run_cross_app_contracts")
+
+  // The office lane must not drag the ADD browser build into a game developer's
+  // pre-push, and vice versa.
+  assert.ok(
+    !verifyOfficeStack.includes("smoke:add-rpg"),
+    "The office lane gate must not run the ADD browser smoke.",
+  )
+  assert.ok(
+    !verifyAddStack.includes("@aedventure/web"),
+    "The ADD lane gate must not build the unrelated office browser bundle.",
+  )
+
   assertRetiredFragmentsAbsent("scripts/verify-target-stack.sh", verifyTargetStack)
+  assertRetiredFragmentsAbsent("scripts/verify-add-stack.sh", verifyAddStack)
+  assertRetiredFragmentsAbsent("scripts/verify-office-stack.sh", verifyOfficeStack)
+
   assertAgentVerificationContract(agentVerify, agentGuide)
 
   assertScreenshotContract("scripts/frontend-smoke.test.cjs", [
@@ -123,7 +168,7 @@ function assertScript(packageJson, scriptName, expectedFragment) {
 function assertStackStep(scriptText, expectedFragment) {
   assert.ok(
     scriptText.includes(expectedFragment),
-    `Expected verify-target-stack.sh to include ${expectedFragment}.`,
+    `Expected a target-stack lane script to include ${expectedFragment}.`,
   )
 }
 

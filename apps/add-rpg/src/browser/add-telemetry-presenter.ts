@@ -18,6 +18,7 @@ import {
   type AddStoryBeatProgressionEntry,
   type AddUiState,
   type AddWorldTimeSummary,
+  type BalanceSnapshot,
   type CatalogSnapshot,
   type SimulationSnapshot,
 } from "@aedventure/add-runtime-client"
@@ -288,17 +289,33 @@ export interface RuntimeTextState {
         | "collapsed"
         | "expanded"
         | "keyboard_moved"
-      readonly dragEnabled: true
-      readonly keyboardMoveEnabled: true
+      readonly dragEnabled: boolean
+      readonly keyboardMoveEnabled: boolean
       readonly collapseControlLabel: string
     }
     readonly popins: {
       readonly travelDialog: AddFloatingPanelTelemetry
       readonly offlineReturn: AddFloatingPanelTelemetry
     }
+    /**
+     * Only facts this presenter actually measures.
+     *
+     * This used to also carry `keyboardNavigation`, `focusVisible`,
+     * `currentActionLiveRegion`, `contextualPanelsLabelled`,
+     * `objectiveTrackerKeyboardMove`, `rightRailAvoidsScrollTrap`,
+     * `mobileBottomSheetAvoidsScrollTrap`, and nine `visualPolish` strings — all
+     * written here as literals and pinned by the type, then asserted against
+     * those same literals by `scripts/add-rpg-smoke.test.cjs`. Roughly a quarter
+     * of the ADD boot contract was `LITERAL === LITERAL`: it could not fail, and
+     * it would have kept passing if every one of those claims were false.
+     *
+     * A claim about the DOM is verified against the DOM. `add-rpg-smoke.test.cjs`
+     * now tabb through the shell, reads `aria-live` and `aria-label` off the real
+     * elements, and reads computed styles, which is the only thing that can
+     * catch a regression here. `focusedRegion` stays because the shell genuinely
+     * tracks it from real focus events.
+     */
     readonly accessibility: {
-      readonly keyboardNavigation: true
-      readonly focusVisible: true
       readonly focusedRegion:
         | "world"
         | "topbar"
@@ -310,23 +327,6 @@ export interface RuntimeTextState {
         | "admin"
         | "dev"
         | "unknown"
-      readonly currentActionLiveRegion: "polite"
-      readonly contextualPanelsLabelled: true
-      readonly objectiveTrackerKeyboardMove: true
-      readonly rightRailAvoidsScrollTrap: true
-      readonly mobileBottomSheetAvoidsScrollTrap: true
-      readonly shortcuts: readonly string[]
-    }
-    readonly visualPolish: {
-      readonly surfaceSystem: "map_objective_context_status"
-      readonly mapSurface: "full_bleed_phaser_stage"
-      readonly objectiveSurface: "warm_progress_overlay"
-      readonly contextSurface: "cool_decision_inspector"
-      readonly statusSurface: "thin_resource_time_bar"
-      readonly stateLayer: "native_loading_error_empty"
-      readonly panelRhythm: "shared_spacing_border_shadow_tokens"
-      readonly transitions: "cohesive_motion_with_reduced_motion_guard"
-      readonly worldUiIntegration: "glass_surfaces_over_living_map"
     }
     readonly discoveryPanel: {
       readonly collapsed: boolean
@@ -1148,6 +1148,12 @@ export interface RuntimeTextState {
     readonly roleCount: number
     readonly tileCount: number
     readonly worldActionCount: number
+    /**
+     * The authoritative travel cost, so the browser smoke can assert the
+     * presentation's crossing cost against the balance the sim actually charges
+     * in `Simulation::move_hero_to` rather than against a second literal.
+     */
+    readonly balance: BalanceSnapshot | null
   } | null
 }
 
@@ -1201,32 +1207,14 @@ export function createAddRuntimeTextState(
       },
       popins: input.floatingPanels,
       accessibility: {
-        keyboardNavigation: true,
-        focusVisible: true,
         focusedRegion: input.focusedRegion,
-        currentActionLiveRegion: "polite",
-        contextualPanelsLabelled: true,
-        objectiveTrackerKeyboardMove: true,
-        rightRailAvoidsScrollTrap: true,
-        mobileBottomSheetAvoidsScrollTrap: true,
-        shortcuts: [
-          "Tab / Shift+Tab moves through panels and controls",
-          "Escape closes the menu or open settings/tool window",
-          "Arrow keys move the focused objective tracker handle",
-          "Enter or Space toggles the focused objective tracker",
-        ],
       },
-      visualPolish: {
-        surfaceSystem: "map_objective_context_status",
-        mapSurface: "full_bleed_phaser_stage",
-        objectiveSurface: "warm_progress_overlay",
-        contextSurface: "cool_decision_inspector",
-        statusSurface: "thin_resource_time_bar",
-        stateLayer: "native_loading_error_empty",
-        panelRhythm: "shared_spacing_border_shadow_tokens",
-        transitions: "cohesive_motion_with_reduced_motion_guard",
-        worldUiIntegration: "glass_surfaces_over_living_map",
-      },
+      // `visualPolish` used to live here: nine literal strings describing the
+      // intended look of each surface, asserted against those same literals by
+      // the smoke. It described the design, not the rendered result, so it could
+      // never contradict the screen. The real check is in
+      // `scripts/add-rpg-smoke.test.cjs::assertRealAccessibilityContract`, which
+      // reads the live DOM.
       discoveryPanel: {
         collapsed: input.discoveryPanelCollapsed,
       },
@@ -1425,6 +1413,7 @@ export function createAddRuntimeTextState(
           roleCount: input.catalog.roles.length,
           tileCount: input.catalog.tiles.length,
           worldActionCount: input.catalog.worldActions.length,
+          balance: input.catalog.balance,
         }
       : null,
   }

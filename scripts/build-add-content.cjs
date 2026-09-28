@@ -845,6 +845,9 @@ const FILES = [
             { name: "water", kind: "struct", structType: "WaterBalance", fields: f64s("water_cap", "base_stock_max", "collection_rate_per_second", "tile_regen_per_second", "workshop_water_cap_per_level", "workshop_regen_bonus_per_level") },
             { name: "vibes", kind: "struct", structType: "VibesBalance", fields: f64s("negative_k", "bad_vibes_beta", "bad_vibes_pow", "doubling_time_seconds", "decay_reset_seconds") },
             { name: "recruitment", kind: "struct", structType: "RecruitmentBalance", fields: f64s("recruit_travel_seconds", "instant_recruit_delay_seconds", "good_vibes_opt_base", "good_vibes_opt_step", "t1_minutes", "t30_total_good_vibes", "t500_total_good_vibes", "t1000_total_good_vibes") },
+            // Movement cost. The sim charges this itself in `move_hero_to`, so it
+            // has to be balance rather than a constant in a presentation package.
+            { name: "travel", kind: "struct", structType: "TravelBalance", fields: f64s("hex_crossing_game_minutes", "dungeon_step_game_minutes") },
             i64("notes_limit"),
           ],
         },

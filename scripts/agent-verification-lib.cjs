@@ -256,11 +256,17 @@ function classifyChangedPaths(paths) {
   const hasCore = hasPath(normalized, /^(crates\/add-core\/|Cargo\.toml$|Cargo\.lock$)/)
   const hasScenario = hasPath(normalized, /^(crates\/add-scenario(?:-runner)?\/|scenarios(?:\/add)?\/)/)
   const hasScenarioRunner = hasPath(normalized, /^crates\/add-scenario-runner\//)
+  // Content lives in `packages/add-content/` since the `add-domain` split. The
+  // old patterns keyed on `packages/add-domain/src/content/`, a path that no
+  // longer exists, so an authored-content edit matched nothing and fell through
+  // to a bare `tsc -b` — no `content:check`, no codegen drift check, no cargo
+  // test. That is the most common kind of change in a content-driven game, and
+  // the documented default check was blind to it.
   const hasContent = hasPath(
     normalized,
-    /^(packages\/add-domain\/src\/content\/|scripts\/(build-add-content|add-content-validator|add-content-tools)\.cjs$)/,
+    /^(packages\/add-content\/|scripts\/(build-add-content|add-content-validator|add-content-tools|add-content-fixtures|add-content-version-check|narrative-lint)\.cjs$)/,
   )
-  const hasDomain = hasPath(normalized, /^packages\/add-domain\//)
+  const hasPresentation = hasPath(normalized, /^packages\/add-(presentation|protocol|ui)\//)
   const hasAddApp = hasPath(
     normalized,
     /^(apps\/add-rpg\/|scripts\/add-rpg-smoke\.test\.cjs$|crates\/add-web-bindings\/)/,
@@ -327,12 +333,12 @@ function classifyChangedPaths(paths) {
     })
   }
 
-  if (hasDomain) {
+  if (hasPresentation || hasPath(normalized, /^packages\/add-runtime-client\//)) {
     addCheck(plan, {
-      id: "add-domain-tests",
+      id: "add-presentation-tests",
       command: ["npm", "--workspace", "@aedventure/add-runtime-client", "test"],
-      sourceBoundary: "packages/add-runtime-client/",
-      reason: "Verify ADD selectors, runtime reports, and domain projections.",
+      sourceBoundary: "packages/add-presentation/",
+      reason: "Verify ADD selectors, runtime reports, and projection adapters.",
     })
   }
 
@@ -390,7 +396,17 @@ function classifyChangedPaths(paths) {
     })
   }
 
-  if (hasRootTooling || (!hasCore && !hasScenario && !hasContent && !hasDomain && !hasAddApp && !hasSharedEngine && !hasOffice && hasTypeScript)) {
+  if (
+    hasRootTooling ||
+    (!hasCore &&
+      !hasScenario &&
+      !hasContent &&
+      !hasPresentation &&
+      !hasAddApp &&
+      !hasSharedEngine &&
+      !hasOffice &&
+      hasTypeScript)
+  ) {
     addCheck(plan, {
       id: "root-types",
       command: ["npm", "run", "agent:verify:types"],

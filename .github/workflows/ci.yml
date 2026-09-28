@@ -1,0 +1,152 @@
+name: CI
+
+# The repository's only defences against a red `main` were local git hooks, and
+# both are bypassable with `--no-verify`. A deterministic test in
+# `crates/add-scenario` — the contract `README.md` names as the definition of a
+# complete gameplay change — stayed red on `main` for five days because the gate
+# ran `cargo check` instead of `cargo test` and nothing noticed. This workflow
+# exists so that class of failure is caught by the repository rather than by the
+# next person who happens to read the output.
+#
+# The two product lanes are separate jobs on purpose: an ADD change should not
+# have to wait on the office lane, and an office change should not have to wait
+# on the ADD browser smoke. `npm run check` still runs both, for release points.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# A new push supersedes an in-flight run for the same ref.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # Cheap, fast, and catches the most common mistakes: whitespace, the content
+  # pipeline, the authoritative Rust rules, and the TypeScript boundary.
+  gameplay:
+    name: Gameplay verification
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: crates/add-core, crates/add-scenario, crates/add-scenario-runner, crates/add-web-bindings, crates/add-ink-compiler -> target
+
+      # wasm-pack builds the ADD runtime that the browser and worker both load.
+      - uses: jetli/wasm-pack-action@v0.4.0
+        with:
+          version: latest
+
+      - name: Install Playwright and its browser
+        run: |
+          npm --workspace @aedventure/add-rpg exec playwright install --with-deps chromium
+
+      # The gate an ADD developer actually runs. It executes
+      # `cargo test --workspace`, which is the step the old single gate got wrong.
+      - name: ADD lane gate
+        run: npm run check:add
+
+      - name: Upload verification artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: add-lane-artifacts
+          path: |
+            artifacts/agent-verification/
+            apps/add-rpg/dist-app/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # The office/platform lane is a separate product with no path to the ADD game.
+  # It runs in parallel rather than in front of every ADD change.
+  office:
+    name: Office lane
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-office-${{ hashFiles('Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-office-
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install Playwright and its browser
+        run: |
+          npx playwright install --with-deps chromium
+
+      - name: Office lane gate
+        run: npm run check:office
+
+  # Advisory, not a gate. Both of these are red on `main` today: `cargo fmt`
+  # wants to reformat several files, and clippy reports ~45 warnings (mostly
+  # `collapsible_if` in `simulation.rs`, `from_str` shadowing, and dead helpers
+  # in the narrative module). Failing the build on pre-existing debt the moment
+  # CI is introduced would make the whole pipeline untrusted and get it ignored.
+  #
+  # This job reports the debt so it stops growing. The follow-up is to land a
+  # `cargo fmt --all` pass and a clippy cleanup, then delete
+  # `continue-on-error` and promote this to a real gate.
+  lint:
+    name: Format and lint (advisory)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: cargo fmt
+        run: cargo fmt --all -- --check
+
+      - name: cargo clippy
+        run: cargo clippy --workspace --all-targets

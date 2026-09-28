@@ -19,6 +19,27 @@ export const ADD_TILE_TRAVEL_PRESENTATION = createAddTravelPresentationTiming(
   ADD_TRAVEL_RUNTIME_SECONDS_PER_TILE,
 )
 
+/**
+ * Size a hex crossing from the authoritative balance.
+ *
+ * The sim charges `balance.travel.hexCrossingGameMinutes` in
+ * `Simulation::move_hero_to`, so the clock the player watches has to be sized
+ * from the same number or the display jumps when the move lands. Falls back to
+ * the presentation constant when there is no snapshot yet.
+ */
+export function selectAddTileTravelPresentation(
+  balance: { travel?: { hexCrossingGameMinutes?: number } } | null | undefined,
+): AddTravelPresentationTiming {
+  const gameMinutes = balance?.travel?.hexCrossingGameMinutes
+  if (typeof gameMinutes !== "number" || !Number.isFinite(gameMinutes) || gameMinutes <= 0) {
+    return ADD_TILE_TRAVEL_PRESENTATION
+  }
+  return createAddTravelPresentationTiming(
+    gameMinutes,
+    gameMinutes / ADD_GAME_MINUTES_PER_RUNTIME_SECOND,
+  )
+}
+
 // Dungeons run ~real-time: a ~1m square is one in-game second to cross, and
 // ambient time also flows at one in-game second per real second — 1/60 of the
 // overworld's compressed pace. clockSeconds are in-game minutes, so one in-game

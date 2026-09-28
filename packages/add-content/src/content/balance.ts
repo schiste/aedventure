@@ -130,5 +130,9 @@ export const BALANCE: BalanceSnapshot = {
     "t500TotalGoodVibes": 60000,
     "t1000TotalGoodVibes": 207510
   },
+  "travel": {
+    "hexCrossingGameMinutes": 60,
+    "dungeonStepGameMinutes": 0.05
+  },
   "notesLimit": 8
 }
