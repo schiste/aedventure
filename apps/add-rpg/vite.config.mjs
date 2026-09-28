@@ -47,6 +47,24 @@ export default defineConfig({
   build: {
     outDir: "dist-app",
     emptyOutDir: true,
+    // The bundle was one 1.98 MB chunk, and the asset budget had to be raised
+    // from 1.4 MB to fit it. Phaser and Solid together are a large share of that
+    // and neither changes between builds, so they split into their own cached
+    // chunks. This is deliberately chunk-by-dependency rather than
+    // route-level splitting: the app is a single screen today, so there is no
+    // route boundary to split on, but the vendor payload is still worth keeping
+    // out of the app chunk and worth caching across deploys.
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return undefined
+          if (id.includes("phaser")) return "vendor-phaser"
+          if (id.includes("solid-js")) return "vendor-solid"
+          if (id.includes("@aedventure")) return "vendor-add"
+          return "vendor"
+        },
+      },
+    },
   },
   server: {
     host: "127.0.0.1",
