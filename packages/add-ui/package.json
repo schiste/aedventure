@@ -14,5 +14,15 @@
   },
   "peerDependencies": {
     "solid-js": "^1.9.0"
-  }
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./visual-system.css": "./src/visual-system.css"
+  },
+  "style": "./src/visual-system.css"
 }

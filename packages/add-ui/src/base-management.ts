@@ -34,21 +34,6 @@ export function formatAffordabilityTime(
 /** How long a stall reason can run before it needs a tooltip instead. */
 const STALL_REASON_LENGTH = 58
 
-export function baseManagementMetricRows(
-  section: () => Base["sections"][number] | undefined,
-): unknown {
-  return indexList(
-    () => section()?.metrics ?? [],
-    (metric) => html`
-      <span class="base-metric" data-severity=${() => metric().severity}>
-        ${() => metric().label}
-        <strong>${() => metric().value}</strong>
-        <small>${() => metric().detail}</small>
-      </span>
-    `,
-  )
-}
-
 export function baseStalledSystemRow(
   stalled: () => Base["economy"]["stalledSystems"][number],
 ): unknown {
@@ -68,7 +53,7 @@ export function baseSlotPoolRows(
   return indexList(
     pools,
     (pool) => html`
-      <article class="base-slot-pool" data-pressure=${() => pool().pressure}>
+      <article class="ui-card base-slot-pool" data-pressure=${() => pool().pressure}>
         <span>${() => pool().label}</span>
         <strong>${() => `${pool().occupied} / ${pool().capacity}`}</strong>
         <small>${() => pool().detail}</small>
@@ -90,7 +75,7 @@ export function baseResourceRows(
   return indexList(
     resources,
     (resource) => html`
-      <article class="base-management-card" data-pressure=${() => resource().capPressure}>
+      <article class="ui-card base-management-card" data-pressure=${() => resource().capPressure}>
         <span>${() => resource().label}</span>
         <strong>
           ${() => `${formatResource(resource().value)} / ${formatResource(resource().cap)}`}
@@ -122,7 +107,7 @@ export function baseResourceRows(
 
 export function baseConstructionLoopSummary(state: () => Base): unknown {
   return html`
-    <article class="base-construction-summary">
+    <article class="ui-card base-construction-summary">
       <span>Construction loop</span>
       <strong>
         ${() =>
@@ -144,7 +129,7 @@ export function baseConstructionLoopSummary(state: () => Base): unknown {
 export function baseStationMachineSummary(state: () => Base): unknown {
   return html`
     <article
-      class="base-machine-summary"
+      class="ui-card base-machine-summary"
       data-brownout=${() => (state().stationMachine.brownedOutCount > 0 ? "true" : "false")}
     >
       <span>Station machine</span>
@@ -178,7 +163,7 @@ export function resonanceMaterialCard(
 ): unknown {
   return html`
     <article
-      class="base-management-card"
+      class="ui-card base-management-card"
       data-pressure=${() => (material().value > 0 ? "room" : "empty")}
     >
       <span>Strange material</span>
@@ -194,7 +179,7 @@ export function expeditionActiveJobRows(state: () => Base): unknown {
     showWhen(
       () => state().expeditions.activeJobs.length === 0,
       () => html`
-        <article class="base-management-card">
+        <article class="ui-card base-management-card">
           <span>In the field</span>
           <strong>No active expedition</strong>
           <small>
@@ -206,7 +191,7 @@ export function expeditionActiveJobRows(state: () => Base): unknown {
     indexList(
       () => state().expeditions.activeJobs,
       (job) => html`
-        <article class="base-management-card active" data-pressure=${() => job().risk}>
+        <article class="ui-card base-management-card active" data-pressure=${() => job().risk}>
           <span>In the field</span>
           <strong>${() => job().label}</strong>
           <small>${() => job().returnCopy}</small>
@@ -232,7 +217,7 @@ export function socialPendingArrivalRows(state: () => Base): unknown {
     showWhen(
       () => state().socialPressure.pendingArrivals.length === 0,
       () => html`
-        <article class="base-management-card">
+        <article class="ui-card base-management-card">
           <span>Pending arrival</span>
           <strong>None</strong>
           <small>No recruit is traveling to the base right now.</small>
@@ -242,7 +227,7 @@ export function socialPendingArrivalRows(state: () => Base): unknown {
     indexList(
       () => state().socialPressure.pendingArrivals,
       (arrival) => html`
-        <article class="base-management-card active">
+        <article class="ui-card base-management-card active">
           <span>Pending arrival</span>
           <strong>${() => arrival().label}</strong>
           <small>${() => arrival().arrivalCopy}</small>

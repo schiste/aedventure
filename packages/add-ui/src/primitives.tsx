@@ -9,22 +9,31 @@
 // These take `children` and presentation decisions, never game state. Anything
 // that needs to know what a resource is belongs a layer up.
 import type { JSX } from "solid-js"
-import { Show } from "solid-js"
+import { Show, type Accessor } from "solid-js"
 
 import { normalizeUiCopy, shouldRevealCopyDetail } from "./format"
 
-export type Tone = "neutral" | "accent" | "danger" | "muted"
+type ReactiveElement = JSX.Element | Accessor<JSX.Element>
+
+export type Tone =
+  | "neutral"
+  | "accent"
+  | "info"
+  | "success"
+  | "warning"
+  | "danger"
+  | "muted"
 
 export interface PanelProps {
   title?: string
   /** Sits opposite the title: a count, a clock, a close button. */
-  aside?: JSX.Element
+  aside?: ReactiveElement
   tone?: Tone
   /** Stable hooks the QA suite selects on. */
   id?: string
   qa?: string
   collapsed?: boolean
-  children: JSX.Element
+  children: ReactiveElement
 }
 
 /** A titled surface. The unit every part of the HUD is made of. */
@@ -32,34 +41,43 @@ export function Panel(props: PanelProps): JSX.Element {
   return (
     <section
       id={props.id}
-      class="panel"
+      class="ui-surface panel"
       data-tone={props.tone ?? "neutral"}
       data-qa={props.qa}
       data-collapsed={props.collapsed ? "true" : undefined}
     >
       <Show when={props.title}>
-        <header class="panel-heading">
-          <h2 class="panel-title">{props.title}</h2>
-          <Show when={props.aside}>
-            <div class="panel-aside">{props.aside}</div>
+        <header class="ui-panel-heading panel-heading">
+          <h2 class="ui-panel-title panel-title">{props.title}</h2>
+          <Show when={resolve(props.aside)}>
+            <div class="ui-panel-aside panel-aside">{resolve(props.aside)}</div>
           </Show>
         </header>
       </Show>
-      <div class="panel-body">{props.children}</div>
+      <div class="ui-panel-body panel-body">{resolve(props.children)}</div>
     </section>
   )
 }
 
 export interface RowProps {
   /** The thing itself. */
-  label: JSX.Element
+  label: ReactiveElement
   /** Why it is the way it is: a cost, a blocker, a rate. */
-  detail?: JSX.Element
+  detail?: ReactiveElement
   /** The number, or the control. */
-  trailing?: JSX.Element
-  tone?: Tone
+  trailing?: ReactiveElement
+  tone?: Tone | (() => Tone)
   muted?: boolean
+  entity?: string
+  terrain?: string | (() => string)
+  beatStatus?: string | (() => string)
+  flagSet?: boolean | (() => boolean)
   id?: string
+  className?: string | (() => string)
+}
+
+function resolve<T>(value: T | (() => T) | undefined): T | undefined {
+  return typeof value === "function" ? (value as () => T)() : value
 }
 
 /** Label, an explanation underneath, and something on the right. */
@@ -67,53 +85,105 @@ export function Row(props: RowProps): JSX.Element {
   return (
     <article
       id={props.id}
-      class="ui-row"
-      data-tone={props.tone ?? "neutral"}
+      class={"ui-row " + (resolve(props.className) ?? "")}
+      data-tone={resolve(props.tone) ?? "neutral"}
       data-muted={props.muted ? "true" : undefined}
+      data-entity={props.entity}
+      data-terrain={resolve(props.terrain)}
+      data-beat-status={resolve(props.beatStatus)}
+      data-flag-set={props.flagSet === undefined ? undefined : resolve(props.flagSet) ? "true" : "false"}
     >
       <span class="ui-row-label">
-        {props.label}
-        <Show when={props.detail}>
-          <small class="ui-row-detail">{props.detail}</small>
+        {resolve(props.label)}
+        <Show when={resolve(props.detail)}>
+          <small class="ui-row-detail">{resolve(props.detail)}</small>
         </Show>
       </span>
-      <Show when={props.trailing}>
-        <div class="ui-row-trailing">{props.trailing}</div>
+      <Show when={resolve(props.trailing)}>
+        <div class="ui-row-trailing">{resolve(props.trailing)}</div>
       </Show>
     </article>
   )
 }
 
 export interface StatProps {
-  label: string
-  value: JSX.Element
+  label: ReactiveElement
+  value: ReactiveElement
   /** Where the value is heading, when that is worth showing. */
-  delta?: JSX.Element
-  tone?: Tone
+  delta?: ReactiveElement
+  tone?: Tone | (() => Tone)
+  severity?: string | (() => string)
+  className?: string
 }
 
 /** One number, named. */
 export function Stat(props: StatProps): JSX.Element {
   return (
-    <div class="ui-stat" data-tone={props.tone ?? "neutral"}>
-      <span class="ui-stat-label">{props.label}</span>
-      <strong class="ui-stat-value">{props.value}</strong>
-      <Show when={props.delta}>
-        <small class="ui-stat-delta">{props.delta}</small>
+    <div
+      class={"ui-stat " + (props.className ?? "")}
+      data-tone={resolve(props.tone) ?? "neutral"}
+      data-severity={resolve(props.severity)}
+    >
+      <span class="ui-stat-label">{resolve(props.label)}</span>
+      <strong class="ui-stat-value">{resolve(props.value)}</strong>
+      <Show when={resolve(props.delta)}>
+        <small class="ui-stat-delta">{resolve(props.delta)}</small>
       </Show>
     </div>
   )
 }
 
-export interface ButtonProps {
-  children: JSX.Element
-  onClick: () => void
-  disabled?: boolean
-  variant?: "primary" | "ghost"
+export interface ChipProps {
+  label: ReactiveElement
+  value: ReactiveElement
+  compactLabel?: ReactiveElement
+  tone?: Tone | (() => Tone)
+  className?: string | (() => string)
   id?: string
-  actionId?: string
-  ariaLabel?: string
-  title?: string
+  dataResource?: string
+  role?: JSX.HTMLAttributes<HTMLSpanElement>["role"]
+  ariaLabel?: string | (() => string)
+  title?: string | (() => string)
+}
+
+/** Compact label/value readout used by the status HUD and other dense surfaces. */
+export function Chip(props: ChipProps): JSX.Element {
+  return (
+    <span
+      id={props.id}
+      class={"ui-chip " + (resolve(props.className) ?? "")}
+      data-tone={resolve(props.tone) ?? "neutral"}
+      data-resource={props.dataResource}
+      role={props.role}
+      aria-label={resolve(props.ariaLabel)}
+      title={resolve(props.title)}
+    >
+      <span class="ui-chip-label">
+        <Show
+          when={resolve(props.compactLabel)}
+          fallback={resolve(props.label)}
+        >
+          <span class="ui-chip-label-compact">{resolve(props.compactLabel)}</span>
+          <span class="ui-chip-label-full">{resolve(props.label)}</span>
+        </Show>
+      </span>
+      <strong class="ui-chip-value">{resolve(props.value)}</strong>
+    </span>
+  )
+}
+
+export interface ButtonProps {
+  children: ReactiveElement
+  onClick: () => void
+  disabled?: boolean | (() => boolean)
+  busy?: boolean | (() => boolean)
+  pressed?: boolean | (() => boolean)
+  variant?: "primary" | "secondary" | "ghost" | "danger"
+  className?: string | (() => string)
+  id?: string
+  actionId?: string | (() => string)
+  ariaLabel?: string | (() => string)
+  title?: string | (() => string)
 }
 
 /** Always `type="button"`: none of these live in a form, and the default submits. */
@@ -122,15 +192,154 @@ export function Button(props: ButtonProps): JSX.Element {
     <button
       id={props.id}
       type="button"
-      class={props.variant === "ghost" ? "ghost-button" : "ui-button"}
-      data-action-id={props.actionId}
-      aria-label={props.ariaLabel}
-      title={props.title}
-      disabled={props.disabled}
+      class={"ui-button " + (resolve(props.className) ?? "")}
+      data-variant={props.variant ?? "secondary"}
+      data-action-id={resolve(props.actionId)}
+      aria-label={resolve(props.ariaLabel)}
+      aria-pressed={resolve(props.pressed)}
+      aria-busy={resolve(props.busy) ? "true" : undefined}
+      title={resolve(props.title)}
+      disabled={Boolean(resolve(props.disabled) || resolve(props.busy))}
       onClick={() => props.onClick()}
     >
-      {props.children}
+      {resolve(props.children)}
     </button>
+  )
+}
+
+export interface StatusProps {
+  children: ReactiveElement
+  tone?: Tone | (() => Tone)
+  state?: string | (() => string)
+  className?: string
+  label?: string
+}
+
+/** Compact state label with a shared tone. */
+export function Status(props: StatusProps): JSX.Element {
+  return (
+    <span
+      class={"ui-status " + (props.className ?? "")}
+      data-tone={resolve(props.tone) ?? "neutral"}
+      data-state={resolve(props.state)}
+      aria-label={resolve(props.label)}
+    >
+      {resolve(props.children)}
+    </span>
+  )
+}
+
+export interface SectionProps {
+  title?: string
+  aside?: ReactiveElement
+  children: ReactiveElement
+}
+
+/** A ruled grouping within a larger panel. */
+export function Section(props: SectionProps): JSX.Element {
+  return (
+    <section class="ui-section">
+      <Show when={props.title || resolve(props.aside)}>
+        <header class="ui-section-heading">
+          <Show when={props.title}>
+            <h3 class="ui-section-title">{props.title}</h3>
+          </Show>
+          <Show when={resolve(props.aside)}>{resolve(props.aside)}</Show>
+        </header>
+      </Show>
+      {resolve(props.children)}
+    </section>
+  )
+}
+
+export interface MeterProps {
+  value: number | (() => number)
+  max?: number | (() => number)
+  label: string | (() => string)
+  tone?: Tone | (() => Tone)
+  className?: string
+}
+
+/** A bounded progress value with shared visual and assistive semantics. */
+export function Meter(props: MeterProps): JSX.Element {
+  const max = () => {
+    const candidate = resolve(props.max)
+    return typeof candidate === "number" && Number.isFinite(candidate) && candidate > 0
+      ? candidate
+      : 1
+  }
+  const value = () => {
+    const candidate = resolve(props.value)
+    return typeof candidate === "number" && Number.isFinite(candidate)
+      ? Math.min(max(), Math.max(0, candidate))
+      : 0
+  }
+  const percent = () => (value() / max()) * 100
+  return (
+    <div
+      class={"ui-meter " + (props.className ?? "")}
+      data-tone={resolve(props.tone) ?? "accent"}
+      role="progressbar"
+      aria-label={resolve(props.label)}
+      aria-valuemin="0"
+      aria-valuemax={max()}
+      aria-valuenow={value()}
+    >
+      <span style={{ width: percent() + "%" }} />
+    </div>
+  )
+}
+
+export interface TimeReadoutProps {
+  label: string
+  value: ReactiveElement
+  detail?: ReactiveElement
+  progress: number | (() => number)
+  active?: boolean | (() => boolean)
+  className?: string | (() => string)
+}
+
+/** Shared clock readout with an accessible daylight progress meter. */
+export function TimeReadout(props: TimeReadoutProps): JSX.Element {
+  return (
+    <div
+      class={"ui-time-readout " + (resolve(props.className) ?? "")}
+      role="group"
+      aria-label={props.label}
+      data-active={resolve(props.active) ? "true" : undefined}
+    >
+      <span class="ui-time-readout-value">{resolve(props.value)}</span>
+      <Show when={resolve(props.detail)}>
+        <small class="ui-time-readout-detail">{resolve(props.detail)}</small>
+      </Show>
+      <Meter
+        className="ui-time-readout-meter"
+        value={props.progress}
+        max={1}
+        label="Daylight level"
+        tone="accent"
+      />
+    </div>
+  )
+}
+
+export interface CalloutProps {
+  tone: Exclude<Tone, "neutral" | "muted">
+  label?: string
+  children: ReactiveElement
+}
+
+/** A reason or warning kept distinct from ordinary panel content. */
+export function Callout(props: CalloutProps): JSX.Element {
+  return (
+    <aside
+      class="ui-callout"
+      data-tone={props.tone}
+      role={props.tone === "danger" ? "alert" : "note"}
+      aria-label={resolve(props.label)}
+    >
+      {resolve(props.children)}
+    </aside>
   )
 }
 
@@ -140,7 +349,7 @@ export interface SheetProps {
   onDismiss?: () => void
   id?: string
   qa?: string
-  children: JSX.Element
+  children: ReactiveElement
 }
 
 /**
@@ -152,7 +361,7 @@ export interface SheetProps {
 export function Sheet(props: SheetProps): JSX.Element {
   return (
     <Show when={props.open}>
-      <aside id={props.id} class="ui-sheet" data-qa={props.qa} role="complementary">
+      <aside id={props.id} class="ui-sheet" data-qa={props.qa} role="complementary" aria-label={props.title}>
         <Show when={props.title}>
           <header class="ui-sheet-heading">
             <h2>{props.title}</h2>
@@ -163,7 +372,7 @@ export function Sheet(props: SheetProps): JSX.Element {
             </Show>
           </header>
         </Show>
-        <div class="ui-sheet-body">{props.children}</div>
+        <div class="ui-sheet-body">{resolve(props.children)}</div>
       </aside>
     </Show>
   )
@@ -174,10 +383,10 @@ export interface DialogProps {
   title: string
   onClose: () => void
   /** Confirm/cancel and friends. */
-  actions?: JSX.Element
+  actions?: ReactiveElement
   id?: string
   qa?: string
-  children: JSX.Element
+  children: ReactiveElement
 }
 
 /**
@@ -207,9 +416,9 @@ export function Dialog(props: DialogProps): JSX.Element {
               ×
             </Button>
           </header>
-          <div class="ui-dialog-body">{props.children}</div>
-          <Show when={props.actions}>
-            <footer class="ui-dialog-actions">{props.actions}</footer>
+          <div class="ui-dialog-body">{resolve(props.children)}</div>
+          <Show when={resolve(props.actions)}>
+            <footer class="ui-dialog-actions">{resolve(props.actions)}</footer>
           </Show>
         </div>
       </div>
@@ -218,10 +427,10 @@ export function Dialog(props: DialogProps): JSX.Element {
 }
 
 /** Nothing to show, said deliberately rather than by rendering an empty list. */
-export function Empty(props: { children: JSX.Element }): JSX.Element {
+export function Empty(props: { children: ReactiveElement }): JSX.Element {
   return (
-    <p class="quick-control-empty">
-      <small>{props.children}</small>
+    <p class="ui-empty quick-control-empty">
+      <small>{resolve(props.children)}</small>
     </p>
   )
 }

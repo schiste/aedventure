@@ -1,113 +1,14 @@
 :root {
-  /* Channel tokens: every hue once, as raw channels, so anything can be used
-     at any opacity. The stylesheet used to carry 1,500+ literal colours purely
-     because a hex token cannot take an alpha — `rgb(var(--paper-rgb) / 58%)`
-     is the form that was missing, so every wash was written out by hand. */
-  --ink-rgb: 16 25 23;
-  --field-rgb: 24 38 34;
-  --field-2-rgb: 38 59 52;
-  --paper-rgb: 247 238 210;
-  --paper-soft-rgb: 228 216 183;
-  --paper-bright-rgb: 255 242 189;
-  --wash-rgb: 255 244 201;
-  --accent-rgb: 230 168 78;
-  --aqua-rgb: 95 209 216;
-  --aqua-pale-rgb: 201 255 249;
-  --mode-base-rgb: 134 211 123;
-  --mode-base-warm-rgb: 240 185 93;
-  --mode-dungeon-rgb: 170 184 196;
-  --mode-dungeon-strong-rgb: 214 225 234;
-  --mode-return-rgb: 255 211 127;
-  --danger-rgb: 200 101 75;
-
-  /* Layer hierarchy, direction §5.2. The ladder was ad hoc — 13, 14, 16, 24,
-   * 28, 32, 33, 34, 40, 60 — with no relationship to the tiers the markup
-   * already declares in `data-interface-tier`. Naming the rungs means a new
-   * surface picks a *layer* rather than guessing a number one higher than
-   * whatever it happened to sit under.
-   *
-   * Primary   the Phaser world: always legible and targetable
-   * Secondary panels answering the current decision
-   * Tertiary  map modes, status, resources, time, zoom, menu
-   * Transient travel confirmation, offline return, story choice, settings
-   * Tools     Admin and Dev, never confused with the player's path
-   * Moment    a cinematic or the title screen: the game has stopped for this
-   */
-  --layer-primary: 1;
-  --layer-secondary: 14;
-  --layer-tertiary: 16;
-  /* Transients outrank tools. The doc lists Outils as a separate *category* —
-   * "visuellement séparés, jamais confondus avec le parcours joueur" — not as
-   * a higher stack. Ordering tools above transients let the admin backdrop
-   * cover the settings window, which made settings unclickable. A transient is
-   * a modal interruption: if it is open, it must be the thing you can act on. */
-  --layer-tools: 28;
-  --layer-transient: 34;
-  --layer-moment: 60;
-  --contamination-rgb: 178 34 28;
-  --surface-deep-rgb: 7 12 12;
-  --surface-shade-rgb: 11 17 16;
-  --shadow-rgb: 0 0 0;
-  --white-rgb: 255 255 255;
-
-  /* Named colours, derived from the channels above. */
-  --ink: rgb(var(--ink-rgb));
-  --field: rgb(var(--field-rgb));
-  --field-2: rgb(var(--field-2-rgb));
-  --paper: rgb(var(--paper-rgb));
-  --paper-soft: rgb(var(--paper-soft-rgb));
-  --paper-bright: rgb(var(--paper-bright-rgb));
-  --line: rgb(var(--wash-rgb) / 18%);
-  --accent: rgb(var(--accent-rgb));
-  --aqua: rgb(var(--aqua-rgb));
-  --aqua-pale: rgb(var(--aqua-pale-rgb));
-  --mode-discovery: rgb(var(--aqua-rgb));
-  --mode-base: rgb(var(--mode-base-rgb));
-  --mode-base-warm: rgb(var(--mode-base-warm-rgb));
-  --mode-dungeon: rgb(var(--mode-dungeon-rgb));
-  --mode-dungeon-strong: rgb(var(--mode-dungeon-strong-rgb));
-  --mode-return: rgb(var(--mode-return-rgb));
-  --danger: rgb(var(--danger-rgb));
-
-  --radius-ui: 8px;
-  --space-panel: 10px;
-  --surface-map-glass: rgb(10 17 16 / 72%);
-  --surface-objective: rgb(33 37 29 / 90%);
-  --surface-context: rgb(12 27 25 / 92%);
-  --surface-status: rgb(8 14 13 / 84%);
-  --surface-inner: rgb(var(--surface-deep-rgb) / 30%);
-  --border-objective: rgb(var(--mode-base-warm-rgb) / 34%);
-  --border-context: rgb(var(--aqua-rgb) / 26%);
-  --border-soft: rgb(var(--wash-rgb) / 14%);
-  --shadow-panel: 0 20px 50px rgb(var(--shadow-rgb) / 28%);
-  --shadow-panel-strong: 0 28px 76px rgb(var(--shadow-rgb) / 36%);
-  --shadow-hud: 0 14px 34px rgb(var(--shadow-rgb) / 24%);
-  --motion-fast: 140ms ease;
-  --motion-panel: 190ms cubic-bezier(0.2, 0.9, 0.25, 1);
   --map-side-rail-space: 0px;
   --mobile-context-sheet-height: 0px;
   --mobile-context-sheet-compact-height: 0px;
   --mobile-context-sheet-action-height: 0px;
   --mobile-context-sheet-detail-height: 0px;
-  color: var(--paper);
-  background: var(--ink);
-  font-family:
-    ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    sans-serif;
-  font-synthesis: none;
-  text-rendering: geometricprecision;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
-
 @media (min-width: 981px) {
   :root {
     --map-side-rail-space: 0px;
   }
-}
-
-* {
-  box-sizing: border-box;
 }
 
 body {
@@ -127,42 +28,6 @@ body {
     auto;
 }
 
-button {
-  min-height: 2.35rem;
-  border: 1px solid rgb(var(--wash-rgb)/ 16%);
-  border-radius: var(--radius-ui);
-  padding: 0 0.9rem;
-  background: #203a34;
-  color: var(--paper);
-  font: inherit;
-  font-size: 0.86rem;
-  font-weight: 750;
-  cursor: pointer;
-  box-shadow: 0 10px 22px rgb(25 32 28 / 15%);
-  transition:
-    transform var(--motion-fast),
-    background-color var(--motion-fast),
-    border-color var(--motion-fast),
-    opacity var(--motion-fast);
-}
-
-button:hover:not(:disabled) {
-  transform: translateY(-1px);
-  background: #2d574e;
-}
-
-button:focus-visible {
-  outline: 3px solid rgb(226 167 77 / 76%);
-  outline-offset: 2px;
-}
-
-button:focus-visible,
-a:focus-visible,
-summary:focus-visible,
-[tabindex]:focus-visible {
-  outline: 3px solid rgb(var(--mode-return-rgb)/ 86%);
-  outline-offset: 3px;
-}
 
 .keyboard-section {
   scroll-margin: 12px;
@@ -174,43 +39,6 @@ summary:focus-visible,
   box-shadow:
     0 0 0 1px rgb(6 15 14 / 70%),
     0 0 18px rgb(var(--mode-return-rgb)/ 18%);
-}
-
-/*
- * Unavailable, and legible about it.
- *
- * Direction §6.2: "la disparition d'un bouton ou son opacité basse ne peut pas
- * être l'unique explication." Opacity 0.45 was both the only signal and a
- * contrast failure — the label went unreadable rather than merely quiet.
- *
- * The structural cue is the flattened surface and the dashed edge, which read
- * as "not a thing you can press" without relying on the label fading out. The
- * cause itself still belongs in text beside the control; this only stops the
- * styling from being the whole story.
- */
-button:disabled {
-  border-style: dashed;
-  border-color: rgb(var(--paper-rgb) / 22%);
-  background: rgb(var(--wash-rgb) / 5%);
-  box-shadow: none;
-  color: rgb(var(--paper-rgb) / 62%);
-  cursor: not-allowed;
-  opacity: 1;
-}
-
-/* A disabled control is still announced, and still focusable for the reason
- * beside it to be reachable by keyboard. */
-button[aria-disabled="true"] {
-  cursor: not-allowed;
-}
-
-.ghost-button {
-  background: rgb(var(--wash-rgb)/ 10%);
-  color: var(--paper);
-}
-
-.ghost-button:hover:not(:disabled) {
-  background: rgb(var(--wash-rgb)/ 18%);
 }
 
 .add-app-shell {
@@ -259,28 +87,6 @@ button[aria-disabled="true"] {
   min-height: 0;
 }
 
-.panel {
-  border: 1px solid var(--line);
-  border-radius: var(--radius-ui);
-  background:
-    linear-gradient(180deg, rgb(var(--wash-rgb)/ 12%), rgb(var(--wash-rgb)/ 7%)),
-    rgb(14 24 21 / 80%);
-  box-shadow:
-    var(--shadow-panel),
-    inset 0 1px 0 rgb(var(--white-rgb)/ 7%);
-  backdrop-filter: blur(16px);
-  transition:
-    border-color var(--motion-panel),
-    background-color var(--motion-panel),
-    box-shadow var(--motion-panel),
-    opacity var(--motion-panel),
-    transform var(--motion-panel);
-}
-
-.panel:focus-within {
-  border-color: rgb(var(--mode-return-rgb)/ 42%);
-}
-
 .map-topbar {
   position: absolute;
   top: 0;
@@ -309,32 +115,24 @@ button[aria-disabled="true"] {
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 3px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 3px;
-  background: rgb(var(--ink-rgb)/ 36%);
-  box-shadow: none;
   pointer-events: auto;
 }
 
-.map-mode-button {
+.map-mode-switcher > .map-mode-button {
   min-height: 1.72rem;
-  border: 0;
   border-radius: 8px;
   padding: 0 0.58rem;
-  background: transparent;
   color: rgb(var(--paper-rgb)/ 70%);
-  box-shadow: none;
   font-size: 0.7rem;
 }
 
-.map-mode-button:hover:not(:disabled) {
+.map-mode-switcher > .map-mode-button:hover:not(:disabled) {
   background: rgb(255 250 232 / 72%);
   color: var(--ink);
   transform: none;
 }
 
-.map-mode-button.active {
+.map-mode-switcher > .map-mode-button.active {
   background: linear-gradient(180deg, var(--mode-base-warm), #c58135);
   color: #1a1812;
 }
@@ -377,151 +175,24 @@ h1 {
   overflow: hidden;
 }
 
-.resource-status-strip > span {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 4px;
-  min-height: 1.68rem;
-  border: 1px solid rgb(var(--wash-rgb)/ 11%);
-  border-radius: 999px;
-  padding: 0 0.46rem;
-  background: rgb(12 21 19 / 52%);
-  color: rgb(var(--paper-rgb)/ 70%);
-  white-space: nowrap;
+.resource-status-strip > .resource-chip {
+  flex: 0 0 auto;
+  max-width: min(11rem, 24vw);
 }
 
-.resource-status-strip small {
-  overflow: hidden;
+.resource-status-strip .ui-chip-label {
   max-width: 5.8rem;
   font-size: 0.58rem;
-  font-weight: 820;
+  font-weight: 780;
   text-overflow: ellipsis;
 }
 
-.resource-label-compact {
-  display: none;
-}
-
-.resource-status-strip[data-label-mode="compact"] .resource-label-compact {
+.resource-status-strip[data-label-mode="compact"] .ui-chip-label-compact {
   display: inline;
 }
 
-.resource-status-strip[data-label-mode="compact"] .resource-label-full {
+.resource-status-strip[data-label-mode="compact"] .ui-chip-label-full {
   display: none;
-}
-
-.resource-status-strip strong {
-  color: var(--paper-bright);
-  font-size: 0.68rem;
-  font-weight: 930;
-}
-
-.world-time-chip {
-  position: relative;
-  display: grid;
-  min-width: 8.2rem;
-  min-height: 1.72rem;
-  gap: 2px;
-  overflow: hidden;
-  border: 1px solid rgb(var(--wash-rgb)/ 14%);
-  border-radius: 8px;
-  padding: 4px 8px 4px;
-  background:
-    linear-gradient(90deg, rgb(246 191 91 / 14%), rgb(var(--aqua-rgb)/ 10%)),
-    rgb(12 21 19 / 66%);
-  box-shadow: inset 0 1px 0 rgb(var(--white-rgb)/ 8%);
-}
-
-.world-time-chip span {
-  color: var(--paper);
-  font-size: 0.72rem;
-  font-weight: 900;
-  line-height: 1.05;
-  white-space: nowrap;
-}
-
-.world-time-chip small {
-  display: none;
-  overflow: hidden;
-  color: rgb(var(--paper-rgb)/ 72%);
-  font-size: 0.64rem;
-  font-weight: 760;
-  line-height: 1.05;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.world-time-chip i {
-  position: absolute;
-  right: 0.42rem;
-  bottom: 0.18rem;
-  left: 0.42rem;
-  height: 2px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: rgb(var(--wash-rgb)/ 16%);
-}
-
-.world-time-chip i::before {
-  display: block;
-  width: var(--daylight-ratio, 100%);
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, #72d0ff, #f2bc57);
-  content: "";
-}
-
-.world-time-chip.traveling {
-  border-color: rgb(var(--mode-base-warm-rgb)/ 48%);
-  background:
-    linear-gradient(90deg, rgb(var(--mode-base-warm-rgb)/ 26%), rgb(var(--aqua-rgb)/ 14%)),
-    rgb(12 21 19 / 72%);
-  animation: time-burn 1.4s ease-in-out infinite;
-}
-
-@keyframes time-burn {
-  0%,
-  100% {
-    box-shadow:
-      inset 0 1px 0 rgb(var(--white-rgb)/ 8%),
-      0 0 0 rgb(var(--mode-base-warm-rgb)/ 0%);
-  }
-
-  50% {
-    box-shadow:
-      inset 0 1px 0 rgb(var(--white-rgb)/ 10%),
-      0 0 22px rgb(var(--mode-base-warm-rgb)/ 22%);
-  }
-}
-
-.status-pill,
-.small-chip {
-  display: inline-flex;
-  align-items: center;
-  min-height: 1.66rem;
-  border-radius: 999px;
-  padding: 0 0.56rem;
-  background: rgb(var(--wash-rgb)/ 12%);
-  color: rgb(var(--paper-rgb)/ 88%);
-  font-size: 0.7rem;
-  font-weight: 850;
-  white-space: nowrap;
-}
-
-.status-pill[data-state="ready"] {
-  background: rgb(var(--aqua-rgb)/ 18%);
-  color: #9ff4e9;
-}
-
-.status-pill[data-state="error"] {
-  background: rgb(var(--danger-rgb)/ 22%);
-  color: #ffc4b3;
-}
-
-.status-pill.quiet,
-.small-chip {
-  background: rgb(var(--wash-rgb)/ 10%);
-  color: rgb(var(--paper-rgb)/ 80%);
 }
 
 .music-quick-toggle {
@@ -2050,16 +1721,10 @@ h1 {
 .dungeon-context-card {
   display: grid;
   gap: 4px;
-  border: 1px solid rgb(var(--mode-dungeon-rgb)/ 17%);
-  border-radius: 8px;
-  padding: 12px;
-  background:
-    linear-gradient(180deg, rgb(var(--mode-dungeon-rgb)/ 11%), rgb(var(--aqua-rgb)/ 3%)),
-    rgb(9 14 18 / 72%);
 }
 
 .dungeon-mode-summary {
-  box-shadow: inset 3px 0 0 var(--mode-dungeon);
+  margin: 0;
 }
 
 .dungeon-mode-summary > span,
@@ -2098,50 +1763,47 @@ h1 {
 }
 
 .dungeon-context-card.emphasis {
-  border-color: rgb(var(--mode-base-warm-rgb)/ 34%);
-  box-shadow: inset 3px 0 0 var(--mode-base-warm);
+  border-left: 3px solid var(--mode-base-warm);
+  padding-left: 9px;
 }
 
 .dungeon-context-list {
   display: grid;
-  gap: 5px;
+  gap: 0;
 }
 
-.dungeon-context-row {
-  display: grid;
-  gap: 2px;
-  border: 1px solid rgb(var(--mode-dungeon-rgb)/ 11%);
-  border-radius: 8px;
-  padding: 8px;
-  background: rgb(9 14 18 / 58%);
+.dungeon-context-row.ui-row {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
 }
 
 .dungeon-context-row.available {
-  border-color: rgb(var(--mode-dungeon-rgb)/ 26%);
+  border-bottom-color: rgb(var(--mode-dungeon-rgb)/ 40%);
 }
 
 .dungeon-context-row.watch {
-  border-color: rgb(var(--mode-base-warm-rgb)/ 26%);
+  border-left: 2px dashed var(--mode-base-warm);
+  border-bottom-color: rgb(var(--mode-base-warm-rgb)/ 44%);
+  padding-left: 6px;
 }
 
 .dungeon-context-row.blocked {
-  border-color: rgb(var(--danger-rgb)/ 34%);
+  border-left: 3px solid var(--danger);
+  border-bottom-color: rgb(var(--danger-rgb)/ 54%);
+  padding-left: 5px;
 }
 
 .dungeon-context-row.muted {
   opacity: 0.74;
 }
 
-.dungeon-context-row strong {
-  overflow: hidden;
+.dungeon-context-row .ui-row-label {
   color: var(--mode-dungeon-strong);
   font-size: 0.68rem;
   font-weight: 900;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-.dungeon-context-row small {
+.dungeon-context-row .ui-row-detail {
   color: rgb(var(--paper-rgb)/ 62%);
   font-size: 0.58rem;
   font-weight: 680;
@@ -2154,17 +1816,11 @@ h1 {
   gap: 6px;
 }
 
-.dungeon-map-metrics span {
-  display: grid;
-  min-width: 0;
-  gap: 2px;
-  border: 0;
-  border-radius: 8px;
-  padding: 8px;
-  background: rgb(9 14 18 / 62%);
+.dungeon-map-metrics .ui-stat {
+  padding: 6px 8px;
 }
 
-.dungeon-map-metrics small {
+.dungeon-map-metrics .ui-stat-label {
   overflow: hidden;
   color: rgb(var(--paper-rgb)/ 52%);
   font-size: 0.56rem;
@@ -2174,7 +1830,7 @@ h1 {
   white-space: nowrap;
 }
 
-.dungeon-map-metrics strong {
+.dungeon-map-metrics .ui-stat-value {
   overflow: hidden;
   color: var(--mode-dungeon-strong);
   font-size: 0.66rem;
@@ -2467,27 +2123,21 @@ h1 {
   text-overflow: ellipsis;
 }
 
-.base-section-summary > span,
-.base-management-card > span,
-.base-metric {
+.base-section-summary > span {
   color: rgb(var(--paper-rgb)/ 58%);
   font-size: 0.64rem;
   font-weight: 900;
   text-transform: uppercase;
 }
 
-.base-section-summary > strong,
-.base-management-card > strong,
-.base-metric > strong {
+.base-section-summary > strong {
   color: var(--paper-bright);
   font-size: 0.9rem;
   font-weight: 950;
   line-height: 1.12;
 }
 
-.base-section-summary > small,
-.base-management-card > small,
-.base-metric > small {
+.base-section-summary > small {
   color: rgb(var(--paper-rgb)/ 66%);
   font-size: 0.66rem;
   font-weight: 730;
@@ -2663,22 +2313,12 @@ h1 {
   gap: 6px;
 }
 
-.base-metric,
-.base-management-card {
-  display: grid;
-  min-width: 0;
-  gap: 2px;
-  border-radius: 8px;
-  padding: 8px 12px;
-  background: rgb(var(--wash-rgb)/ 5%);
-}
+.base-management-card { gap: var(--space-1); }
 
 .base-social-overview {
   display: grid;
-  gap: 2px;
-  border: 1px solid rgb(var(--mode-base-warm-rgb)/ 24%);
-  border-radius: 8px;
-  padding: 12px;
+  gap: var(--space-1);
+  border-color: rgb(var(--mode-base-warm-rgb)/ 36%);
   background:
     linear-gradient(180deg, rgb(var(--mode-base-warm-rgb)/ 13%), rgb(var(--wash-rgb)/ 5%)),
     rgb(var(--surface-shade-rgb)/ 48%);
@@ -2866,13 +2506,7 @@ h1 {
   font-size: 0.58rem;
 }
 
-.base-slot-pool {
-  display: grid;
-  gap: 2px;
-  border-radius: 8px;
-  padding: 8px 8px;
-  background: rgb(var(--wash-rgb)/ 7%);
-}
+.base-slot-pool { gap: var(--space-1); }
 
 .base-slot-pool[data-pressure="room"] {
   background: rgb(var(--aqua-rgb)/ 10%);
@@ -2886,31 +2520,15 @@ h1 {
   opacity: 0.72;
 }
 
-.base-construction-summary,
-.base-construction-project,
 .base-construction-group {
   display: grid;
   min-width: 0;
-  gap: 8px;
-  border-radius: 8px;
+  gap: var(--space-2);
 }
 
-.base-construction-summary {
-  border: 1px solid rgb(var(--mode-base-warm-rgb)/ 25%);
-  padding: 12px 12px;
-  background:
-    linear-gradient(180deg, rgb(var(--mode-base-warm-rgb)/ 12%), rgb(var(--wash-rgb)/ 4%)),
-    rgb(var(--surface-shade-rgb)/ 42%);
-  box-shadow: inset 3px 0 0 var(--mode-base-warm);
-}
+.base-construction-summary { border-color: rgb(var(--mode-base-warm-rgb)/ 36%); box-shadow: inset 3px 0 0 var(--mode-base-warm); }
 
-.base-construction-summary.active {
-  border-color: rgb(var(--aqua-rgb)/ 26%);
-  background:
-    linear-gradient(180deg, rgb(var(--aqua-rgb)/ 12%), rgb(var(--wash-rgb)/ 4%)),
-    rgb(var(--surface-shade-rgb)/ 46%);
-  box-shadow: inset 3px 0 0 var(--aqua);
-}
+.base-construction-summary.active { border-color: rgb(var(--aqua-rgb)/ 42%); box-shadow: inset 3px 0 0 var(--aqua); }
 
 .base-construction-summary > span,
 .base-construction-group-heading > span,
@@ -2942,11 +2560,7 @@ h1 {
   background: rgb(var(--surface-deep-rgb)/ 24%);
 }
 
-.base-construction-project {
-  border: 1px solid rgb(var(--wash-rgb)/ 12%);
-  padding: 8px 12px;
-  background: rgb(var(--wash-rgb)/ 7%);
-}
+.base-construction-project { border-color: rgb(var(--wash-rgb)/ 18%); }
 
 .base-construction-project[data-enabled="true"] {
   border-color: rgb(var(--mode-base-warm-rgb)/ 30%);
@@ -3075,27 +2689,17 @@ h1 {
   font-size: 0.68rem;
 }
 
-.base-machine-summary,
-.base-machine-card,
 .base-machine-group {
   display: grid;
   min-width: 0;
-  gap: 8px;
-  border-radius: 8px;
+  gap: var(--space-2);
 }
 
-.base-machine-summary {
-  border: 1px solid rgb(var(--aqua-rgb)/ 22%);
-  padding: 12px 12px;
-  background:
-    linear-gradient(180deg, rgb(var(--aqua-rgb)/ 11%), rgb(var(--wash-rgb)/ 4%)),
-    rgb(var(--surface-shade-rgb)/ 42%);
-  box-shadow: inset 3px 0 0 var(--aqua);
-}
+.base-machine-summary { border-color: rgb(var(--aqua-rgb) / 38%); box-shadow: inset 3px 0 0 var(--aqua); }
 
 .base-machine-summary[data-brownout="true"] {
-  border-color: rgb(var(--danger-rgb)/ 34%);
-  background: rgb(var(--danger-rgb)/ 12%);
+  border-color: rgb(var(--danger-rgb) / 58%);
+  background: rgb(var(--danger-rgb) / 12%);
   box-shadow: inset 3px 0 0 var(--danger);
 }
 
@@ -3278,7 +2882,6 @@ h1 {
   font-weight: 920;
 }
 
-.base-metric[data-severity="good"],
 .base-management-card[data-powered="true"],
 .base-management-card[data-pressure="staffed"],
 .base-management-card[data-pressure="room"],
@@ -3286,7 +2889,6 @@ h1 {
   background: rgb(var(--aqua-rgb)/ 11%);
 }
 
-.base-metric[data-severity="warning"],
 .base-management-card[data-pressure="understaffed"],
 .base-management-card[data-pressure="near_cap"],
 .base-management-card[data-pressure="tight"],
@@ -3295,7 +2897,6 @@ h1 {
   background: rgb(var(--mode-base-warm-rgb)/ 12%);
 }
 
-.base-metric[data-severity="danger"],
 .base-management-card[data-pressure="empty"],
 .base-management-card[data-pressure="full"],
 .base-management-card[data-pressure="overcrowded"] {
@@ -3349,24 +2950,6 @@ h1 {
 .movement-consequences {
   display: grid;
   gap: 8px;
-  border: 1px solid rgb(var(--aqua-rgb)/ 22%);
-  border-radius: 8px;
-  padding: 12px;
-  background:
-    linear-gradient(180deg, rgb(12 21 19 / 34%), rgb(var(--wash-rgb)/ 5%)),
-    rgb(12 21 19 / 62%);
-  box-shadow: inset 3px 0 0 rgb(var(--aqua-rgb)/ 52%);
-}
-
-.movement-consequences[data-severity="watch"] {
-  border-color: rgb(var(--mode-base-warm-rgb)/ 34%);
-  box-shadow: inset 3px 0 0 rgb(var(--mode-base-warm-rgb)/ 74%);
-}
-
-.movement-consequences[data-severity="danger"],
-.movement-consequences[data-severity="critical"] {
-  border-color: rgb(var(--danger-rgb)/ 44%);
-  box-shadow: inset 3px 0 0 rgb(var(--danger-rgb)/ 82%);
 }
 
 .movement-consequences header {
@@ -3527,10 +3110,6 @@ h1 {
   z-index: var(--layer-transient); /* travel confirmation */
   display: block;
   padding: 18px;
-  background:
-    radial-gradient(circle at 50% 44%, rgb(var(--mode-base-warm-rgb)/ 13%), transparent 32%),
-    rgb(7 11 10 / 42%);
-  backdrop-filter: blur(5px);
 }
 
 .travel-dialog {
@@ -3542,15 +3121,7 @@ h1 {
   max-height: calc(100vh - 36px);
   gap: 11px;
   overflow: auto;
-  border: 1px solid rgb(var(--mode-base-warm-rgb)/ 32%);
-  border-radius: 8px;
   padding: 18px;
-  background:
-    linear-gradient(180deg, rgb(var(--wash-rgb)/ 15%), rgb(var(--wash-rgb)/ 8%)),
-    rgb(12 21 19 / 92%);
-  box-shadow:
-    0 30px 80px rgb(var(--shadow-rgb)/ 38%),
-    inset 0 1px 0 rgb(var(--white-rgb)/ 10%);
   transform: translate(-50%, -50%);
 }
 
@@ -3625,17 +3196,7 @@ h1 {
   overscroll-behavior-y: contain;
   scroll-padding: 12px;
   scrollbar-gutter: stable;
-  border: 1px solid rgb(var(--mode-return-rgb)/ 38%);
-  border-radius: var(--radius-ui);
   padding: 14px;
-  background:
-    linear-gradient(180deg, rgb(var(--mode-return-rgb)/ 18%), rgb(var(--mode-base-warm-rgb)/ 7%)),
-    rgb(31 26 16 / 94%);
-  box-shadow:
-    var(--shadow-panel-strong),
-    inset 4px 0 0 rgb(var(--mode-return-rgb)/ 46%),
-    inset 0 1px 0 rgb(var(--white-rgb)/ 11%);
-  backdrop-filter: blur(18px);
   transform: translate(-50%, -50%);
   animation: floating-panel-arrive 180ms ease both;
 }
@@ -3880,16 +3441,12 @@ h1 {
   position: fixed;
   inset: 0;
   z-index: var(--layer-tools); /* admin backdrop */
-  background: rgb(var(--shadow-rgb)/ 0%);
   opacity: 0;
   pointer-events: none;
-  transition:
-    background-color 160ms ease,
-    opacity 160ms ease;
+  transition: opacity 160ms ease;
 }
 
 .admin-backdrop.visible {
-  background: rgb(var(--shadow-rgb)/ 46%);
   opacity: 1;
   pointer-events: auto;
 }
@@ -3993,17 +3550,7 @@ h1 {
   width: min(760px, calc(100vw - 24px));
   height: min(calc(100vh - 28px), 720px);
   overflow: hidden;
-  border: 0;
   padding: 2px;
-  background:
-    radial-gradient(circle at 18% 18%, rgb(var(--aqua-rgb)/ 20%), transparent 30%),
-    radial-gradient(circle at 82% 76%, rgb(var(--mode-base-warm-rgb)/ 18%), transparent 36%),
-    linear-gradient(135deg, rgb(255 221 148 / 54%), rgb(var(--aqua-rgb)/ 30%)),
-    rgb(19 27 22 / 96%);
-  border-radius: 8px;
-  box-shadow:
-    0 34px 96px rgb(var(--shadow-rgb)/ 48%),
-    0 0 0 1px rgb(var(--wash-rgb)/ 10%);
   opacity: 0;
   pointer-events: none;
   transform: translate(-50%, -47%) scale(0.96);
@@ -4561,23 +4108,6 @@ h1 {
 
 .developer-tools-body > .panel {
   background: rgb(7 13 12 / 28%);
-}
-
-.panel {
-  padding: 13px;
-}
-
-.panel-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
-  color: var(--paper);
-  font-size: 0.85rem;
-  font-weight: 900;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
 }
 
 .runtime-list {
@@ -5181,19 +4711,15 @@ h1 {
     max-width: 100%;
   }
 
-  .resource-status-strip .resource-label-compact {
+  .resource-status-strip .ui-chip-label-compact {
     display: inline;
   }
 
-  .resource-status-strip .resource-label-full {
+  .resource-status-strip .ui-chip-label-full {
     display: none;
   }
 
-  .resource-status-strip small {
-    max-width: 1rem;
-  }
-
-  .resource-status-strip > span:nth-child(n + 4) {
+  .resource-status-strip > .resource-chip:nth-child(n + 4) {
     display: none;
   }
 
@@ -5345,7 +4871,7 @@ h1 {
     display: none;
   }
 
-  .map-mode-button {
+  .map-mode-switcher > .map-mode-button {
     flex: 0 0 auto;
     min-height: 1.42rem;
     padding: 0 0.34rem;
@@ -5372,31 +4898,6 @@ h1 {
     display: none;
   }
 
-  .world-time-chip {
-    flex: 0 1 7.8rem;
-    min-width: 0;
-    min-height: 1.44rem;
-    padding: 2px 8px 4px;
-  }
-
-  .world-time-chip span {
-    font-size: 0.62rem;
-  }
-
-  .world-time-chip i {
-    right: 0.34rem;
-    bottom: 0.12rem;
-    left: 0.34rem;
-  }
-
-  .music-quick-toggle,
-  .time-speed-button,
-  .shell-menu-toggle {
-    min-height: 1.44rem;
-    padding: 0 0.42rem;
-    font-size: 0.61rem;
-  }
-
   .music-quick-toggle {
     padding: 0 0.38rem;
     font-size: 0.68rem;
@@ -5410,13 +4911,13 @@ h1 {
     display: none;
   }
 
-  .resource-status-strip > span {
+  .resource-status-strip > .resource-chip {
     flex: 1 1 0;
     justify-content: space-between;
     min-width: 0;
   }
 
-  .resource-status-strip > span:nth-child(n + 3) {
+  .resource-status-strip > .resource-chip:nth-child(n + 3) {
     display: none;
   }
 
@@ -5638,212 +5139,6 @@ h1 {
 }
 
 /* ==========================================================================
-   Primitives
-   --------------------------------------------------------------------------
-   The shapes in packages/add-ui/src/primitives.tsx. Every value here is a
-   token — that is the whole point of the channel layer, and it is what makes
-   a theme a change to :root rather than a search across 700 selectors.
-   ========================================================================== */
-
-.panel-title {
-  margin: 0;
-  font-size: 0.82rem;
-  font-weight: 650;
-  letter-spacing: 0.01em;
-  color: rgb(var(--paper-rgb) / 88%);
-}
-
-.panel-aside {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  color: rgb(var(--paper-rgb) / 62%);
-}
-
-.panel-body {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.panel-note {
-  margin: 0 0 6px;
-  font-size: 0.72rem;
-  line-height: 1.35;
-  color: rgb(var(--paper-rgb) / 66%);
-}
-
-.ui-row {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  justify-content: space-between;
-  padding: 6px 8px;
-  border: 1px solid rgb(var(--wash-rgb) / 8%);
-  border-radius: var(--radius-ui);
-  background: rgb(var(--wash-rgb) / 4%);
-}
-
-.ui-row[data-tone="danger"] {
-  border-color: rgb(var(--danger-rgb) / 38%);
-  background: rgb(var(--danger-rgb) / 10%);
-}
-
-.ui-row[data-tone="accent"] {
-  border-color: rgb(var(--accent-rgb) / 34%);
-}
-
-.ui-row[data-muted="true"] {
-  opacity: 0.62;
-}
-
-.ui-row-label {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.ui-row-detail {
-  color: rgb(var(--paper-rgb) / 58%);
-}
-
-.ui-row-trailing {
-  display: flex;
-  flex-shrink: 0;
-  gap: 6px;
-  align-items: center;
-}
-
-.ui-stat-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.ui-stat {
-  display: flex;
-  flex: 1 1 120px;
-  flex-direction: column;
-  gap: 1px;
-  padding: 6px 8px;
-  border-radius: var(--radius-ui);
-  background: rgb(var(--surface-deep-rgb) / 30%);
-}
-
-.ui-stat-label {
-  font-size: 0.68rem;
-  color: rgb(var(--paper-rgb) / 58%);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.ui-stat-value {
-  font-size: 0.88rem;
-  font-variant-numeric: tabular-nums;
-}
-
-.ui-stat-delta {
-  color: rgb(var(--paper-rgb) / 56%);
-}
-
-.ui-stat[data-tone="danger"] .ui-stat-value {
-  color: var(--danger);
-}
-
-.ui-stat[data-tone="accent"] .ui-stat-value {
-  color: var(--accent);
-}
-
-.ui-button {
-  padding: 5px 10px;
-  border: 1px solid rgb(var(--wash-rgb) / 16%);
-  border-radius: var(--radius-ui);
-  background: rgb(var(--wash-rgb) / 8%);
-  color: var(--paper);
-  font: inherit;
-  cursor: pointer;
-  transition: background var(--motion-fast), border-color var(--motion-fast);
-}
-
-.ui-button:hover:not(:disabled) {
-  border-color: rgb(var(--accent-rgb) / 42%);
-  background: rgb(var(--wash-rgb) / 14%);
-}
-
-.ui-button:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.ui-sheet {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: var(--space-panel);
-  border: 1px solid var(--border-soft);
-  border-radius: var(--radius-ui);
-  background: var(--surface-context);
-  box-shadow: var(--shadow-panel);
-}
-
-.ui-sheet-heading,
-.ui-dialog-heading {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.ui-sheet-heading h2,
-.ui-dialog-heading h2 {
-  margin: 0;
-  font-size: 0.84rem;
-}
-
-.ui-sheet-body,
-.ui-dialog-body {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.ui-dialog-scrim {
-  position: fixed;
-  z-index: var(--layer-moment); /* title screen and cinematic stage */
-  display: grid;
-  background: rgb(var(--shadow-rgb) / 52%);
-  inset: 0;
-  place-items: center;
-}
-
-.ui-dialog {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  width: min(480px, calc(100vw - 32px));
-  max-height: calc(100vh - 64px);
-  padding: 14px;
-  overflow-y: auto;
-  border: 1px solid var(--border-context);
-  border-radius: calc(var(--radius-ui) * 1.5);
-  background: var(--surface-context);
-  box-shadow: var(--shadow-panel-strong);
-}
-
-.ui-dialog-actions {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-}
-
-.quick-control-empty {
-  margin: 0;
-  padding: 6px 8px;
-  color: rgb(var(--paper-rgb) / 58%);
-}
-
-/* ==========================================================================
    Schema context
    --------------------------------------------------------------------------
    "What this involves": a surface's related entities with live state, from
@@ -5966,115 +5261,6 @@ h1 {
   font-size: 1.6rem;
   letter-spacing: 0.02em;
   text-shadow: 0 2px 24px rgb(var(--shadow-rgb) / 80%);
-}
-
-/* ---------------------------------------------------------------------------
- * Cinematic stage.
- *
- * One surface for every medium. The frame is letterboxed and the chrome sits
- * under it, so a still, a clip and a line of type all occupy the same shape and
- * a cut between them does not move the furniture.
- * ------------------------------------------------------------------------- */
-
-.cinematic-stage {
-  position: absolute;
-  z-index: var(--layer-moment); /* title screen and cinematic stage */ /* over the contamination haze and the death overlay */
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  align-items: center;
-  justify-content: center;
-  padding: 24px 16px;
-  background: rgb(var(--shadow-rgb) / 94%);
-  inset: 0;
-}
-
-.cinematic-frame {
-  position: relative;
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  gap: 14px;
-  align-items: center;
-  justify-content: center;
-  width: min(100%, 1100px);
-  cursor: pointer;
-}
-
-.cinematic-media {
-  max-width: 100%;
-  max-height: 72vh;
-  border-radius: 8px;
-  box-shadow: 0 18px 60px rgb(var(--shadow-rgb) / 70%);
-  object-fit: contain;
-}
-
-/* Doubles as the body of a text beat and the caption over any other kind. */
-.cinematic-copy {
-  max-width: 62ch;
-  margin: 0;
-  color: rgb(var(--paper-rgb) / 94%);
-  font-size: 1.25rem;
-  line-height: 1.5;
-  text-align: center;
-  text-shadow: 0 2px 20px rgb(var(--shadow-rgb) / 90%);
-}
-
-/* A text beat has no media to sit under, so its copy carries the frame. */
-.cinematic-stage[data-media="text"] .cinematic-copy {
-  font-size: 1.7rem;
-  letter-spacing: 0.01em;
-}
-
-.cinematic-chrome {
-  display: flex;
-  flex: 0 0 auto;
-  gap: 14px;
-  align-items: center;
-  width: min(100%, 1100px);
-}
-
-.cinematic-progress {
-  flex: 1 1 auto;
-  height: 2px;
-  background: rgb(var(--paper-rgb) / 18%);
-}
-
-.cinematic-progress-fill {
-  display: block;
-  height: 100%;
-  background: rgb(var(--paper-rgb) / 70%);
-  transition: width 240ms linear;
-}
-
-.cinematic-count {
-  color: rgb(var(--paper-rgb) / 55%);
-  font-size: 0.78rem;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.08em;
-}
-
-.cinematic-skip {
-  padding: 6px 14px;
-  border: 1px solid rgb(var(--paper-rgb) / 28%);
-  border-radius: 3px;
-  background: transparent;
-  color: rgb(var(--paper-rgb) / 82%);
-  font-size: 0.8rem;
-  letter-spacing: 0.06em;
-  cursor: pointer;
-}
-
-.cinematic-skip:hover,
-.cinematic-skip:focus-visible {
-  border-color: rgb(var(--paper-rgb) / 60%);
-  color: rgb(var(--paper-rgb) / 100%);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .cinematic-progress-fill {
-    transition: none;
-  }
 }
 
 /* The armed state of "Start over": two buttons where one was, so the confirm
@@ -6487,68 +5673,6 @@ h1 {
 }
 
 
-/* ---------------------------------------------------------------------------
- * Severity is never colour alone.
- *
- * Direction §4.2: "Ne jamais distinguer disponible, insuffisant, verrouillé ou
- * dangereux par la seule couleur." Every `data-severity` and `data-risk`
- * surface was previously distinguished only by background, border-colour and
- * text colour — invisible to a colour-blind player, and to anyone on a
- * washed-out screen.
- *
- * The marker is a glyph, not a hue, and it is `aria-hidden` by nature: the
- * label beside it already carries the state in words ("Blocked", "Ready"), so
- * this adds a second visual channel rather than a second reading for a screen
- * reader.
- * ------------------------------------------------------------------------- */
-
-:is([data-severity="warning"], [data-severity="danger"], [data-risk="high"])::after {
-  content: "";
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 8px;
-  height: 8px;
-  border: 2px solid currentcolor;
-  opacity: 0.72;
-}
-
-[data-severity="warning"]::after,
-[data-risk="high"]::after {
-  /* A triangle: the shape says "attention" without borrowing the hue. */
-  border-width: 0 4px 8px;
-  border-color: transparent transparent currentcolor;
-}
-
-[data-severity="danger"]::after {
-  /* A square reads as a stop, distinct from the warning triangle at a glance. */
-  border-radius: 1px;
-}
-
-:is([data-severity="warning"], [data-severity="danger"], [data-risk="high"]) {
-  position: relative;
-}
-
-
-/* Homepage-aligned ADD game chrome: warm paper, amber rules, and compact
-   rectangular controls. Semantic discovery/base/dungeon/return hues remain. */
-:root {
-  --homepage-paper-rgb: 248 231 195;
-  --homepage-amber-rgb: 244 185 99;
-  --homepage-rule: rgb(var(--homepage-paper-rgb) / 24%);
-  --surface-popin: rgb(13 23 20 / 98%);
-  --border-popin: rgb(var(--homepage-paper-rgb) / 22%);
-  --shadow-popin: 0 28px 76px rgb(0 0 0 / 42%);
-  --radius-popin: var(--radius-ui);
-  --font-display: Georgia, "Times New Roman", serif;
-  --status-slot-top: 7.75px;
-  --status-slot-right: 10px;
-  --hud-control-height: 30px;
-  --music-control-width: 96px;
-  --speed-control-width: 54px;
-  --menu-control-width: 56px;
-}
-
 .map-topbar {
   border-bottom: 1px solid rgb(var(--homepage-amber-rgb) / 38%);
   background: rgb(12 21 18 / 94%);
@@ -6563,7 +5687,7 @@ h1 {
   background: rgb(var(--surface-deep-rgb) / 60%);
 }
 
-.map-mode-button {
+.map-mode-switcher > .map-mode-button {
   border-radius: 2px;
   color: rgb(var(--homepage-paper-rgb) / 74%);
   font-family: var(--font-ui, ui-sans-serif, system-ui, sans-serif);
@@ -6572,12 +5696,12 @@ h1 {
   letter-spacing: 0.015em;
 }
 
-.map-mode-button:hover:not(:disabled) {
+.map-mode-switcher > .map-mode-button:hover:not(:disabled) {
   background: rgb(var(--homepage-paper-rgb) / 10%);
   color: var(--paper-bright);
 }
 
-.map-mode-button.active {
+.map-mode-switcher > .map-mode-button.active {
   background: rgb(var(--homepage-amber-rgb));
   color: #1a1812;
 }
@@ -6592,45 +5716,6 @@ h1 {
   align-items: center;
   gap: 4px;
   pointer-events: auto;
-}
-
-.resource-status-strip > span {
-  border-color: rgb(var(--homepage-paper-rgb) / 16%);
-  border-radius: 3px;
-  background: rgb(var(--surface-deep-rgb) / 58%);
-}
-
-.world-time-chip {
-  border-color: rgb(var(--homepage-amber-rgb) / 32%);
-  border-radius: 3px;
-  background: rgb(13 24 20 / 94%);
-  box-shadow: none;
-}
-
-.world-time-chip i,
-.world-time-chip i::before {
-  border-radius: 0;
-}
-
-.world-time-chip i {
-  background: rgb(var(--homepage-paper-rgb) / 18%);
-}
-
-.world-time-chip i::before {
-  background: linear-gradient(90deg, #77c8c4, rgb(var(--homepage-amber-rgb)));
-}
-
-.world-time-chip.traveling {
-  border-color: rgb(var(--homepage-amber-rgb) / 68%);
-  background: rgb(35 29 19 / 96%);
-}
-
-.status-pill,
-.small-chip {
-  min-height: 1.7rem;
-  border: 1px solid rgb(var(--homepage-paper-rgb) / 16%);
-  border-radius: 3px;
-  background: rgb(var(--surface-deep-rgb) / 58%);
 }
 
 .music-quick-toggle,
@@ -6744,15 +5829,6 @@ h1 {
   font-family: var(--font-ui, ui-sans-serif, system-ui, sans-serif);
 }
 
-.panel {
-  border-color: var(--homepage-rule);
-  border-radius: 4px;
-  background: rgb(13 23 20 / 95%);
-  box-shadow:
-    var(--shadow-panel),
-    inset 0 1px 0 rgb(var(--homepage-paper-rgb) / 5%);
-}
-
 :is(
   .selected-tile-context-panel,
   .discovery-panel,
@@ -6803,18 +5879,6 @@ h1 {
 }
 
 :is(
-  .selected-tile-context-heading,
-  .discovery-heading,
-  .base-management-heading,
-  .dungeon-context-heading,
-  .offline-return-heading,
-  .panel-heading
-) {
-  border-bottom: 1px solid rgb(var(--homepage-paper-rgb) / 18%);
-  padding-bottom: 8px;
-}
-
-:is(
   .selected-tile-context-heading h2,
   .discovery-heading #discovery-panel-title,
   .base-management-heading #base-management-panel-title,
@@ -6858,18 +5922,6 @@ h1 {
 
 :is(.dungeon-mode-summary, .current-action-surface) {
   border-left-width: 2px;
-}
-
-:is(
-  .panel button,
-  .panel summary,
-  .enter-dungeon-button,
-  .mode-primary-action,
-  .contextual-action-button
-) {
-  border-radius: 3px;
-  box-shadow: none;
-  font-family: var(--font-ui, ui-sans-serif, system-ui, sans-serif);
 }
 
 .enter-dungeon-button,
@@ -6951,7 +6003,7 @@ h1 {
     padding: 2px;
   }
 
-  .map-mode-button {
+  .map-mode-switcher > .map-mode-button {
     flex: 0 0 auto;
     min-height: 1.7rem;
     padding: 0 0.44rem;
@@ -6981,7 +6033,7 @@ h1 {
     padding: 5px 8px 6px;
   }
 
-  .world-time-chip span {
+  .world-time-chip .ui-time-readout-value {
     font-size: 0.68rem;
   }
 
@@ -7096,24 +6148,7 @@ h1 {
 }
 
 
-/* Player-facing pop-ins use the same field-green, paper, and amber language
-   as the homepage. Content remains flat and rectangular so warnings and actions
-   carry the hierarchy instead of gradients or nested cards. */
-:is(.travel-dialog, .settings-hex-window, .ui-dialog, .offline-return-panel) {
-  border: 1px solid var(--border-popin);
-  border-top: 2px solid rgb(var(--homepage-amber-rgb) / 82%);
-  border-radius: var(--radius-popin);
-  background: var(--surface-popin);
-  box-shadow:
-    var(--shadow-popin),
-    inset 0 1px 0 rgb(var(--homepage-paper-rgb) / 5%);
-  backdrop-filter: blur(16px);
-}
-
-:is(.travel-dialog-backdrop, .ui-dialog-scrim, .admin-backdrop.visible) {
-  background: rgb(5 12 10 / 66%);
-  backdrop-filter: blur(3px);
-}
+/* Shared pop-in framing and backdrop treatment live in @aedventure/add-ui. */
 
 .travel-dialog {
   gap: 13px;
@@ -7137,15 +6172,6 @@ h1 {
 }
 
 .travel-dialog h2,
-.ui-dialog-heading h2 {
-  color: var(--paper-bright);
-  font-family: var(--font-display);
-  font-size: 1.55rem;
-  font-weight: 500;
-  letter-spacing: -0.025em;
-  line-height: 1.12;
-}
-
 .travel-dialog p {
   max-width: 56ch;
   color: rgb(var(--homepage-paper-rgb) / 88%);
@@ -7166,26 +6192,26 @@ h1 {
   min-height: 44px;
 }
 
-:is(.travel-dialog, .settings-hex-window, .ui-dialog, .offline-return-panel)
+:is(.travel-dialog, .settings-hex-window, .offline-return-panel)
   :is(button, summary, [tabindex]):focus-visible {
   outline: 2px solid rgb(var(--homepage-amber-rgb) / 90%);
   outline-offset: 3px;
 }
 
-:is(.travel-dialog, .settings-hex-window, .ui-dialog, .offline-return-panel) button {
+:is(.travel-dialog, .settings-hex-window, .offline-return-panel) button {
   border-radius: var(--radius-ui);
   box-shadow: none;
   font-family: var(--font-ui, ui-sans-serif, system-ui, sans-serif);
 }
 
-:is(.travel-dialog, .settings-hex-window, .ui-dialog, .offline-return-panel)
+:is(.travel-dialog, .settings-hex-window, .offline-return-panel)
   .primary-action {
   border-color: rgb(var(--homepage-amber-rgb));
   background: rgb(var(--homepage-amber-rgb));
   color: #1a1812;
 }
 
-:is(.travel-dialog, .settings-hex-window, .ui-dialog, .offline-return-panel)
+:is(.travel-dialog, .settings-hex-window, .offline-return-panel)
   .primary-action:hover:not(:disabled) {
   border-color: rgb(var(--paper-bright));
   background: rgb(var(--paper-bright));
@@ -7248,36 +6274,12 @@ h1 {
   backdrop-filter: none;
 }
 
-.settings-hex-window .settings-panel .panel-heading {
-  border-bottom: 1px solid rgb(var(--homepage-paper-rgb) / 12%);
-  padding-bottom: 8px;
-}
-
 .settings-panel-note {
   border: 0;
   border-left: 2px solid rgb(var(--aqua-rgb) / 74%);
   border-radius: 0;
   padding: 6px 10px;
   background: rgb(var(--homepage-paper-rgb) / 4%);
-}
-
-.ui-dialog {
-  gap: 14px;
-  padding: 20px;
-}
-
-.ui-dialog-heading {
-  border-bottom: 1px solid rgb(var(--homepage-paper-rgb) / 18%);
-  padding-bottom: 12px;
-}
-
-.ui-dialog-heading h2 {
-  margin: 0;
-}
-
-.ui-dialog-actions {
-  border-top: 1px solid rgb(var(--homepage-paper-rgb) / 18%);
-  padding-top: 12px;
 }
 
 .offline-return-panel {

@@ -113,7 +113,8 @@ export function CinematicStage(props: CinematicStageProps): JSX.Element {
                 <button
                   type="button"
                   id="cinematic-skip"
-                  class="cinematic-skip"
+                  class="ui-button cinematic-skip"
+                  data-variant="ghost"
                   data-qa="cinematic-skip"
                   on:click={(event) => {
                     // Skipping must not also read as an advance on the frame.

@@ -4,7 +4,7 @@ Conformance status and how each a11y affordance is wired. Target: **WCAG 2.1 AA*
 
 ## Reduced motion — ✅ enforced at three layers
 1. **OS preference** — `styles.css` `@media (prefers-reduced-motion: reduce)` removes CSS animation/transition.
-2. **Player override** — Settings → *Reduced motion* sets `:root[data-reduced-motion="true"]`, a kill-switch independent of the OS pref (`settings/settings.css`).
+2. **Player override** — Settings → *Reduced motion* sets `:root[data-reduced-motion="true"]`, a kill-switch independent of the OS pref (`packages/add-ui/src/visual-system.css`).
 3. **Animation engine** — `TransitionRegistry.setReducedMotion(true)` (`packages/game-animation`) makes every keyed transition complete instantly: new transitions begin at zero duration, in-flight ones sample as done. This covers JS-driven motion the CSS rules can't reach.
 
 **Wiring hook (pending, one line in `add-world-scene.ts`):**
@@ -16,7 +16,7 @@ this.transitions.setReducedMotion(Boolean(reduce))
 ```
 
 ## Color-blind modes — ✅ present (assist filters)
-Settings → *Color-blind mode* (none / protanopia / deuteranopia / tritanopia) applies an app-wide filter via `:root[data-color-blind="…"] body` (`settings/settings.css`). Current filters are saturation/hue assists; **future work:** swap to LMS daltonization (`feColorMatrix`) correction for accuracy.
+Settings → *Color-blind mode* (none / protanopia / deuteranopia / tritanopia) applies an app-wide filter via `:root[data-color-blind="…"] body` (`packages/add-ui/src/visual-system.css`). Current filters are saturation/hue assists; **future work:** swap to LMS daltonization (`feColorMatrix`) correction for accuracy.
 
 ## Text scaling — ✅ wired
 Settings → *Text size* (0.85–1.5) sets the root `font-size` %, so all `rem`-based sizing scales. **Audit item:** confirm panels size text in `rem`/`em`, not fixed `px`, so they inherit the scale.
