@@ -104,8 +104,14 @@ pub struct GameState {
     #[serde(default)]
     pub dropped_items: BTreeMap<String, BTreeMap<String, u32>>,
     /// Sub-item fractional progress toward the next scavenged scrap unit.
-    /// Internal; not persisted or surfaced.
-    #[serde(skip)]
+    ///
+    /// Persisted. It was `#[serde(skip)]`, which was wrong twice over: a save
+    /// taken mid-scavenge silently lost up to one scrap unit of progress on load,
+    /// and because `GameState` derives `PartialEq` the skip also made
+    /// `save_round_trip_preserves_state` unsound — it could only pass because the
+    /// test round-tripped a fresh state that had never scavenged. `#[serde(default)]`
+    /// keeps pre-existing saves loadable.
+    #[serde(default)]
     pub scavenge_scrap_progress: f64,
 }
 
@@ -1188,8 +1194,63 @@ pub fn initial_discovered_cells() -> BTreeSet<HexCoordState> {
         .collect()
 }
 
+/// Cube distance between two axial coordinates.
+///
+/// Delegates to `topology::axial_distance`. This used to be a second, identical
+/// copy of the same arithmetic carrying the same `i8` overflow: `127 - (-128)`
+/// cannot be represented, and `i8::MIN.abs()` panics outright. Two copies of a
+/// subtle numeric routine is two places to get it wrong, so there is now one.
 pub(crate) fn cube_distance(q1: i8, r1: i8, q2: i8, r2: i8) -> u8 {
-    let dq = q1 - q2;
-    let dr = r1 - r2;
-    dq.abs().max(dr.abs()).max((-(q1 + r1) + (q2 + r2)).abs()) as u8
+    crate::topology::axial_distance(q1, r1, q2, r2)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// `scavenge_scrap_progress` is sub-item progress toward the next scrap unit,
+    /// so it is almost never a whole number. It was `#[serde(skip)]`, which meant
+    /// a save taken mid-scavenge lost up to a full unit of progress on load —
+    /// and because `GameState` derives `PartialEq`, the skip made the whole-state
+    /// equality contract unsound for any state that had scavenged.
+    #[test]
+    fn fractional_scavenge_progress_survives_serialization() {
+        let mut state = GameState::new();
+        state.scavenge_scrap_progress = 0.375;
+
+        let json = serde_json::to_string(&state).expect("state should serialize");
+        assert!(
+            json.contains("scavengeScrapProgress"),
+            "the field must appear in the serialized form under its wire name",
+        );
+
+        let restored: GameState =
+            serde_json::from_str(&json).expect("state should deserialize");
+        assert_eq!(
+            restored.scavenge_scrap_progress, 0.375,
+            "a fractional residue must survive a round trip",
+        );
+        assert_eq!(
+            state, restored,
+            "a scavenged state must equal itself after a round trip",
+        );
+    }
+
+    /// A save written before the field was persisted must still load rather than
+    /// failing on a missing key.
+    #[test]
+    fn a_save_without_scavenge_progress_still_loads() {
+        let state = GameState::new();
+        let encoded = serde_json::to_string(&state).expect("state should serialize");
+        let mut value: serde_json::Value =
+            serde_json::from_str(&encoded).expect("state serializes to json");
+        value
+            .as_object_mut()
+            .expect("state serializes as an object")
+            .remove("scavengeScrapProgress");
+
+        let restored: GameState =
+            serde_json::from_value(value).expect("an older save must still load");
+        assert_eq!(restored.scavenge_scrap_progress, 0.0);
+    }
 }

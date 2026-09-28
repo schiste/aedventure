@@ -153,14 +153,40 @@ pub struct GeneratedCell {
 }
 
 /// Cube distance between two axial coordinates.
+///
+/// Widened to `i32` before the arithmetic. In `i8`, `127 - (-128)` overflows —
+/// a panic in debug, a wrap in release, and `i8::MIN.abs()` then panics too.
+/// No caller reaches it today because every coordinate comes from the generated
+/// map, where q and r sit well inside ±63, but this is a `pub` function in a
+/// public module and `radius > 63` would produce exactly those values.
 pub fn axial_distance(q1: i8, r1: i8, q2: i8, r2: i8) -> u8 {
+    let (q1, r1, q2, r2) = (q1 as i32, r1 as i32, q2 as i32, r2 as i32);
     let dq = q1 - q2;
     let dr = r1 - r2;
-    dq.abs().max(dr.abs()).max((-(q1 + r1) + (q2 + r2)).abs()) as u8
+    let ds = -(q1 + r1) + (q2 + r2);
+    dq.abs().max(dr.abs()).max(ds.abs()).min(u8::MAX as i32) as u8
 }
 
 #[cfg(test)]
 mod tests {
+    /// The overflow this guards is unreachable from the generated map, so it can
+    /// only be pinned by calling the function with the values that cause it.
+    #[test]
+    fn axial_distance_does_not_overflow_at_the_extremes_of_i8() {
+        // The full span of the coordinate type, which `i8` subtraction cannot
+        // represent: 127 - -128 = 255, and the cube sum reaches 510.
+        assert_eq!(super::axial_distance(127, 0, -128, 0), 255);
+        assert_eq!(super::axial_distance(-128, -128, 127, 127), 255);
+        assert_eq!(super::axial_distance(0, 127, 0, -128), 255);
+        // Identical coordinates are still zero, extremes included.
+        assert_eq!(super::axial_distance(-128, -128, -128, -128), 0);
+        assert_eq!(super::axial_distance(127, 127, 127, 127), 0);
+        // And the distance the generated map actually produces is unchanged.
+        assert_eq!(super::axial_distance(6, 0, 0, 3), 6);
+        assert_eq!(super::axial_distance(2, 2, 2, 2), 0);
+    }
+
+
     use super::*;
 
     // A second, deliberately different map proves the generation + resolution
