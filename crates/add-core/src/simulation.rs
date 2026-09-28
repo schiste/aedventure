@@ -63,6 +63,12 @@ pub struct Simulation {
     /// Baseline balance with any overrides applied; what `balance()` returns.
     /// Recomputed only when overrides change (so the hot path stays a cheap copy).
     effective_balance: BalanceSnapshot,
+    /// Is this simulation a throwaway probe of a command that may not be sent?
+    ///
+    /// Set by `command_outcome` on its clone. It suppresses `push_event`, because
+    /// a probe's events are hypothetical state the caller asked about, not
+    /// history. Never set on the simulation the game actually plays.
+    probing: bool,
 }
 
 impl Default for Simulation {
@@ -122,6 +128,7 @@ impl Simulation {
             command_blocker: None,
             balance_overrides: std::collections::BTreeMap::new(),
             effective_balance: balance_snapshot(),
+            probing: false,
         };
         simulation.normalize_discovery_state();
         simulation.normalize_assignment();
@@ -242,6 +249,10 @@ impl Simulation {
             GameCommand::ResetBalanceOverrides => self.reset_balance_overrides(),
             GameCommand::ResetRun => {
                 self.state = GameState::new();
+                // A new run is a new run: it must not inherit whatever the dev
+                // dashboard last set, or a reset game silently plays on someone
+                // else's tuning.
+                self.reset_balance_overrides();
                 self.refresh_hero_survival_state();
                 self.refresh_base_pressure_state();
                 self.refresh_power_state();
@@ -263,9 +274,24 @@ impl Simulation {
     /// Evaluate a command against a copy of the current state without
     /// changing this simulation. UI availability is therefore the same Rust
     /// command path that executes the eventual player action.
+    /// What would happen if this command were sent, without committing it.
+    ///
+    /// This deep-clones the whole simulation and runs the real handler, so the
+    /// answer cannot drift from `apply`. It is also the most expensive thing the
+    /// engine does: `command_availability` calls it around 43 times per snapshot,
+    /// and the worker asks for a snapshot on every message.
+    ///
+    /// A probe throws away the `events` the handler produced. They are
+    /// hypothetical future state — what *would* happen if you clicked — and the
+    /// only consumers of the availability map read `accepted` and `blocker`. So
+    /// building them cost a `Vec` per probe, grew the payload crossing the worker
+    /// boundary on every snapshot, and was then discarded. `probing` skips the
+    /// collection so the real state still sees every event.
     pub fn command_outcome(&self, command: GameCommand) -> CommandOutcome {
         let mut simulation = self.clone();
-        simulation.apply(command)
+        simulation.probing = true;
+        let outcome = simulation.apply(command);
+        outcome
     }
 
     /// Outcomes for the stable command IDs exposed by the ADD command picker.
@@ -385,7 +411,48 @@ impl Simulation {
     /// spends exposure, advances rumour, and runs the world, so walking six
     /// hexes costs six game hours whether or not anyone sent a `tick`. The
     /// presentation layer keeps only the animated duration.
+    /// Move the Hero one hex, and charge him for the walk.
+    ///
+    /// This used to be a free teleport: it set `hero_map` and revealed vision,
+    /// charging neither distance, time, nor exposure. The browser papered over
+    /// that by sending its own `tick` sized by a constant in a *presentation*
+    /// package, so the authoritative rule for what a crossing costs lived
+    /// outside the authoritative layer and any other client got the free version.
+    ///
+    /// Charging a whole crossing in one step then introduced three exploits,
+    /// all of which came from doing the move as a single large step:
+    ///
+    /// 1. The absence ceiling in `progress_hero_survival` gates on *step size*,
+    ///    not on the `offline` flag, and clamps anything past
+    ///    `MAX_ACCRUAL_STEP_SECONDS` to `ABSENCE_CEILING_RATIO`. A six-hex move
+    ///    is 360 runtime seconds, so it was clamped to 0.999 — and
+    ///    `exposure::is_spent(0.999)` is false, so the Hero could never exhaust
+    ///    his protection by walking and the proving restore could never fire.
+    /// 2. Exposure is priced from `hero_map`, which had already been moved, so a
+    ///    jump priced itself at the *destination*. Landing inside the bubble is
+    ///    free, which meant walking in cost more than jumping in, and a jump out
+    ///    to the rim and back was a free full reset.
+    /// 3. A cinematic that freezes the world makes `tick_internal` return
+    ///    before the clock advances, so a move during one was free outright.
+    ///
+    /// The Hero therefore walks exactly one hex per command. The browser and the
+    /// committed scenario already only ever send adjacent steps, so this costs
+    /// them nothing, and it makes every step small enough to be priced honestly
+    /// and charged under the absence ceiling. A multi-hex request is rejected
+    /// rather than silently billed, so a client cannot buy distance.
     fn move_hero_to(&mut self, q: i8, r: i8) {
+        if self.cinematic_freezes_world() {
+            self.push_note("Hero movement ignored: the world is held by a cinematic.");
+            self.reject(BlockerKind::Busy);
+            return;
+        }
+
+        if self.hero_locked_by_survival() {
+            self.push_note("Hero movement ignored: forced return or recovery is in progress.");
+            self.reject(BlockerKind::Busy);
+            return;
+        }
+
         let Some(destination) = self
             .state
             .hexes
@@ -412,23 +479,31 @@ impl Simulation {
             return;
         }
 
+        // The Hero walks. One command buys one hex, so a long request cannot be
+        // used to skip the exposure between here and there.
+        let distance = crate::topology::axial_distance(from.0, from.1, q, r);
+        if distance != 1 {
+            self.push_note(format!(
+                "Hero movement ignored: {q},{r} is {distance} hexes away. The Hero walks one hex at a time."
+            ));
+            self.reject(BlockerKind::Inaccessible);
+            return;
+        }
+
         // One hex crossing is one game hour of endurance, authored so the number
         // reads as a distance across the map: six hexes from the Survivor Cave
         // to the Studio spends the whole pre-immunity budget. See
         // `exposure::GAME_HOUR_SECONDS` and the endurance note there.
-        let crossings = crate::topology::axial_distance(from.0, from.1, q, r);
-        if crossings == 0 {
-            return;
-        }
-        let crossing_game_minutes = self.balance().travel.hex_crossing_game_minutes;
-        let runtime_seconds = f64::from(crossings) * crossing_game_minutes
+        let runtime_seconds = self.balance().travel.hex_crossing_game_minutes
             * crate::exposure::GAME_HOUR_SECONDS
             / 60.0;
 
+        // Charge the walk before relocating, so this step is priced at the hex
+        // the Hero is leaving. Priced at the destination, the final step into
+        // the bubble would be free and a walk in would cost more than a jump.
+        self.tick_internal(runtime_seconds, false);
         self.state.hero_map = HexCoordState::new(q, r);
         self.reveal_hero_vision_at(q, r);
-        // Charge the walk last, so a rejected move costs nothing.
-        self.tick_internal(runtime_seconds, false);
     }
 
     fn set_hero_assigned(&mut self, assigned: bool) {
@@ -1498,7 +1573,7 @@ impl Simulation {
         }
     }
 
-    fn progress_hero_survival(&mut self, seconds: f64) {
+    fn progress_hero_survival(&mut self, seconds: f64, offline: bool) {
         if self.state.hero_survival.exposure.fatal {
             return;
         }
@@ -1523,12 +1598,12 @@ impl Simulation {
             } else {
                 remaining
             };
-            self.progress_hero_survival_leg(step);
+            self.progress_hero_survival_leg(step, offline);
             remaining -= step;
         }
     }
 
-    fn progress_hero_survival_leg(&mut self, seconds: f64) {
+    fn progress_hero_survival_leg(&mut self, seconds: f64, offline: bool) {
         let exposed = self.exposed_seconds_in_step(seconds);
 
         // The walk home is a timer rather than a map move, so it advances here.
@@ -1575,7 +1650,13 @@ impl Simulation {
             // A whole absence arrives as one enormous step. It still costs him,
             // but it stops at the brink: the step that kills is always one the
             // player was there for.
-            if seconds > crate::exposure::MAX_ACCRUAL_STEP_SECONDS {
+            //
+            // Gated on `offline`, not on step size. Gating on size meant any
+            // long *online* step — a multi-hex move, or a `tick` a client asked
+            // for directly — was treated as an absence and clamped to 0.999.
+            // Since `exposure::is_spent(0.999)` is false, that silently made the
+            // Hero unable to exhaust his protection while playing.
+            if offline && seconds > crate::exposure::MAX_ACCRUAL_STEP_SECONDS {
                 self.state.hero_survival.viral_load_ratio = self
                     .state
                     .hero_survival
@@ -1751,6 +1832,18 @@ impl Simulation {
     }
 
     fn tick_internal(&mut self, seconds: f64, offline: bool) {
+        // `f64::max` absorbs NaN (it returns the non-NaN operand, and `0.0`
+        // wins), but nothing absorbs infinity. An infinite step reached
+        // `advance_rumour`, whose boundary loop is
+        // `while now_tick - last_step_tick >= RUMOUR_INTERVAL_SECONDS`: infinity
+        // never satisfies that, so the loop spun forever and wedged the worker
+        // thread. The seam takes a bare `f64` from the browser, so this is one
+        // `1/0` away.
+        if !seconds.is_finite() {
+            self.push_note("Tick ignored: the requested duration is not a finite number.");
+            self.reject(BlockerKind::Inaccessible);
+            return;
+        }
         let safe_seconds = seconds.max(0.0);
         if safe_seconds <= 0.0 {
             return;
@@ -1915,7 +2008,7 @@ impl Simulation {
         self.resolve_station_power(safe_seconds);
         self.refresh_power_state();
         self.progress_bubble(safe_seconds);
-        self.progress_hero_survival(safe_seconds);
+        self.progress_hero_survival(safe_seconds, offline);
         self.progress_combat(safe_seconds);
         if !offline {
             self.progress_world_action(safe_seconds);
@@ -2427,36 +2520,66 @@ impl Simulation {
             return;
         };
 
-        if job.resource_id.as_deref() == Some(RESOURCE_BASSLINE) {
-            let max_spend = worker_seconds * job.per_worker_cost_per_second;
-            let remaining_cost = (job.total_cost - job.spent_cost).max(0.0);
-            let spend = self
-                .state
-                .resources
-                .bassline
-                .min(max_spend)
-                .min(remaining_cost);
+        // A job with a resource rate is paid for as it runs; a job without one is
+        // advanced on time alone.
+        //
+        // The branch is on the *rate*, not on `resource_id`. `CostDef::Upfront`
+        // sets `resource_id` to its cost resource and a per-second rate of `0.0`,
+        // because the whole cost was already paid up front. Keyed on
+        // `resource_id` alone, such a job fell into the paid branch, computed
+        // `max_spend = worker_seconds * 0.0 = 0`, took the "no Bassline
+        // available" early return, and reported a shortage forever — a soft-lock.
+        // The divide below would also have been `0.0 / 0.0`, i.e. NaN.
+        //
+        // No authored option is priced that way today (`construction.ts` uses
+        // `drain_per_worker_second` and `time_only`), so this is defence against a
+        // content edit rather than a fix for something a player has hit. The
+        // observable behaviour it changes is that a zero-rate job now advances on
+        // time, the same as a `time_only` one, instead of stalling.
+        match job.per_worker_cost_per_second {
+            rate if rate > 0.0 => {
+                if job.resource_id.as_deref() == Some(RESOURCE_BASSLINE) {
+                    let max_spend = worker_seconds * rate;
+                    let remaining_cost = (job.total_cost - job.spent_cost).max(0.0);
+                    let spend = self
+                        .state
+                        .resources
+                        .bassline
+                        .min(max_spend)
+                        .min(remaining_cost);
 
-            if spend <= 0.0 {
-                self.push_note("Construction paused: no Bassline available for builders.");
-                return;
+                    if spend <= 0.0 {
+                        self.push_note(
+                            "Construction paused: no Bassline available for builders.",
+                        );
+                        return;
+                    }
+
+                    let completed_worker_seconds = spend / rate;
+                    job.spent_cost = (job.spent_cost + spend).min(job.total_cost);
+                    job.remaining_work_seconds =
+                        (job.remaining_work_seconds - completed_worker_seconds).max(0.0);
+
+                    self.state.resources.bassline -= spend;
+                    self.state.resources.lifetime_spent += spend;
+
+                    if job.remaining_work_seconds > 0.0 && job.spent_cost < job.total_cost {
+                        return;
+                    }
+                } else {
+                    job.remaining_work_seconds =
+                        (job.remaining_work_seconds - worker_seconds).max(0.0);
+                    if job.remaining_work_seconds > 0.0 {
+                        return;
+                    }
+                }
             }
-
-            let completed_worker_seconds = spend / job.per_worker_cost_per_second;
-            job.spent_cost = (job.spent_cost + spend).min(job.total_cost);
-            job.remaining_work_seconds =
-                (job.remaining_work_seconds - completed_worker_seconds).max(0.0);
-
-            self.state.resources.bassline -= spend;
-            self.state.resources.lifetime_spent += spend;
-
-            if job.remaining_work_seconds > 0.0 && job.spent_cost < job.total_cost {
-                return;
-            }
-        } else {
-            job.remaining_work_seconds = (job.remaining_work_seconds - worker_seconds).max(0.0);
-            if job.remaining_work_seconds > 0.0 {
-                return;
+            // Nothing to spend: the work is done by time passing.
+            _ => {
+                job.remaining_work_seconds = (job.remaining_work_seconds - worker_seconds).max(0.0);
+                if job.remaining_work_seconds > 0.0 {
+                    return;
+                }
             }
         }
 
@@ -3097,6 +3220,24 @@ impl Simulation {
                 break;
             }
             self.apply_effects(def.rewards);
+            // A reward the player cannot afford is not a reward they got. Marking
+            // the objective complete anyway lost the reward permanently, because
+            // completed objectives are never revisited — and it left
+            // `command_blocker` set, so the enclosing tick reported
+            // `accepted: false` on a turn that had in fact advanced the run.
+            // Untested against a real rejection: no authored objective spends
+            // anything, so this branch is only reachable from a future objective
+            // that has a cost. Kept because the failure it prevents — a reward
+            // lost forever, plus a tick that advanced the run reporting failure —
+            // is worse than the few lines it costs.
+            if self.command_blocker.is_some() {
+                self.command_blocker = None;
+                self.push_note(format!(
+                    "Objective '{}' is ready but its reward could not be paid; leaving it open.",
+                    def.label
+                ));
+                break;
+            }
             self.state
                 .objectives
                 .completed_objective_ids
@@ -4817,6 +4958,9 @@ impl Simulation {
     /// is pushed separately at the same sites, so the two stay in sync while
     /// consumers migrate from string-sniffing to typed events.
     fn push_event(&mut self, event: crate::state::GameEvent) {
+        if self.probing {
+            return;
+        }
         self.state.events.push(event);
     }
 
