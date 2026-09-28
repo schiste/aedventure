@@ -287,6 +287,22 @@ impl Simulation {
     /// building them cost a `Vec` per probe, grew the payload crossing the worker
     /// boundary on every snapshot, and was then discarded. `probing` skips the
     /// collection so the real state still sees every event.
+    /// Wrap a predicate's verdict in the shape the availability map publishes.
+    fn predicate_outcome(&self, verdict: Result<(), BlockerKind>) -> CommandOutcome {
+        match verdict {
+            Ok(()) => CommandOutcome {
+                accepted: true,
+                blocker: None,
+                events: Vec::new(),
+            },
+            Err(blocker) => CommandOutcome {
+                accepted: false,
+                blocker: Some(blocker),
+                events: Vec::new(),
+            },
+        }
+    }
+
     pub fn command_outcome(&self, command: GameCommand) -> CommandOutcome {
         let mut simulation = self.clone();
         simulation.probing = true;
@@ -339,7 +355,7 @@ impl Simulation {
         for seconds in [60.0, 120.0] {
             outcomes.insert(
                 format!("wait:{seconds:.0}"),
-                self.command_outcome(GameCommand::Tick { seconds }),
+                self.predicate_outcome(self.can_tick(seconds)),
             );
         }
 
@@ -1829,6 +1845,28 @@ impl Simulation {
         if expired {
             self.advance_cinematic();
         }
+    }
+
+    /// Whether a tick of `seconds` would be accepted, without running one.
+    ///
+    /// This is the only place a tick can be refused. `tick_internal` rejects for
+    /// exactly one reason -- a non-finite duration -- and nothing it calls can
+    /// reject: a zero or negative duration returns early while still accepted,
+    /// and a cinematic that freezes the world takes the tick for itself and
+    /// returns without a blocker. `can_tick_agrees_with_the_real_handler` pins
+    /// that claim against the real handler, so this cannot drift from it.
+    ///
+    /// It exists because the availability map probed `Tick` twice per snapshot,
+    /// and those two probes ran a full `tick_internal` -- a complete world
+    /// advance, ink re-parsing and a full re-projection of every cell -- on a
+    /// clone, per snapshot, to learn something two comparisons can answer.
+    /// Measured on a played state, the two tick probes were 0.70ms of a 1.85ms
+    /// availability map, or 38% of the cost, for a boolean.
+    pub fn can_tick(&self, seconds: f64) -> Result<(), BlockerKind> {
+        if !seconds.is_finite() {
+            return Err(BlockerKind::Inaccessible);
+        }
+        Ok(())
     }
 
     fn tick_internal(&mut self, seconds: f64, offline: bool) {

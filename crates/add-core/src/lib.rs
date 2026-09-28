@@ -1989,6 +1989,75 @@ mod tests {
         );
     }
 
+    /// The cheap tick predicate must agree with the real handler, always.
+    ///
+    /// `can_tick` exists so the availability map can answer "is waiting
+    /// allowed?" without running a full world advance on a clone. It is only
+    /// legitimate while it agrees with `apply(Tick)`, and a predicate that
+    /// drifts from the handler it replaces is worse than the clone it saved --
+    /// the clone could not be wrong. This runs both over the interesting
+    /// durations and the states where the answer could plausibly differ.
+    #[test]
+    fn can_tick_agrees_with_the_real_handler() {
+        for cinematic in [false, true] {
+            let mut simulation = Simulation::new();
+            if cinematic {
+                simulation.apply(GameCommand::StartCinematic {
+                    cinematic_id: "cinematic.sample".to_string(),
+                });
+            }
+            for seconds in [
+                0.0,
+                -1.0,
+                1.0,
+                60.0,
+                120.0,
+                3_600.0,
+                f64::INFINITY,
+                f64::NEG_INFINITY,
+            ] {
+                let real = simulation.command_outcome(GameCommand::Tick { seconds });
+                let cheap = simulation.can_tick(seconds);
+                assert_eq!(
+                    real.accepted,
+                    cheap.is_ok(),
+                    "can_tick and apply(Tick) disagree on {seconds}s \
+                     (cinematic: {cinematic}): handler said accepted={} blocker={:?}, \
+                     predicate said {cheap:?}",
+                    real.accepted,
+                    real.blocker,
+                );
+                assert_eq!(
+                    real.blocker,
+                    cheap.err(),
+                    "can_tick and apply(Tick) disagree on the blocker for {seconds}s \
+                     (cinematic: {cinematic})",
+                );
+            }
+        }
+    }
+
+    /// The availability map's wait entries must still describe waiting, and must
+    /// not have lost the map the UI reads.
+    #[test]
+    fn the_availability_map_still_reports_waiting() {
+        let simulation = Simulation::new();
+        let availability = simulation.command_availability();
+        for id in ["wait:60", "wait:120"] {
+            let outcome = availability
+                .get(id)
+                .unwrap_or_else(|| panic!("{id} should be in the availability map"));
+            assert!(
+                outcome.accepted,
+                "waiting should be allowed in a fresh game: {id} -> {outcome:?}",
+            );
+            assert_eq!(
+                outcome.blocker, None,
+                "an accepted probe carries no blocker: {id}",
+            );
+        }
+    }
+
     #[test]
     fn reset_clears_discovery_to_initial_cells() {
         let mut simulation = Simulation::new();
