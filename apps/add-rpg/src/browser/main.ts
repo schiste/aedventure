@@ -1,4 +1,11 @@
 import {
+  directionBetweenAddCells,
+  hexRouteDistance,
+  nextHexToward,
+  parseAddDisplayCell,
+} from "./add-cells"
+import { safeElementId, slugForId } from "./element-ids"
+import {
   createEffect,
   createMemo,
   createRoot,
@@ -6178,27 +6185,8 @@ function nextOpeningRouteCell(currentMapInfo: AddPhaserMapInfo = mapInfo()): str
   if (!from || !to || from.kind !== "hex" || to.kind !== "hex") return null
   if (from.a === to.a && from.b === to.b) return null
 
-  const neighbors = [
-    { a: from.a, b: from.b - 1 },
-    { a: from.a + 1, b: from.b - 1 },
-    { a: from.a + 1, b: from.b },
-    { a: from.a, b: from.b + 1 },
-    { a: from.a - 1, b: from.b + 1 },
-    { a: from.a - 1, b: from.b },
-  ]
-  const next = neighbors
-    .map((cell) => ({ ...cell, distance: hexRouteDistance(cell, to) }))
-    .sort((left, right) => left.distance - right.distance)[0]
+  const next = nextHexToward(from, to)
   return next ? `hex:${next.a},${next.b}` : null
-}
-
-function hexRouteDistance(
-  from: { readonly a: number; readonly b: number },
-  to: { readonly a: number; readonly b: number },
-): number {
-  const dq = from.a - to.a
-  const dr = from.b - to.b
-  return (Math.abs(dq) + Math.abs(dr) + Math.abs(dq + dr)) / 2
 }
 
 function routeDirectionLabel(fromCell: string | null, toCell: string | null): string | null {
@@ -6241,33 +6229,6 @@ async function runSelectedTileTravelAction(detail: AddTileDetailSummary): Promis
   if (!direction) return
   await mapController.moveMainCharacter(direction)
   refreshMapInfo()
-}
-
-function directionBetweenAddCells(
-  fromCell: string | null,
-  toCell: string | null,
-): AddCharacterMoveDirection | null {
-  const from = parseAddDisplayCell(fromCell)
-  const to = parseAddDisplayCell(toCell)
-  if (!from || !to || from.kind !== to.kind) return null
-
-  const dx = to.a - from.a
-  const dy = to.b - from.b
-  if (from.kind === "square") {
-    if (dx === 0 && dy === -1) return "up"
-    if (dx === 1 && dy === 0) return "right"
-    if (dx === 0 && dy === 1) return "down"
-    if (dx === -1 && dy === 0) return "left"
-    return null
-  }
-
-  if (dx === 0 && dy === -1) return "north_west"
-  if (dx === 1 && dy === -1) return "north_east"
-  if (dx === 1 && dy === 0) return "right"
-  if (dx === 0 && dy === 1) return "south_east"
-  if (dx === -1 && dy === 1) return "south_west"
-  if (dx === -1 && dy === 0) return "left"
-  return null
 }
 
 function areaEntrySideForWorldAreaEntry(
@@ -6337,19 +6298,6 @@ function areaEntrySideFromWorldCells(
     },
     { side: null as AddAreaEntrySide | null, score: Number.NEGATIVE_INFINITY },
   ).side
-}
-
-function parseAddDisplayCell(
-  cell: string | null,
-): { readonly kind: "hex" | "square"; readonly a: number; readonly b: number } | null {
-  if (!cell) return null
-  const match = /^(hex|square):(-?\d+),(-?\d+)$/.exec(cell)
-  if (!match) return null
-  return {
-    kind: match[1] as "hex" | "square",
-    a: Number(match[2]),
-    b: Number(match[3]),
-  }
 }
 
 function compareTileActionPriority(left: AddTileAction, right: AddTileAction): number {
@@ -8595,10 +8543,6 @@ function formatSignedRatioPercent(value: number): string {
   return `${value >= 0 ? "+" : "-"}${percent}%`
 }
 
-function safeElementId(value: string): string {
-  return value.replace(/[^a-zA-Z0-9_-]+/g, "-")
-}
-
 function slugForRole(roleId: string): string {
   switch (roleId) {
     case ROLE_CRYSTAL_BASSLINE:
@@ -8646,10 +8590,6 @@ function constructionButtonId(optionId: string): string {
     default:
       return `start-${slugForId(optionId)}`
   }
-}
-
-function slugForId(id: string): string {
-  return id.replace(/[^a-z0-9_-]+/gi, "-").replace(/^-|-$/g, "").toLowerCase()
 }
 
 function requiredElement(id: string): HTMLElement {

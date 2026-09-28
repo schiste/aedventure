@@ -43,6 +43,12 @@ run_cross_app_contracts
 echo "Building ADD RPG bundle..."
 npm --workspace @aedventure/add-rpg run build:browser
 
+echo "Testing the ADD RPG pure helpers..."
+# These live in `main.ts` until recently, which meant a unit test of
+# `hexRouteDistance` required booting the whole app. Now that they are modules,
+# the test is plain node against the build output the step above just produced.
+node "$ROOT_DIR/apps/add-rpg/test/add-cells.test.js"
+
 echo "Running ADD RPG smoke..."
 npm run smoke:add-rpg:built
 
