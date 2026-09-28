@@ -1,156 +1,40 @@
 #!/usr/bin/env bash
+# Full target-stack verification: both lanes.
+#
+# This is the phase-gate / pre-push entry point and is unchanged in behaviour —
+# it still verifies everything `npm run check` always verified. The work is now
+# split so that a developer working on one product can run only that lane:
+#
+#   scripts/verify-target-stack.sh          both lanes (default)
+#   scripts/verify-target-stack.sh add      ADD game only
+#   scripts/verify-target-stack.sh office   office / platform only
+#
+# `npm run check`, `npm run check:add`, and `npm run check:office` are the
+# documented entry points for those three modes.
+
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROFILE="${1:-all}"
 
-echo "Running gameplay verification..."
-npm run verify
-
-if [[ -x "$ROOT_DIR/node_modules/.bin/tsc" ]]; then
-  TSC="$ROOT_DIR/node_modules/.bin/tsc"
-elif [[ -x "$ROOT_DIR/legacy/skyoffice-original/node_modules/.bin/tsc" ]]; then
-  TSC="$ROOT_DIR/legacy/skyoffice-original/node_modules/.bin/tsc"
-else
-  echo "Missing TypeScript compiler. Run npm install at the repository root." >&2
-  exit 1
-fi
-
-echo "Building ADD RPG WASM runtime..."
-node "$ROOT_DIR/scripts/build-add-rpg-wasm.cjs"
-
-echo "Building target TypeScript workspace..."
-"$TSC" -b "$ROOT_DIR/tsconfig.json"
-
-mkdir -p "$ROOT_DIR/node_modules/@aedventure"
-ln -sfn "../../packages/game-protocol" "$ROOT_DIR/node_modules/@aedventure/game-protocol"
-ln -sfn "../../packages/game-core" "$ROOT_DIR/node_modules/@aedventure/game-core"
-ln -sfn "../../packages/game-content" "$ROOT_DIR/node_modules/@aedventure/game-content"
-ln -sfn "../../packages/game-topology" "$ROOT_DIR/node_modules/@aedventure/game-topology"
-ln -sfn "../../packages/game-visibility" "$ROOT_DIR/node_modules/@aedventure/game-visibility"
-ln -sfn "../../packages/game-world" "$ROOT_DIR/node_modules/@aedventure/game-world"
-ln -sfn "../../packages/add-protocol" "$ROOT_DIR/node_modules/@aedventure/add-protocol"
-ln -sfn "../../packages/add-content" "$ROOT_DIR/node_modules/@aedventure/add-content"
-ln -sfn "../../packages/add-presentation" "$ROOT_DIR/node_modules/@aedventure/add-presentation"
-ln -sfn "../../packages/add-ui" "$ROOT_DIR/node_modules/@aedventure/add-ui"
-ln -sfn "../../packages/add-runtime-client" "$ROOT_DIR/node_modules/@aedventure/add-runtime-client"
-ln -sfn "../../packages/game-assets" "$ROOT_DIR/node_modules/@aedventure/game-assets"
-ln -sfn "../../packages/game-map" "$ROOT_DIR/node_modules/@aedventure/game-map"
-ln -sfn "../../packages/game-input" "$ROOT_DIR/node_modules/@aedventure/game-input"
-ln -sfn "../../packages/game-renderer-phaser" "$ROOT_DIR/node_modules/@aedventure/game-renderer-phaser"
-ln -sfn "../../packages/office-domain" "$ROOT_DIR/node_modules/@aedventure/office-domain"
-ln -sfn "../../packages/asset-registry" "$ROOT_DIR/node_modules/@aedventure/asset-registry"
-ln -sfn "../../packages/auth-wikimedia" "$ROOT_DIR/node_modules/@aedventure/auth-wikimedia"
-ln -sfn "../../packages/policy" "$ROOT_DIR/node_modules/@aedventure/policy"
-ln -sfn "../../packages/shared-types" "$ROOT_DIR/node_modules/@aedventure/shared-types"
-ln -sfn "../../apps/add-rpg" "$ROOT_DIR/node_modules/@aedventure/add-rpg"
-ln -sfn "../../apps/api" "$ROOT_DIR/node_modules/@aedventure/api"
-ln -sfn "../../apps/engine-sandbox" "$ROOT_DIR/node_modules/@aedventure/engine-sandbox"
-ln -sfn "../../apps/media-gateway" "$ROOT_DIR/node_modules/@aedventure/media-gateway"
-ln -sfn "../../apps/web" "$ROOT_DIR/node_modules/@aedventure/web"
-ln -sfn "../../apps/world-server" "$ROOT_DIR/node_modules/@aedventure/world-server"
-
-echo "Running game-protocol checks..."
-node "$ROOT_DIR/packages/game-protocol/test/protocol.test.js"
-
-echo "Running game-core simulation checks..."
-node "$ROOT_DIR/packages/game-core/test/simulation.test.js"
-node "$ROOT_DIR/packages/game-core/test/movement.test.js"
-
-echo "Running game-topology checks..."
-node "$ROOT_DIR/packages/game-topology/test/topology.test.js"
-
-echo "Running game-visibility checks..."
-node "$ROOT_DIR/packages/game-visibility/test/visibility.test.js"
-
-echo "Running game-world checks..."
-node "$ROOT_DIR/packages/game-world/test/world.test.js"
-
-echo "Running ADD domain adapter checks..."
-node "$ROOT_DIR/packages/add-runtime-client/test/adapters.test.js"
-
-
-echo "Running game-assets checks..."
-node "$ROOT_DIR/packages/game-assets/test/assets.test.js"
-
-echo "Running game-map checks..."
-node "$ROOT_DIR/packages/game-map/test/map.test.js"
-
-echo "Running game-input checks..."
-node "$ROOT_DIR/packages/game-input/test/input.test.js"
-
-echo "Running game-renderer-phaser checks..."
-node "$ROOT_DIR/packages/game-renderer-phaser/test/renderer-boundary.test.js"
-
-echo "Running asset-registry checks..."
-node "$ROOT_DIR/packages/asset-registry/test/catalog.test.js"
-node "$ROOT_DIR/scripts/verify-internal-assets.cjs"
-
-echo "Running Wikimedia OAuth checks..."
-node "$ROOT_DIR/packages/auth-wikimedia/test/oauth-flow.test.js"
-
-echo "Running policy checks..."
-node "$ROOT_DIR/packages/policy/test/chat-policy.test.js"
-
-echo "Running authoritative world-server checks..."
-node "$ROOT_DIR/apps/world-server/test/authoritative-world.test.js"
-
-echo "Running API auth/session checks..."
-node "$ROOT_DIR/apps/api/test/authentication.test.js"
-node "$ROOT_DIR/apps/api/test/controller.test.js"
-node "$ROOT_DIR/apps/api/test/postgres-store.test.js"
-node "$ROOT_DIR/apps/api/test/pg-executor.test.js"
-node "$ROOT_DIR/apps/api/test/wikimedia-oauth-controller.test.js"
-node "$ROOT_DIR/apps/api/test/routes.test.js"
-node "$ROOT_DIR/apps/api/test/fetch-routes.test.js"
-node "$ROOT_DIR/apps/api/test/runtime-config.test.js"
-node "$ROOT_DIR/apps/api/test/world-store.test.js"
-node "$ROOT_DIR/apps/api/test/permission-store.test.js"
-node "$ROOT_DIR/apps/api/test/seeded-permission-resolver.test.js"
-
-echo "Running media-gateway checks..."
-node "$ROOT_DIR/apps/media-gateway/test/media-gateway.test.js"
-
-echo "Running ADD Rust cargo check..."
-cargo check --manifest-path "$ROOT_DIR/Cargo.toml"
-
-echo "Running browser app-layer checks..."
-node "$ROOT_DIR/apps/web/test/customer-office-app.test.js"
-node "$ROOT_DIR/apps/web/test/adapters.test.js"
-
-echo "Running multi-app QA contract checks..."
-npm run qa:contracts
-npm run qa:multi-app
-
-echo "Building browser frontend bundle..."
-npm --workspace @aedventure/web run build:browser
-
-echo "Building engine sandbox bundle..."
-npm --workspace @aedventure/engine-sandbox run build:browser
-
-echo "Building ADD RPG bundle..."
-npm --workspace @aedventure/add-rpg run build:browser
-
-echo "Running engine sandbox smoke..."
-npm run smoke:engine-sandbox:built
-
-echo "Running ADD RPG smoke..."
-npm run smoke:add-rpg:built
-
-echo "Checking ADD RPG asset budgets..."
-# Gated from Sep 2026. The WASM had been over its budget on main for some time
-# and nobody saw it, because this check existed but nothing ran it.
-npm run qa:add-rpg:size:built
-
-echo "Running office browser smoke..."
-npm run smoke:office:built
-
-echo "Running Phaser renderer QA..."
-npm run qa:renderer:built
-
-echo "Running development HTTP host checks..."
-node "$ROOT_DIR/scripts/dev-http-host.test.cjs"
-node "$ROOT_DIR/scripts/dev-app-loop.test.cjs"
-
-"$ROOT_DIR/scripts/verify-infra-config.sh"
-
-echo "Target stack verification passed."
+case "$PROFILE" in
+  add)
+    exec "$SCRIPT_DIR/verify-add-stack.sh"
+    ;;
+  office)
+    exec "$SCRIPT_DIR/verify-office-stack.sh"
+    ;;
+  all)
+    echo "=== ADD lane ==="
+    "$SCRIPT_DIR/verify-add-stack.sh"
+    echo
+    echo "=== Office lane ==="
+    "$SCRIPT_DIR/verify-office-stack.sh"
+    echo
+    echo "Target stack verification passed."
+    ;;
+  *)
+    echo "Unknown profile '$PROFILE'. Use: add | office | all" >&2
+    exit 2
+    ;;
+esac
