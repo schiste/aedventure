@@ -284,6 +284,29 @@ export interface ConstructionSnapshot {
   totalCost: number
   spentCost: number
   perWorkerCostPerSecond: number
+  /**
+   * Seconds the Hero's current staffing needs to finish this job, computed by
+   * the sim at start. `null` when nobody is assigned, or when the job predates
+   * this field (older saves).
+   */
+  estimatedCompletionSeconds: number | null
+}
+
+/**
+ * The two numbers a build ETA is made of, both authoritative.
+ *
+ * The browser used to recompute both — `baseDuration × tooling` and the crew
+ * throughput — and its copy of the duration left out the construction-speed perk
+ * the sim divides by, so a perked builder saw a build time that was too long.
+ * Dividing `remainingWorkSeconds` by this throughput is now correct because
+ * `remainingWorkSeconds` and `constructionDurationSeconds` come from the same
+ * place.
+ */
+export interface ConstructionEstimateSnapshot {
+  /** Staffing-weighted build work produced per runtime second, 0 when idle. */
+  workerThroughputPerSecond: number
+  /** Authoritative duration for an option id, from balance, tooling, and perks. */
+  durationSecondsByOption: Record<string, number>
 }
 
 export interface WorldActionSnapshot {
@@ -466,6 +489,8 @@ export interface SimulationSnapshot {
   heroMap: HexCoordSnapshot
   hexes: HexSnapshot[]
   activeConstruction: ConstructionSnapshot | null
+  /** Authoritative build estimates, so the browser never re-derives them. */
+  construction?: ConstructionEstimateSnapshot
   activeWorldAction: WorldActionSnapshot | null
   notes: string[]
   /** Open dungeon doors, keyed by `${dungeonId}:${x}:${y}`. */
@@ -1050,7 +1075,26 @@ export interface BalanceSnapshot {
   water: WaterBalance
   vibes: VibesBalance
   recruitment: RecruitmentBalance
+  travel: TravelBalance
   notesLimit: number
+}
+
+export interface TravelBalance {
+  /**
+   * Game minutes one overworld hex crossing costs the Hero.
+   *
+   * This belongs in balance, not in a presentation adapter. The cost is
+   * gameplay: it is what spends the Hero's exposure, because a game hour of
+   * walking is an hour his protection does not cover. It used to live in
+   * `packages/add-presentation/src/adapters/world-time.ts` as
+   * `ADD_TRAVEL_GAME_MINUTES_PER_TILE`, where the browser read it and sent its
+   * own `tick` — so the authoritative sim let anyone cross the whole map for
+   * free by sending `moveHeroTo` without a tick. The sim now charges this
+   * itself in `Simulation::move_hero_to`.
+   */
+  hexCrossingGameMinutes: number
+  /** Steps one dungeon square costs, in game minutes. */
+  dungeonStepGameMinutes: number
 }
 
 export interface BubbleBalance {

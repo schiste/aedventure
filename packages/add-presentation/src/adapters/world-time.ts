@@ -32,6 +32,17 @@ const REFERENCE_START_MONTH_INDEX = 2
 const REFERENCE_START_DAY = 20
 const WORLD_START_LOCAL_MINUTE = 6 * 60 + 30
 export const ADD_GAME_MINUTES_PER_RUNTIME_SECOND = 1
+
+/**
+ * Presentation fallback only.
+ *
+ * The authoritative cost of a hex crossing is
+ * `balance.travel.hexCrossingGameMinutes`, which `Simulation::move_hero_to`
+ * charges. This constant exists so the shell can size an animation before it
+ * has a snapshot, and it is deliberately kept equal to the authored balance
+ * value — `add-rpg-smoke.test.cjs` asserts they agree, so the two cannot drift
+ * without a test failing.
+ */
 export const ADD_TRAVEL_GAME_MINUTES_PER_TILE = 60
 export const ADD_TRAVEL_RUNTIME_SECONDS_PER_TILE =
   ADD_TRAVEL_GAME_MINUTES_PER_TILE / ADD_GAME_MINUTES_PER_RUNTIME_SECOND

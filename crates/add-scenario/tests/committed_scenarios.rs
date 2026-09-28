@@ -7,12 +7,40 @@ fn repo_path(relative: &str) -> PathBuf {
         .join(relative)
 }
 
+/// The protected first gameplay loop: travel, reach the Studio, unlock the
+/// Base, assign crew, earn resources, construct, leave offline, return.
+///
+/// The two tutorial world actions are ticked for 7s and 12s rather than their
+/// authored 5s and 10s. That is not slack: the six-hex walk now costs six game
+/// hours, because `Simulation::move_hero_to` charges it instead of trusting the
+/// browser to send a matching tick. Six hexes against a six-hour pre-immunity
+/// budget leaves the Hero at ~0.58 exposure on arrival, which is past the
+/// tier-1 threshold, so work runs at `tierOneWorkEfficiencyMultiplier` (0.9) and
+/// a 5s tick advances a 5s action by only 4.5s. Ticking to the authored duration
+/// left the action unfinished, which blocked the next story beat, which blocked
+/// the next world action. The ticks carry the debuff; the contract still holds.
+///
+///
+/// This scenario walks the path a *player* walks, which includes answering the
+/// reactive beat the engine raises. Finishing `world_action.explore_base` leaves
+/// the Hero outside the field for the walk home, so the salience selector
+/// legitimately promotes `story.beat.hero_exposed` over the onboarding spine —
+/// that emergence is deliberate and is pinned by
+/// `reactive_storylet_interrupts_when_hero_exposed` in `add-core`.
+///
+/// The scenario used to skip that beat, so from the moment the exposure rework
+/// (session 79) made the reactive precondition satisfiable during onboarding,
+/// this contract asserted `story.beat.restore_studio` while the engine had
+/// moved on. It failed on `main` from that session until now, undetected because
+/// the gate ran `cargo check` rather than `cargo test`. The fix belongs here
+/// rather than in the selector: a reactive beat may interrupt the spine, and
+/// the player resolves it.
 #[test]
 fn committed_idle_loop_scenario_matches_the_core_contract() {
     let run = run_scenario_file(&repo_path("scenarios/add/idle-base-first-cycle.json"))
         .expect("committed idle scenario should pass");
     assert_eq!(run.scenario_id, "idle-base-first-cycle");
-    assert_eq!(run.command_count, 26);
+    assert_eq!(run.command_count, 27);
     assert_eq!(run.checkpoints_passed, 10);
     assert_eq!(run.final_agent_runtime["contract"], "agent_runtime_v1");
     assert_eq!(run.final_agent_runtime["schemaVersion"], 1);
@@ -59,7 +87,7 @@ fn committed_idle_loop_scenario_matches_the_core_contract() {
         run.final_snapshot["heroMap"],
         serde_json::json!({ "q": 0, "r": 3 })
     );
-    assert_eq!(run.final_snapshot["clockSeconds"], 3702.0);
+    assert_eq!(run.final_snapshot["clockSeconds"], 4066.0);
     assert_eq!(run.final_snapshot["base"]["studioRestored"], true);
     assert!(
         run.final_snapshot["resources"]["bassline"]

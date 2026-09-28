@@ -12,6 +12,11 @@ struct WebSnapshot<'a> {
     #[serde(flatten)]
     state: &'a GameState,
     command_availability: BTreeMap<String, CommandOutcome>,
+    /// Authoritative build estimates, so the browser does not keep a second copy
+    /// of the duration formula. Its copy left out the construction-speed perk the
+    /// sim divides by, so a perked builder was shown a build time that was too
+    /// long. See `Simulation::construction_estimate`.
+    construction: add_core::game_data::ConstructionEstimateSnapshot,
 }
 
 #[wasm_bindgen]
@@ -33,6 +38,7 @@ impl WebRuntime {
         WebSnapshot {
             state: self.simulation.state(),
             command_availability: self.simulation.command_availability(),
+            construction: self.simulation.construction_estimate(),
         }
         .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
         .map_err(|error| JsValue::from_str(&error.to_string()))

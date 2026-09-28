@@ -29,14 +29,19 @@
       "optionId": "story.choice.investigate.search_power"
     },
     { "type": "StartWorldAction", "actionId": "world_action.investigate_base" },
-    { "type": "Tick", "seconds": 5 },
+    { "type": "Tick", "seconds": 7 },
     {
       "type": "ChooseStoryOption",
       "beatId": "story.beat.explore_base",
       "optionId": "story.choice.explore.look_for_tools"
     },
     { "type": "StartWorldAction", "actionId": "world_action.explore_base" },
-    { "type": "Tick", "seconds": 10 },
+    { "type": "Tick", "seconds": 12 },
+    {
+      "type": "ChooseStoryOption",
+      "beatId": "story.beat.hero_exposed",
+      "optionId": "story.choice.exposed.steady"
+    },
     { "type": "SetRoleCrew", "roleId": "role.scavenge", "crew": 1 },
     { "type": "SetHeroRole", "roleId": "role.scavenge" },
     { "type": "Tick", "seconds": 15 },
@@ -78,7 +83,7 @@
     },
     {
       "id": "base-explored-and-studio-unlocked",
-      "after": 15,
+      "after": 16,
       "state": {
         "base": {
           "tutorialInvestigated": true,
@@ -91,7 +96,7 @@
     },
     {
       "id": "crew-earned-stone",
-      "after": 18,
+      "after": 19,
       "state": {
         "resources": { "stone": { "atLeast": 900 } },
         "roster": {
@@ -105,7 +110,7 @@
     },
     {
       "id": "studio-construction-started",
-      "after": 19,
+      "after": 20,
       "state": {
         "resources": { "stone": { "atLeast": 0 } },
         "activeConstruction": { "optionId": "project.restore_studio" },
@@ -114,7 +119,7 @@
     },
     {
       "id": "studio-restored",
-      "after": 22,
+      "after": 23,
       "state": {
         "base": { "studioRestored": true },
         "activeConstruction": null,
@@ -131,9 +136,9 @@
     },
     {
       "id": "online-resource-loop",
-      "after": 24,
+      "after": 25,
       "state": {
-        "clockSeconds": 102,
+        "clockSeconds": 466,
         "resources": { "bassline": { "atLeast": 1 } },
         "roster": {
           "heroAssigned": true,
@@ -144,9 +149,9 @@
     },
     {
       "id": "offline-return-earned-resources",
-      "after": 25,
+      "after": 26,
       "state": {
-        "clockSeconds": 3702,
+        "clockSeconds": 4066,
         "resources": { "bassline": { "atLeast": 1 } },
         "heroMap": { "q": 0, "r": 3 },
         "base": { "studioRestored": true },
@@ -158,9 +163,9 @@
     },
     {
       "id": "save-round-trip-stable",
-      "after": 26,
+      "after": 27,
       "state": {
-        "clockSeconds": 3702,
+        "clockSeconds": 4066,
         "base": { "studioRestored": true },
         "activeConstruction": null,
         "activeWorldAction": null,

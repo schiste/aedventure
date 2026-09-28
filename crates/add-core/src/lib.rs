@@ -1344,6 +1344,111 @@ mod tests {
         );
     }
 
+    /// `MoveHeroTo` used to be a free teleport: it set the position and revealed
+    /// vision without charging distance, time, or exposure. The browser papered
+    /// over that by sending its own `tick` sized by a constant in a presentation
+    /// package, so any other client got the free version — the authoritative sim
+    /// that enforces death would let you cross the whole map untouched.
+    ///
+    /// The crossing is charged by the sim now, through the same pipeline that
+    /// spends exposure. One hex is one game hour of endurance, which is why the
+    /// six-hex walk from the Survivor Cave to the Studio spends the Hero's entire
+    /// pre-immunity budget; see `exposure.rs`.
+    #[test]
+    fn moving_the_hero_costs_the_walk() {
+        let mut simulation = Simulation::new();
+        let cave = HexCoordState::survivor_cave();
+        let base = HexCoordState::base();
+        let distance = crate::topology::axial_distance(cave.q, cave.r, base.q, base.r);
+        assert_eq!(distance, 6, "the Studio is six crossings from the cave");
+
+        let start_clock = simulation.state().clock_seconds;
+        let start_load = simulation.state().hero_survival.viral_load_ratio;
+
+        // Walk one adjacent hex at a time, as a player would.
+        let route = [(5, 0), (4, 1), (3, 1), (2, 2), (1, 2), (0, 3)];
+        for (q, r) in route {
+            simulation.apply(GameCommand::MoveHeroTo { q, r });
+        }
+
+        let walked = simulation.state().clock_seconds - start_clock;
+        let per_crossing = crate::exposure::GAME_HOUR_SECONDS;
+        assert!(
+            (walked - f64::from(distance) * per_crossing).abs() < 1e-6,
+            "six crossings should cost six game hours ({walked}s walked, expected {}s)",
+            f64::from(distance) * per_crossing,
+        );
+
+        // And the walk is exposure: the whole pre-immunity budget.
+        assert!(
+            simulation.state().hero_survival.viral_load_ratio > start_load,
+            "walking out must spend the Hero's protection",
+        );
+    }
+
+    /// A single teleport across the map must cost the whole distance, not
+    /// nothing. This is the exploit the charging closes.
+    #[test]
+    fn a_long_move_is_charged_for_its_whole_distance() {
+        let mut simulation = Simulation::new();
+        let cave = HexCoordState::survivor_cave();
+        let start_clock = simulation.state().clock_seconds;
+        let adjacent_clock = simulation.state().clock_seconds;
+
+        // One hex.
+        simulation.apply(GameCommand::MoveHeroTo { q: 5, r: 0 });
+        let one_step = simulation.state().clock_seconds - start_clock;
+        assert!(one_step > 0.0, "one crossing must cost something");
+
+        // The far rim, in a single command.
+        let far = simulation
+            .state()
+            .hexes
+            .iter()
+            .filter(|hex| crate::topology::axial_distance(hex.q, hex.r, 5, 0) >= 4)
+            .max_by_key(|hex| crate::topology::axial_distance(hex.q, hex.r, 5, 0))
+            .cloned()
+            .expect("the map has a far rim");
+        let far_distance = crate::topology::axial_distance(5, 0, far.q, far.r);
+        simulation.apply(GameCommand::MoveHeroTo {
+            q: far.q,
+            r: far.r,
+        });
+
+        let charged = simulation.state().clock_seconds - adjacent_clock - one_step;
+        assert!(
+            (charged - f64::from(far_distance) * one_step).abs() < 1e-6,
+            "a {far_distance}-hex move should cost {far_distance} crossings ({charged}s vs {})",
+            f64::from(far_distance) * one_step,
+        );
+    }
+
+    /// A rejected move must cost nothing. The Hero is teleported first and the
+    /// clock is charged last, so a blocked or off-map destination cannot drain
+    /// a run.
+    #[test]
+    fn a_rejected_move_costs_nothing() {
+        let mut simulation = Simulation::new();
+        let start_clock = simulation.state().clock_seconds;
+        let start_cell = simulation.state().hero_map;
+
+        // Off the map entirely.
+        simulation.apply(GameCommand::MoveHeroTo { q: 99, r: 99 });
+        assert_eq!(simulation.state().clock_seconds, start_clock);
+        assert_eq!(simulation.state().hero_map, start_cell);
+
+        // Standing still is not a walk.
+        simulation.apply(GameCommand::MoveHeroTo {
+            q: start_cell.q,
+            r: start_cell.r,
+        });
+        assert_eq!(
+            simulation.state().clock_seconds,
+            start_clock,
+            "moving to the current cell must not charge a crossing",
+        );
+    }
+
     #[test]
     fn reset_clears_discovery_to_initial_cells() {
         let mut simulation = Simulation::new();

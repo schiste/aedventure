@@ -371,6 +371,20 @@ impl Simulation {
         }
     }
 
+    /// Move the Hero, and charge him for the walk.
+    ///
+    /// This used to be a free teleport: it set `hero_map` and revealed vision,
+    /// charging neither distance nor time, so a client could send `moveHeroTo`
+    /// to the far rim without a `tick` and neither the clock nor the Hero's
+    /// exposure moved. The browser papered over that by sending its own `tick`
+    /// sized by a constant in a *presentation* package, which meant the
+    /// authoritative rule for what a crossing costs lived outside the
+    /// authoritative layer — and any other client got the free version.
+    ///
+    /// The crossing is now charged here, through the same tick pipeline that
+    /// spends exposure, advances rumour, and runs the world, so walking six
+    /// hexes costs six game hours whether or not anyone sent a `tick`. The
+    /// presentation layer keeps only the animated duration.
     fn move_hero_to(&mut self, q: i8, r: i8) {
         let Some(destination) = self
             .state
@@ -392,8 +406,29 @@ impl Simulation {
             return;
         }
 
+        let from = (self.state.hero_map.q, self.state.hero_map.r);
+        if from == (q, r) {
+            self.push_note("Hero movement ignored: already standing there.");
+            return;
+        }
+
+        // One hex crossing is one game hour of endurance, authored so the number
+        // reads as a distance across the map: six hexes from the Survivor Cave
+        // to the Studio spends the whole pre-immunity budget. See
+        // `exposure::GAME_HOUR_SECONDS` and the endurance note there.
+        let crossings = crate::topology::axial_distance(from.0, from.1, q, r);
+        if crossings == 0 {
+            return;
+        }
+        let crossing_game_minutes = self.balance().travel.hex_crossing_game_minutes;
+        let runtime_seconds = f64::from(crossings) * crossing_game_minutes
+            * crate::exposure::GAME_HOUR_SECONDS
+            / 60.0;
+
         self.state.hero_map = HexCoordState::new(q, r);
         self.reveal_hero_vision_at(q, r);
+        // Charge the walk last, so a rejected move costs nothing.
+        self.tick_internal(runtime_seconds, false);
     }
 
     fn set_hero_assigned(&mut self, assigned: bool) {
@@ -706,6 +741,18 @@ impl Simulation {
                 CostDef::TimeOnly => (None, 0.0, 0.0, 0.0),
             };
 
+        // The sim owns the ETA. It divides by the construction-speed perk, which
+        // the presentation's copy of this formula did not, and it measures
+        // against the staffing that is actually assigned right now.
+        let estimated_completion_seconds = {
+            let throughput = self.construction_worker_throughput();
+            if throughput > 0.0 {
+                Some(total_work_seconds / throughput)
+            } else {
+                None
+            }
+        };
+
         self.state.active_construction = Some(ConstructionJob {
             option_id: option_def.id.to_string(),
             resource_id,
@@ -714,6 +761,7 @@ impl Simulation {
             total_cost,
             spent_cost,
             per_worker_cost_per_second,
+            estimated_completion_seconds,
         });
         self.push_note(format!("{} started.", option_def.label));
     }
@@ -2321,6 +2369,43 @@ impl Simulation {
                 break;
             }
         }
+    }
+
+    /// Worker-seconds of build progress the Hero's current staffing produces per
+    /// second of runtime.
+    ///
+    /// Mirrors the first line of `progress_construction` exactly. It is split out
+    /// so the ETA the player is shown is divided by the same number the job
+    /// actually advances by, instead of the presentation guessing from a second
+    /// copy of the formula that omitted the construction-speed perk.
+    /// The authoritative numbers a build ETA is made of.
+    ///
+    /// Published so the browser can divide rather than re-derive. Its own copy
+    /// of the duration formula omitted the construction-speed perk, so a perked
+    /// builder was shown a build time that was too long by exactly the perk
+    /// multiplier, and nothing compared the two.
+    pub fn construction_estimate(&self) -> crate::game_data::ConstructionEstimateSnapshot {
+        let mut duration_seconds_by_option = std::collections::BTreeMap::new();
+        for option in construction_options() {
+            duration_seconds_by_option.insert(
+                option.id.to_string(),
+                self.construction_duration(option),
+            );
+        }
+        crate::game_data::ConstructionEstimateSnapshot {
+            worker_throughput_per_second: self.construction_worker_throughput(),
+            duration_seconds_by_option,
+        }
+    }
+
+    fn construction_worker_throughput(&self) -> f64 {
+        let crew_efficiency = self.crew_efficiency_multiplier();
+        (f64::from(self.crew_count(ROLE_CONSTRUCTION)) * crew_efficiency)
+            + if self.hero_on_role(ROLE_CONSTRUCTION) {
+                crew_efficiency * self.state.hero_survival.work_efficiency_multiplier
+            } else {
+                0.0
+            }
     }
 
     fn progress_construction(&mut self, seconds: f64, crew_efficiency: f64) {
