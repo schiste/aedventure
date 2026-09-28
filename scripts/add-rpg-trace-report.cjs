@@ -1,5 +1,31 @@
 "use strict"
 
+/**
+ * Offline trace report: parses a captured `add-trace-v1` NDJSON session and
+ * compares it with `performance/add-budgets.json`.
+ *
+ * What this is NOT: a performance gate. Running it over
+ * `scenarios/add/fixtures/performance/trace-v1.ndjson` — which is what
+ * `npm run qa:add-rpg:trace:fixture` does — replays ten hand-written lines whose
+ * single `perf.sample` line carries literal values such as `frameMsP95: 17.5`.
+ * So the fixture run compares the number 17.5, typed into a text file, against
+ * the 22.2 ms budget. It is a schema and format test for this report, and it
+ * cannot fail on a performance regression.
+ *
+ * That matters most for the `phaser` budgets. They are the only real frame-time
+ * budget in the ADD lane, and until a real browser gate exists they are enforced
+ * against a literal. The office lane shows what the real thing looks like:
+ * `scripts/renderer-qa.test.cjs` measures `cadence.averageMs/p95Ms/maxMs` in a
+ * live Playwright session and fails the build, using the reusable evaluator in
+ * `packages/game-renderer-phaser/src/renderer/frame-budget.ts`. The same
+ * approach, wired into `scripts/verify-add-stack.sh`, is the fix.
+ *
+ * This module stays a real analyser. A genuine captured session from a dev build
+ * (`npm --workspace @aedventure/add-rpg run dev:browser`, then
+ * `npm run qa:add-rpg:trace -- --trace logs/session-<id>.jsonl`) exercises the
+ * same code path against real measurements.
+ */
+
 const fs = require("node:fs")
 const path = require("node:path")
 const { execFileSync } = require("node:child_process")

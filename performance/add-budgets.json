@@ -79,19 +79,23 @@
     "phaser": {
       "frameMsP95": {
         "p95": 22.2,
-        "max": 45
+        "max": 45,
+        "note": "Enforced against a real browser session by nothing yet: `qa:add-rpg:trace:fixture` replays a hand-written schema sample whose single perf.sample line carries literal numbers, so it can only prove this report still reads the format. Until a live gate exists (the office lane's `renderer-qa.test.cjs` cadence harness is the template), treat this budget as documentation, not enforcement."
       },
       "frameMsMax": {
         "p95": 100,
-        "max": 250
+        "max": 250,
+        "note": "Enforced against a real browser session by nothing yet: `qa:add-rpg:trace:fixture` replays a hand-written schema sample whose single perf.sample line carries literal numbers, so it can only prove this report still reads the format. Until a live gate exists (the office lane's `renderer-qa.test.cjs` cadence harness is the template), treat this budget as documentation, not enforcement."
       },
       "phaserUpdateP95Ms": {
         "p95": 12,
-        "max": 35
+        "max": 35,
+        "note": "Enforced against a real browser session by nothing yet: `qa:add-rpg:trace:fixture` replays a hand-written schema sample whose single perf.sample line carries literal numbers, so it can only prove this report still reads the format. Until a live gate exists (the office lane's `renderer-qa.test.cjs` cadence harness is the template), treat this budget as documentation, not enforcement."
       },
       "loopLagMaxMs": {
         "p95": 50,
-        "max": 250
+        "max": 250,
+        "note": "Enforced against a real browser session by nothing yet: `qa:add-rpg:trace:fixture` replays a hand-written schema sample whose single perf.sample line carries literal numbers, so it can only prove this report still reads the format. Until a live gate exists (the office lane's `renderer-qa.test.cjs` cadence harness is the template), treat this budget as documentation, not enforcement."
       }
     }
   },
