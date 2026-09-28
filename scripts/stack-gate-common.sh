@@ -32,28 +32,25 @@ resolve_typescript() {
   fi
 }
 
-# Link every workspace package into the root `node_modules` so the bare
-# `@aedventure/*` specifiers resolve for the browser bundles and the scripts
-# that import them by package name.
-link_workspaces() {
-  mkdir -p "$ROOT_DIR/node_modules/@aedventure"
-  local link
-  for link in \
-    "game-protocol" "game-core" "game-content" "game-topology" \
-    "game-visibility" "game-world" "game-assets" "game-map" "game-input" \
-    "game-renderer-phaser" \
-    "add-protocol" "add-content" "add-presentation" "add-ui" \
-    "add-runtime-client" \
-    "office-domain" "asset-registry" "auth-wikimedia" "policy" \
-    "shared-types"
-  do
-    ln -sfn "../../packages/$link" "$ROOT_DIR/node_modules/@aedventure/$link"
-  done
-
-  local app
-  for app in add-rpg api engine-sandbox media-gateway web world-server; do
-    ln -sfn "../../apps/$app" "$ROOT_DIR/node_modules/@aedventure/$app"
-  done
+# The workspace packages are linked by npm itself.
+#
+# This function used to `ln -sfn` every package into `node_modules/@aedventure`.
+# It was a third hand-maintained copy of the dependency graph, listed 20 of the
+# 22 packages, and was wrong about that: it was missing `game-animation` and
+# `game-dungeon`, and it did not list `add-ui` at all even though the app
+# imports it. It only ever appeared to be needed because the gates ran from a
+# checkout whose `node_modules` was produced by `npm install`, which already
+# does exactly this.
+#
+# `package.json` declares `workspaces: ["apps/*", "packages/*"]`, so there is one
+# mechanism and one place to add a package. `npm ci` is the gate's precondition;
+# if the links are missing, that is an install problem and should fail as one.
+#
+# `scripts/check-workspace-graph.cjs` checks the two lists that remain — the
+# tsconfig path map and the Vite alias map — against the real workspace
+# directories, so those two cannot drift apart either.
+check_workspace_graph() {
+  node "$ROOT_DIR/scripts/check-workspace-graph.cjs"
 }
 
 build_typescript() {

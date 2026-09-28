@@ -13,7 +13,7 @@ set -euo pipefail
 # shellcheck source=scripts/stack-gate-common.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/stack-gate-common.sh"
 
-link_workspaces
+check_workspace_graph
 build_typescript
 
 echo "Running game-protocol checks..."

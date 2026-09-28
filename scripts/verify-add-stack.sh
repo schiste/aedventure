@@ -24,7 +24,7 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/stack-gate-common.sh"
 echo "Running gameplay verification..."
 npm run verify
 
-link_workspaces
+check_workspace_graph
 build_typescript
 
 echo "Building ADD RPG WASM runtime..."

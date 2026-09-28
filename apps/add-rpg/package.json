@@ -15,8 +15,11 @@
   },
   "dependencies": {
     "@aedventure/add-runtime-client": "0.1.0",
+    "@aedventure/add-ui": "0.1.0",
+    "@aedventure/game-animation": "0.1.0",
     "@aedventure/game-renderer-phaser": "0.1.0",
     "@aedventure/game-topology": "0.1.0",
+    "@aedventure/game-visibility": "0.1.0",
     "@aedventure/game-world": "0.1.0",
     "phaser": "^4.1.0",
     "solid-js": "^1.9.13"
