@@ -10,31 +10,23 @@ fn repo_path(relative: &str) -> PathBuf {
 /// The protected first gameplay loop: travel, reach the Studio, unlock the
 /// Base, assign crew, earn resources, construct, leave offline, return.
 ///
-/// The two tutorial world actions are ticked for 7s and 12s rather than their
-/// authored 5s and 10s. That is not slack: the six-hex walk now costs six game
-/// hours, because `Simulation::move_hero_to` charges it instead of trusting the
-/// browser to send a matching tick. Six hexes against a six-hour pre-immunity
-/// budget leaves the Hero at ~0.58 exposure on arrival, which is past the
-/// tier-1 threshold, so work runs at `tierOneWorkEfficiencyMultiplier` (0.9) and
-/// a 5s tick advances a 5s action by only 4.5s. Ticking to the authored duration
-/// left the action unfinished, which blocked the next story beat, which blocked
-/// the next world action. The ticks carry the debuff; the contract still holds.
+/// The two tutorial world actions are ticked for 7s and 20s, not their
+/// authored 5s and 10s. That is not slack; it is the debuff.
 ///
+/// The walk to the Studio is six hexes at one game hour each, and it is charged
+/// by `Simulation::move_hero_to` at the hex the Hero is *leaving*, so every
+/// crossing costs something and the step into the bubble is not free. Measured
+/// on the authored map, six crossings leave him at 0.85 of the six-hour
+/// pre-immunity budget — past the tier-two threshold, where work runs at 0.72
+/// efficiency. The 5s action therefore needs ~7s of clock and the 10s action
+/// needs ~14s. Ticking to the authored durations left both unfinished, which
+/// blocked the next story beat, which blocked the next world action.
 ///
-/// This scenario walks the path a *player* walks, which includes answering the
-/// reactive beat the engine raises. Finishing `world_action.explore_base` leaves
-/// the Hero outside the field for the walk home, so the salience selector
-/// legitimately promotes `story.beat.hero_exposed` over the onboarding spine —
-/// that emergence is deliberate and is pinned by
-/// `reactive_storylet_interrupts_when_hero_exposed` in `add-core`.
-///
-/// The scenario used to skip that beat, so from the moment the exposure rework
-/// (session 79) made the reactive precondition satisfiable during onboarding,
-/// this contract asserted `story.beat.restore_studio` while the engine had
-/// moved on. It failed on `main` from that session until now, undetected because
-/// the gate ran `cargo check` rather than `cargo test`. The fix belongs here
-/// rather than in the selector: a reactive beat may interrupt the spine, and
-/// the player resolves it.
+/// 0.85 on arrival is the intended reading: the walk very nearly spends the
+/// budget the design says he believes is all he has, the proving restore is
+/// still intact, and there is a little left. Whether tier two at the moment of
+/// arrival is too harsh for a first-time player is a tuning question, not a
+/// correctness one.
 #[test]
 fn committed_idle_loop_scenario_matches_the_core_contract() {
     let run = run_scenario_file(&repo_path("scenarios/add/idle-base-first-cycle.json"))
@@ -87,7 +79,7 @@ fn committed_idle_loop_scenario_matches_the_core_contract() {
         run.final_snapshot["heroMap"],
         serde_json::json!({ "q": 0, "r": 3 })
     );
-    assert_eq!(run.final_snapshot["clockSeconds"], 4066.0);
+    assert_eq!(run.final_snapshot["clockSeconds"], 4074.0);
     assert_eq!(run.final_snapshot["base"]["studioRestored"], true);
     assert!(
         run.final_snapshot["resources"]["bassline"]

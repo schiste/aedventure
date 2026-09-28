@@ -36,7 +36,7 @@
       "optionId": "story.choice.explore.look_for_tools"
     },
     { "type": "StartWorldAction", "actionId": "world_action.explore_base" },
-    { "type": "Tick", "seconds": 12 },
+    { "type": "Tick", "seconds": 20 },
     {
       "type": "ChooseStoryOption",
       "beatId": "story.beat.hero_exposed",
@@ -138,7 +138,7 @@
       "id": "online-resource-loop",
       "after": 25,
       "state": {
-        "clockSeconds": 466,
+        "clockSeconds": 474,
         "resources": { "bassline": { "atLeast": 1 } },
         "roster": {
           "heroAssigned": true,
@@ -151,7 +151,7 @@
       "id": "offline-return-earned-resources",
       "after": 26,
       "state": {
-        "clockSeconds": 4066,
+        "clockSeconds": 4074,
         "resources": { "bassline": { "atLeast": 1 } },
         "heroMap": { "q": 0, "r": 3 },
         "base": { "studioRestored": true },
@@ -165,7 +165,7 @@
       "id": "save-round-trip-stable",
       "after": 27,
       "state": {
-        "clockSeconds": 4066,
+        "clockSeconds": 4074,
         "base": { "studioRestored": true },
         "activeConstruction": null,
         "activeWorldAction": null,
