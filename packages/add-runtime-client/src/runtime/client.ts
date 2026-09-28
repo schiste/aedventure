@@ -185,6 +185,36 @@ export class SimulationClient {
     this.post({ type: 'moveHeroTo', q, r })
   }
 
+  /**
+   * Record a narrative act. See the `emitAct` request in the protocol package.
+   *
+   * `witnesses` is optional and defaults to empty: the engine supplies who was
+   * present for anything it records itself, so a caller emitting an authored
+   * act never has to invent a witness list.
+   */
+  emitAct(
+    actId: string,
+    target?: string,
+    options: {
+      cost?: number
+      need?: number
+      secrecy?: string
+      witnesses?: string[]
+      causes?: number[]
+    } = {},
+  ): void {
+    this.post({
+      type: 'emitAct',
+      actId,
+      target,
+      cost: options.cost,
+      need: options.need,
+      secrecy: options.secrecy,
+      witnesses: options.witnesses,
+      causes: options.causes,
+    })
+  }
+
   openDoor(key: string) {
     this.post({ type: 'openDoor', key })
   }

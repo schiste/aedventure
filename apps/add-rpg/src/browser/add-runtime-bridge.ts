@@ -146,6 +146,15 @@ export class AddRuntimeBridge {
       case "moveHeroTo":
         this.client.moveHeroTo(request.q, request.r)
         return true
+      case "emitAct":
+        this.client.emitAct(request.actId, request.target, {
+          cost: request.cost,
+          need: request.need,
+          secrecy: request.secrecy,
+          witnesses: request.witnesses,
+          causes: request.causes,
+        })
+        return true
       case "openDoor":
         this.client.openDoor(request.key)
         return true

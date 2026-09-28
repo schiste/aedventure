@@ -137,6 +137,20 @@ async function handleMessage(message: WorkerRequest) {
         runtime?.moveHeroTo(message.q, message.r)
         postSnapshotUpdate()
         break
+      case 'emitAct':
+        // The binding takes a typed object, so the request is passed straight
+        // through rather than unpacked into positional arguments.
+        runtime?.emitAct({
+          actId: message.actId,
+          target: message.target,
+          cost: message.cost,
+          need: message.need,
+          secrecy: message.secrecy,
+          witnesses: message.witnesses,
+          causes: message.causes,
+        })
+        postSnapshotUpdate()
+        break
       case 'openDoor':
         runtime?.openDoor(message.key)
         postSnapshotUpdate()

@@ -6,6 +6,35 @@ use add_core::{
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
 
+/// The wire shape of an `emitAct` request.
+///
+/// `cost` and `need` default to 1.0 in the handler, and `witnesses`/`causes`
+/// default to empty, so a caller can record a plain act with three fields.
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct EmitActRequest {
+    act_id: String,
+    #[serde(default)]
+    target: Option<String>,
+    /// Cost to the target, 0.6 to 2.0. Amplifies help only.
+    #[serde(default)]
+    cost: Option<f64>,
+    /// How badly the target needed it, 1.0 to 2.0.
+    #[serde(default)]
+    need: Option<f64>,
+    /// Override the act's visibility when presence says otherwise.
+    #[serde(default)]
+    secrecy: Option<String>,
+    #[serde(default)]
+    witnesses: Vec<String>,
+    #[serde(default)]
+    causes: Vec<u64>,
+}
+
+fn js_error(error: impl std::fmt::Display) -> JsValue {
+    JsValue::from_str(&error.to_string())
+}
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct WebSnapshot<'a> {
@@ -158,6 +187,32 @@ impl WebRuntime {
             GameCommand::SetStationEnabled {
                 station_id: station_id.to_string(),
                 enabled,
+            },
+        )
+    }
+
+    /// Record a narrative act.
+    ///
+    /// Takes a typed request object rather than six positional parameters. The
+    /// command carries a target, an optional secrecy override, a witness list
+    /// and a cause list; as positional arguments those would be six values in an
+    /// order no caller could remember, and the order is exactly the part that
+    /// goes wrong silently. The struct is the contract, so a caller that
+    /// misspells a field is refused instead of quietly defaulting.
+    #[wasm_bindgen(js_name = emitAct)]
+    pub fn emit_act(&mut self, request: JsValue) -> Result<JsValue, JsValue> {
+        let request: EmitActRequest =
+            serde_wasm_bindgen::from_value(request).map_err(js_error)?;
+        apply_command(
+            &mut self.simulation,
+            GameCommand::EmitAct {
+                act_id: request.act_id,
+                target: request.target,
+                cost: request.cost.unwrap_or(1.0),
+                need: request.need.unwrap_or(1.0),
+                secrecy: request.secrecy,
+                witnesses: request.witnesses,
+                causes: request.causes,
             },
         )
     }

@@ -1260,6 +1260,26 @@ export type WorkerRequest =
   | { type: 'clearExpeditionReports' }
   | { type: 'recruitFromSurvivorCave' }
   | { type: 'moveHeroTo'; q: number; r: number }
+  | {
+      /**
+       * Record a narrative act: something someone did that the narrative log
+       * sifts for standing, arcs and storylets from.
+       *
+       * `cost` and `need` default to 1.0; `witnesses` and `causes` default to
+       * empty. A caller recording a plain act needs only `actId` and
+       * `target`. `witnesses` is not authored by hand -- the engine's own
+       * perception supplies who was present -- so it is empty for content that
+       * is not the engine.
+       */
+      type: 'emitAct'
+      actId: string
+      target?: string
+      cost?: number
+      need?: number
+      secrecy?: string
+      witnesses?: string[]
+      causes?: number[]
+    }
   | { type: 'openDoor'; key: string }
   | { type: 'clearLocation'; key: string; lootItem?: string; lootQty: number }
   | { type: 'engage'; creatureId: string; key: string; lootItem?: string; lootQty: number }

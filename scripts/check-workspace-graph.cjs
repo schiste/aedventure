@@ -65,10 +65,8 @@ function workspacePackageNames() {
 }
 
 function tsconfigPathEntries() {
-  const text = fs.readFileSync(path.join(ROOT_DIR, "tsconfig.base.json"), "utf8")
-  const base = JSON.parse(text.replace(/^\s*\/\/.*$/gm, ""))
-  const paths = base?.compilerOptions?.paths ?? {}
-  return Object.keys(paths).sort()
+  const base = readJsonc(path.join(ROOT_DIR, "tsconfig.base.json"))
+  return Object.keys(base?.compilerOptions?.paths ?? {}).sort()
 }
 
 function viteAliasEntries() {
@@ -82,6 +80,44 @@ function viteAliasEntries() {
     names.add(`@aedventure/${match[1]}`)
   }
   return [...names].sort()
+}
+
+/** tsconfig files carry comments, so they are not plain JSON. */
+function readJsonc(absolutePath) {
+  return JSON.parse(fs.readFileSync(absolutePath, "utf8").replace(/^\s*\/\/.*$/gm, ""))
+}
+
+/**
+ * Workspace packages that contain JSX sources.
+ *
+ * Only `add-ui` today. Computed rather than listed, so a second JSX package is
+ * covered the moment it appears.
+ */
+function jsxWorkspacePackages() {
+  const found = []
+  const containsJsx = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name)
+      if (entry.isDirectory()) {
+        if (entry.name === "node_modules" || entry.name === "dist") continue
+        if (containsJsx(full)) return true
+      } else if (/\.(tsx|jsx)$/.test(entry.name)) {
+        return true
+      }
+    }
+    return false
+  }
+  for (const name of workspacePackageNames()) {
+    const relative = name.slice("@aedventure/".length)
+    for (const group of ["packages", "apps"]) {
+      const srcDir = path.join(ROOT_DIR, group, relative, "src")
+      if (fs.existsSync(srcDir) && containsJsx(srcDir)) {
+        found.push(name)
+        break
+      }
+    }
+  }
+  return found
 }
 
 function appDependencyGaps() {
@@ -141,6 +177,7 @@ function main() {
 
   const tsconfigPaths = tsconfigPathEntries()
   const viteAliases = viteAliasEntries()
+  const jsxPackages = jsxWorkspacePackages()
 
   // The path map must not point at a package that does not exist.
   const dangling = tsconfigPaths.filter((entry) => !packages.includes(packageNameOf(entry)))
@@ -148,6 +185,30 @@ function main() {
     dangling,
     [],
     `tsconfig.base.json maps paths with no workspace package: ${dangling.join(", ")}.`,
+  )
+
+  // A JSX package must never be mapped to source by a consumer.
+  //
+  // `paths` points at `src`, so TypeScript compiles those sources into the
+  // consumer's own program -- with the consumer's JSX settings, not the
+  // package's. `@aedventure/add-ui` is the one package with `.tsx` sources, and
+  // it compiles with `jsx: preserve`, which Solid's babel plugin requires
+  // because tsc must not transform the JSX itself. An app that mapped it to
+  // source compiled it under the app's settings and then reported every one of
+  // its named exports as missing: 15 errors naming `Button`, `Chip`,
+  // `CinematicStage` and the rest, with no error at the import site.
+  //
+  // The gate did not catch it either, because `tsc -b` is incremental and a
+  // stale `.tsbuildinfo` meant the app was never re-checked.
+  //
+  // A reference resolves to the package's build output and is always correct.
+  assert.deepEqual(
+    jsxPackages.filter((name) => tsconfigPaths.includes(name)),
+    [],
+    `tsconfig.base.json maps JSX package(s) ${jsxPackages
+      .filter((name) => tsconfigPaths.includes(name))
+      .join(", ")} to source. A consumer must reference them instead: mapping a ` +
+      `.tsx package to src compiles it under the consumer's JSX settings.`,
   )
 
   // The Vite alias list is a deliberate partial optimisation layer — it points
@@ -174,7 +235,8 @@ function main() {
 
   console.log(
     `Workspace graph: OK — ${packages.length} packages, ` +
-      `${tsconfigPaths.length} tsconfig paths, ${viteAliases.length} vite aliases, ` +
+      `${tsconfigPaths.length} tsconfig paths (${jsxPackages.length} JSX packages, none mapped), ` +
+      `${viteAliases.length} vite aliases, ` +
       "no undeclared app imports.",
   )
 }
