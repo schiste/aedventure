@@ -7,6 +7,7 @@ import type {
   AddVisibilityRenderState,
 } from "./map-presentation"
 import { ADD_BASE_SQUARE_MAP_ID } from "./map-modes"
+import { titleCase } from "../format"
 import { addAreaById } from "@aedventure/add-content"
 
 export type AddTileLinkKind =
@@ -404,12 +405,4 @@ function tileDetailLabel(tile: AddTileInteractionDetail): string {
 
 function conciseTileLabel(label: string): string {
   return label.replace(/\s*->.*$/, "")
-}
-
-function titleCase(value: string): string {
-  return value
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((part) => `${part.slice(0, 1).toUpperCase()}${part.slice(1)}`)
-    .join(" ")
 }

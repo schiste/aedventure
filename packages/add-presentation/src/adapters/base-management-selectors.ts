@@ -43,6 +43,7 @@ import {
   type AddResourceSummary,
   type AddRoleAssignmentSummary,
 } from "./ui-selectors"
+import { titleCase } from "../format"
 
 const RESONANCE_SUPPORT_DURATION_REDUCTION_PER_LEVEL = 0.04
 const RESONANCE_SUPPORT_DURATION_REDUCTION_CAP = 0.35
@@ -4013,15 +4014,6 @@ function formatSignedAmount(value: number): string {
 function formatAmount(value: number): string {
   return Number.isInteger(value) ? `${value}` : value.toFixed(1)
 }
-
-function titleCase(value: string): string {
-  return value
-    .split(/[_\s]+/g)
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ")
-}
-
 function formatDuration(seconds: number): string {
   if (!Number.isFinite(seconds)) return "unknown time"
   if (seconds < 60) return `${Math.ceil(seconds)}s`

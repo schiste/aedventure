@@ -49,9 +49,19 @@ export function formatResourceTime(seconds: number | null): string {
   return seconds === null ? "stable" : formatEconomyDuration(seconds)
 }
 
-export function titleCase(value: string): string {
-  return value.length === 0 ? value : `${value[0].toUpperCase()}${value.slice(1)}`
-}
+/**
+ * Re-exported from add-presentation, which is where the single definition now
+ * lives.
+ *
+ * This used to be a local copy that capitalised only the first character, while
+ * four adapters in add-presentation had their own copies with three different
+ * rules between them. The same `survivor_cave` therefore rendered as
+ * "Survivor_cave" in some panels and "Survivor Cave" in others, depending on
+ * which one drew it. add-ui already depends on add-presentation, so re-exporting
+ * costs no new edge and cannot cycle; the app's existing
+ * `import { titleCase } from "@aedventure/add-ui"` keeps working untouched.
+ */
+export { titleCase } from "@aedventure/add-presentation"
 
 export function normalizeUiCopy(copy: string | null | undefined): string {
   return (copy ?? "").replace(/\s+/g, " ").trim()

@@ -1,4 +1,5 @@
 import type { CellCoord, HexCoord } from "@aedventure/game-topology"
+import { titleCase } from "../format"
 import type { GameCellLink, GameCellPlacement, GameMap } from "@aedventure/game-world"
 
 export type AddCellState = "inactive" | "converting" | "stabilized" | "blocked"
@@ -385,11 +386,6 @@ function visibilityCounts(cells: readonly GameCellPlacement[]): VisibilityCounts
 function serializeHex(coord: HexCoord): string {
   return `${coord.q},${coord.r}`
 }
-
-function titleCase(value: string): string {
-  return `${value.slice(0, 1).toUpperCase()}${value.slice(1).replace("_", " ")}`
-}
-
 function round(value: number): number {
   return Math.round(value * 100) / 100
 }

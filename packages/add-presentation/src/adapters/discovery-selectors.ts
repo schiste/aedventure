@@ -23,6 +23,7 @@ import {
   selectAddTileDetail,
   type AddTileDetailSummary,
 } from "./tile-detail"
+import { titleCase } from "../format"
 
 export type AddDiscoveryPhase = "movement" | "choose_tile" | "enter_dungeon" | "act"
 export const ADD_DISCOVERY_OPEN_BASE_ACTION_ID = "base:open"
@@ -1062,15 +1063,6 @@ function resourceValue(resources: ResourceSnapshot, id: string): number {
       return 0
   }
 }
-
-function titleCase(value: string): string {
-  return value
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((part) => part[0].toUpperCase() + part.slice(1))
-    .join(" ")
-}
-
 function isBaseFeature(feature: AddTileInteractionDetail["feature"]): boolean {
   return feature === "base" || feature === "base_core"
 }
