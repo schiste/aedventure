@@ -71,6 +71,7 @@
     "qa:add-rpg:visual": "node scripts/add-rpg-visual-diff.cjs",
     "qa:add-rpg:trace": "node scripts/add-rpg-trace-report.cjs",
     "qa:add-rpg:trace:fixture": "node scripts/add-rpg-trace-report.cjs --trace scenarios/add/fixtures/performance/trace-v1.ndjson --strict",
+    "qa:add-rpg:perf": "node scripts/add-rpg-perf-gate.cjs",
     "qa:add-rpg:trace:test": "node scripts/add-rpg-trace-report.test.cjs",
     "qa:add-rpg:size": "npm --workspace @aedventure/add-rpg run build:browser && node scripts/add-rpg-size-report.cjs --strict",
     "qa:add-rpg:size:built": "node scripts/add-rpg-size-report.cjs --strict",

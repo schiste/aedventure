@@ -46,6 +46,14 @@ npm --workspace @aedventure/add-rpg run build:browser
 echo "Running ADD RPG smoke..."
 npm run smoke:add-rpg:built
 
+echo "Checking ADD RPG frame budgets against a real browser..."
+# The `phaser.*` budgets in performance/add-budgets.json were previously only
+# ever compared against literal numbers in a hand-written trace fixture, so they
+# could not fail on a regression and no gate ran them. This measures real frame
+# cadence in the built app in Chromium and exits non-zero on a breach. It reuses
+# the bundle the smoke just exercised, so it costs no extra build.
+npm run qa:add-rpg:perf
+
 echo "Checking ADD RPG asset budgets..."
 # The WASM had been over its budget on main for some time and nobody saw it,
 # because this check existed but nothing ran it.
