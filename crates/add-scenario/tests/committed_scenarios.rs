@@ -297,6 +297,59 @@ fn mercy_repaid_is_detected_and_names_its_subject() {
 /// what was shown, and re-solving at the end hits the very cooldown the run
 /// established. Asserting on `state.narrative.cast` is also the more useful
 /// claim: it is the cast a player would have been shown.
+/// The canonical run must actually cast a storylet.
+///
+/// This is the end-to-end claim the narrative subsystem never had. `cast()` is
+/// called from the runtime now, so a played run should arrive with a real
+/// casting on the snapshot and a recorded history -- not the empty state that
+/// every previous run produced while the solver was reachable only from tooling.
+///
+/// The acts themselves come from authored story choices, not from anything this
+/// commit added: `pre-arrival` emits `act.swear_an_oath` at `entity.sleepless`,
+/// which is the first slot of `arc.broken_oath`, and `base-onboarding` emits
+/// `act.keep_the_watch` at the same subject. So the log has real, targeted acts
+/// in an ordinary first session, and the sifter sees them.
+#[test]
+fn a_played_run_casts_a_storylet() {
+    let run = run_scenario_file(&repo_path("scenarios/add/idle-base-first-cycle.json"))
+        .expect("committed idle loop scenario should pass");
+    let state = add_core::import_save(&run.final_save).expect("save loads");
+
+    assert!(
+        !state.narrative.log.events.is_empty(),
+        "an ordinary run should reach acts emitted by authored story choices",
+    );
+    assert!(
+        state
+            .narrative
+            .log
+            .events
+            .iter()
+            .any(|event| event.target.is_some()),
+        "an arc pattern needs a subject, so acts without a target cannot feed one",
+    );
+
+    let cast = state
+        .narrative
+        .cast
+        .as_ref()
+        .expect("the engine should have cast a storylet during an ordinary run");
+    assert!(
+        add_core::narrative::all_knots().contains(&cast.knot.as_str()),
+        "the cast knot must exist in ink or the hub stalls: {}",
+        cast.knot,
+    );
+    assert_eq!(
+        cast.roles.len(),
+        2,
+        "two_survivors_talk casts with two people, so the roles must be filled: {cast:?}",
+    );
+    assert!(
+        !state.narrative.cast_history.last_cast.is_empty(),
+        "a cast that is not recorded cannot hold its cooldown across a save",
+    );
+}
+
 #[test]
 fn casting_leads_with_the_person_the_player_has_history_with() {
     let run = run_scenario_file(&repo_path(
