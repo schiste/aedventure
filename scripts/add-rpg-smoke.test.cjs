@@ -122,6 +122,16 @@ async function main() {
     await runScenario("objective tracker opt-in", () =>
       enableObjectiveTrackerForSmoke(page, consoleErrors),
     )
+    // Real accessibility and surface checks, measured from the live DOM.
+    // These replace the block of self-comparisons that used to sit in the boot
+    // contract: the telemetry used to carry the claims as literals and this
+    // script used to assert the literals against themselves.
+    await runScenario("real accessibility contract", () =>
+      assertRealAccessibilityContract(page, consoleErrors),
+    )
+    await runScenario("real surface contract", () =>
+      assertRealSurfaceContract(page, consoleErrors),
+    )
     const questHud = await runScenario("quest HUD keyboard movement and collapse", () =>
       exerciseQuestHud(page, consoleErrors),
     )
@@ -376,29 +386,18 @@ async function assertBootAndRenderTextContract(page, consoleErrors) {
       state.shell?.devToolsOpen === false &&
       typeof state.shell?.discoveryPanel?.collapsed === "boolean" &&
       state.shell?.questPanel?.collapsed === true &&
-      state.shell?.questPanel?.dragEnabled === true &&
-      state.shell?.questPanel?.keyboardMoveEnabled === true &&
       state.shell?.questPanel?.dragging === false &&
       state.shell?.questPanel?.lastAction === "idle" &&
       state.shell?.questPanel?.collapseControlLabel === "Expand objective tracker" &&
-      state.shell?.accessibility?.keyboardNavigation === true &&
-      state.shell?.accessibility?.focusVisible === true &&
-      state.shell?.accessibility?.currentActionLiveRegion === "polite" &&
-      state.shell?.accessibility?.contextualPanelsLabelled === true &&
-      state.shell?.accessibility?.objectiveTrackerKeyboardMove === true &&
-      state.shell?.accessibility?.rightRailAvoidsScrollTrap === true &&
-      typeof state.shell?.accessibility?.mobileBottomSheetAvoidsScrollTrap === "boolean" &&
-      Array.isArray(state.shell?.accessibility?.shortcuts) &&
-      state.shell.accessibility.shortcuts.length >= 4 &&
-      /^map_objective(?:_context)?_status$/.test(state.shell?.visualPolish?.surfaceSystem ?? "") &&
-      state.shell?.visualPolish?.mapSurface === "full_bleed_phaser_stage" &&
-      state.shell?.visualPolish?.objectiveSurface === "warm_progress_overlay" &&
-      state.shell?.visualPolish?.contextSurface === "cool_decision_inspector" &&
-      state.shell?.visualPolish?.statusSurface === "thin_resource_time_bar" &&
-      state.shell?.visualPolish?.stateLayer === "native_loading_error_empty" &&
-      state.shell?.visualPolish?.panelRhythm === "shared_spacing_border_shadow_tokens" &&
-      state.shell?.visualPolish?.transitions === "cohesive_motion_with_reduced_motion_guard" &&
-      state.shell?.visualPolish?.worldUiIntegration === "glass_surfaces_over_living_map" &&
+      // Accessibility and visual-surface claims are verified against the live
+      // DOM in `assertRealAccessibilityContract` / `assertRealSurfaceContract`
+      // below, not against literals in the telemetry. The presenter used to
+      // hard-code `keyboardNavigation`, `focusVisible`, `currentActionLiveRegion`,
+      // `contextualPanelsLabelled`, `objectiveTrackerKeyboardMove`,
+      // `rightRailAvoidsScrollTrap`, `mobileBottomSheetAvoidsScrollTrap`, and
+      // nine `visualPolish` strings, and this predicate asserted each against
+      // those same literals — about a quarter of the boot contract, none of it
+      // capable of failing.
       Number.isFinite(state.shell?.questPanel?.x) &&
       Number.isFinite(state.shell?.questPanel?.y) &&
       state.mapMode?.active === "overworld_hex" &&
@@ -416,10 +415,12 @@ async function assertBootAndRenderTextContract(page, consoleErrors) {
       state.map?.dungeonLinks?.cellsWithLinks > 0 &&
       state.map?.character?.visible === true &&
       state.map?.character?.authority === "browser_navigation_triggers_rust_time" &&
-      state.map?.travel?.costGameMinutes === 60 &&
-      state.map?.travel?.costRuntimeSeconds === 60 &&
-      state.travel?.costGameMinutes === 60 &&
-      state.travel?.costRuntimeSeconds === 60 &&
+      // The presentation's fallback crossing cost must equal the authoritative
+      // balance value the sim actually charges in `move_hero_to`. These used to be
+      // four assertions that a presentation constant equalled itself, which is
+      // how a second copy of a gameplay rule survived next to the real one.
+      state.map?.travel?.costGameMinutes === state.catalog?.balance?.travel?.hexCrossingGameMinutes &&
+      state.travel?.costGameMinutes === state.catalog?.balance?.travel?.hexCrossingGameMinutes &&
       state.travel?.confirmation?.eligible === true &&
       state.travel?.confirmation?.reason === "opening_reach_base_from_survivor_cave" &&
       state.map?.landmarks?.studioLabelVisible === true &&
@@ -2233,11 +2234,9 @@ async function assertLayoutHierarchy(
   }
   assert.equal(state.shell?.adminOpen, false, "Admin should stay hidden behind Menu.")
   assert.equal(state.shell?.devToolsOpen, false, "Developer tools should not be open in primary UI.")
-  assert.equal(
-    /^map_objective(?:_context)?_status$/.test(state.shell?.visualPolish?.surfaceSystem ?? ""),
-    true,
-    "Visual polish contract should describe the current layout hierarchy.",
-  )
+  // The `visualPolish.surfaceSystem` string used to be asserted here, proving
+  // only that a literal equalled itself. `assertRealSurfaceContract` now reads
+  // the computed z-order and token ladder off the live document instead.
 
   if (expectedContextPanelId) {
     await page.waitForFunction((panelId) => {
@@ -3448,6 +3447,239 @@ async function loadAutosaveFromTitleScreen(page) {
   )
   await page.locator("#start-load-autosave").click()
   await page.locator("#start-screen").waitFor({ state: "detached" })
+}
+
+/**
+ * Real accessibility verification, measured from the live DOM.
+ *
+ * This replaces a block of assertions in the boot contract that compared
+ * telemetry literals against themselves. The presenter used to hard-code
+ * `keyboardNavigation: true`, `focusVisible: true`,
+ * `currentActionLiveRegion: "polite"`, `contextualPanelsLabelled: true`,
+ * `objectiveTrackerKeyboardMove: true`, `rightRailAvoidsScrollTrap: true`,
+ * `mobileBottomSheetAvoidsScrollTrap: true`, and four shortcut strings, then pin
+ * each one in the type so TypeScript would reject a change. None of it could
+ * fail, and all of it would have kept passing if the shell had become
+ * completely inaccessible.
+ *
+ * Every claim below is read off the rendered document instead, so removing a
+ * focus style, an `aria-label`, or the live region now breaks the build.
+ */
+async function assertRealAccessibilityContract(page, consoleErrors) {
+  // 1. Keyboard reach. A player must be able to Tab into the shell at all, and
+  //    focus must actually land somewhere new.
+  await page.evaluate(() => {
+    if (document.activeElement && document.activeElement !== document.body) {
+      document.activeElement.blur()
+    }
+  })
+  await page.keyboard.press("Tab")
+  const afterFirstTab = await page.evaluate(() => {
+    const el = document.activeElement
+    return el ? { tag: el.tagName, id: el.id || null, cls: (el.className || "").toString() } : null
+  })
+  assert.ok(afterFirstTab, "Tab must move focus into the shell; nothing was focusable.")
+
+  await page.keyboard.press("Tab")
+  const afterSecondTab = await page.evaluate(() => {
+    const el = document.activeElement
+    return el ? { tag: el.tagName, id: el.id || null, cls: (el.className || "").toString() } : null
+  })
+  assert.ok(
+    afterSecondTab &&
+      (afterSecondTab.id !== afterFirstTab.id || afterSecondTab.cls !== afterFirstTab.cls),
+    `Tab must reach successive controls; focus stayed on ${JSON.stringify(afterSecondTab)}.`,
+  )
+
+  // 2. A focus indicator exists as an actual stylesheet rule, not a claim.
+  const focusVisibleRule = await page.evaluate(() =>
+    [...document.styleSheets].some((sheet) => {
+      try {
+        return [...sheet.cssRules].some((rule) => (rule.cssText || "").includes(":focus-visible"))
+      } catch {
+        return false
+      }
+    }),
+  )
+  assert.ok(focusVisibleRule, "The stylesheet must carry a :focus-visible rule.")
+
+  // 3. The focused control renders a visible focus ring. This is the assertion
+  //    the old `focusVisible: true` literal was standing in for.
+  const focusRing = await page.evaluate(() => {
+    const el = document.activeElement
+    if (!el || el === document.body) return null
+    const style = window.getComputedStyle(el)
+    return {
+      outlineStyle: style.outlineStyle,
+      outlineWidth: style.outlineWidth,
+      boxShadow: style.boxShadow,
+    }
+  })
+  assert.ok(focusRing, "A control must be focused before its focus ring can be read.")
+  const ringVisible =
+    (focusRing.outlineStyle !== "none" && focusRing.outlineWidth !== "0px") ||
+    (focusRing.boxShadow && focusRing.boxShadow !== "none")
+  assert.ok(
+    ringVisible,
+    `The focused control must render a visible focus indicator; got ${JSON.stringify(focusRing)}.`,
+  )
+
+  // 4. Status changes are announced. Reads the real attribute.
+  const liveRegions = await page.evaluate(() =>
+    [...document.querySelectorAll("[aria-live]")].map((el) => ({
+      live: el.getAttribute("aria-live"),
+      role: el.getAttribute("role"),
+    })),
+  )
+  assert.ok(liveRegions.length > 0, "The shell must expose at least one live region.")
+  assert.ok(
+    liveRegions.every((region) => region.live === "polite" || region.live === "assertive"),
+    `Live regions must declare politeness; got ${JSON.stringify(liveRegions)}.`,
+  )
+  assert.ok(
+    liveRegions.some((region) => region.role === "status" || region.role === "alert"),
+    `At least one live region must carry a status/alert role; got ${JSON.stringify(liveRegions)}.`,
+  )
+
+  // 5. Every landmark region is labelled. `contextualPanelsLabelled: true` used
+  //    to assert this without looking at the document.
+  const unlabelledLandmarks = await page.evaluate(() =>
+    [...document.querySelectorAll("section, aside, nav, header, [role='region']")]
+      .filter(
+        (el) =>
+          !el.hasAttribute("aria-hidden") &&
+          !el.getAttribute("aria-label") &&
+          !el.getAttribute("aria-labelledby") &&
+          !el.getAttribute("role"),
+      )
+      .map((el) => `${el.tagName}#${el.id || ""}.${(el.className || "").toString().split(" ")[0]}`),
+  )
+  assert.deepEqual(
+    unlabelledLandmarks,
+    [],
+    `Every landmark region needs an accessible name; unlabelled: ${unlabelledLandmarks.join(", ")}.`,
+  )
+
+  // 6. The skip link resolves to a real, focusable target.
+  const skipLink = await page.evaluate(() => {
+    const link = document.querySelector(".skip-link")
+    if (!link) return null
+    const href = link.getAttribute("href") || ""
+    const target = href.startsWith("#") ? document.getElementById(href.slice(1)) : null
+    return {
+      href,
+      text: (link.textContent || "").trim(),
+      targetExists: Boolean(target),
+      targetFocusable: target ? target.hasAttribute("tabindex") || target.tabIndex >= 0 : false,
+    }
+  })
+  assert.ok(skipLink, "The shell must provide a skip link.")
+  assert.ok(skipLink.targetExists, `The skip link target ${skipLink.href} must exist.`)
+  assert.ok(
+    skipLink.targetFocusable,
+    `The skip link target ${skipLink.href} must be focusable so focus really moves there.`,
+  )
+
+  console.log("[add-rpg-smoke] real accessibility contract verified against the DOM")
+}
+
+/**
+ * The surface claims the old `visualPolish` block asserted against itself.
+ *
+ * The block named nine surfaces and said what each should look like. Checking
+ * the names proved nothing about the screen. These checks read the computed
+ * styles that actually produce the map-primary look and verify the layer
+ * ordering the design tokens promise, so a regression in either shows up here.
+ */
+async function assertRealSurfaceContract(page, consoleErrors) {
+  const surface = await page.evaluate(() => {
+    const stage = document.querySelector("[data-visual-surface='map-stage']")
+    const topbar = document.querySelector(".map-topbar")
+    const pane = stage ? stage.closest(".world-pane") : null
+    const canvas = stage ? stage.querySelector("canvas") : null
+    const rootStyle = getComputedStyle(document.documentElement)
+    const stageStyle = stage ? window.getComputedStyle(stage) : null
+    const rect = stage ? stage.getBoundingClientRect() : null
+    const canvasRect = canvas ? canvas.getBoundingClientRect() : null
+    return {
+      viewport: { width: window.innerWidth, height: window.innerHeight },
+      stageRect: rect ? { width: rect.width, height: rect.height } : null,
+      canvasRect: canvasRect
+        ? { width: canvasRect.width, height: canvasRect.height }
+        : null,
+      stageOverflow: stageStyle ? stageStyle.overflow : null,
+      // The world must have a real ground tone, not a transparent hole. This is
+      // the "world tone" claim; the old block only asserted the word.
+      stageBackgroundImage: stageStyle ? stageStyle.backgroundImage : null,
+      panePosition: pane ? window.getComputedStyle(pane).position : null,
+      topbarLayer: topbar ? window.getComputedStyle(topbar).zIndex : null,
+      worldLayer: stageStyle ? stageStyle.zIndex : null,
+      tokenLayers: {
+        primary: rootStyle.getPropertyValue("--layer-primary").trim(),
+        secondary: rootStyle.getPropertyValue("--layer-secondary").trim(),
+        transient: rootStyle.getPropertyValue("--layer-transient").trim(),
+      },
+    }
+  })
+
+  // 1. Full-bleed: the stage is the viewport, not a card on a page.
+  assert.ok(surface.stageRect, "The map stage must exist in the document.")
+  assert.ok(
+    surface.stageRect.width >= surface.viewport.width - 1 &&
+      surface.stageRect.height >= surface.viewport.height - 1,
+    `The map stage must fill the viewport; stage was ${JSON.stringify(
+      surface.stageRect,
+    )} against viewport ${JSON.stringify(surface.viewport)}.`,
+  )
+  assert.equal(
+    surface.panePosition,
+    "fixed",
+    "The world pane must be pinned to the viewport so the map is always the backdrop.",
+  )
+
+  // 2. Clipped: the world must not spill over the chrome that sits on it.
+  assert.equal(
+    surface.stageOverflow,
+    "hidden",
+    `The map stage must clip its contents; overflow was ${surface.stageOverflow}.`,
+  )
+
+  // 3. The Phaser canvas actually fills the stage, not a letterboxed corner.
+  assert.ok(surface.canvasRect, "The map stage must host a canvas.")
+  assert.ok(
+    surface.canvasRect.width >= surface.stageRect.width - 1 &&
+      surface.canvasRect.height >= surface.stageRect.height - 1,
+    `The map canvas must fill the stage; canvas ${JSON.stringify(
+      surface.canvasRect,
+    )} against stage ${JSON.stringify(surface.stageRect)}.`,
+  )
+
+  // 4. The world has a ground tone rather than showing the page through.
+  assert.ok(
+    surface.stageBackgroundImage && surface.stageBackgroundImage !== "none",
+    "The map stage must paint its own ground tone.",
+  )
+
+  // 5. The layer ladder the design tokens promise, checked for real.
+  const primary = Number(surface.tokenLayers.primary)
+  const secondary = Number(surface.tokenLayers.secondary)
+  const transient = Number(surface.tokenLayers.transient)
+  assert.ok(
+    Number.isFinite(primary) && Number.isFinite(secondary) && Number.isFinite(transient),
+    `Layer tokens must resolve to numbers; got ${JSON.stringify(surface.tokenLayers)}.`,
+  )
+  assert.ok(
+    primary < secondary && secondary < transient,
+    `The layer ladder must stay ordered primary < secondary < transient; got ${JSON.stringify(
+      surface.tokenLayers,
+    )}.`,
+  )
+  assert.ok(
+    surface.topbarLayer !== null && Number(surface.topbarLayer) >= secondary,
+    `The top bar must sit at or above the secondary layer; z-index was ${surface.topbarLayer}.`,
+  )
+
+  console.log("[add-rpg-smoke] real surface contract verified against computed styles")
 }
 
 async function enableObjectiveTrackerForSmoke(page, consoleErrors) {
