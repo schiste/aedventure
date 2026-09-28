@@ -113,6 +113,56 @@ export interface NarrativeSnapshot {
   qualities?: Record<string, number>
   /** Present only while the active beat is rendered by ink. */
   inkScene?: InkSceneSnapshot | null
+  /**
+   * The append-only log of consequential acts.
+   *
+   * Rust has always serialised this; the type did not declare it, so nothing in
+   * the browser could read it. It is the source of truth for standing, which is
+   * folded from it on read rather than stored, so a tuning change takes effect on
+   * an existing save without rewriting it.
+   */
+  log?: NarrativeLogSnapshot
+  /**
+   * Arcs the log currently recognises. Derived from the log, carried here so
+   * dialogue and the browser can name what the player built without either
+   * re-running the sifter.
+   */
+  arcs?: NarrativeArcsSnapshot
+  /**
+   * When each storylet last fired, so cooldowns survive a save. Unlike `arcs`
+   * this cannot be derived: the log records what the player did, not what the
+   * game chose to show them about it.
+   */
+  castHistory?: { lastCast: [string, number][] }
+  /**
+   * The storylet the narrative engine most recently cast, if any.
+   *
+   * This is the salience-ranked storylet pool, not the authored beat spine that
+   * `activeBeatId` names. `cast()` was previously unreachable from the runtime,
+   * so this was always absent.
+   */
+  cast?: NarrativeCastSnapshot | null
+}
+
+export interface NarrativeCastSnapshot {
+  storyletId: string
+  /** The ink knot the storylet resolves to. */
+  knot: string
+  /** Entities filling each role, in the knot's parameter order. */
+  roles: string[]
+  salience: number
+}
+
+export interface NarrativeArcsSnapshot {
+  matches: unknown[]
+  pending: unknown[]
+  seenFirstSlot: unknown[]
+}
+
+export interface NarrativeLogSnapshot {
+  events: unknown[]
+  nextId: number
+  knowledge: Record<string, unknown>
 }
 
 export interface CrystalCircleSnapshot {

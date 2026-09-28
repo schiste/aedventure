@@ -1883,6 +1883,22 @@ impl Simulation {
         // second slot. `extending_a_result_agrees_with_sifting_the_whole_log`
         // pins the two paths together.
         crate::narrative::sift_append(&mut self.state.narrative.arcs, &self.state.narrative.log);
+        // Cast a storylet, if the log now supports one.
+        //
+        // This is the call that makes the narrative engine part of the game
+        // rather than a library. `narrative::cast` is a 329-line
+        // salience-ranked, cooldown-gated, role-constrained solver with
+        // backtracking over the storylet pool, and until now only the scenario
+        // tooling called it: `fuzz`, `bench`, `tuning` and one integration test.
+        // So `cast_history` was always empty, `storylet_selection`'s 5ms perf
+        // budget gated a function no runtime path reached, and the 1,400 lines
+        // of most heavily tested code in the repository decided nothing.
+        //
+        // It runs here, on the rumour boundary, for the same reason `compact`
+        // and `react::run` do: a storylet is a thing that happens occasionally,
+        // and re-solving the pool on every one of the thousands of ticks in a
+        // long absence would spend budget to reach the same answer.
+        self.cast_storylet(now);
         self.state.resources.bassline_cap = self.bassline_cap();
         self.state.resources.chorus_cap = self.chorus_cap();
         self.state.resources.harmonics_cap = self.harmonics_cap();
@@ -3332,6 +3348,38 @@ impl Simulation {
     /// Record an act in the narrative log. Validation is deliberate: an
     /// unknown act or an unknown target would put an event in the log that no
     /// fold can interpret, which is worse than refusing it.
+    /// Solve the storylet pool against the current log and record what it chose.
+    ///
+    /// The available cast is every authored individual rather than the current
+    /// roster, because the roster has no named members: it carries `total_crew`
+    /// and a per-role count, not identities. Wiring the cast to the actual
+    /// lineup needs survivor identity in `RosterState`, which is a state-shape
+    /// change and a save migration, so until then the pool is the full authored
+    /// set. That is the same pool the scenario tooling casts against.
+    fn cast_storylet(&mut self, now: f64) {
+        let available = crate::narrative::castable_entities();
+        if available.is_empty() {
+            return;
+        }
+        let casting = crate::narrative::cast(
+            &self.state.narrative.log,
+            &self.state.narrative.arcs,
+            &self.state.narrative.cast_history,
+            &available,
+            now,
+        );
+        self.state
+            .narrative
+            .cast_history
+            .record(&casting.storylet_id, now);
+        self.state.narrative.cast = Some(crate::state::NarrativeCastState {
+            storylet_id: casting.storylet_id,
+            knot: casting.knot,
+            roles: casting.roles,
+            salience: casting.salience,
+        });
+    }
+
     fn emit_act(
         &mut self,
         act_id: &str,

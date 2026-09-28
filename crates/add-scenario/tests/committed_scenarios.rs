@@ -289,6 +289,14 @@ fn mercy_repaid_is_detected_and_names_its_subject() {
 /// N6 acceptance: a cast follows the history the player actually built. The
 /// scenario wrongs one specific survivor; the caster must then lead with that
 /// survivor rather than with whoever the catalog happens to list first.
+///
+/// This asserts the recording the runtime made during the run, not a fresh solve.
+/// It used to re-run `cast()` against the final state, which was fine while
+/// nothing in the runtime ever called it -- the history was empty and the cast
+/// was cold. Now the engine casts on the rumour boundary, so the history records
+/// what was shown, and re-solving at the end hits the very cooldown the run
+/// established. Asserting on `state.narrative.cast` is also the more useful
+/// claim: it is the cast a player would have been shown.
 #[test]
 fn casting_leads_with_the_person_the_player_has_history_with() {
     let run = run_scenario_file(&repo_path(
@@ -297,14 +305,11 @@ fn casting_leads_with_the_person_the_player_has_history_with() {
     .expect("committed casting scenario should pass");
     let state = add_core::import_save(&run.final_save).expect("save loads");
 
-    let available = add_core::narrative::castable_entities();
-    let casting = add_core::narrative::cast(
-        &state.narrative.log,
-        &state.narrative.arcs,
-        &state.narrative.cast_history,
-        &available,
-        state.clock_seconds,
-    );
+    let casting = state
+        .narrative
+        .cast
+        .as_ref()
+        .expect("the engine should have cast a storylet during the run");
 
     assert_eq!(
         casting.roles.first().map(String::as_str),
@@ -315,5 +320,9 @@ fn casting_leads_with_the_person_the_player_has_history_with() {
         add_core::narrative::all_knots().contains(&casting.knot.as_str()),
         "the cast knot must exist in ink or the hub stalls: {}",
         casting.knot,
+    );
+    assert!(
+        !state.narrative.cast_history.last_cast.is_empty(),
+        "a cast that is not recorded cannot hold its cooldown across a save",
     );
 }

@@ -1875,6 +1875,120 @@ mod tests {
         );
     }
 
+    /// The narrative engine has fuel, a sifter with something to find, and a
+    /// storylet to cast -- all from a gameplay act.
+    ///
+    /// This is the test whose absence is why 1,400 lines of the repository's
+    /// most heavily engineered and most heavily benchmarked code decided
+    /// nothing. `narrative::cast` was called only by the scenario tooling, so
+    /// `cast_history` was always empty and every storylet had never been cast
+    /// in a real game. Nothing asserted the chain end to end, because nothing
+    /// ran it.
+    ///
+    /// It walks the whole path: an act is recorded, the sifter recognises the
+    /// arc it completes, the cast solver picks a storylet on the strength of
+    /// that arc, and the result is recorded so its cooldown survives a save.
+    #[test]
+    fn an_act_in_the_log_reaches_a_cast_storylet() {
+        let mut simulation = Simulation::new();
+
+        // The first half of `arc.broken_oath`: an oath, sworn to someone. The
+        // sifter requires a target on the first slot (`second.target.is_some()`),
+        // so an untargeted oath is not half an arc, it is nothing.
+        simulation.apply(GameCommand::EmitAct {
+            act_id: "act.swear_an_oath".to_string(),
+            target: Some("entity.vell".to_string()),
+            cost: 1.0,
+            need: 1.0,
+            secrecy: None,
+            witnesses: vec!["entity.joren".to_string()],
+            causes: Vec::new(),
+        });
+        assert!(
+            !simulation
+                .state()
+                .narrative
+                .log
+                .events
+                .is_empty(),
+            "the act should be in the log, or the sifter has nothing to read",
+        );
+
+        // The second half, which completes the arc.
+        simulation.apply(GameCommand::EmitAct {
+            act_id: "act.break_a_promise".to_string(),
+            target: Some("entity.vell".to_string()),
+            cost: 1.0,
+            need: 1.0,
+            secrecy: None,
+            witnesses: vec!["entity.joren".to_string()],
+            causes: Vec::new(),
+        });
+
+        let arcs = &simulation.state().narrative.arcs;
+        assert!(
+            !arcs.matches.is_empty(),
+            "the sifter should have found something: {arcs:?}",
+        );
+
+        // Now let the tick run, which is what calls the cast solver.
+        simulation.apply(GameCommand::Tick { seconds: 60.0 });
+
+        let cast = simulation
+            .state()
+            .narrative
+            .cast
+            .as_ref()
+            .expect("the engine should have cast a storylet from a recognised arc");
+        assert!(
+            cast.storylet_id.starts_with("storylet."),
+            "the cast should name a storylet, got {:?}",
+            cast.storylet_id,
+        );
+        assert!(!cast.knot.is_empty(), "a cast resolves to an ink knot");
+        assert!(
+            !simulation.state().narrative.cast_history.last_cast.is_empty(),
+            "the cast must be recorded, or its cooldown would not survive a save",
+        );
+    }
+
+    /// A cooldown is respected: a storylet cast once is not cast again next tick.
+    #[test]
+    fn a_cast_storylet_does_not_refire_immediately() {
+        let mut simulation = Simulation::new();
+        for act in ["act.swear_an_oath", "act.break_a_promise"] {
+            simulation.apply(GameCommand::EmitAct {
+                act_id: act.to_string(),
+                target: Some("entity.vell".to_string()),
+                cost: 1.0,
+                need: 1.0,
+                secrecy: None,
+                witnesses: Vec::new(),
+                causes: Vec::new(),
+            });
+        }
+        simulation.apply(GameCommand::Tick { seconds: 60.0 });
+        let first = simulation
+            .state()
+            .narrative
+            .cast
+            .clone()
+            .expect("the first tick should cast");
+        let recorded_at = simulation.state().narrative.cast_history.last_cast[0].1;
+
+        simulation.apply(GameCommand::Tick { seconds: 60.0 });
+        let history = &simulation.state().narrative.cast_history.last_cast;
+        let refires = history
+            .iter()
+            .filter(|(id, tick)| *id == first.storylet_id && *tick > recorded_at)
+            .count();
+        assert_eq!(
+            refires, 0,
+            "{} has a multi-day cooldown, so it must not re-cast a second later",
+            first.storylet_id,
+        );
+    }
+
     #[test]
     fn reset_clears_discovery_to_initial_cells() {
         let mut simulation = Simulation::new();

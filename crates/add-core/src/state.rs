@@ -644,6 +644,33 @@ pub struct NarrativeState {
     /// player did, not what the game chose to show them about it.
     #[serde(default)]
     pub cast_history: crate::narrative::CastHistory,
+    /// The storylet the narrative engine most recently cast, if any.
+    ///
+    /// Derived from the log, the arcs and the cast history on the rumour
+    /// boundary, and carried on the snapshot for the same reason `arcs` is: so
+    /// the browser can be told what the engine decided without re-running the
+    /// salience solver. `None` means nothing was castable.
+    ///
+    /// This is *not* `active_beat_id`. That is the 72-beat authored spine,
+    /// ordered by priority and sequence. This is the salience-ranked storylet
+    /// pool, which is a separate catalogue with its own knots and its own
+    /// cooldowns, and it was previously unreachable from the runtime: `cast()`
+    /// was called only by the scenario tooling, so `cast_history` was always
+    /// empty and this field could never have been anything but `None`.
+    #[serde(default)]
+    pub cast: Option<NarrativeCastState>,
+}
+
+/// A storylet the narrative engine cast, and who it was cast with.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct NarrativeCastState {
+    pub storylet_id: String,
+    /// The ink knot the storylet resolves to.
+    pub knot: String,
+    /// Entities filling each role, in the knot's parameter order.
+    pub roles: Vec<String>,
+    pub salience: i64,
 }
 
 impl NarrativeState {
@@ -658,6 +685,7 @@ impl NarrativeState {
             ink_scene: None,
             log: crate::narrative::NarrativeLog::default(),
             arcs: crate::narrative::SiftResult::default(),
+            cast: None,
         }
     }
 }
