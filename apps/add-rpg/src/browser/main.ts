@@ -24,6 +24,8 @@ import {
   baseSlotPoolRows,
   baseStalledSystemRow,
   baseStationMachineSummary,
+  Button,
+  Chip,
   ConstructionControls,
   Disclosure,
   type EntityRendererRegistry,
@@ -76,10 +78,13 @@ import {
   titleCase,
   SchemaContext,
   SchemaPanel,
-  Stat,
+  Status,
+  TimeReadout,
   visibilityContext,
   ResourceList,
   RoleControls,
+  Row,
+  Stat,
   WorldActionList,
 } from "@aedventure/add-ui"
 import {
@@ -217,6 +222,7 @@ import {
   addQaMapModeActionId,
 } from "./qa-contract"
 import { installTraceRecorder } from "./dev/trace-recorder"
+import "@aedventure/add-ui/visual-system.css"
 import "./styles.css"
 
 const OPENING_TRAVEL_STEP_ID = "reach-base"
@@ -1443,25 +1449,28 @@ function AddRpgApp() {
             data-qa=${ADD_QA_SELECTORS.status}
             aria-label="ADD map navigation and status"
           >
-            <div class="map-mode-switcher" role="tablist" aria-label="ADD map mode">
+            <div class="ui-segmented map-mode-switcher" role="tablist" aria-label="ADD map mode">
               ${mapModeButtons}
             </div>
             <div class="status-stack" data-interface-answer="resources-time-status">
-              <span class="status-pill" data-state=${statusStateMemo}>
-                ${statusLabelMemo}
-              </span>
+              ${createComponent(Status, {
+                className: "status-pill",
+                state: statusStateMemo,
+                tone: () => (statusStateMemo() === "error" ? "danger" : "success"),
+                children: statusLabelMemo,
+              })}
               ${() => resourceStatusStrip()}
-              <div
-                class=${() =>
+              ${createComponent(TimeReadout, {
+                label: "Game time",
+                className: () =>
                   travelExperience()?.phase === "traveling" || clockAnimation()
                     ? "world-time-chip traveling"
-                    : "world-time-chip"}
-                aria-label="Game time"
-              >
-                <span>${() => worldTimePrimaryCopy()}</span>
-                <small>${() => worldTimeSecondaryCopy()}</small>
-                <i style=${() => daylightMeterStyle()} aria-hidden="true" />
-              </div>
+                    : "world-time-chip",
+                value: worldTimePrimaryCopy,
+                detail: worldTimeSecondaryCopy,
+                progress: daylightMeterValue,
+                active: () => travelExperience()?.phase === "traveling" || Boolean(clockAnimation()),
+              })}
               <button
                 id="time-speed-control"
                 type="button"
@@ -1671,7 +1680,7 @@ function AddRpgApp() {
       <div
         class=${() =>
           settingsOpen() || adminOpen() || devToolsOpen()
-            ? "admin-backdrop visible"
+            ? "ui-popin-backdrop admin-backdrop visible"
             : "admin-backdrop"}
         onClick=${closeAdvancedViews}
         aria-hidden="true"
@@ -1682,7 +1691,7 @@ function AddRpgApp() {
         data-interface-tier="settings"
         data-dragging=${() => floatingPanelDraggingId() === "settings"}
         class=${() =>
-          settingsOpen() ? "settings-hex-window settings-view open" : "settings-hex-window settings-view"}
+          settingsOpen() ? "ui-popin settings-hex-window settings-view open" : "ui-popin settings-hex-window settings-view"}
         style=${() => floatingPanelStyle("settings")}
         role="dialog"
         aria-modal="true"
@@ -3918,20 +3927,21 @@ function dungeonContextPanel(): unknown {
     >
       <div class="panel-heading dungeon-context-heading">
         <span id="dungeon-context-panel-title">${() => dungeon()?.label ?? "Dungeon"}</span>
-        <button
-          id="return-overworld"
-          type="button"
-          class="primary-action mode-primary-action return-overworld-button"
-          onClick=${() => returnToOverworldFromDungeon()}
-          aria-label=${() => dungeonReturnLabel()}
-        >
-          ${() => dungeonReturnLabel()}
-        </button>
+        ${createComponent(Button, {
+          id: "return-overworld",
+          variant: "primary",
+          className: "primary-action mode-primary-action return-overworld-button",
+          onClick: () => returnToOverworldFromDungeon(),
+          ariaLabel: dungeonReturnLabel,
+          children: dungeonReturnLabel,
+        })}
       </div>
       <article
-        class="dungeon-mode-summary keyboard-section"
+        class="ui-callout dungeon-mode-summary keyboard-section"
+        data-tone="info"
         tabindex="0"
         aria-label="Dungeon status summary"
+      role="note"
       >
         <span>Dungeon status</span>
         <strong>${() => dungeon()?.headline ?? "Explore the interior"}</strong>
@@ -3942,7 +3952,7 @@ function dungeonContextPanel(): unknown {
       </article>
       <div class="dungeon-context-grid">
         <article
-          class="dungeon-context-card emphasis keyboard-section"
+          class="ui-section dungeon-context-card emphasis keyboard-section"
           tabindex="0"
           aria-label="Dungeon current objective"
         >
@@ -3958,7 +3968,7 @@ function dungeonContextPanel(): unknown {
           </small>
         </article>
         <article
-          class="dungeon-context-card keyboard-section"
+          class="ui-section dungeon-context-card keyboard-section"
           tabindex="0"
           aria-label="Dungeon discovered exits"
         >
@@ -3968,7 +3978,7 @@ function dungeonContextPanel(): unknown {
           </div>
         </article>
         <article
-          class="dungeon-context-card keyboard-section"
+          class="ui-section dungeon-context-card keyboard-section"
           tabindex="0"
           aria-label="Dungeon blockers"
         >
@@ -3978,7 +3988,7 @@ function dungeonContextPanel(): unknown {
           </div>
         </article>
         <article
-          class="dungeon-context-card local-map keyboard-section"
+          class="ui-section dungeon-context-card local-map keyboard-section"
           tabindex="0"
           aria-label="Dungeon local map state"
         >
@@ -4006,28 +4016,31 @@ function dungeonExitRows(dungeon: ReturnType<typeof dungeonObjectiveState>): rea
   ]
   const uniqueExits = Array.from(new Map(exits.map((exit) => [exit.targetMapId ?? exit.id, exit])).values())
   return [
-    html`
-      <span class="dungeon-context-row available">
-        <strong>${dungeon?.returnLabel ?? "Return to overworld"}</strong>
-        <small>Known route back to the outside map.</small>
-      </span>
-    `,
+    createComponent(Row, {
+      className: "dungeon-context-row available",
+      entity: "dungeon_exit",
+      tone: "success",
+      label: dungeon?.returnLabel ?? "Return to overworld",
+      detail: "Known route back to the outside map.",
+    }),
     ...(uniqueExits.length > 0
-      ? uniqueExits.map(
-          (exit) => html`
-            <span class="dungeon-context-row ${exit.enabled ? "available" : "blocked"}">
-              <strong>${exit.label}</strong>
-              <small>${exit.enabled ? "Discovered and usable." : "Discovered but blocked for now."}</small>
-            </span>
-          `,
+      ? uniqueExits.map((exit) =>
+          createComponent(Row, {
+            className: exit.enabled ? "dungeon-context-row available" : "dungeon-context-row blocked",
+            entity: "dungeon_exit",
+            tone: exit.enabled ? "success" : "danger",
+            label: exit.label,
+            detail: exit.enabled ? "Discovered and usable." : "Discovered but blocked for now.",
+          }),
         )
       : [
-          html`
-            <span class="dungeon-context-row muted">
-              <strong>No additional exits found</strong>
-              <small>Explore visible rooms to reveal more interior links later.</small>
-            </span>
-          `,
+          createComponent(Row, {
+            className: "dungeon-context-row muted",
+            entity: "dungeon_exit",
+            tone: "muted",
+            label: "No additional exits found",
+            detail: "Explore visible rooms to reveal more interior links later.",
+          }),
         ]),
   ]
 }
@@ -4037,36 +4050,48 @@ function dungeonBlockerRows(): readonly unknown[] {
   const rows: unknown[] = []
   const activeBlocker = info.character.blockedReason ?? info.travel.blockedReason
   if (activeBlocker) {
-    rows.push(html`
-      <span class="dungeon-context-row blocked">
-        <strong>Movement blocked</strong>
-        <small>${titleCase(activeBlocker.replaceAll("_", " "))}</small>
-      </span>
-    `)
+    rows.push(
+      createComponent(Row, {
+        className: "dungeon-context-row blocked",
+        entity: "dungeon_blocker",
+        tone: "danger",
+        label: "Movement blocked",
+        detail: titleCase(activeBlocker.replaceAll("_", " ")),
+      }),
+    )
   }
   if (info.visibility.hiddenCells > 0) {
-    rows.push(html`
-      <span class="dungeon-context-row watch">
-        <strong>${info.visibility.hiddenCells} hidden cells</strong>
-        <small>Line of sight is still limiting what the Hero knows.</small>
-      </span>
-    `)
+    rows.push(
+      createComponent(Row, {
+        className: "dungeon-context-row watch",
+        entity: "dungeon_blocker",
+        tone: "warning",
+        label: `${info.visibility.hiddenCells} hidden cells`,
+        detail: "Line of sight is still limiting what the Hero knows.",
+      }),
+    )
   }
   if (info.cells.blocked > 0) {
-    rows.push(html`
-      <span class="dungeon-context-row watch">
-        <strong>${info.cells.blocked} walls or sealed cells</strong>
-        <small>These shape movement and future encounter routes.</small>
-      </span>
-    `)
+    rows.push(
+      createComponent(Row, {
+        className: "dungeon-context-row watch",
+        entity: "dungeon_blocker",
+        tone: "warning",
+        label: `${info.cells.blocked} walls or sealed cells`,
+        detail: "These shape movement and future encounter routes.",
+      }),
+    )
   }
   if (rows.length === 0) {
-    rows.push(html`
-      <span class="dungeon-context-row available">
-        <strong>No immediate blocker</strong>
-        <small>The local route is currently open.</small>
-      </span>
-    `)
+    rows.push(
+      createComponent(Row, {
+        className: "dungeon-context-row available",
+        entity: "dungeon_blocker",
+        tone: "success",
+        label: "No immediate blocker",
+        detail: "The local route is currently open.",
+      }),
+    )
   }
   return rows
 }
@@ -4080,13 +4105,12 @@ function dungeonLocalMapMetricRows(): readonly unknown[] {
     ["Hero", info.character.cell ?? "Unknown"],
     ["Selected", info.interaction.selectedCell ?? "None"],
     ["Facing", titleCase(info.character.facing ?? "unknown")],
-  ].map(
-    ([label, value]) => html`
-      <span>
-        <small>${label}</small>
-        <strong>${value}</strong>
-      </span>
-    `,
+  ].map(([label, value]) =>
+    createComponent(Stat, {
+      className: "dungeon-map-metric",
+      label,
+      value,
+    }),
   )
 }
 
@@ -4127,23 +4151,17 @@ function resourceStatusStrip(): unknown {
       aria-label="Key resources"
     >
       ${() =>
-        prioritized.map(
-          (resource) => html`
-            <span
-              data-resource=${resource.id}
-              role="listitem"
-              title=${resourceStatusTooltip(resource)}
-              aria-label=${resourceStatusAriaLabel(resource)}
-            >
-              <small>
-                <span class="resource-label-compact" aria-hidden="true">
-                  ${resourceCompactLabel(resource.id, resource.label)}
-                </span>
-                <span class="resource-label-full">${resource.label}</span>
-              </small>
-              <strong>${formatResource(resource.value)}</strong>
-            </span>
-          `,
+        prioritized.map((resource) =>
+          createComponent(Chip, {
+            className: "resource-chip",
+            dataResource: resource.id,
+            role: "listitem",
+            title: resourceStatusTooltip(resource),
+            ariaLabel: resourceStatusAriaLabel(resource),
+            label: resource.label,
+            compactLabel: resourceCompactLabel(resource.id, resource.label),
+            value: formatResource(resource.value),
+          }),
         )}
     </div>
   `
@@ -5005,12 +5023,12 @@ function baseSocialPanel(state: AddBaseManagementState): unknown {
   const social = state.socialPressure
   return html`
     <div class="base-card-list social-pressure-list">
-      <article class="base-social-overview" data-status=${social.status}>
+      <article class="ui-card base-social-overview" data-status=${social.status}>
         <span>Social pressure</span>
         <strong>${social.headline}</strong>
         <small>${social.detail}</small>
       </article>
-      <article class="base-management-card" data-pressure=${social.housing.pressure}>
+      <article class="ui-card base-management-card" data-pressure=${social.housing.pressure}>
         <span>Bunks</span>
         <strong>${social.housing.occupied} / ${social.housing.capacity}</strong>
         <small>${social.housing.warning}</small>
@@ -5020,7 +5038,7 @@ function baseSocialPanel(state: AddBaseManagementState): unknown {
           <strong>${formatEconomyDuration(social.housing.overcrowdedSeconds)} crowded</strong>
         </div>
       </article>
-      <article class="base-management-card" data-pressure=${social.supportForecast.status}>
+      <article class="ui-card base-management-card" data-pressure=${social.supportForecast.status}>
         <span>Recruitment</span>
         <strong>${social.recruitment.enabled ? "Open" : "Locked"}</strong>
         <small>${social.recruitment.costProjection}</small>
@@ -5038,7 +5056,7 @@ function baseSocialPanel(state: AddBaseManagementState): unknown {
           Recruit
         </button>
       </article>
-      <article class="base-management-card" data-pressure=${social.vibes.netPerSecond < 0 ? "overcrowded" : "room"}>
+      <article class="ui-card base-management-card" data-pressure=${social.vibes.netPerSecond < 0 ? "overcrowded" : "room"}>
         <span>Vibes</span>
         <strong>${formatResource(social.vibes.value)} / ${formatResource(social.vibes.cap)}</strong>
         <small>${social.vibes.explanation}</small>
@@ -5049,7 +5067,7 @@ function baseSocialPanel(state: AddBaseManagementState): unknown {
         </div>
         <small class="base-card-note">${social.vibes.lossExplanation}</small>
       </article>
-      <article class="base-management-card" data-pressure=${social.supportForecast.status}>
+      <article class="ui-card base-management-card" data-pressure=${social.supportForecast.status}>
         <span>Can we support this recruit?</span>
         <strong>${social.supportForecast.canSupport ? "Yes" : "Not yet"}</strong>
         <small>${social.supportForecast.copy}</small>
@@ -5070,7 +5088,7 @@ function baseExpeditionsPanel(state: AddBaseManagementState): unknown {
   const expeditions = state.expeditions
   return html`
     <div class="base-card-list expedition-list">
-      <article class="base-social-overview" data-status=${expeditions.availableCrew > 0 ? "ready" : "waiting_vibes"}>
+      <article class="ui-card base-social-overview" data-status=${expeditions.availableCrew > 0 ? "ready" : "waiting_vibes"}>
         <span>Expedition board</span>
         <strong>${expeditions.summary}</strong>
         <small>
@@ -5088,7 +5106,7 @@ function baseExpeditionsPanel(state: AddBaseManagementState): unknown {
 function expeditionTargetRows(state: AddBaseManagementState): readonly unknown[] {
   return state.expeditions.targets.map(
     (target) => html`
-      <article class="base-management-card" data-pressure=${target.enabled ? "room" : "locked"}>
+      <article class="ui-card base-management-card" data-pressure=${target.enabled ? "room" : "locked"}>
         <span>Target</span>
         <strong>${target.label}</strong>
         <small>${target.playerHint}</small>
@@ -5122,7 +5140,7 @@ function expeditionReportRows(state: AddBaseManagementState): readonly unknown[]
   if (reports.length === 0) {
     return [
       html`
-        <article class="base-management-card">
+        <article class="ui-card base-management-card">
           <span>Returned reports</span>
           <strong>None yet</strong>
           <small>Completed expeditions will summarize materials, wounds, clues, and dungeon leads here.</small>
@@ -5133,7 +5151,7 @@ function expeditionReportRows(state: AddBaseManagementState): readonly unknown[]
   return [
     ...reports.map(
       (report) => html`
-        <article class="base-management-card" data-pressure=${report.risk}>
+        <article class="ui-card base-management-card" data-pressure=${report.risk}>
           <span>Returned report</span>
           <strong>${report.label}</strong>
           <small>${report.rewardCopy}</small>
@@ -5146,7 +5164,7 @@ function expeditionReportRows(state: AddBaseManagementState): readonly unknown[]
       `,
     ),
     html`
-      <article class="base-management-card">
+      <article class="ui-card base-management-card">
         <span>Report log</span>
         <strong>${state.expeditions.completedReportCount} saved</strong>
         <small>Clearing reports keeps this list short; totals remain saved.</small>
@@ -5167,7 +5185,7 @@ function baseResonancePanel(state: AddBaseManagementState): unknown {
   const resonance = state.resonance
   return html`
     <div class="base-card-list resonance-list">
-      <article class="base-social-overview" data-status=${resonance.recommendedRecipeId ? "ready" : "waiting_vibes"}>
+      <article class="ui-card base-social-overview" data-status=${resonance.recommendedRecipeId ? "ready" : "waiting_vibes"}>
         <span>Resonance loop</span>
         <strong>${resonance.summary}</strong>
         <small>
@@ -5175,7 +5193,7 @@ function baseResonancePanel(state: AddBaseManagementState): unknown {
           Expedition support ${resonance.expeditionSupportLevel}
         </small>
       </article>
-      <article class="base-management-card" data-pressure="room">
+      <article class="ui-card base-management-card" data-pressure="room">
         <span>Crystal tuning</span>
         <strong>
           Bassline +${resonance.tuning.basslineBonusPercent}% ·
@@ -5200,7 +5218,7 @@ function resonanceRecipeCard(
   recipe: AddBaseManagementState["resonance"]["recipes"][number],
 ): unknown {
   return html`
-    <article class="base-management-card" data-pressure=${recipe.enabled || recipe.inProgress ? "room" : "locked"}>
+    <article class="ui-card base-management-card" data-pressure=${recipe.enabled || recipe.inProgress ? "room" : "locked"}>
       <span>Resonance recipe</span>
       <strong>${recipe.label}</strong>
       <small>${recipe.playerHint}</small>
@@ -5239,7 +5257,7 @@ function resonanceSpecializationCard(
   station: AddBaseManagementState["resonance"]["stationSpecializations"][number],
 ): unknown {
   return html`
-    <article class="base-management-card" data-pressure="room">
+    <article class="ui-card base-management-card" data-pressure="room">
       <span>Station specialization</span>
       <strong>${station.stationLabel}</strong>
       <small>Current path: ${titleCase(station.currentPath)}</small>
@@ -5346,7 +5364,7 @@ function baseRoleRows(
 ): readonly unknown[] {
   return roles.map(
     (role) => html`
-      <article class="base-management-card" data-pressure=${role.slotPressure}>
+      <article class="ui-card base-management-card" data-pressure=${role.slotPressure}>
         <span>${role.label}</span>
         <strong>${role.heroAssigned ? "Hero" : "Crew"} · ${role.crewAssigned}</strong>
         <small>${role.pressureCopy}</small>
@@ -5432,12 +5450,12 @@ function baseConstructionProjectCard(
 ): unknown {
   return html`
     <article
-      class="base-construction-project"
+      class="ui-card base-construction-project"
       data-category=${option.category}
       data-enabled=${option.enabled ? "true" : "false"}
       data-risk=${option.basslineRisk.severity}
     >
-      <div class="base-construction-project-heading">
+      <div class="ui-card base-construction-project-heading">
         <span>${option.label}</span>
         <strong>${option.complete ? "Complete" : option.inProgress ? "Building" : option.enabled ? "Ready" : "Waiting"}</strong>
       </div>
@@ -5497,7 +5515,7 @@ function baseConstructionProjectCard(
 function baseActiveConstructionCard(option: AddBaseManagementState["buildLoop"]["activeJob"]): unknown {
   if (!option) return null
   return html`
-    <article class="base-construction-summary active">
+    <article class="ui-card base-construction-summary active">
       <span>Active construction</span>
       <strong>${option.label}</strong>
       <small>${Math.round(option.progressPercent)}% complete; ${formatResourceTime(option.estimatedCompletionSeconds)} remaining.</small>
@@ -5595,11 +5613,11 @@ function baseStationMachineCard(
 ): unknown {
   return html`
     <article
-      class="base-machine-card"
+      class="ui-card base-machine-card"
       data-status=${card.status}
       data-powered=${card.powered ? "true" : "false"}
     >
-      <div class="base-machine-card-heading">
+      <div class="ui-card base-machine-card-heading">
         <span>${card.label}</span>
         <strong>${machineStatusCopy(card.status)}</strong>
       </div>
@@ -5697,7 +5715,7 @@ function stateRecipeIsProcessing(recipeId: string): boolean {
 function baseStationRows(stations: readonly AddBaseManagementState["stations"][number][]): readonly unknown[] {
   return stations.map(
     (station) => html`
-      <article class="base-management-card" data-powered=${station.powered ? "true" : "false"}>
+      <article class="ui-card base-management-card" data-powered=${station.powered ? "true" : "false"}>
         <span>${station.label}</span>
         <strong>${station.powered ? "Powered" : station.requestedEnabled ? "Requested" : "Off"}</strong>
         <small>${station.blockedReason ?? `${formatResource(station.upkeepPerSecond)} Chorus/s`}</small>
@@ -5718,7 +5736,7 @@ function baseStationRows(stations: readonly AddBaseManagementState["stations"][n
 function baseProcessingRows(recipes: readonly AddBaseManagementState["processing"][number][]): readonly unknown[] {
   return recipes.map(
     (recipe) => html`
-      <article class="base-management-card" data-enabled=${recipe.enabled ? "true" : "false"}>
+      <article class="ui-card base-management-card" data-enabled=${recipe.enabled ? "true" : "false"}>
         <span>${recipe.label}</span>
         <strong>${recipe.inProgress ? `${recipe.remainingSeconds ?? 0}s` : `Lv ${recipe.level}/${recipe.maxLevel}`}</strong>
         <small>${recipe.blockedReason ?? `${recipe.stationLabel} · ${recipe.costLabel}`}</small>
@@ -5805,8 +5823,17 @@ function discoveryConsequenceCard(): unknown {
   return html`
     <article
       id="movement-consequences"
-      class="movement-consequences"
+      class="ui-callout movement-consequences"
       data-severity=${consequences.safety.severity}
+      data-tone=${consequences.safety.severity === "danger" || consequences.safety.severity === "critical"
+        ? "danger"
+        : consequences.safety.severity === "watch"
+          ? "warning"
+          : "info"}
+      role=${consequences.safety.severity === "danger" || consequences.safety.severity === "critical"
+        ? "alert"
+        : "note"}
+      aria-label="Movement consequences"
     >
       <header>
         <span>
@@ -6853,11 +6880,9 @@ function toxicityHazeStyle(): string {
   ].join(";")
 }
 
-function daylightMeterStyle(): Record<string, string> {
+function daylightMeterValue(): number {
   const ratio = displayedWorldTime()?.daylightRatio ?? 1
-  return {
-    "--daylight-ratio": `${Math.max(8, Math.round(ratio * 100))}%`,
-  }
+  return Math.min(1, Math.max(0.08, ratio))
 }
 
 function worldTimePrimaryCopy(): string {
@@ -7015,10 +7040,10 @@ function travelDialogView(): unknown {
   if (!dialog) return null
 
   return html`
-    <div class="travel-dialog-backdrop">
+    <div class="ui-popin-backdrop travel-dialog-backdrop">
       <section
         id="travel-confirmation-dialog"
-        class="travel-dialog"
+        class="ui-popin travel-dialog"
         style=${() => floatingPanelStyle("travel_dialog")}
         role="dialog"
         aria-modal="true"
@@ -7076,7 +7101,7 @@ function offlineReturnPanel(): unknown {
   return html`
     <section
       id="offline-return-panel"
-      class="offline-return-panel"
+      class="ui-popin offline-return-panel"
       style=${() => floatingPanelStyle("offline_return")}
       data-source=${summary.source}
       data-dragging=${() => floatingPanelDraggingId() === "offline_return"}

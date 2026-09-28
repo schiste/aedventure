@@ -1,7 +1,7 @@
 // Player settings: persisted to localStorage, separate from the sim save (these
 // are device/UX preferences, not game state). Pure logic here (type, defaults,
 // load/save, DOM application) so it is unit-testable without a browser; the
-// reactive overlay lives in settings-overlay.ts.
+// live overlay is composed in browser/main.ts and uses these shared settings.
 
 export type ColorBlindMode = "none" | "protanopia" | "deuteranopia" | "tritanopia"
 
@@ -133,7 +133,7 @@ export function effectiveMusicVolume(settings: AddSettings): number {
 /**
  * Apply the render-affecting settings to the document root. These take effect
  * immediately and globally (the whole app inherits them) via data-attributes
- * and CSS custom properties styled in settings.css.
+ * and CSS custom properties styled in the shared ADD visual-system stylesheet.
  */
 export function applyDomSettings(
   settings: AddSettings,
