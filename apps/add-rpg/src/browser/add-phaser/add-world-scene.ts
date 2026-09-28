@@ -116,6 +116,13 @@ type MobileEdgeCullObject = Phaser.GameObjects.GameObject & {
 
 type AddLandmarkRole = "cave" | "base" | "crystal" | "door" | "interior" | "generic"
 
+/**
+ * How many Phaser update durations the dev trace probe reports per window.
+ * `getPerformanceProbe()` consumes its window on every call, so this is also the
+ * largest batch it ever has to summarise.
+ */
+const PHASER_UPDATE_SAMPLE_WINDOW = 240
+
 export class AddRpgHexScene extends Phaser.Scene {
   private readonly hostOptions: AddRpgPhaserMapHostOptions
   private readonly cellPresentationPolicy = createAddCellPresentationPolicy()
@@ -184,7 +191,44 @@ export class AddRpgHexScene extends Phaser.Scene {
   private lastInfo: AddPhaserMapInfo = emptyMapInfo()
   private lastMapBuildDurationMs = 0
   private mapBuildCount = 0
-  private phaserUpdateDurationsMs: number[] = []
+  /**
+   * Is the telemetry projection stale?
+   *
+   * `update()` used to call `refreshInfo()` every frame, and `refreshInfo()`
+   * rebuilt a ~180-field object via five full traversals of
+   * `context.terrainCells` and roughly 200 allocations. Almost nothing reads
+   * it: `main.ts` polls `getInfo()` at 5.5 Hz and the Playwright smoke reads it
+   * a few hundred times per run, so ~99% of the projection was built and
+   * discarded on each of the 60 frames a second.
+   *
+   * Writes now only raise this flag and reads do the work, at most once per
+   * read. Every state change the projection reports raises it, so a read is
+   * never stale.
+   */
+  private infoDirty = true
+  /**
+   * The newest `validateGameWorld` verdict, held between the mark and the
+   * rebuild.
+   *
+   * `refreshInfo()` defaults its arguments from the last *applied* verdict, so
+   * without this the per-frame `refreshInfo()` — which carries no arguments —
+   * would overwrite the fresh verdict `renderPendingWorld` had just recorded
+   * with the stale one it defaulted from.
+   */
+  private pendingValidationSummary: string | null = null
+  private pendingValidationValid: boolean | null = null
+  /**
+   * Phaser update durations for the dev trace probe, as a fixed-size ring.
+   *
+   * This was a `number[]` with `push` and, past 240 entries, `shift()`.
+   * `shift` is O(n) over the whole array: 240 values re-indexed, 60 times a
+   * second, forever, in order to keep 240 numbers.
+   */
+  private readonly phaserUpdateDurationsMs = new Float64Array(PHASER_UPDATE_SAMPLE_WINDOW)
+  /** How many ring slots currently hold a sample. */
+  private phaserUpdateSampleCount = 0
+  /** Where the next sample goes; once full, also where the oldest one is. */
+  private phaserUpdateWriteIndex = 0
 
   constructor(options: AddRpgPhaserMapHostOptions) {
     super("add-rpg-hex-map")
@@ -273,9 +317,15 @@ export class AddRpgHexScene extends Phaser.Scene {
     this.tickDoors()
     this.updateMobileEdgeCullObjects()
     this.drawOverlay()
-    this.refreshInfo()
-    this.phaserUpdateDurationsMs.push(performance.now() - updateStartedAt)
-    if (this.phaserUpdateDurationsMs.length > 240) this.phaserUpdateDurationsMs.shift()
+    // The frame just advanced everything the projection reports: character
+    // position and travel progress, fog reveals, the overlay's affordance
+    // counts, the mobile edge-cull count, and the camera — which Phaser moves
+    // on its own between scenes, so no method of this class running is not
+    // evidence that it stood still. Raise the flag; the rebuild happens on the
+    // next read, which `main.ts` does at 5.5 Hz rather than on every one of the
+    // 60 frames.
+    this.markInfoDirty()
+    this.recordPhaserUpdateDuration(performance.now() - updateStartedAt)
   }
 
   renderWorld(world: GameWorld): void {
@@ -549,34 +599,93 @@ export class AddRpgHexScene extends Phaser.Scene {
     this.refreshInfo()
   }
 
+  /**
+   * Reading the telemetry rebuilds it. Both of these are a side effect: they
+   * mutate `lastRendererState` / `lastInfo` before returning them, which is the
+   * whole reason the work is guarded by `infoDirty` rather than done eagerly.
+   *
+   * Two properties this has to keep:
+   * - no double recompute. `getInfo()` and `getRendererState()` share one
+   *   rebuild, so `const a = getInfo(); const b = getRendererState()` costs one
+   *   projection, not two.
+   * - a clean read returns the object the previous clean read returned, so a
+   *   caller comparing two reads now sees `===` when nothing changed. That is
+   *   the more accurate answer: before this, every comparison was `false` even
+   *   when the two objects were field-for-field identical, so `===` was never a
+   *   change test and no caller could have relied on it. `main.ts` feeds the
+   *   result into a Solid signal, so an unchanged map now stops re-rendering the
+   *   shell 5.5 times a second.
+   */
   getInfo(): AddPhaserMapInfo {
-    this.refreshInfo()
+    this.rebuildInfoIfDirty()
     return this.lastInfo
   }
 
   getRendererState(): PhaserMapRendererState {
-    this.refreshInfo()
+    this.rebuildInfoIfDirty()
     return this.lastRendererState
   }
 
-  /** Consume the current Phaser/map timing window for the dev trace recorder. */
+  /**
+   * Consume the current Phaser/map timing window for the dev trace recorder.
+   *
+   * Rewritten to stop spreading an array into a call. The old
+   * `Math.max(...samples)` pushes one argument per element onto the call stack,
+   * which throws once the window grows past roughly 100k samples. Sorting the
+   * drained window in place and reading the extremes out of it is the same
+   * computation with a heap allocation instead of a stack one.
+   */
   getPerformanceProbe(): Record<string, number> {
-    const samples = this.phaserUpdateDurationsMs.splice(0)
-    const sorted = [...samples].sort((a, b) => a - b)
-    const p95 = sorted.length
-      ? sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95))]
-      : 0
-    const average = samples.length
-      ? samples.reduce((total, value) => total + value, 0) / samples.length
-      : 0
+    const sorted = this.drainPhaserUpdateDurations()
+    // The drain hands over a fresh array this call owns, so sorting in place
+    // costs nothing. Sum and maximum are order-independent; chronological order
+    // is only needed inside the drain, to keep the ring oldest-first.
+    sorted.sort((first, second) => first - second)
+    const count = sorted.length
+    let total = 0
+    for (const value of sorted) total += value
+    const p95 = count ? sorted[Math.min(count - 1, Math.floor(count * 0.95))] : 0
+    const average = count ? total / count : 0
     return {
       mapBuildMs: Math.round(this.lastMapBuildDurationMs * 10) / 10,
       mapBuildCount: this.mapBuildCount,
-      phaserUpdateSamples: samples.length,
+      phaserUpdateSamples: count,
       phaserUpdateAvgMs: Math.round(average * 10) / 10,
       phaserUpdateP95Ms: Math.round(p95 * 10) / 10,
-      phaserUpdateMaxMs: Math.round((samples.length ? Math.max(...samples) : 0) * 10) / 10,
+      phaserUpdateMaxMs: Math.round((count ? sorted[count - 1] : 0) * 10) / 10,
     }
+  }
+
+  /** Record one Phaser update duration, overwriting the oldest slot once full. */
+  private recordPhaserUpdateDuration(durationMs: number): void {
+    this.phaserUpdateDurationsMs[this.phaserUpdateWriteIndex] = durationMs
+    this.phaserUpdateWriteIndex =
+      (this.phaserUpdateWriteIndex + 1) % PHASER_UPDATE_SAMPLE_WINDOW
+    if (this.phaserUpdateSampleCount < PHASER_UPDATE_SAMPLE_WINDOW) {
+      this.phaserUpdateSampleCount += 1
+    }
+  }
+
+  /**
+   * Copy the ring in chronological order, oldest first, and clear it.
+   *
+   * Draining rather than peeking is the contract `getPerformanceProbe` has
+   * always had: consecutive calls report consecutive, disjoint windows instead
+   * of re-reporting the same trailing samples.
+   */
+  private drainPhaserUpdateDurations(): number[] {
+    const count = this.phaserUpdateSampleCount
+    const oldest =
+      (this.phaserUpdateWriteIndex - count + PHASER_UPDATE_SAMPLE_WINDOW) %
+      PHASER_UPDATE_SAMPLE_WINDOW
+    const samples = new Array<number>(count)
+    for (let index = 0; index < count; index += 1) {
+      samples[index] =
+        this.phaserUpdateDurationsMs[(oldest + index) % PHASER_UPDATE_SAMPLE_WINDOW]
+    }
+    this.phaserUpdateSampleCount = 0
+    this.phaserUpdateWriteIndex = 0
+    return samples
   }
 
   private renderPendingWorld(forceCameraFit: boolean): void {
@@ -603,6 +712,12 @@ export class AddRpgHexScene extends Phaser.Scene {
         context: null,
         worldInteractionPolicy: this.worldInteractionPolicy,
       })
+      // This branch writes the projection directly and never reaches
+      // `refreshInfo`, so it has to clear the flag itself. Leaving it set would
+      // let the next read rebuild from `this.context` — which still holds the
+      // *previous* map's context, because this branch never replaces it — and
+      // overwrite the unsupported-topology verdict with a valid one.
+      this.infoDirty = false
       this.lastMapBuildDurationMs = performance.now() - buildStartedAt
       this.mapBuildCount += 1
       return
@@ -934,6 +1049,9 @@ export class AddRpgHexScene extends Phaser.Scene {
 
   private updateMainCharacter(delta: number): void {
     if (!this.context) return
+    // This owns `characterPosition`, `characterIsMoving()`, and the travel clock,
+    // all of which the projection reports.
+    this.markInfoDirty()
     this.syncMainCharacter(this.context, false)
     if (!this.characterPosition || !this.characterTarget) return
 
@@ -1388,6 +1506,12 @@ export class AddRpgHexScene extends Phaser.Scene {
   private drawOverlay(): void {
     const context = this.context
     if (!context) return
+    // `drawMapCommunicationOverlay` rewrites `mapPrimaryAffordanceInfo` and the
+    // interaction renderer re-counts its markers, so every overlay draw changes
+    // what the projection says. Marking here rather than at the call sites
+    // covers selection, hover, `advanceTime`, and the per-frame `update()` path
+    // in one place.
+    this.markInfoDirty()
     this.drawMapCommunicationOverlay(context)
     this.cellInteractionRenderer?.render(context.map, {
       origin: context.origin,
@@ -1875,6 +1999,11 @@ export class AddRpgHexScene extends Phaser.Scene {
     if (!coord || !this.context) return
     const target = centerFor(coord, this.context)
     this.cameras.main.pan(target.x, target.y, durationMs, "Sine.easeInOut")
+    // The projection reports `camera.scrollX/scrollY` and both landmarks'
+    // viewport positions, all derived from the camera's world view. A pan moves
+    // them for the whole `durationMs`, and `focusOn` is the one public camera
+    // call with no `refreshInfo()` after it, so the mark belongs here.
+    this.markInfoDirty()
   }
 
   /** Frame a named target. "hero" re-arms follow; "base"/"cave" are one-shot
@@ -1894,7 +2023,9 @@ export class AddRpgHexScene extends Phaser.Scene {
 
   private cancelCameraPan(): void {
     const pan = this.cameras.main.panEffect
-    if (pan?.isRunning) pan.reset()
+    if (!pan?.isRunning) return
+    pan.reset()
+    this.markInfoDirty()
   }
 
   private onPointerDown(pointer: Phaser.Input.Pointer): void {
@@ -2145,10 +2276,45 @@ export class AddRpgHexScene extends Phaser.Scene {
     return screenDistance <= 28 ? this.lastHoverCoord : null
   }
 
+  /**
+   * Raise the telemetry-staleness flag. The rebuild is deferred to the next
+   * read — see `infoDirty`.
+   *
+   * `summary`/`valid` carry the newest `validateGameWorld` verdict from
+   * `renderPendingWorld`. They are stored here rather than consumed here,
+   * because the rebuild has not happened yet when the next per-frame
+   * `refreshInfo()` runs with no arguments and defaults from the last *applied*
+   * verdict.
+   */
   private refreshInfo(
-    summary = this.lastRendererState.validation.summary,
-    valid = this.lastRendererState.validation.valid,
+    summary = this.pendingValidationSummary ?? this.lastRendererState.validation.summary,
+    valid = this.pendingValidationValid ?? this.lastRendererState.validation.valid,
   ): void {
+    this.pendingValidationSummary = summary
+    this.pendingValidationValid = valid
+    this.infoDirty = true
+  }
+
+  private markInfoDirty(): void {
+    this.infoDirty = true
+  }
+
+  /**
+   * Rebuild the projection if anything marked it stale.
+   *
+   * The flag is cleared *before* the rebuild, not after: `projectAddPhaserMapInfo`
+   * calls into interaction policies and the topology helpers, and should any of
+   * them ever learn to mark the telemetry dirty, a mark raised during the
+   * rebuild has to survive it rather than be swallowed.
+   */
+  private rebuildInfoIfDirty(): void {
+    if (!this.infoDirty) return
+    this.infoDirty = false
+    const summary = this.pendingValidationSummary ?? this.lastRendererState.validation.summary
+    const valid = this.pendingValidationValid ?? this.lastRendererState.validation.valid
+    this.pendingValidationSummary = summary
+    this.pendingValidationValid = valid
+
     const context = this.context
     if (!context) {
       this.lastRendererState = {
