@@ -79,6 +79,7 @@ async function main() {
     await page.goto(`${url}/app`, { waitUntil: "domcontentloaded" })
     // The title screen is the first view now: exercise its subviews, then
     // start a new game, which is also how a player reaches the opening.
+    await assertStartScreenOptionsLayout(page)
     await launchNewGameFromTitleScreen(page)
     await dismissOpeningCinematic(page, { timeoutMs: qaTimeout(20000) })
     const initial = await runScenario("boot and render text contract", () =>
@@ -3465,6 +3466,73 @@ async function loadAutosaveFromTitleScreen(page) {
  * Every claim below is read off the rendered document instead, so removing a
  * focus style, an `aria-label`, or the live region now breaks the build.
  */
+/**
+ * The start-screen Options subview must be legible.
+ *
+ * This screen shipped with its rows unstyled: `.start-setting-row`,
+ * `.start-option-toggle`, and `.start-screen-options` had no CSS rules at all,
+ * so each row rendered as inline content and the label, its description, and its
+ * value all collided — "Mute allSilence music and interface sounds.On" on one
+ * line. It is the first interactive screen a player opens, behind TUNE on the
+ * title card.
+ *
+ * Nothing caught it because the smoke only ever started a new game, and the
+ * in-game settings view uses a different, already-styled class. So this asserts
+ * the real thing: every row is a laid-out grid whose value sits in its own
+ * column, clear of the label. A screenshot goes to the fixture set alongside the
+ * rest.
+ */
+async function assertStartScreenOptionsLayout(page) {
+  await page.locator("#start-options").click()
+  await page.locator(".start-screen-options").waitFor({ state: "visible", timeout: qaTimeout(10000) })
+
+  const rows = await page.evaluate(() => {
+    const measured = [...document.querySelectorAll(".start-setting-row, .start-option-toggle")]
+    return measured.map((row) => {
+      const rowBox = row.getBoundingClientRect()
+      const label = row.querySelector("strong")?.getBoundingClientRect() ?? null
+      const value = row.querySelector("b, output")?.getBoundingClientRect() ?? null
+      return {
+        display: getComputedStyle(row).display,
+        height: Math.round(rowBox.height),
+        labelRight: label ? Math.round(label.right) : null,
+        valueLeft: value ? Math.round(value.left) : null,
+      }
+    })
+  })
+
+  assert.ok(rows.length >= 4, `Expected the Options rows to be present, found ${rows.length}.`)
+  for (const row of rows) {
+    assert.equal(
+      row.display,
+      "grid",
+      "Each Options row must be a grid, so its label and value get their own column.",
+    )
+    assert.ok(
+      row.height >= 32,
+      `An Options row collapsed to ${row.height}px, which means its contents are overlapping.`,
+    )
+    if (row.labelRight !== null && row.valueLeft !== null) {
+      assert.ok(
+        row.labelRight <= row.valueLeft + 1,
+        `An Options row overlaps: the label ends at ${row.labelRight} and its value starts at ${row.valueLeft}.`,
+      )
+    }
+  }
+
+  // The two toggles must expose their state, not just their label.
+  for (const id of ["#start-mute-toggle", "#start-reduced-motion"]) {
+    const pressed = await page.locator(id).getAttribute("aria-pressed")
+    assert.ok(pressed === "true" || pressed === "false", `${id} must expose aria-pressed.`)
+  }
+
+  // Keep a picture next to the assertion, so a layout regression is reviewable
+  // and not only detectable.
+  await page.screenshot({ path: path.join(SMOKE_ARTIFACT_DIR, "add-start-options.png") })
+  await page.locator("#start-options-back").click()
+  await page.locator("#start-screen").waitFor({ state: "visible", timeout: qaTimeout(10000) })
+}
+
 async function assertRealAccessibilityContract(page, consoleErrors) {
   // 1. Keyboard reach. A player must be able to Tab into the shell at all, and
   //    focus must actually land somewhere new.
