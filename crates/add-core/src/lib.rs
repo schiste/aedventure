@@ -1006,6 +1006,31 @@ mod tests {
         }
     }
 
+    /// Round-trip a state that has actually played, not a fresh one.
+    ///
+    /// The original version of this test only ever applied a story choice, so it
+    /// round-tripped a state whose every derived counter was still zero. A test
+    /// that never exercises a counter cannot notice that the counter is not
+    /// persisted. The companion field-level test for `scavenge_scrap_progress`
+    /// lives in `state.rs`, next to the field.
+    #[test]
+    fn save_round_trip_preserves_a_state_that_has_played() {
+        let mut simulation = Simulation::new();
+        simulation.apply(GameCommand::MoveHeroTo { q: 5, r: 0 });
+        simulation.apply(GameCommand::SetRoleCrew {
+            role_id: ROLE_SCAVENGE.to_string(),
+            crew: 1,
+        });
+        simulation.apply(GameCommand::Tick { seconds: 90.0 });
+
+        let state = simulation.state();
+        let serialized = export_save(state).expect("save should serialize");
+        let restored = import_save(&serialized).expect("save should deserialize");
+        let mut expected = state.clone();
+        expected.events.clear();
+        assert_eq!(expected, restored);
+    }
+
     #[test]
     fn save_round_trip_preserves_state() {
         let mut simulation = Simulation::new();
@@ -1067,11 +1092,13 @@ mod tests {
         let mut simulation = Simulation::new();
         let initial_count = simulation.state().discovered_cells.len();
 
+        // The Hero walks one hex per command, so the route is walked rather than
+        // jumped. The assertion is about revealed cells surviving a save, not
+        // about how the distance was covered.
         let base = HexCoordState::base();
-        simulation.apply(GameCommand::MoveHeroTo {
-            q: base.q,
-            r: base.r,
-        });
+        for (q, r) in [(5, 0), (4, 1), (3, 1), (2, 2), (1, 2), (0, 3)] {
+            simulation.apply(GameCommand::MoveHeroTo { q, r });
+        }
 
         assert_eq!(simulation.state().hero_map, HexCoordState::base());
         assert!(simulation.state().discovered_cells.len() > initial_count);
@@ -1386,46 +1413,190 @@ mod tests {
         );
     }
 
-    /// A single teleport across the map must cost the whole distance, not
-    /// nothing. This is the exploit the charging closes.
+    /// A single teleport across the map must not be possible at all.
+    ///
+    /// The Hero walks: one command buys one hex. A multi-hex request is
+    /// rejected rather than billed, so no client can skip the exposure between
+    /// here and there — which is what charging a long jump in one step allowed.
     #[test]
-    fn a_long_move_is_charged_for_its_whole_distance() {
+    fn a_multi_hex_move_is_rejected_rather_than_billed() {
         let mut simulation = Simulation::new();
-        let cave = HexCoordState::survivor_cave();
         let start_clock = simulation.state().clock_seconds;
-        let adjacent_clock = simulation.state().clock_seconds;
+        let start_cell = simulation.state().hero_map;
+        let start_load = simulation.state().hero_survival.viral_load_ratio;
 
-        // One hex.
-        simulation.apply(GameCommand::MoveHeroTo { q: 5, r: 0 });
-        let one_step = simulation.state().clock_seconds - start_clock;
-        assert!(one_step > 0.0, "one crossing must cost something");
+        simulation.apply(GameCommand::MoveHeroTo { q: 0, r: 3 }); // the Studio, six hexes
 
-        // The far rim, in a single command.
-        let far = simulation
-            .state()
-            .hexes
-            .iter()
-            .filter(|hex| crate::topology::axial_distance(hex.q, hex.r, 5, 0) >= 4)
-            .max_by_key(|hex| crate::topology::axial_distance(hex.q, hex.r, 5, 0))
-            .cloned()
-            .expect("the map has a far rim");
-        let far_distance = crate::topology::axial_distance(5, 0, far.q, far.r);
-        simulation.apply(GameCommand::MoveHeroTo {
-            q: far.q,
-            r: far.r,
-        });
-
-        let charged = simulation.state().clock_seconds - adjacent_clock - one_step;
-        assert!(
-            (charged - f64::from(far_distance) * one_step).abs() < 1e-6,
-            "a {far_distance}-hex move should cost {far_distance} crossings ({charged}s vs {})",
-            f64::from(far_distance) * one_step,
+        assert_eq!(
+            simulation.state().clock_seconds,
+            start_clock,
+            "a rejected jump must not advance the clock",
+        );
+        assert_eq!(
+            simulation.state().hero_map,
+            start_cell,
+            "a rejected jump must not move the Hero",
+        );
+        assert_eq!(
+            simulation.state().hero_survival.viral_load_ratio,
+            start_load,
+            "a rejected jump must not spend protection",
         );
     }
 
-    /// A rejected move must cost nothing. The Hero is teleported first and the
-    /// clock is charged last, so a blocked or off-map destination cannot drain
-    /// a run.
+    /// The exposure a walk spends must be priced at each hex the Hero is
+    /// *leaving*, so the final step into the bubble is not free and a walk in
+    /// costs at least as much as a jump would have.
+    #[test]
+    fn each_step_is_priced_at_the_hex_the_hero_leaves() {
+        let mut simulation = Simulation::new();
+
+        // Step one: out of the cave. This is the reference cost of a crossing.
+        simulation.apply(GameCommand::MoveHeroTo { q: 5, r: 0 });
+        let first_step = simulation.state().hero_survival.viral_load_ratio;
+        assert!(first_step > 0.0, "stepping out of the cave must cost something");
+
+        // Steps two through five are open ground, so each should cost about the
+        // same as the first. A step priced at its destination would cost less
+        // and less as the Hero approached the field.
+        let mut previous = first_step;
+        for (q, r) in [(4, 1), (3, 1), (2, 2), (1, 2)] {
+            simulation.apply(GameCommand::MoveHeroTo { q, r });
+            let now = simulation.state().hero_survival.viral_load_ratio;
+            assert!(
+                now > previous,
+                "each open crossing must add exposure: {previous} -> {now}",
+            );
+            previous = now;
+        }
+
+        // The sixth step arrives at the Studio. Priced at the hex being left
+        // (open ground) it must still cost something; priced at the destination
+        // it was free, and the whole walk came in under a third of the budget.
+        let before_arrival = previous;
+        simulation.apply(GameCommand::MoveHeroTo { q: 0, r: 3 });
+        assert!(
+            simulation.state().hero_survival.viral_load_ratio > before_arrival,
+            "the step into the bubble is priced at the ground the Hero left, so it is not free: \
+             {before_arrival} -> {}",
+            simulation.state().hero_survival.viral_load_ratio,
+        );
+    }
+
+    /// Movement is refused while the world is held by a cinematic.
+    ///
+    /// `tick_internal` returns before the clock advances when a cinematic
+    /// freezes the world, so a move issued during one relocated the Hero for
+    /// free. That was live for as long as the crossing was charged in one step.
+    #[test]
+    fn movement_is_refused_while_a_cinematic_freezes_the_world() {
+        let mut simulation = Simulation::new();
+        simulation.apply(GameCommand::StartCinematic {
+            cinematic_id: "cinematic.sample".to_string(),
+        });
+        assert!(
+            simulation.cinematic_freezes_world(),
+            "a cinematic authored to freeze the world must actually hold it, \
+             or this test has nothing to prove",
+        );
+        let start_cell = simulation.state().hero_map;
+        let start_clock = simulation.state().clock_seconds;
+
+        simulation.apply(GameCommand::MoveHeroTo { q: 5, r: 0 });
+
+        assert_eq!(
+            simulation.state().hero_map,
+            start_cell,
+            "the Hero must not walk while the world is held",
+        );
+        assert_eq!(
+            simulation.state().clock_seconds,
+            start_clock,
+            "and nothing may be charged or spent",
+        );
+    }
+
+    /// An infinite step must not hang the worker.
+    ///
+    /// `advance_rumour` loops `while now_tick - last_step_tick >= RUMOUR_INTERVAL`
+    /// and never terminates for an infinite `now_tick`, so a client sending
+    /// `Infinity` past `Tick` wedged the thread permanently.
+    #[test]
+    fn a_non_finite_tick_is_refused() {
+        for bad in [f64::INFINITY, f64::NEG_INFINITY] {
+            let mut simulation = Simulation::new();
+            let start_clock = simulation.state().clock_seconds;
+            simulation.apply(GameCommand::Tick { seconds: bad });
+            assert_eq!(
+                simulation.state().clock_seconds,
+                start_clock,
+                "{bad} must not advance the clock",
+            );
+        }
+
+        // NaN is already absorbed by `f64::max`, and must stay absorbed.
+        let mut simulation = Simulation::new();
+        let start_clock = simulation.state().clock_seconds;
+        simulation.apply(GameCommand::Tick { seconds: f64::NAN });
+        assert_eq!(simulation.state().clock_seconds, start_clock);
+    }
+
+    /// A long *online* step is not an absence.
+    ///
+    /// The absence ceiling clamps a coarse step to `ABSENCE_CEILING_RATIO` so a
+    /// player cannot die for closing the tab. Gating that on step size rather
+    /// than on `offline` clamped any long online step too — and since
+    /// `is_spent(0.999)` is false, the Hero could not exhaust his protection by
+    /// playing at all.
+    #[test]
+    fn a_long_online_step_is_not_capped_like_an_absence() {
+        // Put the Hero out in the static, where every second of a step is
+        // charged. Standing inside the field accrues nothing and would make this
+        // pass for the wrong reason.
+        let mut exposed_state = GameState::new();
+        exposed_state.hero_survival.location = HeroLocationState::OutsideBubble;
+
+        // 600 runtime seconds is ten game hours against a six-hour
+        // pre-immunity budget, so a correct charge exhausts it. The clamp is the
+        // bug: it held the ratio at 0.999, and `is_spent(0.999)` is false, so
+        // the Hero could never exhaust his protection while playing at all.
+        let mut online = Simulation::from_state(exposed_state.clone());
+        online.apply(GameCommand::Tick { seconds: 600.0 });
+        let online_state = online.state();
+
+        assert!(
+            !online_state.hero_survival.exposure.untested_immunity,
+            "a long online step must be able to spend the whole budget",
+        );
+        assert!(
+            !online_state.hero_survival.exposure.proving_restore_available,
+            "so the proving restore is spent, exactly as a played-out walk would",
+        );
+        assert!(
+            !online_state.hero_survival.exposure.fatal,
+            "the first exhaustion is survivable by design",
+        );
+
+        // The absence is still capped at the brink: a player must not die for
+        // having closed the tab.
+        let mut absence = Simulation::from_state(exposed_state);
+        absence.apply(GameCommand::RunOfflineCatchup { elapsed_seconds: 600.0 });
+        let absence_state = absence.state();
+
+        assert!(
+            absence_state.hero_survival.exposure.untested_immunity,
+            "an absence must not spend the proving restore, was {}",
+            absence_state.hero_survival.viral_load_ratio,
+        );
+        assert!(
+            absence_state.hero_survival.viral_load_ratio
+                <= crate::exposure::ABSENCE_CEILING_RATIO,
+            "an absence stops at the brink",
+        );
+    }
+
+    /// A rejected move must cost nothing, so a blocked or off-map destination
+    /// cannot drain a run.
     #[test]
     fn a_rejected_move_costs_nothing() {
         let mut simulation = Simulation::new();
@@ -1446,6 +1617,261 @@ mod tests {
             simulation.state().clock_seconds,
             start_clock,
             "moving to the current cell must not charge a crossing",
+        );
+    }
+
+    /// A probe must not report hypothetical events, and must not stop the real
+    /// simulation from recording them.
+    ///
+    /// `command_availability` probes around 43 commands per snapshot, and every
+    /// probe used to build the `Vec<GameEvent>` that the command *would* emit.
+    /// Nothing reads them: the only consumers of the availability map take
+    /// `accepted` and `blocker`. So each probe allocated a vector of imaginary
+    /// history, and the whole batch was serialised across the worker boundary on
+    /// every snapshot.
+    #[test]
+    fn a_command_probe_reports_no_events_but_real_commands_still_do() {
+        // Answering the opening beat activates the next one, which emits
+        // `BeatActivated`. That gives a command whose events are known to be
+        // non-empty, so this asserts the mechanism rather than a coincidence.
+        let choice = GameCommand::ChooseStoryOption {
+            beat_id: "story.beat.road_to_base".to_string(),
+            option_id: "story.choice.road.follow_signal".to_string(),
+        };
+
+        let mut simulation = Simulation::new();
+        simulation.apply(choice.clone());
+        assert!(
+            simulation
+                .state()
+                .events
+                .iter()
+                .any(|event| matches!(event, crate::state::GameEvent::BeatActivated { .. })),
+            "a real command must still record what it did, got {:?}",
+            simulation.state().events,
+        );
+
+        // The same command, asked about rather than sent.
+        let probe = simulation.command_outcome(choice);
+        assert!(
+            probe.events.is_empty(),
+            "a probe must not report the events it would have produced: {:?}",
+            probe.events,
+        );
+        assert!(
+            probe.accepted || probe.blocker.is_some(),
+            "a probe must still answer the question it was asked",
+        );
+    }
+
+    /// A new run must not inherit the dev dashboard's tuning.
+    ///
+    /// `SetBalanceOverride` writes into a field that lives on the `Simulation`,
+    /// not on `GameState`, so `ResetRun` — which replaced `state` wholesale —
+    /// left every override in place. A run started after someone had been tuning
+    /// balance on the dev dashboard silently played on that tuning, with no
+    /// indication anything was wrong.
+    #[test]
+    fn resetting_a_run_drops_the_balance_overrides() {
+        // Observed through production rather than through a balance field, so the
+        // assertion is about what the sim does rather than about how the override
+        // is stored. `state.resources.bassline_cap` is a cached copy the override
+        // path does not rewrite, so reading it would test the cache.
+        fn bassline_from_tick(override_value: Option<f64>) -> f64 {
+            let mut simulation = Simulation::new();
+            if let Some(value) = override_value {
+                simulation.apply(GameCommand::SetBalanceOverride {
+                    path: "crystal.outputPerWorkerBase".to_string(),
+                    value,
+                });
+            }
+            simulation.apply(GameCommand::SetHeroAssigned { assigned: true });
+            simulation.apply(GameCommand::SetRoleCrew {
+                role_id: ROLE_CRYSTAL_BASSLINE.to_string(),
+                crew: 1,
+            });
+            simulation.apply(GameCommand::Tick { seconds: 120.0 });
+            simulation.state().resources.bassline
+        }
+
+        let baseline = bassline_from_tick(None);
+        assert!(baseline > 0.0, "the setup should produce Bassline, got {baseline}");
+
+        let tuned = bassline_from_tick(Some(baseline * 4.0 / 2.0));
+        assert!(
+            tuned > baseline * 1.5,
+            "the override should have raised production: baseline {baseline}, tuned {tuned}",
+        );
+
+        // Now the same thing across a reset.
+        let mut simulation = Simulation::new();
+        simulation.apply(GameCommand::SetBalanceOverride {
+            path: "crystal.outputPerWorkerBase".to_string(),
+            value: baseline * 4.0,
+        });
+        simulation.apply(GameCommand::ResetRun);
+        simulation.apply(GameCommand::SetHeroAssigned { assigned: true });
+        simulation.apply(GameCommand::SetRoleCrew {
+            role_id: ROLE_CRYSTAL_BASSLINE.to_string(),
+            crew: 1,
+        });
+        simulation.apply(GameCommand::Tick { seconds: 120.0 });
+        let after_reset = simulation.state().resources.bassline;
+
+        assert!(
+            (after_reset - baseline).abs() < 1e-6,
+            "a new run must produce on the authored balance: expected {baseline}, got {after_reset}",
+        );
+    }
+
+    /// A tick that completes an objective is accepted.
+    ///
+    /// This is a pin, not a guard. `refresh_quest_objectives` now clears
+    /// `command_blocker` when an objective's reward is rejected, but no authored
+    /// objective spends anything — every reward is a grant — so the reject path
+    /// cannot be reached from content and this test passes with or without the
+    /// guard. It is here so that the day someone authors an objective that costs
+    /// something, the "accepted" half of the contract is already being watched.
+    #[test]
+    fn a_tick_that_completes_an_objective_is_accepted() {
+        let mut simulation = Simulation::new();
+        simulation.apply_effects(&[EffectDef::SetFlag {
+            flag_id: FLAG_BASE_STUDIO_RESTORED,
+            value: true,
+        }]);
+        assert!(
+            simulation
+                .state()
+                .objectives
+                .completed_objective_ids
+                .is_empty(),
+            "the objective completes when its flag is refreshed, not when the flag is set",
+        );
+
+        let outcome = simulation.apply(GameCommand::Tick { seconds: 1.0 });
+        assert!(
+            simulation
+                .state()
+                .objectives
+                .completed_objective_ids
+                .contains(&"objective.restore_studio".to_string()),
+            "the tick should have completed the objective: {:?}",
+            simulation.state().objectives.completed_objective_ids,
+        );
+        assert!(
+            outcome.accepted,
+            "a tick that completed an objective reported {:?}",
+            outcome.blocker,
+        );
+    }
+
+    /// Every authored construction option must have a per-second rate when it
+    /// charges a resource per second, and must be completable.
+    ///
+    /// This is the content invariant behind the `progress_construction` fix: the
+    /// stall only existed because a job could carry a resource id and no rate, and
+    /// the cheapest place to prevent that is the content, not the arithmetic.
+    #[test]
+    fn every_authored_construction_option_is_completable() {
+        for option in crate::game_data::construction_options() {
+            let zero_rated = matches!(
+                option.cost,
+                crate::game_data::CostDef::DrainPerWorkerSecond { amount, .. } if amount <= 0.0
+            );
+            assert!(
+                !zero_rated,
+                "construction option {} is priced per second at zero, so it can never finish",
+                option.id,
+            );
+            match option.duration {
+                crate::game_data::DurationDef::Fixed { seconds } => assert!(
+                    seconds > 0.0,
+                    "construction option {} is instantaneous, so it needs no job",
+                    option.id,
+                ),
+                crate::game_data::DurationDef::CrystalLevelScaled {
+                    base_seconds, ..
+                } => assert!(
+                    base_seconds > 0.0,
+                    "construction option {} has no work to do",
+                    option.id,
+                ),
+            }
+        }
+    }
+
+    /// A `time_only` construction has no resource cost at all: no `resource_id`,
+    /// no per-second rate. It must still finish on time, and it must not report a
+    /// Bassline shortage while doing so.
+    ///
+    /// This passes with or without the `progress_construction` restructure, because
+    /// a `time_only` job carries no resource id and so always took the free
+    /// branch. It pins the branch the restructure moved, so the two paths cannot
+    /// drift apart unnoticed. The path the restructure actually fixed — a job with
+    /// a resource id and a zero rate — is not authored, so
+    /// `every_authored_construction_option_is_completable` is what keeps it from
+    /// ever being reachable.
+    #[test]
+    fn a_time_only_construction_completes_without_spending() {
+        let mut simulation = Simulation::new();
+        simulation.apply(GameCommand::SetHeroAssigned { assigned: true });
+        simulation.apply(GameCommand::SetHeroRole {
+            role_id: ROLE_CONSTRUCTION.to_string(),
+        });
+        simulation.apply(GameCommand::SetRoleCrew {
+            role_id: ROLE_CONSTRUCTION.to_string(),
+            crew: 1,
+        });
+        // The unlock comes from a world action in real play; drive the effect
+        // directly so the test is about the job, not the unlocking.
+        simulation.apply_effects(&[EffectDef::SetFlag {
+            flag_id: "crystal.removing_moss_unlocked",
+            value: true,
+        }]);
+        let bassline_before = simulation.state().resources.bassline;
+
+        let outcome =
+            simulation.apply(GameCommand::StartConstruction {
+                option_id: CONSTRUCTION_REMOVING_MOSS.to_string(),
+            });
+        assert!(
+            outcome.accepted,
+            "the time-only option should start: {:?}",
+            outcome.blocker,
+        );
+        let job = simulation
+            .state()
+            .active_construction
+            .as_ref()
+            .expect("a job should be running");
+        assert_eq!(
+            job.per_worker_cost_per_second, 0.0,
+            "a time-only job carries no rate"
+        );
+
+        simulation.apply(GameCommand::Tick { seconds: 40.0 });
+
+        assert!(
+            simulation.state().active_construction.is_none(),
+            "the job should have finished, still {:?}",
+            simulation.state().active_construction,
+        );
+        assert_eq!(
+            simulation.state().resources.bassline, bassline_before,
+            "a time-only job must not spend Bassline",
+        );
+        assert!(
+            simulation
+                .state()
+                .notes
+                .iter()
+                .all(|note| !note.contains("no Bassline available")),
+            "a time-only job must not report a resource shortage: {:?}",
+            simulation.state().notes,
+        );
+        assert!(
+            simulation.state().crystal_circle.removing_moss_completed,
+            "the job's effects should have been applied",
         );
     }
 
@@ -3506,6 +3932,19 @@ mod tests {
             sim.state().narrative.active_beat_id.as_deref(),
             Some(STORY_BEAT_HERO_EXPOSED)
         );
+    }
+
+    /// Walk the Hero to an adjacent hex and charge him for it. The Hero moves
+    /// one hex per command, so a test that needs him somewhere has to walk.
+    fn walk_to(simulation: &mut Simulation, q: i8, r: i8) {
+        let from = simulation.state().hero_map;
+        assert_eq!(
+            crate::topology::axial_distance(from.q, from.r, q, r),
+            1,
+            "walk_to only crosses one hex; {from:?} -> {q},{r} is further",
+        );
+        simulation.apply(GameCommand::MoveHeroTo { q, r });
+        assert_eq!(simulation.state().hero_map, HexCoordState::new(q, r));
     }
 
     fn hex_distance(left: HexCoordState, right: HexCoordState) -> u8 {
