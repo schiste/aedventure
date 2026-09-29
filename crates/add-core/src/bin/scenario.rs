@@ -2,7 +2,19 @@
 // it is not pulled into the WASM build. The add-core package owns this native
 // entry point; compiling the shared source here avoids a dependency cycle
 // (`add-scenario` already depends on `add-core`).
-#[allow(unused_imports)]
+//
+// `dead_code` is allowed for the same reason, and it matters more than it
+// looks. This binary reaches only `run_scenario_file` and `stable_json_string`.
+// The rest of the library -- the fuzz, bench, calibrate, tuning, reach, graph
+// and population modules, about seventy items -- is reached from
+// `add-scenario-runner`, a separate binary that dispatches the subcommands
+// (`fuzz`, `bench`, `calibrate`, `diff-tuning`, `graph`, `reach`, `schema`).
+// Because the source is included textually, this compilation unit sees only its
+// own calls, so every one of those items reads as dead here and is live there.
+//
+// Without this, `cargo build` reported 77 dead-code warnings that were all
+// false, on the tool that most needs its output read.
+#[allow(unused_imports, dead_code)]
 #[path = "../../../add-scenario/src/lib.rs"]
 mod scenario;
 

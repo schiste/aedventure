@@ -259,13 +259,6 @@ pub struct Compaction {
 }
 
 impl Compaction {
-    /// Nothing has been folded away, so every lookup below is a no-op. Checked
-    /// first because these are called inside the fold's inner loop, and an
-    /// uncompacted log is the common case.
-    fn is_empty(&self) -> bool {
-        self.baselines.is_empty() && self.seen.is_empty()
-    }
-
     fn baseline(&self, observer_id: &str, axis: Axis) -> f64 {
         if self.baselines.is_empty() {
             return 0.0;
@@ -284,15 +277,6 @@ impl Compaction {
         format!("{act_id}|{scope}")
     }
 
-    fn seen_for(&self, act_id: &str, scope: &str) -> u32 {
-        if self.seen.is_empty() {
-            return 0;
-        }
-        self.seen
-            .get(&Self::scope_key(act_id, scope))
-            .copied()
-            .unwrap_or(0)
-    }
 }
 
 /// Everything a folded score depends on. Two queries with equal keys must
