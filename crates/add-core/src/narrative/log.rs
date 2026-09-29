@@ -994,7 +994,6 @@ mod tests {
 
     const VELL: &str = "entity.vell";
     const PEER: &str = "entity.joren";
-    const SUBFACTION: &str = "entity.sleepless.sounding_five";
     const FACTION: &str = "entity.sleepless";
     const HELP: &str = "act.share_scarce_water";
     const BETRAY: &str = "act.break_a_promise";
@@ -1547,7 +1546,7 @@ mod values_and_decay_tests {
         assert_eq!(late.events.len(), 2, "beyond the window they are two acts");
     }
 
-    use super::*;
+    
     use crate::narrative::standing::GAME_DAY_SECONDS;
 
     const VELL: &str = "entity.vell";

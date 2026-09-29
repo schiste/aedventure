@@ -402,6 +402,12 @@ pub struct HeroProgressState {
     pub synth_xp: f64,
 }
 
+impl Default for HeroProgressState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl HeroProgressState {
     pub fn new() -> Self {
         Self {
@@ -551,17 +557,14 @@ where
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
+#[derive(Default)]
 pub enum HeroLocationState {
+    #[default]
     Studio,
     Bubble,
     OutsideBubble,
 }
 
-impl Default for HeroLocationState {
-    fn default() -> Self {
-        Self::Studio
-    }
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -829,6 +832,12 @@ pub struct ResonanceMaterialState {
     pub harmonic_residue: u16,
 }
 
+impl Default for ResonanceMaterialState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ResonanceMaterialState {
     pub fn new() -> Self {
         Self {
@@ -845,6 +854,12 @@ pub struct CrystalTuningState {
     pub bassline_level: u16,
     pub chorus_level: u16,
     pub harmonics_level: u16,
+}
+
+impl Default for CrystalTuningState {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl CrystalTuningState {
@@ -891,6 +906,12 @@ pub enum StationSpecializationPathState {
     Conversion,
     Field,
     Extraction,
+}
+
+impl Default for ProcessingState {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ProcessingState {
@@ -957,6 +978,12 @@ pub struct PowerState {
     pub field_multiplier: f64,
 }
 
+impl Default for PowerState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PowerState {
     pub fn new() -> Self {
         Self {
@@ -985,6 +1012,12 @@ pub struct StationState {
     pub requested_enabled: bool,
     pub is_powered: bool,
     pub power_order: u32,
+}
+
+impl Default for BaseState {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl BaseState {
@@ -1022,6 +1055,12 @@ pub struct RecruitmentState {
     pub next_recruit_cost: f64,
 }
 
+impl Default for RecruitmentState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RecruitmentState {
     pub fn new() -> Self {
         Self {
@@ -1054,6 +1093,12 @@ pub struct BubbleState {
     pub field_budget: f64,
     pub active_coverage_cost: f64,
     pub next_ring_cost: f64,
+}
+
+impl Default for BubbleState {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl BubbleState {
@@ -1090,6 +1135,12 @@ pub struct ObjectiveState {
     /// Objectives whose conditions have been met, in completion order.
     #[serde(default)]
     pub completed_objective_ids: Vec<String>,
+}
+
+impl Default for ObjectiveState {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ObjectiveState {

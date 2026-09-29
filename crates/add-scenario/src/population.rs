@@ -59,7 +59,7 @@ pub fn generate(target: usize, seed: u64) -> Vec<NarrativeEntityDef> {
         return population;
     }
 
-    let mut rng = Rng(seed ^ 0x5EED_0F_A_1);
+    let mut rng = Rng(seed ^ 0x5EED_0FA1);
     let mut index = 0usize;
     while population.len() < target {
         let group = groups[index % groups.len()];

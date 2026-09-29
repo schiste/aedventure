@@ -1095,7 +1095,7 @@ mod tests {
         // The Hero walks one hex per command, so the route is walked rather than
         // jumped. The assertion is about revealed cells surviving a save, not
         // about how the distance was covered.
-        let base = HexCoordState::base();
+        let _base = HexCoordState::base();
         for (q, r) in [(5, 0), (4, 1), (3, 1), (2, 2), (1, 2), (0, 3)] {
             simulation.apply(GameCommand::MoveHeroTo { q, r });
         }
@@ -4115,19 +4115,6 @@ mod tests {
             sim.state().narrative.active_beat_id.as_deref(),
             Some(STORY_BEAT_HERO_EXPOSED)
         );
-    }
-
-    /// Walk the Hero to an adjacent hex and charge him for it. The Hero moves
-    /// one hex per command, so a test that needs him somewhere has to walk.
-    fn walk_to(simulation: &mut Simulation, q: i8, r: i8) {
-        let from = simulation.state().hero_map;
-        assert_eq!(
-            crate::topology::axial_distance(from.q, from.r, q, r),
-            1,
-            "walk_to only crosses one hex; {from:?} -> {q},{r} is further",
-        );
-        simulation.apply(GameCommand::MoveHeroTo { q, r });
-        assert_eq!(simulation.state().hero_map, HexCoordState::new(q, r));
     }
 
     fn hex_distance(left: HexCoordState, right: HexCoordState) -> u8 {

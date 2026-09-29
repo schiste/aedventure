@@ -72,7 +72,7 @@ impl SiftResult {
 
 pub(crate) fn act_has_kind(act_id: &str, kind: &str) -> bool {
     crate::game_data::narrative_act_def(act_id)
-        .is_some_and(|act| act.kinds.iter().any(|candidate| *candidate == kind))
+        .is_some_and(|act| act.kinds.contains(&kind))
 }
 
 /// Does `later` name `earlier` among its causes, directly or through a chain?
@@ -189,11 +189,10 @@ pub fn sift_append(previous: &mut SiftResult, log: &NarrativeLog) {
     };
 
     for pattern in sift_patterns() {
-        if act_has_kind(&second.act_id, pattern.first_kind) && second.target.is_some() {
-            if !previous.seen_first_slot.iter().any(|id| id == pattern.id) {
+        if act_has_kind(&second.act_id, pattern.first_kind) && second.target.is_some()
+            && !previous.seen_first_slot.iter().any(|id| id == pattern.id) {
                 previous.seen_first_slot.push(pattern.id.to_string());
             }
-        }
 
         if !act_has_kind(&second.act_id, pattern.second_kind) {
             continue;

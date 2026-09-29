@@ -116,10 +116,10 @@ fn solve(
     available: &[&str],
     now: f64,
 ) -> Option<Vec<String>> {
-    fn recurse<'a>(
+    fn recurse(
         log: &NarrativeLog,
         storylet: &StoryletDef,
-        ranked_per_role: &[Vec<&'a str>],
+        ranked_per_role: &[Vec<&str>],
         now: f64,
         index: usize,
         chosen: &mut Vec<String>,
@@ -186,11 +186,10 @@ pub fn cast(
     let mut best: Option<Casting> = None;
 
     for storylet in storylets() {
-        if let Some(last) = history.last_tick(storylet.id) {
-            if now - last < storylet.cooldown_days * GAME_DAY_SECONDS {
+        if let Some(last) = history.last_tick(storylet.id)
+            && now - last < storylet.cooldown_days * GAME_DAY_SECONDS {
                 continue;
             }
-        }
         let Some(roles) = solve(log, storylet, available, now) else {
             continue;
         };

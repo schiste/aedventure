@@ -148,7 +148,7 @@ impl Profile {
 /// to +1 (exactly what they stand for).
 ///
 /// `expresses` are the act's weights over the values it expresses, summing to
-/// 1. A *violated* value counts as its opposite on the circle. The 1/5 factor
+/// one. A *violated* value counts as its opposite on the circle. The 1/5 factor
 /// normalises the sum for a ten-value circle.
 pub fn verdict(observer: &Profile, expresses: &[(Value, f64)]) -> f64 {
     if observer.is_empty() || expresses.is_empty() {

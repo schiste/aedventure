@@ -436,11 +436,10 @@ pub fn run(acts_to_play: usize) -> CalibrationReport {
         if pushed > 0 && share(mid_when_pushed, pushed) > DEAD_AXIS_MID_SHARE {
             dead_axes.push(axis.as_str().to_string());
         }
-        if let Some((extreme, counted)) = extremes.get(axis) {
-            if share(*extreme, *counted) > RUNAWAY_EXTREME_SHARE {
+        if let Some((extreme, counted)) = extremes.get(axis)
+            && share(*extreme, *counted) > RUNAWAY_EXTREME_SHARE {
                 runaway_axes.push(axis.as_str().to_string());
             }
-        }
 
         reported.push(AxisDistribution { axis: axis.as_str().to_string(), at });
     }

@@ -11,6 +11,18 @@
 //! simulation's seed through ink's `SEED_RANDOM`, and time never enters here.
 //! See `docs/add-narrative-system-plan.md` §2.1.
 
+// `Axis`, `Tier`, `Intent`, `Band`, `Derived`, `Value`, `Secrecy` and
+// `GroupKind` each expose an inherent `from_str` that returns `Option<Self>`.
+//
+// Clippy would rather these implemented `std::str::FromStr`, whose signature
+// returns `Result`. They cannot: these are parsers for *content-authored names*,
+// and an unrecognised name is "this type has no such variant", not a failure.
+// Every call site already handles `None` as a value, and routing them through
+// `Result` would mean an `Infallible` error type plus an `unwrap_or` at each of
+// the eight sites, to change a name and nothing else. The lint does not apply
+// here, so it is turned off for the module rather than refuted eight times.
+#![allow(clippy::should_implement_trait)]
+
 pub mod cast;
 pub mod graph;
 pub mod knowledge;
@@ -147,7 +159,7 @@ mod tests {
     fn a_choice_the_ink_scene_does_not_present_is_refused() {
         let mut simulation = at_first_glimpse();
         simulation.apply(GameCommand::ChooseInkChoice { beat_id: BEAT.to_string(), index: 7 });
-        assert!(simulation.state().narrative.choice_by_beat.get(BEAT).is_none());
+        assert!(!simulation.state().narrative.choice_by_beat.contains_key(BEAT));
     }
 
     #[test]

@@ -306,8 +306,8 @@ impl Simulation {
     pub fn command_outcome(&self, command: GameCommand) -> CommandOutcome {
         let mut simulation = self.clone();
         simulation.probing = true;
-        let outcome = simulation.apply(command);
-        outcome
+        
+        simulation.apply(command)
     }
 
     /// Outcomes for the stable command IDs exposed by the ADD command picker.
@@ -1358,14 +1358,13 @@ impl Simulation {
             return;
         }
 
-        if let Some(interrupted) = self.state.active_world_action.take() {
-            if let Some(action_def) = world_action_def(&interrupted.action_id) {
+        if let Some(interrupted) = self.state.active_world_action.take()
+            && let Some(action_def) = world_action_def(&interrupted.action_id) {
                 self.push_note(format!(
                     "{} was interrupted by forced return.",
                     action_def.label
                 ));
             }
-        }
 
         let return_to_bubble = self
             .state
@@ -2591,8 +2590,8 @@ impl Simulation {
         // observable behaviour it changes is that a zero-rate job now advances on
         // time, the same as a `time_only` one, instead of stalling.
         match job.per_worker_cost_per_second {
-            rate if rate > 0.0 => {
-                if job.resource_id.as_deref() == Some(RESOURCE_BASSLINE) {
+            rate if rate > 0.0
+                && job.resource_id.as_deref() == Some(RESOURCE_BASSLINE) => {
                     let max_spend = worker_seconds * rate;
                     let remaining_cost = (job.total_cost - job.spent_cost).max(0.0);
                     let spend = self
@@ -2620,14 +2619,7 @@ impl Simulation {
                     if job.remaining_work_seconds > 0.0 && job.spent_cost < job.total_cost {
                         return;
                     }
-                } else {
-                    job.remaining_work_seconds =
-                        (job.remaining_work_seconds - worker_seconds).max(0.0);
-                    if job.remaining_work_seconds > 0.0 {
-                        return;
-                    }
                 }
-            }
             // Nothing to spend: the work is done by time passing.
             _ => {
                 job.remaining_work_seconds = (job.remaining_work_seconds - worker_seconds).max(0.0);
@@ -3418,6 +3410,7 @@ impl Simulation {
         });
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn emit_act(
         &mut self,
         act_id: &str,
@@ -3433,13 +3426,12 @@ impl Simulation {
             self.reject(BlockerKind::Inaccessible);
             return;
         };
-        if let Some(target_id) = target {
-            if crate::game_data::narrative_entity_def(target_id).is_none() {
+        if let Some(target_id) = target
+            && crate::game_data::narrative_entity_def(target_id).is_none() {
                 self.push_note(format!("Unknown narrative entity: {target_id}."));
                 self.reject(BlockerKind::Inaccessible);
                 return;
             }
-        }
         let tick = self.state.clock_seconds;
         let mut event = crate::narrative::event_for(act, target, tick);
         event.cost = cost.clamp(0.6, 2.0);
@@ -5063,11 +5055,9 @@ impl Simulation {
                 resource_id,
                 amount,
             } = *effect
-            {
-                if is_known_spendable(resource_id) {
+                && is_known_spendable(resource_id) {
                     *required.entry(resource_id).or_insert(0.0) += amount.max(0.0);
                 }
-            }
         }
         for (resource_id, amount) in required {
             if !self.can_afford(resource_id, amount) {
@@ -5411,6 +5401,10 @@ mod storylet_runtime_tests {
         amount: 1,
     }];
 
+    /// A storylet fixture. Eight parameters because a storylet genuinely has
+    /// eight fields worth varying independently in these tests; a builder struct
+    /// here would be ceremony for something only the tests construct.
+    #[allow(clippy::too_many_arguments)]
     fn test_storylet(
         id: &'static str,
         sequence: u16,
@@ -5770,16 +5764,14 @@ mod authored_acts_tests {
             let Some(beat_id) = simulation.state().narrative.active_beat_id.clone() else {
                 break;
             };
-            if !simulation.state().narrative.choice_by_beat.contains_key(&beat_id) {
-                if let Some(beat) = crate::game_data::story_beat_def(&beat_id) {
-                    if let Some(choice) = beat.choices.first() {
+            if !simulation.state().narrative.choice_by_beat.contains_key(&beat_id)
+                && let Some(beat) = crate::game_data::story_beat_def(&beat_id)
+                    && let Some(choice) = beat.choices.first() {
                         simulation.apply(GameCommand::ChooseStoryOption {
                             beat_id: beat_id.clone(),
                             option_id: choice.id.to_string(),
                         });
                     }
-                }
-            }
             if let Some(action) =
                 crate::game_data::story_beat_def(&beat_id).and_then(|beat| beat.world_action_id)
             {

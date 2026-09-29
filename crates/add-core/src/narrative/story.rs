@@ -98,7 +98,7 @@ impl NarrativeStory {
                     };
                     // lookahead_safe: pure, so ink may probe it freely.
                     Ok(Some(ValueType::Bool(
-                        matched.iter().any(|id| *id == wanted),
+                        matched.contains(&wanted),
                     )))
                 },
                 true,
@@ -112,11 +112,10 @@ impl NarrativeStory {
     /// opens rather than bricking the run.
     pub fn from_state(seed: u64, ink_state: Option<&str>) -> Result<Self, String> {
         let mut narrative = Self::new(seed)?;
-        if let Some(state) = ink_state {
-            if narrative.story.load_state(state).is_err() {
+        if let Some(state) = ink_state
+            && narrative.story.load_state(state).is_err() {
                 return Self::new(seed);
             }
-        }
         Ok(narrative)
     }
 

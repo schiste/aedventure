@@ -160,9 +160,7 @@ impl KnowledgeBase {
         }
         let mut current = crate::game_data::narrative_entity_def(entity_id);
         while let Some(entity) = current {
-            let Some(parent_id) = entity.parent else {
-                return None;
-            };
+            let parent_id = entity.parent?;
             if let Some(knowledge) = self.by_entity.get(parent_id).and_then(|e| e.get(&event_id)) {
                 return Some(knowledge);
             }
