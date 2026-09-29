@@ -306,7 +306,7 @@ impl Simulation {
     pub fn command_outcome(&self, command: GameCommand) -> CommandOutcome {
         let mut simulation = self.clone();
         simulation.probing = true;
-        
+
         simulation.apply(command)
     }
 
@@ -1195,8 +1195,7 @@ impl Simulation {
         let survival = self.balance().survival;
         crate::exposure::ExposureProfile {
             base_game_hours: survival.hero_exposure_game_hours,
-            untested_reduction_game_hours: survival
-                .hero_untested_immunity_reduction_game_hours,
+            untested_reduction_game_hours: survival.hero_untested_immunity_reduction_game_hours,
             endurance_multiplier: 1.0
                 + f64::from(self.state.hero_survival.sustain) * survival.sustain_bonus_per_level,
         }
@@ -1359,12 +1358,13 @@ impl Simulation {
         }
 
         if let Some(interrupted) = self.state.active_world_action.take()
-            && let Some(action_def) = world_action_def(&interrupted.action_id) {
-                self.push_note(format!(
-                    "{} was interrupted by forced return.",
-                    action_def.label
-                ));
-            }
+            && let Some(action_def) = world_action_def(&interrupted.action_id)
+        {
+            self.push_note(format!(
+                "{} was interrupted by forced return.",
+                action_def.label
+            ));
+        }
 
         let return_to_bubble = self
             .state
@@ -1508,7 +1508,8 @@ impl Simulation {
             return true;
         }
         let hero = self.state.hero_map;
-        let distance = crate::state::cube_distance(hero.q, hero.r, crate::state::BASE_Q, crate::state::BASE_R);
+        let distance =
+            crate::state::cube_distance(hero.q, hero.r, crate::state::BASE_Q, crate::state::BASE_R);
         distance > self.state.bubble.reach_from_base
     }
 
@@ -1608,7 +1609,11 @@ impl Simulation {
             let journey = self.state.hero_survival.return_journey_seconds;
             let step = if journey > 0.0 {
                 let to_the_edge = journey - self.state.hero_survival.return_to_studio_seconds;
-                let next_boundary = if to_the_edge > 0.0 { to_the_edge } else { journey };
+                let next_boundary = if to_the_edge > 0.0 {
+                    to_the_edge
+                } else {
+                    journey
+                };
                 remaining.min(next_boundary.max(f64::EPSILON))
             } else {
                 remaining
@@ -1806,7 +1811,10 @@ impl Simulation {
         };
         // Skipping counts as having seen it: a `once` the player chose to cut
         // short must not come back.
-        self.state.cinematics.seen.insert(active.cinematic_id.clone());
+        self.state
+            .cinematics
+            .seen
+            .insert(active.cinematic_id.clone());
         self.push_event(crate::state::GameEvent::CinematicCompleted {
             cinematic_id: active.cinematic_id,
             skipped,
@@ -2533,10 +2541,8 @@ impl Simulation {
     pub fn construction_estimate(&self) -> crate::game_data::ConstructionEstimateSnapshot {
         let mut duration_seconds_by_option = std::collections::BTreeMap::new();
         for option in construction_options() {
-            duration_seconds_by_option.insert(
-                option.id.to_string(),
-                self.construction_duration(option),
-            );
+            duration_seconds_by_option
+                .insert(option.id.to_string(), self.construction_duration(option));
         }
         crate::game_data::ConstructionEstimateSnapshot {
             worker_throughput_per_second: self.construction_worker_throughput(),
@@ -2590,36 +2596,33 @@ impl Simulation {
         // observable behaviour it changes is that a zero-rate job now advances on
         // time, the same as a `time_only` one, instead of stalling.
         match job.per_worker_cost_per_second {
-            rate if rate > 0.0
-                && job.resource_id.as_deref() == Some(RESOURCE_BASSLINE) => {
-                    let max_spend = worker_seconds * rate;
-                    let remaining_cost = (job.total_cost - job.spent_cost).max(0.0);
-                    let spend = self
-                        .state
-                        .resources
-                        .bassline
-                        .min(max_spend)
-                        .min(remaining_cost);
+            rate if rate > 0.0 && job.resource_id.as_deref() == Some(RESOURCE_BASSLINE) => {
+                let max_spend = worker_seconds * rate;
+                let remaining_cost = (job.total_cost - job.spent_cost).max(0.0);
+                let spend = self
+                    .state
+                    .resources
+                    .bassline
+                    .min(max_spend)
+                    .min(remaining_cost);
 
-                    if spend <= 0.0 {
-                        self.push_note(
-                            "Construction paused: no Bassline available for builders.",
-                        );
-                        return;
-                    }
-
-                    let completed_worker_seconds = spend / rate;
-                    job.spent_cost = (job.spent_cost + spend).min(job.total_cost);
-                    job.remaining_work_seconds =
-                        (job.remaining_work_seconds - completed_worker_seconds).max(0.0);
-
-                    self.state.resources.bassline -= spend;
-                    self.state.resources.lifetime_spent += spend;
-
-                    if job.remaining_work_seconds > 0.0 && job.spent_cost < job.total_cost {
-                        return;
-                    }
+                if spend <= 0.0 {
+                    self.push_note("Construction paused: no Bassline available for builders.");
+                    return;
                 }
+
+                let completed_worker_seconds = spend / rate;
+                job.spent_cost = (job.spent_cost + spend).min(job.total_cost);
+                job.remaining_work_seconds =
+                    (job.remaining_work_seconds - completed_worker_seconds).max(0.0);
+
+                self.state.resources.bassline -= spend;
+                self.state.resources.lifetime_spent += spend;
+
+                if job.remaining_work_seconds > 0.0 && job.spent_cost < job.total_cost {
+                    return;
+                }
+            }
             // Nothing to spend: the work is done by time passing.
             _ => {
                 job.remaining_work_seconds = (job.remaining_work_seconds - worker_seconds).max(0.0);
@@ -2978,16 +2981,20 @@ impl Simulation {
         // instead of teleporting them home, so the flags it is about to set are
         // visible while they are still exposed.
         let walk_home = world_action_def(&completed.action_id)
-            .map(|def| def.return_to_bubble_seconds.max(0.0) + def.return_to_studio_seconds.max(0.0))
+            .map(|def| {
+                def.return_to_bubble_seconds.max(0.0) + def.return_to_studio_seconds.max(0.0)
+            })
             .unwrap_or(0.0);
-        if self.state.hero_survival.location == HeroLocationState::OutsideBubble && walk_home > 0.0 {
+        if self.state.hero_survival.location == HeroLocationState::OutsideBubble && walk_home > 0.0
+        {
             self.state.hero_survival.return_journey_seconds = walk_home;
             // Re-read both legs from the action that is ending, so the split
             // never depends on what was left on the state when it started.
             if let Some(def) = world_action_def(&completed.action_id) {
                 self.state
                     .hero_survival
-                    .required_time_to_reenter_bubble_seconds = def.return_to_bubble_seconds.max(0.0);
+                    .required_time_to_reenter_bubble_seconds =
+                    def.return_to_bubble_seconds.max(0.0);
                 self.state.hero_survival.return_to_studio_seconds =
                     def.return_to_studio_seconds.max(0.0);
             }
@@ -3427,11 +3434,12 @@ impl Simulation {
             return;
         };
         if let Some(target_id) = target
-            && crate::game_data::narrative_entity_def(target_id).is_none() {
-                self.push_note(format!("Unknown narrative entity: {target_id}."));
-                self.reject(BlockerKind::Inaccessible);
-                return;
-            }
+            && crate::game_data::narrative_entity_def(target_id).is_none()
+        {
+            self.push_note(format!("Unknown narrative entity: {target_id}."));
+            self.reject(BlockerKind::Inaccessible);
+            return;
+        }
         let tick = self.state.clock_seconds;
         let mut event = crate::narrative::event_for(act, target, tick);
         event.cost = cost.clamp(0.6, 2.0);
@@ -3439,7 +3447,10 @@ impl Simulation {
         if let Some(value) = secrecy.and_then(crate::narrative::Secrecy::from_str) {
             event.secrecy = value;
         }
-        event.causes = causes.into_iter().filter(|id| *id < self.state.narrative.log.next_id).collect();
+        event.causes = causes
+            .into_iter()
+            .filter(|id| *id < self.state.narrative.log.next_id)
+            .collect();
         event.witnesses = witnesses
             .into_iter()
             .filter(|id| crate::game_data::narrative_entity_def(id).is_some())
@@ -3488,9 +3499,11 @@ impl Simulation {
     /// `bladeink::Story` cannot. Beat changes and choices are rare compared to
     /// ticks, so this stays off the hot path; cache it here if the story grows.
     fn narrative_story(&self, beat_id: &str) -> Option<crate::narrative::NarrativeStory> {
-        let mut story =
-            crate::narrative::NarrativeStory::with_arcs(self.state.rng_seed, &self.state.narrative.arcs)
-                .ok()?;
+        let mut story = crate::narrative::NarrativeStory::with_arcs(
+            self.state.rng_seed,
+            &self.state.narrative.arcs,
+        )
+        .ok()?;
         story.enter_beat(beat_id).ok()?;
         // Replay a choice already recorded for this beat, so a rebuilt story
         // stands exactly where the saved run left it.
@@ -5055,9 +5068,10 @@ impl Simulation {
                 resource_id,
                 amount,
             } = *effect
-                && is_known_spendable(resource_id) {
-                    *required.entry(resource_id).or_insert(0.0) += amount.max(0.0);
-                }
+                && is_known_spendable(resource_id)
+            {
+                *required.entry(resource_id).or_insert(0.0) += amount.max(0.0);
+            }
         }
         for (resource_id, amount) in required {
             if !self.can_afford(resource_id, amount) {
@@ -5764,14 +5778,19 @@ mod authored_acts_tests {
             let Some(beat_id) = simulation.state().narrative.active_beat_id.clone() else {
                 break;
             };
-            if !simulation.state().narrative.choice_by_beat.contains_key(&beat_id)
+            if !simulation
+                .state()
+                .narrative
+                .choice_by_beat
+                .contains_key(&beat_id)
                 && let Some(beat) = crate::game_data::story_beat_def(&beat_id)
-                    && let Some(choice) = beat.choices.first() {
-                        simulation.apply(GameCommand::ChooseStoryOption {
-                            beat_id: beat_id.clone(),
-                            option_id: choice.id.to_string(),
-                        });
-                    }
+                && let Some(choice) = beat.choices.first()
+            {
+                simulation.apply(GameCommand::ChooseStoryOption {
+                    beat_id: beat_id.clone(),
+                    option_id: choice.id.to_string(),
+                });
+            }
             if let Some(action) =
                 crate::game_data::story_beat_def(&beat_id).and_then(|beat| beat.world_action_id)
             {
@@ -5792,9 +5811,14 @@ mod authored_acts_tests {
             "an opening arc that records nothing leaves every standing at zero, \
              and every gate on them permanently shut",
         );
-        let acts: Vec<&str> = log.events.iter().map(|event| event.act_id.as_str()).collect();
+        let acts: Vec<&str> = log
+            .events
+            .iter()
+            .map(|event| event.act_id.as_str())
+            .collect();
         assert!(
-            acts.iter().any(|act| crate::game_data::narrative_act_def(act).is_some()),
+            acts.iter()
+                .any(|act| crate::game_data::narrative_act_def(act).is_some()),
             "the recorded acts should be real catalog acts: {acts:?}",
         );
 
@@ -5802,7 +5826,9 @@ mod authored_acts_tests {
         // the end of the line for anything but a human at normal speed.
         let completed = &simulation.state().narrative.completed_beat_ids;
         assert!(
-            completed.iter().any(|beat| beat == "story.beat.explore_base"),
+            completed
+                .iter()
+                .any(|beat| beat == "story.beat.explore_base"),
             "the opening should reach the base loop, got {completed:?}",
         );
     }

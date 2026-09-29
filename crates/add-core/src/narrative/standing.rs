@@ -300,12 +300,9 @@ pub fn derive(kind: Derived, axis: &dyn Fn(Axis) -> f64) -> f64 {
         }
         Derived::Respect => 0.6 * c + 0.4 * i,
         Derived::Fear => pos(d) * (1.0 - pos(g) / 100.0),
-        Derived::Threat => {
-            pos(d) * (1.0 - pos((g + b) / 2.0) / 100.0) + 0.5 * pos(-al)
-        }
+        Derived::Threat => pos(d) * (1.0 - pos((g + b) / 2.0) / 100.0) + 0.5 * pos(-al),
         Derived::LoyaltyToHero => {
-            0.3 * b + 0.25 * g + 0.15 * axis(Axis::Debt) + 0.15 * axis(Axis::Dependence)
-                + 0.15 * a
+            0.3 * b + 0.25 * g + 0.15 * axis(Axis::Debt) + 0.15 * axis(Axis::Dependence) + 0.15 * a
                 - 0.5 * pos(axis(Axis::Grievance))
         }
     }
@@ -373,7 +370,10 @@ mod tests {
             _ => 0.0,
         };
         let after = derive(Derived::Trust, &after_scores);
-        assert!(after.abs() < 1.0, "trust after the broken promise was {after}");
+        assert!(
+            after.abs() < 1.0,
+            "trust after the broken promise was {after}"
+        );
     }
 
     #[test]
@@ -388,7 +388,10 @@ mod tests {
     fn saturation_makes_the_last_stretch_hard_but_never_the_fall() {
         let low = fold(0.0, 25.0);
         let high = fold(80.0, 25.0) - 80.0;
-        assert!(high < low / 2.0, "climbing from 80 should cost far more: {high} vs {low}");
+        assert!(
+            high < low / 2.0,
+            "climbing from 80 should cost far more: {high} vs {low}"
+        );
 
         // Falling is undamped: the same magnitude lands in full.
         assert!((fold(80.0, -25.0) - 55.0).abs() < 1e-9);

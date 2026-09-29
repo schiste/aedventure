@@ -87,7 +87,9 @@ pub fn ancestry(entity_id: &str) -> Vec<&'static str> {
     let mut current = crate::game_data::narrative_entity_def(entity_id);
     while let Some(entity) = current {
         chain.push(entity.id);
-        current = entity.parent.and_then(crate::game_data::narrative_entity_def);
+        current = entity
+            .parent
+            .and_then(crate::game_data::narrative_entity_def);
     }
     chain
 }
@@ -165,9 +167,7 @@ mod tests {
     fn group_kinds_rank_as_the_research_says() {
         // Families inherit and share blame harder than loose associations.
         assert!(GroupKind::Family.inherit() > GroupKind::SurvivalFaction.inherit());
-        assert!(
-            GroupKind::SurvivalFaction.inherit() > GroupKind::LooseAssociation.inherit()
-        );
+        assert!(GroupKind::SurvivalFaction.inherit() > GroupKind::LooseAssociation.inherit());
         assert!(GroupKind::Family.shared_grievance() > GroupKind::Crew.shared_grievance());
     }
 }

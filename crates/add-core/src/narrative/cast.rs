@@ -67,7 +67,14 @@ fn band_from_str(value: &str) -> Band {
 }
 
 /// Does this entity satisfy one role?
-fn fits(log: &NarrativeLog, entity_id: &str, axis: &str, at_least: &str, at_most: &str, now: f64) -> bool {
+fn fits(
+    log: &NarrativeLog,
+    entity_id: &str,
+    axis: &str,
+    at_least: &str,
+    at_most: &str,
+    now: f64,
+) -> bool {
     if axis.is_empty() {
         return true;
     }
@@ -159,7 +166,12 @@ fn solve(
         .map(|role| {
             let mut scored: Vec<(i64, &str)> = available
                 .iter()
-                .map(|candidate| (candidate_salience(log, candidate, role.axis, now), *candidate))
+                .map(|candidate| {
+                    (
+                        candidate_salience(log, candidate, role.axis, now),
+                        *candidate,
+                    )
+                })
                 .collect();
             // Most history first, id as the tie-break so casting stays deterministic.
             scored.sort_by(|a, b| b.0.cmp(&a.0).then(a.1.cmp(b.1)));
@@ -187,9 +199,10 @@ pub fn cast(
 
     for storylet in storylets() {
         if let Some(last) = history.last_tick(storylet.id)
-            && now - last < storylet.cooldown_days * GAME_DAY_SECONDS {
-                continue;
-            }
+            && now - last < storylet.cooldown_days * GAME_DAY_SECONDS
+        {
+            continue;
+        }
         let Some(roles) = solve(log, storylet, available, now) else {
             continue;
         };
@@ -235,11 +248,15 @@ pub fn castable_entities() -> Vec<&'static str> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::narrative::{Secrecy, event_for, sift};
     use crate::game_data::narrative_act_def;
+    use crate::narrative::{Secrecy, event_for, sift};
 
     fn empty() -> (NarrativeLog, SiftResult, CastHistory) {
-        (NarrativeLog::default(), SiftResult::default(), CastHistory::default())
+        (
+            NarrativeLog::default(),
+            SiftResult::default(),
+            CastHistory::default(),
+        )
     }
 
     fn wrong(log: &mut NarrativeLog, target: &str) {
@@ -266,7 +283,10 @@ mod tests {
         let casting = cast(&log, &arcs, &history, &available, 0.0);
         assert_eq!(casting.storylet_id, "storylet.two_survivors_talk");
         assert_eq!(casting.roles.len(), 2);
-        assert_ne!(casting.roles[0], casting.roles[1], "nobody talks to themselves");
+        assert_ne!(
+            casting.roles[0], casting.roles[1],
+            "nobody talks to themselves"
+        );
     }
 
     #[test]

@@ -136,10 +136,9 @@ impl Profile {
     /// Tightness: how hard this group punishes norm violations. Derived from
     /// the conservation values (Gelfand et al.); groups under threat run tight.
     pub fn tightness(&self) -> f64 {
-        let mean = (self.get(Value::Conformity)
-            + self.get(Value::Tradition)
-            + self.get(Value::Security))
-            / 3.0;
+        let mean =
+            (self.get(Value::Conformity) + self.get(Value::Tradition) + self.get(Value::Security))
+                / 3.0;
         ((mean + 1.0) / 2.0).clamp(0.0, 1.0)
     }
 }

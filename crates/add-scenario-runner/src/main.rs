@@ -318,7 +318,8 @@ fn run_explain(arguments: Vec<String>) -> Result<(), String> {
         index += 1;
     }
 
-    let entity = entity.ok_or_else(|| "usage: explain <entity-id> <axis> [--save <path>]".to_string())?;
+    let entity =
+        entity.ok_or_else(|| "usage: explain <entity-id> <axis> [--save <path>]".to_string())?;
     let axis_name = axis_name.ok_or_else(|| "an axis is required".to_string())?;
     let axis = add_core::narrative::Axis::from_str(&axis_name)
         .ok_or_else(|| format!("unknown axis `{axis_name}`"))?;

@@ -565,7 +565,6 @@ pub enum HeroLocationState {
     OutsideBubble,
 }
 
-
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct WoundTrackState {
@@ -1303,8 +1302,7 @@ mod tests {
             "the field must appear in the serialized form under its wire name",
         );
 
-        let restored: GameState =
-            serde_json::from_str(&json).expect("state should deserialize");
+        let restored: GameState = serde_json::from_str(&json).expect("state should deserialize");
         assert_eq!(
             restored.scavenge_scrap_progress, 0.375,
             "a fractional residue must survive a round trip",

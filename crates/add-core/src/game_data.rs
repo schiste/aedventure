@@ -7,12 +7,13 @@ use crate::topology::{AxialBounds, Landmark, MapCell, MapDefinition, TerrainRegi
 
 mod catalog;
 use catalog::{
-    BALANCE, CONSTRUCTION_OPTIONS, CONTENT_CATALOG_VERSION as GENERATED_CONTENT_CATALOG_VERSION,
+    BALANCE, CINEMATICS, CONSTRUCTION_OPTIONS,
+    CONTENT_CATALOG_VERSION as GENERATED_CONTENT_CATALOG_VERSION,
     CONTENT_SAVE_SCHEMA_VERSION as GENERATED_CONTENT_SAVE_SCHEMA_VERSION,
     CONTENT_SCHEMA_VERSION as GENERATED_CONTENT_SCHEMA_VERSION, CREATURES, ENTITY_SCHEMAS,
     EXPEDITION_TARGETS, FLAGS, FLORA, ITEMS, OBJECTIVES, PERKS, PROCESSING_RECIPES,
-    CINEMATICS, RESONANCE_RECIPES, RESOURCES, ROLES, STATIONS, STORY_BEATS, STRUCTURES, TILES,
-    UI_ELEMENTS, WORLD_ACTIONS,
+    RESONANCE_RECIPES, RESOURCES, ROLES, STATIONS, STORY_BEATS, STRUCTURES, TILES, UI_ELEMENTS,
+    WORLD_ACTIONS,
 };
 
 /// Authored content contract mirrored from `content-version.ts` by codegen.
@@ -2891,7 +2892,6 @@ pub fn recruit_cost_for_index(index: u16) -> f64 {
     (good_vibes_opt_per_tick * 60.0 * minutes).ceil()
 }
 
-
 // --- Narrative entities and acts (N3) ---------------------------------------
 //
 // Authored in packages/add-content and generated into the catalog files below.
@@ -3021,7 +3021,6 @@ pub fn narrative_act_def(id: &str) -> Option<&'static NarrativeActDef> {
     narrative_act_index().get(id).copied()
 }
 
-
 /// A sifting pattern: two act kinds on the same person, in order.
 #[derive(Debug, Clone, Copy, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -3055,7 +3054,6 @@ pub fn sift_pattern_def(id: &str) -> Option<&'static SiftPatternDef> {
     sift_pattern_index().get(id).copied()
 }
 
-
 /// An authored reaction: who does what, when, about which act.
 #[derive(Debug, Clone, Copy, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -3073,7 +3071,6 @@ pub struct ReactionDef {
 pub fn reactions() -> &'static [ReactionDef] {
     catalog::REACTIONS
 }
-
 
 /// One role a storylet casts.
 #[derive(Debug, Clone, Copy, Serialize, PartialEq)]

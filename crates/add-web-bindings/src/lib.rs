@@ -120,7 +120,9 @@ impl WebRuntime {
     pub fn start_cinematic(&mut self, cinematic_id: &str) -> Result<JsValue, JsValue> {
         apply_command(
             &mut self.simulation,
-            GameCommand::StartCinematic { cinematic_id: cinematic_id.to_string() },
+            GameCommand::StartCinematic {
+                cinematic_id: cinematic_id.to_string(),
+            },
         )
     }
 
@@ -201,8 +203,7 @@ impl WebRuntime {
     /// misspells a field is refused instead of quietly defaulting.
     #[wasm_bindgen(js_name = emitAct)]
     pub fn emit_act(&mut self, request: JsValue) -> Result<JsValue, JsValue> {
-        let request: EmitActRequest =
-            serde_wasm_bindgen::from_value(request).map_err(js_error)?;
+        let request: EmitActRequest = serde_wasm_bindgen::from_value(request).map_err(js_error)?;
         apply_command(
             &mut self.simulation,
             GameCommand::EmitAct {

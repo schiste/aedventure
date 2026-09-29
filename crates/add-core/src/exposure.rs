@@ -112,7 +112,11 @@ fn buff_in_hand() -> bool {
 
 impl ExposureState {
     pub fn new() -> Self {
-        Self { untested_immunity: true, proving_restore_available: true, fatal: false }
+        Self {
+            untested_immunity: true,
+            proving_restore_available: true,
+            fatal: false,
+        }
     }
 
     /// Has this character already survived exhaustion once?
@@ -247,6 +251,9 @@ mod tests {
             endurance_multiplier: 1.0,
         };
         let endurance = endurance_seconds(profile, &ExposureState::new());
-        assert!(endurance > 0.0, "a zero scale would divide by zero downstream");
+        assert!(
+            endurance > 0.0,
+            "a zero scale would divide by zero downstream"
+        );
     }
 }

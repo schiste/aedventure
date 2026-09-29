@@ -71,8 +71,7 @@ impl SiftResult {
 }
 
 pub(crate) fn act_has_kind(act_id: &str, kind: &str) -> bool {
-    crate::game_data::narrative_act_def(act_id)
-        .is_some_and(|act| act.kinds.contains(&kind))
+    crate::game_data::narrative_act_def(act_id).is_some_and(|act| act.kinds.contains(&kind))
 }
 
 /// Does `later` name `earlier` among its causes, directly or through a chain?
@@ -189,10 +188,12 @@ pub fn sift_append(previous: &mut SiftResult, log: &NarrativeLog) {
     };
 
     for pattern in sift_patterns() {
-        if act_has_kind(&second.act_id, pattern.first_kind) && second.target.is_some()
-            && !previous.seen_first_slot.iter().any(|id| id == pattern.id) {
-                previous.seen_first_slot.push(pattern.id.to_string());
-            }
+        if act_has_kind(&second.act_id, pattern.first_kind)
+            && second.target.is_some()
+            && !previous.seen_first_slot.iter().any(|id| id == pattern.id)
+        {
+            previous.seen_first_slot.push(pattern.id.to_string());
+        }
 
         if !act_has_kind(&second.act_id, pattern.second_kind) {
             continue;
@@ -272,8 +273,8 @@ pub fn sift(log: &NarrativeLog) -> SiftResult {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::narrative::{Secrecy, event_for};
     use crate::game_data::narrative_act_def;
+    use crate::narrative::{Secrecy, event_for};
 
     const VELL: &str = "entity.vell";
 
@@ -305,7 +306,12 @@ mod tests {
         // Without the causal link the two acts are just two acts.
         let mut unlinked = NarrativeLog::default();
         let spared = public_event(&mut unlinked, "act.spare_a_life", 0.0, vec![]);
-        public_event(&mut unlinked, "act.aid_the_hero", 10.0 * GAME_DAY_SECONDS, vec![]);
+        public_event(
+            &mut unlinked,
+            "act.aid_the_hero",
+            10.0 * GAME_DAY_SECONDS,
+            vec![],
+        );
         assert!(!sift(&unlinked).matched("arc.mercy_repaid"));
 
         let mut linked = NarrativeLog::default();
@@ -328,7 +334,12 @@ mod tests {
         // is the story.
         let mut log = NarrativeLog::default();
         public_event(&mut log, "act.swear_an_oath", 0.0, vec![]);
-        public_event(&mut log, "act.break_a_promise", 5.0 * GAME_DAY_SECONDS, vec![]);
+        public_event(
+            &mut log,
+            "act.break_a_promise",
+            5.0 * GAME_DAY_SECONDS,
+            vec![],
+        );
         let result = sift(&log);
         assert!(result.matched("arc.broken_oath"));
         assert_eq!(result.role("arc.broken_oath", "x"), Some(VELL));
@@ -366,7 +377,12 @@ mod tests {
     fn a_match_names_the_events_that_made_it() {
         let mut log = NarrativeLog::default();
         let first = public_event(&mut log, "act.swear_an_oath", 0.0, vec![]);
-        let second = public_event(&mut log, "act.break_a_promise", 5.0 * GAME_DAY_SECONDS, vec![]);
+        let second = public_event(
+            &mut log,
+            "act.break_a_promise",
+            5.0 * GAME_DAY_SECONDS,
+            vec![],
+        );
         let result = sift(&log);
         let arc = result
             .matches

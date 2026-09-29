@@ -37,11 +37,13 @@ pub use cast::{CastHistory, Casting, FALLBACK_KNOT, cast, castable_entities};
 pub use graph::{GroupKind, ancestry, inheritance_weight};
 pub use knowledge::{Knowledge, KnowledgeBase, Secrecy};
 pub use log::{ImpactTrace, NarrativeEvent, NarrativeLog, event_for};
-pub use standing::{Axis, Band, Derived, GAME_DAY_SECONDS, Intent, MODIFIER_CLAMP, Tier, derive, fold};
-pub use values::{Profile, Value, verdict};
 pub use react::{FiredReaction, MAX_CHAIN_DEPTH};
 pub use sift::{ArcMatch, SiftResult, sift, sift_append};
+pub use standing::{
+    Axis, Band, Derived, GAME_DAY_SECONDS, Intent, MODIFIER_CLAMP, Tier, derive, fold,
+};
 pub use story::{InkChoice, InkLine, InkScene, NarrativeStory, beat_has_knot};
+pub use values::{Profile, Value, verdict};
 
 /// The ink knot that renders a story beat, by convention `story.beat.x` ->
 /// `story_beat_x`. A beat with no knot renders from its authored `body`.
@@ -65,7 +67,10 @@ mod tests {
 
     #[test]
     fn knot_names_derive_from_beat_ids() {
-        assert_eq!(knot_for_beat("story.beat.first_glimpse"), "story_beat_first_glimpse");
+        assert_eq!(
+            knot_for_beat("story.beat.first_glimpse"),
+            "story_beat_first_glimpse"
+        );
     }
 
     /// Drive the run to the ink-backed beat the way a player does.
@@ -81,7 +86,10 @@ mod tests {
     #[test]
     fn an_ink_backed_beat_arrives_with_its_scene_rendered() {
         let simulation = at_first_glimpse();
-        assert_eq!(simulation.state().narrative.active_beat_id.as_deref(), Some(BEAT));
+        assert_eq!(
+            simulation.state().narrative.active_beat_id.as_deref(),
+            Some(BEAT)
+        );
 
         let scene = simulation
             .state()
@@ -91,7 +99,11 @@ mod tests {
             .expect("ink beat renders a scene");
         assert_eq!(scene.beat_id, BEAT);
         assert!(scene.lines[0].text.starts_with("From the ridge"));
-        assert!(scene.lines[0].tags.contains(&"speaker:narrator".to_string()));
+        assert!(
+            scene.lines[0]
+                .tags
+                .contains(&"speaker:narrator".to_string())
+        );
         assert_eq!(scene.choices.len(), 2);
         assert_eq!(scene.choices[0].choice_id.as_deref(), Some(WATCH));
     }
@@ -107,7 +119,12 @@ mod tests {
         // Ink resolved the id; the catalog applied the effects, so the beat is
         // recorded exactly as the non-ink path would record it.
         assert_eq!(
-            simulation.state().narrative.choice_by_beat.get(BEAT).map(String::as_str),
+            simulation
+                .state()
+                .narrative
+                .choice_by_beat
+                .get(BEAT)
+                .map(String::as_str),
             Some(WATCH),
         );
         assert!(
@@ -136,7 +153,10 @@ mod tests {
         // The whole point of ink declaring and Rust computing: presentation
         // changed, outcomes did not.
         let mut via_ink = at_first_glimpse();
-        via_ink.apply(GameCommand::ChooseInkChoice { beat_id: BEAT.to_string(), index: 0 });
+        via_ink.apply(GameCommand::ChooseInkChoice {
+            beat_id: BEAT.to_string(),
+            index: 0,
+        });
 
         let mut via_catalog = at_first_glimpse();
         via_catalog.apply(GameCommand::ChooseStoryOption {
@@ -148,7 +168,10 @@ mod tests {
             via_ink.state().narrative.choice_by_beat,
             via_catalog.state().narrative.choice_by_beat,
         );
-        assert_eq!(via_ink.state().narrative.qualities, via_catalog.state().narrative.qualities);
+        assert_eq!(
+            via_ink.state().narrative.qualities,
+            via_catalog.state().narrative.qualities
+        );
         assert_eq!(
             via_ink.state().narrative.completed_beat_ids,
             via_catalog.state().narrative.completed_beat_ids,
@@ -158,14 +181,26 @@ mod tests {
     #[test]
     fn a_choice_the_ink_scene_does_not_present_is_refused() {
         let mut simulation = at_first_glimpse();
-        simulation.apply(GameCommand::ChooseInkChoice { beat_id: BEAT.to_string(), index: 7 });
-        assert!(!simulation.state().narrative.choice_by_beat.contains_key(BEAT));
+        simulation.apply(GameCommand::ChooseInkChoice {
+            beat_id: BEAT.to_string(),
+            index: 7,
+        });
+        assert!(
+            !simulation
+                .state()
+                .narrative
+                .choice_by_beat
+                .contains_key(BEAT)
+        );
     }
 
     #[test]
     fn the_scene_survives_save_and_reload() {
         let mut simulation = at_first_glimpse();
-        simulation.apply(GameCommand::ChooseInkChoice { beat_id: BEAT.to_string(), index: 1 });
+        simulation.apply(GameCommand::ChooseInkChoice {
+            beat_id: BEAT.to_string(),
+            index: 1,
+        });
         let before = simulation.state().narrative.ink_scene.clone();
 
         let raw = export_save(simulation.state()).expect("save");
@@ -173,7 +208,12 @@ mod tests {
 
         assert_eq!(reloaded.state().narrative.ink_scene, before);
         assert_eq!(
-            reloaded.state().narrative.choice_by_beat.get(BEAT).map(String::as_str),
+            reloaded
+                .state()
+                .narrative
+                .choice_by_beat
+                .get(BEAT)
+                .map(String::as_str),
             Some("story.choice.glimpse.scan_ruins"),
         );
         // Ink's own serialized state is absent from the save on purpose; the

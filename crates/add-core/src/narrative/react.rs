@@ -104,7 +104,12 @@ pub fn run(log: &mut NarrativeLog, now_tick: f64) -> Vec<FiredReaction> {
             // `narr explain` can walk a whole chain back to the Hero's act.
             event.causes = vec![trigger_id];
             let emitted = log.append(event);
-            let fired = FiredReaction { reaction_id, because_of: trigger_id, emitted, depth };
+            let fired = FiredReaction {
+                reaction_id,
+                because_of: trigger_id,
+                emitted,
+                depth,
+            };
             log.fired_reactions.push(fired.clone());
             fired_now.push(fired);
         }
@@ -132,11 +137,21 @@ mod tests {
     #[test]
     fn a_reaction_fires_once_its_delay_has_passed() {
         let mut log = log_with_betrayal(0.0);
-        assert!(run(&mut log, 0.0).is_empty(), "nothing should fire immediately");
+        assert!(
+            run(&mut log, 0.0).is_empty(),
+            "nothing should fire immediately"
+        );
 
         let fired = run(&mut log, 5.0 * GAME_DAY_SECONDS);
-        assert_eq!(fired.len(), 1, "the denunciation should fire after its delay");
-        assert_eq!(fired[0].reaction_id, "reaction.vell_denounces_a_broken_promise");
+        assert_eq!(
+            fired.len(),
+            1,
+            "the denunciation should fire after its delay"
+        );
+        assert_eq!(
+            fired[0].reaction_id,
+            "reaction.vell_denounces_a_broken_promise"
+        );
     }
 
     #[test]

@@ -3,8 +3,8 @@ pub mod exposure;
 pub mod game_data;
 #[rustfmt::skip]
 mod generated_ink;
-pub mod narrative;
 pub mod migrations;
+pub mod narrative;
 pub mod save;
 pub mod simulation;
 pub mod state;
@@ -35,8 +35,8 @@ pub use game_data::{
     story_beat_def, story_beats, structure_def, structures, terrain_profile_for, tile_def,
     tile_id_for, world_action_def, world_actions,
 };
-pub use narrative::{InkChoice, InkLine, InkScene, NarrativeStory, beat_has_knot};
 pub use migrations::{CURRENT_CATALOG_VERSION, CURRENT_SCHEMA_VERSION, MigrationError};
+pub use narrative::{InkChoice, InkLine, InkScene, NarrativeStory, beat_has_knot};
 pub use save::{SaveError, export_save, import_save};
 pub use simulation::Simulation;
 pub use state::{
@@ -1454,7 +1454,10 @@ mod tests {
         // Step one: out of the cave. This is the reference cost of a crossing.
         simulation.apply(GameCommand::MoveHeroTo { q: 5, r: 0 });
         let first_step = simulation.state().hero_survival.viral_load_ratio;
-        assert!(first_step > 0.0, "stepping out of the cave must cost something");
+        assert!(
+            first_step > 0.0,
+            "stepping out of the cave must cost something"
+        );
 
         // Steps two through five are open ground, so each should cost about the
         // same as the first. A step priced at its destination would cost less
@@ -1569,7 +1572,10 @@ mod tests {
             "a long online step must be able to spend the whole budget",
         );
         assert!(
-            !online_state.hero_survival.exposure.proving_restore_available,
+            !online_state
+                .hero_survival
+                .exposure
+                .proving_restore_available,
             "so the proving restore is spent, exactly as a played-out walk would",
         );
         assert!(
@@ -1580,7 +1586,9 @@ mod tests {
         // The absence is still capped at the brink: a player must not die for
         // having closed the tab.
         let mut absence = Simulation::from_state(exposed_state);
-        absence.apply(GameCommand::RunOfflineCatchup { elapsed_seconds: 600.0 });
+        absence.apply(GameCommand::RunOfflineCatchup {
+            elapsed_seconds: 600.0,
+        });
         let absence_state = absence.state();
 
         assert!(
@@ -1589,8 +1597,7 @@ mod tests {
             absence_state.hero_survival.viral_load_ratio,
         );
         assert!(
-            absence_state.hero_survival.viral_load_ratio
-                <= crate::exposure::ABSENCE_CEILING_RATIO,
+            absence_state.hero_survival.viral_load_ratio <= crate::exposure::ABSENCE_CEILING_RATIO,
             "an absence stops at the brink",
         );
     }
@@ -1695,7 +1702,10 @@ mod tests {
         }
 
         let baseline = bassline_from_tick(None);
-        assert!(baseline > 0.0, "the setup should produce Bassline, got {baseline}");
+        assert!(
+            baseline > 0.0,
+            "the setup should produce Bassline, got {baseline}"
+        );
 
         let tuned = bassline_from_tick(Some(baseline * 4.0 / 2.0));
         assert!(
@@ -1789,9 +1799,7 @@ mod tests {
                     "construction option {} is instantaneous, so it needs no job",
                     option.id,
                 ),
-                crate::game_data::DurationDef::CrystalLevelScaled {
-                    base_seconds, ..
-                } => assert!(
+                crate::game_data::DurationDef::CrystalLevelScaled { base_seconds, .. } => assert!(
                     base_seconds > 0.0,
                     "construction option {} has no work to do",
                     option.id,
@@ -1830,10 +1838,9 @@ mod tests {
         }]);
         let bassline_before = simulation.state().resources.bassline;
 
-        let outcome =
-            simulation.apply(GameCommand::StartConstruction {
-                option_id: CONSTRUCTION_REMOVING_MOSS.to_string(),
-            });
+        let outcome = simulation.apply(GameCommand::StartConstruction {
+            option_id: CONSTRUCTION_REMOVING_MOSS.to_string(),
+        });
         assert!(
             outcome.accepted,
             "the time-only option should start: {:?}",
@@ -1857,7 +1864,8 @@ mod tests {
             simulation.state().active_construction,
         );
         assert_eq!(
-            simulation.state().resources.bassline, bassline_before,
+            simulation.state().resources.bassline,
+            bassline_before,
             "a time-only job must not spend Bassline",
         );
         assert!(
@@ -1905,12 +1913,7 @@ mod tests {
             causes: Vec::new(),
         });
         assert!(
-            !simulation
-                .state()
-                .narrative
-                .log
-                .events
-                .is_empty(),
+            !simulation.state().narrative.log.events.is_empty(),
             "the act should be in the log, or the sifter has nothing to read",
         );
 
@@ -1947,7 +1950,12 @@ mod tests {
         );
         assert!(!cast.knot.is_empty(), "a cast resolves to an ink knot");
         assert!(
-            !simulation.state().narrative.cast_history.last_cast.is_empty(),
+            !simulation
+                .state()
+                .narrative
+                .cast_history
+                .last_cast
+                .is_empty(),
             "the cast must be recorded, or its cooldown would not survive a save",
         );
     }
@@ -2404,7 +2412,9 @@ mod tests {
         state.hero_survival.location = HeroLocationState::OutsideBubble;
         let mut simulation = Simulation::from_state(state);
 
-        simulation.apply(GameCommand::RunOfflineCatchup { elapsed_seconds: 40_000.0 });
+        simulation.apply(GameCommand::RunOfflineCatchup {
+            elapsed_seconds: 40_000.0,
+        });
 
         assert_eq!(
             simulation.state().hero_survival.viral_load_ratio,
@@ -3217,7 +3227,10 @@ mod tests {
                     < catalog.balance.survival.hero_exposure_game_hours
         );
         assert!(
-            catalog.balance.survival.hero_untested_immunity_reduction_game_hours
+            catalog
+                .balance
+                .survival
+                .hero_untested_immunity_reduction_game_hours
                 < catalog.balance.survival.hero_exposure_game_hours,
             "withholding the whole budget would leave him no scale at all"
         );
@@ -3458,7 +3471,6 @@ mod tests {
         assert_eq!(sim.quality("hope"), 1);
     }
 
-
     // -- Cinematic primitives ----------------------------------------------
 
     const SAMPLE_CINEMATIC: &str = "cinematic.sample";
@@ -3467,7 +3479,10 @@ mod tests {
     fn a_cinematic_plays_its_beats_in_order_and_ends() {
         let mut simulation = Simulation::new();
         let def = crate::game_data::cinematic_def(SAMPLE_CINEMATIC).expect("sample is authored");
-        assert!(def.beats.len() >= 2, "the sample needs beats to step through");
+        assert!(
+            def.beats.len() >= 2,
+            "the sample needs beats to step through"
+        );
 
         simulation.apply(GameCommand::StartCinematic {
             cinematic_id: SAMPLE_CINEMATIC.to_string(),
@@ -3498,7 +3513,13 @@ mod tests {
         // Advancing off the last beat finishes it.
         simulation.apply(GameCommand::AdvanceCinematic);
         assert!(!simulation.state().cinematics.is_playing());
-        assert!(simulation.state().cinematics.seen.contains(SAMPLE_CINEMATIC));
+        assert!(
+            simulation
+                .state()
+                .cinematics
+                .seen
+                .contains(SAMPLE_CINEMATIC)
+        );
     }
 
     #[test]
@@ -3518,9 +3539,14 @@ mod tests {
 
         simulation.apply(GameCommand::Tick { seconds: 120.0 });
 
-        assert_eq!(simulation.state().clock_seconds, clock, "the world holds still");
         assert_eq!(
-            simulation.state().hero_survival.viral_load_ratio, load,
+            simulation.state().clock_seconds,
+            clock,
+            "the world holds still"
+        );
+        assert_eq!(
+            simulation.state().hero_survival.viral_load_ratio,
+            load,
             "two minutes of footage must not cost two game hours of protection"
         );
     }
@@ -3539,7 +3565,9 @@ mod tests {
         );
 
         // A hair short: still on the first beat.
-        simulation.apply(GameCommand::Tick { seconds: first.seconds - 0.1 });
+        simulation.apply(GameCommand::Tick {
+            seconds: first.seconds - 0.1,
+        });
         assert_eq!(
             simulation
                 .state()
@@ -3608,7 +3636,9 @@ mod tests {
         ));
         assert!(last.seconds > 0.0, "a media beat needs a backstop authored");
 
-        simulation.apply(GameCommand::Tick { seconds: last.seconds + 1.0 });
+        simulation.apply(GameCommand::Tick {
+            seconds: last.seconds + 1.0,
+        });
         assert!(
             !simulation.state().cinematics.is_playing(),
             "the backstop has to let the player out"
@@ -3619,7 +3649,9 @@ mod tests {
     fn a_once_cinematic_does_not_come_back() {
         let mut simulation = Simulation::new();
         assert!(matches!(
-            crate::game_data::cinematic_def(SAMPLE_CINEMATIC).expect("authored").replay,
+            crate::game_data::cinematic_def(SAMPLE_CINEMATIC)
+                .expect("authored")
+                .replay,
             crate::game_data::CinematicReplayKind::Once
         ));
 
@@ -3734,7 +3766,10 @@ mod tests {
         let cave = crate::game_data::tile_def("tile.survivor_cave").expect("authored");
         let plains = crate::game_data::tile_def("tile.plains_open").expect("authored");
         assert!(cave.shelter_ratio > plains.shelter_ratio);
-        assert!(cave.shelter_ratio < 1.0, "no tile outside the field may be free");
+        assert!(
+            cave.shelter_ratio < 1.0,
+            "no tile outside the field may be free"
+        );
         assert_eq!(plains.shelter_ratio, 0.0, "open ground is the baseline");
     }
 
@@ -3838,7 +3873,10 @@ mod tests {
         // when an authored action moves it — so walking the overworld cost
         // nothing at all. It keys on the map now.
         let mut simulation = Simulation::new();
-        assert_eq!(simulation.state().hero_survival.location, HeroLocationState::Studio);
+        assert_eq!(
+            simulation.state().hero_survival.location,
+            HeroLocationState::Studio
+        );
         assert!(simulation.state().hero_survival.viral_load_ratio.abs() < f64::EPSILON);
 
         simulation.apply(GameCommand::Tick { seconds: 60.0 });
@@ -3865,7 +3903,8 @@ mod tests {
             "the first exhaustion is survived"
         );
         assert_eq!(
-            simulation.state().hero_survival.viral_load_ratio, 0.0,
+            simulation.state().hero_survival.viral_load_ratio,
+            0.0,
             "the proving restore hands the budget back in full"
         );
         assert_eq!(
@@ -3898,7 +3937,10 @@ mod tests {
 
         let saved = serde_json::to_string(simulation.state()).expect("state serializes");
         let restored: GameState = serde_json::from_str(&saved).expect("state restores");
-        assert!(restored.hero_survival.exposure.fatal, "a reload must not undo a death");
+        assert!(
+            restored.hero_survival.exposure.fatal,
+            "a reload must not undo a death"
+        );
         assert!(restored.hero_survival.exposure.immunity_proven());
     }
 
@@ -4029,8 +4071,8 @@ mod tests {
         });
         let mut sim = Simulation::from_state(state);
 
-        let def = crate::world_action_def(WORLD_ACTION_EXPLORE_BASE)
-            .expect("explore_base is authored");
+        let def =
+            crate::world_action_def(WORLD_ACTION_EXPLORE_BASE).expect("explore_base is authored");
         assert!(
             def.return_to_bubble_seconds > 0.0 && def.return_to_studio_seconds > 0.0,
             "the walk home has two authored legs"
@@ -4054,7 +4096,10 @@ mod tests {
         sim.apply(GameCommand::Tick {
             seconds: def.return_to_bubble_seconds,
         });
-        assert_eq!(sim.state().hero_survival.location, HeroLocationState::Bubble);
+        assert_eq!(
+            sim.state().hero_survival.location,
+            HeroLocationState::Bubble
+        );
         let at_the_field = sim.state().hero_survival.viral_load_ratio;
         assert!(at_the_field > at_the_edge, "the walk out is still exposure");
 
@@ -4064,9 +4109,13 @@ mod tests {
         sim.apply(GameCommand::Tick {
             seconds: def.return_to_studio_seconds,
         });
-        assert_eq!(sim.state().hero_survival.location, HeroLocationState::Studio);
         assert_eq!(
-            sim.state().hero_survival.viral_load_ratio, at_the_field,
+            sim.state().hero_survival.location,
+            HeroLocationState::Studio
+        );
+        assert_eq!(
+            sim.state().hero_survival.viral_load_ratio,
+            at_the_field,
             "the sheltered leg costs nothing"
         );
         // It does not hand anything back either. Recovery needs a field to sit

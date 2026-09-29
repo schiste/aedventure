@@ -18,9 +18,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use add_core::game_data::{
-    ROLE_CONSTRUCTION, ROLE_CRYSTAL_BASSLINE, ROLE_FIRE_PIT, ROLE_SCAVENGE,
-};
+use add_core::game_data::{ROLE_CONSTRUCTION, ROLE_CRYSTAL_BASSLINE, ROLE_FIRE_PIT, ROLE_SCAVENGE};
 use add_core::{GameCommand, GameState, Simulation, export_save, import_save, story_beats};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -123,7 +121,10 @@ pub struct FuzzRun {
 
 impl FuzzRun {
     pub fn failed(&self) -> bool {
-        matches!(self.outcome, RunOutcome::DeadEnd(_) | RunOutcome::Rejected(_))
+        matches!(
+            self.outcome,
+            RunOutcome::DeadEnd(_) | RunOutcome::Rejected(_)
+        )
     }
 }
 
@@ -188,7 +189,11 @@ impl Rng {
     }
 
     fn below(&mut self, bound: usize) -> usize {
-        if bound == 0 { 0 } else { (self.next() % bound as u64) as usize }
+        if bound == 0 {
+            0
+        } else {
+            (self.next() % bound as u64) as usize
+        }
     }
 }
 
@@ -265,7 +270,10 @@ fn work_the_base_loop(simulation: &mut Simulation) -> Vec<Value> {
         .and_then(|beat| beat.progression.as_ref())
         .and_then(|progression| progression.primary_action.as_ref())
         .is_some_and(|action| {
-            matches!(action, add_core::game_data::StoryPrimaryActionDef::Construction { .. })
+            matches!(
+                action,
+                add_core::game_data::StoryPrimaryActionDef::Construction { .. }
+            )
         });
 
     let waiting_to_recruit = matches!(
@@ -296,7 +304,12 @@ fn work_the_base_loop(simulation: &mut Simulation) -> Vec<Value> {
         ROLE_CRYSTAL_BASSLINE
     };
 
-    let posts = [ROLE_CONSTRUCTION, ROLE_SCAVENGE, ROLE_CRYSTAL_BASSLINE, ROLE_FIRE_PIT];
+    let posts = [
+        ROLE_CONSTRUCTION,
+        ROLE_SCAVENGE,
+        ROLE_CRYSTAL_BASSLINE,
+        ROLE_FIRE_PIT,
+    ];
     let already = state.roster.crew_by_role.get(post).copied().unwrap_or(0);
     if already != crew {
         // Free them first. Crew cannot be in two places, so assigning while
@@ -378,7 +391,9 @@ fn work_the_base_loop(simulation: &mut Simulation) -> Vec<Value> {
             .and_then(|beat| beat.progression.as_ref())
             .and_then(|progression| progression.primary_action.as_ref()),
         Some(add_core::game_data::StoryPrimaryActionDef::RecruitFromSurvivorCave { .. })
-    ) && simulation.apply(GameCommand::RecruitFromSurvivorCave).accepted
+    ) && simulation
+        .apply(GameCommand::RecruitFromSurvivorCave)
+        .accepted
     {
         commands.push(json!({ "type": "RecruitFromSurvivorCave" }));
     }
@@ -427,7 +442,13 @@ pub fn run_once(seed: u64, policy: Policy, max_steps: usize, coverage: &mut Cove
     while steps < max_steps {
         steps += 1;
         let Some(beat_id) = simulation.state().narrative.active_beat_id.clone() else {
-            return FuzzRun { seed, policy, steps, outcome: RunOutcome::Exhausted, commands };
+            return FuzzRun {
+                seed,
+                policy,
+                steps,
+                outcome: RunOutcome::Exhausted,
+                commands,
+            };
         };
         coverage.beats_seen.insert(beat_id.clone());
         // Also count what has completed. A beat whose `autoCompleteWhen` is
@@ -588,7 +609,12 @@ pub fn run_once(seed: u64, policy: Policy, max_steps: usize, coverage: &mut Cove
         // else: its world action, or simply time. Offering it another choice
         // would be refused, which is the fuzzer misreading the beat rather
         // than the beat being broken.
-        if simulation.state().narrative.choice_by_beat.contains_key(&beat_id) {
+        if simulation
+            .state()
+            .narrative
+            .choice_by_beat
+            .contains_key(&beat_id)
+        {
             let action = add_core::story_beat_def(&beat_id).and_then(|beat| beat.world_action_id);
             let before = simulation.state().narrative.active_beat_id.clone();
             if let Some(action_id) = action {
@@ -716,7 +742,11 @@ pub fn run_once(seed: u64, policy: Policy, max_steps: usize, coverage: &mut Cove
         // A choice that changes nothing leaves the player looking at the same
         // beat with the same options: the dead end worth failing on.
         if simulation.state().narrative.active_beat_id.as_deref() == Some(beat_id.as_str())
-            && !simulation.state().narrative.choice_by_beat.contains_key(&beat_id)
+            && !simulation
+                .state()
+                .narrative
+                .choice_by_beat
+                .contains_key(&beat_id)
         {
             return FuzzRun {
                 seed,
@@ -729,7 +759,13 @@ pub fn run_once(seed: u64, policy: Policy, max_steps: usize, coverage: &mut Cove
         coverage.choices_taken.insert(id);
     }
 
-    FuzzRun { seed, policy, steps, outcome: RunOutcome::BudgetReached, commands }
+    FuzzRun {
+        seed,
+        policy,
+        steps,
+        outcome: RunOutcome::BudgetReached,
+        commands,
+    }
 }
 
 fn command_json(command: &GameCommand) -> Value {
@@ -816,13 +852,19 @@ pub fn run_campaign(runs: usize, max_steps: usize) -> FuzzReport {
         .into_iter()
         .filter(|axis| {
             !add_core::game_data::narrative_acts().iter().any(|act| {
-                act.impacts.iter().any(|impact| impact.axis == axis.as_str())
+                act.impacts
+                    .iter()
+                    .any(|impact| impact.axis == axis.as_str())
             })
         })
         .map(|axis| axis.as_str().to_string())
         .collect();
 
-    let status = if failures.is_empty() { "passed" } else { "failed" };
+    let status = if failures.is_empty() {
+        "passed"
+    } else {
+        "failed"
+    };
     FuzzReport {
         contract: "add_fuzz_v1",
         runs,
@@ -863,7 +905,10 @@ pub fn replay(commands: &[Value]) -> Result<String, String> {
             }
             "Tick" => {
                 simulation.apply(GameCommand::Tick {
-                    seconds: command.get("seconds").and_then(Value::as_f64).unwrap_or(0.0),
+                    seconds: command
+                        .get("seconds")
+                        .and_then(Value::as_f64)
+                        .unwrap_or(0.0),
                 });
             }
             "StartWorldAction" => {

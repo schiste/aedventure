@@ -159,8 +159,17 @@ fn band_matches(band: Band, at_least: &str, at_most: &str) -> bool {
     band >= parse(at_least) && band <= parse(at_most)
 }
 
-pub fn diff(log: &NarrativeLog, before: &Tuning, after: &Tuning, playthroughs: usize) -> DiffReport {
-    let now = log.events.last().map(|event| event.tick).unwrap_or_default();
+pub fn diff(
+    log: &NarrativeLog,
+    before: &Tuning,
+    after: &Tuning,
+    playthroughs: usize,
+) -> DiffReport {
+    let now = log
+        .events
+        .last()
+        .map(|event| event.tick)
+        .unwrap_or_default();
     let entities = add_core::narrative::castable_entities();
 
     let mut band_flips = Vec::new();
@@ -235,7 +244,11 @@ mod tests {
         let targets = add_core::narrative::castable_entities();
         for step in 0..40 {
             let act = &acts[step % acts.len()];
-            let mut event = event_for(act, Some(targets[step % targets.len()]), step as f64 * 720.0);
+            let mut event = event_for(
+                act,
+                Some(targets[step % targets.len()]),
+                step as f64 * 720.0,
+            );
             event.secrecy = Secrecy::Public;
             log.append(event);
         }
@@ -249,7 +262,11 @@ mod tests {
     #[test]
     fn an_unchanged_tuning_reproduces_the_engine_exactly() {
         let log = played();
-        let now = log.events.last().map(|event| event.tick).unwrap_or_default();
+        let now = log
+            .events
+            .last()
+            .map(|event| event.tick)
+            .unwrap_or_default();
         let default = Tuning::default();
 
         let mut checked = 0;
@@ -266,7 +283,10 @@ mod tests {
                 }
             }
         }
-        assert!(checked > 0, "this proves nothing if no axis had any contribution");
+        assert!(
+            checked > 0,
+            "this proves nothing if no axis had any contribution"
+        );
     }
 
     /// `tuning/current.json` must be the tuning the game actually runs.
@@ -277,8 +297,8 @@ mod tests {
     /// that no longer matches the code it gates.
     #[test]
     fn the_committed_baseline_matches_the_engine_defaults() {
-        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../tuning/current.json");
+        let path =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tuning/current.json");
         let committed = Tuning::load(&path).expect("tuning/current.json should load");
         assert_eq!(
             committed,
@@ -309,7 +329,10 @@ mod tests {
             "halving every tier should change where somebody sits",
         );
         assert!(
-            report.band_flips.iter().all(|flip| flip.before != flip.after),
+            report
+                .band_flips
+                .iter()
+                .all(|flip| flip.before != flip.after),
             "a reported flip must actually be a change",
         );
     }

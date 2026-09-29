@@ -186,7 +186,6 @@ mod tests {
         assert_eq!(super::axial_distance(2, 2, 2, 2), 0);
     }
 
-
     use super::*;
 
     // A second, deliberately different map proves the generation + resolution

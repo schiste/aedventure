@@ -11,10 +11,10 @@
 use serde::{Deserialize, Serialize};
 
 use super::graph::inheritance_weight;
+use super::knowledge::{Knowledge, KnowledgeBase, Secrecy};
 use super::standing::{
     Axis, Band, Derived, GAME_DAY_SECONDS, Intent, Tier, clamp_modifiers, derive, fold,
 };
-use super::knowledge::{KnowledgeBase, Knowledge, Secrecy};
 use super::values::{Profile, Value, verdict};
 use crate::game_data::{NarrativeActDef, narrative_act_def};
 
@@ -276,7 +276,6 @@ impl Compaction {
     fn scope_key(act_id: &str, scope: &str) -> String {
         format!("{act_id}|{scope}")
     }
-
 }
 
 /// Everything a folded score depends on. Two queries with equal keys must
@@ -303,7 +302,9 @@ fn profile_for(entity_id: &str) -> Profile {
         if !profile.is_empty() {
             return profile;
         }
-        current = entity.parent.and_then(crate::game_data::narrative_entity_def);
+        current = entity
+            .parent
+            .and_then(crate::game_data::narrative_entity_def);
     }
     Profile::default()
 }
@@ -412,9 +413,8 @@ impl NarrativeLog {
         }
         let protected = self.sift_relevant_ids(now_tick);
 
-        let foldable = |event: &NarrativeEvent| {
-            event.tick <= cutoff && !protected.contains(&event.id)
-        };
+        let foldable =
+            |event: &NarrativeEvent| event.tick <= cutoff && !protected.contains(&event.id);
         // Only a prefix may be folded: the baseline is a running score, so it
         // cannot represent events with unfolded events before them.
         let fold_upto = self
@@ -521,10 +521,12 @@ impl NarrativeLog {
             Secrecy::Secret => {}
             Secrecy::Witnessed => {
                 if let Some(target) = event.target.as_deref() {
-                    self.knowledge.learn(target, id, Knowledge::first_hand(event.tick));
+                    self.knowledge
+                        .learn(target, id, Knowledge::first_hand(event.tick));
                 }
                 for witness in &event.witnesses {
-                    self.knowledge.learn(witness, id, Knowledge::first_hand(event.tick));
+                    self.knowledge
+                        .learn(witness, id, Knowledge::first_hand(event.tick));
                 }
             }
             Secrecy::Public => {
@@ -538,7 +540,9 @@ impl NarrativeLog {
                 // world, and left rumour re-checking all of them every boundary
                 // to rediscover that they already knew. Membership is what the
                 // ancestry walk in `knows` is for.
-                let Some(act) = narrative_act_def(&event.act_id) else { return };
+                let Some(act) = narrative_act_def(&event.act_id) else {
+                    return;
+                };
                 let mut scopes: Vec<&str> = act
                     .impacts
                     .iter()
@@ -664,159 +668,162 @@ impl NarrativeLog {
             // two orders disagreed by 0.12%.
             let occurrences = event.count.max(1);
             for occurrence in 0..occurrences {
-            for impact in act.impacts {
-                if Axis::from_str(impact.axis) != Some(axis) {
-                    continue;
-                }
-                let Some(scope) = Self::resolve_scope(impact.scope, event) else {
-                    continue;
-                };
-                let inheritance = inheritance_weight(observer_id, scope);
-                if inheritance <= 0.0 {
-                    continue;
-                }
-                // §6: an impact moves an entity's standing only if that entity
-                // knows the event, and only as far as it trusts the account it
-                // holds. This is what makes a secret mechanically real.
-                let Some(fidelity) = self.knowledge.fidelity(observer_id, event.id) else {
-                    continue;
-                };
-                let Some(tier) = Tier::from_str(impact.tier) else {
-                    continue;
-                };
+                for impact in act.impacts {
+                    if Axis::from_str(impact.axis) != Some(axis) {
+                        continue;
+                    }
+                    let Some(scope) = Self::resolve_scope(impact.scope, event) else {
+                        continue;
+                    };
+                    let inheritance = inheritance_weight(observer_id, scope);
+                    if inheritance <= 0.0 {
+                        continue;
+                    }
+                    // §6: an impact moves an entity's standing only if that entity
+                    // knows the event, and only as far as it trusts the account it
+                    // holds. This is what makes a secret mechanically real.
+                    let Some(fidelity) = self.knowledge.fidelity(observer_id, event.id) else {
+                        continue;
+                    };
+                    let Some(tier) = Tier::from_str(impact.tier) else {
+                        continue;
+                    };
 
-                // `sign: 0` means Values: the sign and strength come from how
-                // this observer reads the act, so one authored impact yields
-                // many verdicts.
-                let values_verdict = if impact.sign == 0 {
-                    let profile = profile_for(observer_id);
-                    let raw = verdict(&profile, &expressed(act));
-                    raw * (0.5 + profile.tightness())
-                } else {
-                    1.0
-                };
-                let effective_sign = if impact.sign == 0 {
-                    if values_verdict >= 0.0 { 1.0 } else { -1.0 }
-                } else {
-                    impact.sign as f64
-                };
-                if impact.sign == 0 && values_verdict.abs() < 1e-9 {
-                    continue;
-                }
-
-                let negative = effective_sign < 0.0;
-                let negativity = if negative {
-                    axis.negativity()
-                } else {
-                    axis.positivity()
-                };
-                // Cost and need only amplify help, never harm.
-                let cost = if negative { 1.0 } else { event.cost };
-                let window_start =
-                    event.tick - Self::REPETITION_WINDOW_DAYS * GAME_DAY_SECONDS;
-                let recent = seen_ticks
-                    .get(&(event.act_id.as_str(), scope))
-                    .map(|ticks| ticks.iter().filter(|tick| **tick >= window_start).count() as u32)
-                    .unwrap_or(0);
-                // Folded-away repeats are deliberately not counted. Compaction
-                // only folds history at least a year old and the window looks
-                // back a month, so a folded event cannot be a recent repeat —
-                // and the count compaction carries is a lifetime total, which
-                // applied against a windowed rule damped surviving acts as
-                // though a year of history had happened last week.
-                let seen = recent + occurrence;
-                let repetition = Self::repetition_decay(seen);
-
-                // Observer amplifiers. Neutral on the closeness/belonging
-                // passes themselves, which is what `context: None` means.
-                let (closeness_score, belonging_score) = context.unwrap_or((0.0, 0.0));
-                let closeness = 1.0 + 0.5 * closeness_score.max(0.0) / 100.0;
-                let belonging = if belonging_score >= 25.0 && negative {
-                    // Black sheep (Marques): being one of them buys the benefit
-                    // of the doubt on small things and a harsher fall on big ones.
-                    if matches!(tier, Tier::Major | Tier::Severe | Tier::Defining) {
-                        1.5
+                    // `sign: 0` means Values: the sign and strength come from how
+                    // this observer reads the act, so one authored impact yields
+                    // many verdicts.
+                    let values_verdict = if impact.sign == 0 {
+                        let profile = profile_for(observer_id);
+                        let raw = verdict(&profile, &expressed(act));
+                        raw * (0.5 + profile.tightness())
                     } else {
-                        0.7
+                        1.0
+                    };
+                    let effective_sign = if impact.sign == 0 {
+                        if values_verdict >= 0.0 { 1.0 } else { -1.0 }
+                    } else {
+                        impact.sign as f64
+                    };
+                    if impact.sign == 0 && values_verdict.abs() < 1e-9 {
+                        continue;
                     }
-                } else {
-                    1.0
-                };
 
-                // Decay is applied to the contribution, not the score, so an
-                // old kindness still counts a little years later. Ledger axes
-                // never fade: they settle through acts instead.
-                let decay = match tier.half_life_days() {
-                    Some(days) if !axis.is_ledger() => {
-                        let elapsed_days =
-                            ((now_tick - event.tick).max(0.0)) / GAME_DAY_SECONDS;
-                        0.5_f64.powf(elapsed_days / days)
+                    let negative = effective_sign < 0.0;
+                    let negativity = if negative {
+                        axis.negativity()
+                    } else {
+                        axis.positivity()
+                    };
+                    // Cost and need only amplify help, never harm.
+                    let cost = if negative { 1.0 } else { event.cost };
+                    let window_start = event.tick - Self::REPETITION_WINDOW_DAYS * GAME_DAY_SECONDS;
+                    let recent = seen_ticks
+                        .get(&(event.act_id.as_str(), scope))
+                        .map(|ticks| {
+                            ticks.iter().filter(|tick| **tick >= window_start).count() as u32
+                        })
+                        .unwrap_or(0);
+                    // Folded-away repeats are deliberately not counted. Compaction
+                    // only folds history at least a year old and the window looks
+                    // back a month, so a folded event cannot be a recent repeat —
+                    // and the count compaction carries is a lifetime total, which
+                    // applied against a windowed rule damped surviving acts as
+                    // though a year of history had happened last week.
+                    let seen = recent + occurrence;
+                    let repetition = Self::repetition_decay(seen);
+
+                    // Observer amplifiers. Neutral on the closeness/belonging
+                    // passes themselves, which is what `context: None` means.
+                    let (closeness_score, belonging_score) = context.unwrap_or((0.0, 0.0));
+                    let closeness = 1.0 + 0.5 * closeness_score.max(0.0) / 100.0;
+                    let belonging = if belonging_score >= 25.0 && negative {
+                        // Black sheep (Marques): being one of them buys the benefit
+                        // of the doubt on small things and a harsher fall on big ones.
+                        if matches!(tier, Tier::Major | Tier::Severe | Tier::Defining) {
+                            1.5
+                        } else {
+                            0.7
+                        }
+                    } else {
+                        1.0
+                    };
+
+                    // Decay is applied to the contribution, not the score, so an
+                    // old kindness still counts a little years later. Ledger axes
+                    // never fade: they settle through acts instead.
+                    let decay = match tier.half_life_days() {
+                        Some(days) if !axis.is_ledger() => {
+                            let elapsed_days =
+                                ((now_tick - event.tick).max(0.0)) / GAME_DAY_SECONDS;
+                            0.5_f64.powf(elapsed_days / days)
+                        }
+                        _ => 1.0,
+                    };
+
+                    // Held apart from the repetition step so a coalesced entry can
+                    // apply a different step per occurrence without recomputing
+                    // everything else.
+                    let unrepeated_modifiers = negativity
+                        * event.intent.factor()
+                        * cost
+                        * event.need
+                        * closeness
+                        * belonging
+                        * values_verdict
+                            .abs()
+                            .max(if impact.sign == 0 { 0.0 } else { 1.0 });
+                    // The clamp guards the *observer's* modifiers, which is what it
+                    // was written for: "no stack of them can turn a slight into a
+                    // catastrophe or erase a betrayal". Repetition is not one of
+                    // those. It is a principled decay of an act the Hero has already
+                    // done, and folding it in before the clamp meant `0.7^n` drove
+                    // the whole product onto the 0.1 floor from the seventh repeat —
+                    // so every act clamped most of the time, the clamp stopped being
+                    // a guard and became the normal path, and §5A's "hits the clamp
+                    // more than rarely" signal was dead. It also meant the seventh
+                    // and the seventieth repetition landed identically, which is not
+                    // a diminishing return, it is a floor.
+                    //
+                    // Clamped first, then damped: the guarantee is about one act's
+                    // context, not about the tenth identical act, which is exactly
+                    // the thing that should be allowed to fade to nothing.
+                    let modifiers = clamp_modifiers(unrepeated_modifiers) * repetition;
+                    let delta =
+                        effective_sign * tier.base() * modifiers * inheritance * decay * fidelity;
+                    score = fold(score, delta);
+
+                    // One trace per impact, not per occurrence: a coalesced entry is
+                    // one thing that happened `count` times, and `narr explain`
+                    // should read that way. Only the first occurrence emits it.
+                    if occurrence > 0 {
+                        continue;
                     }
-                    _ => 1.0,
-                };
 
-                // Held apart from the repetition step so a coalesced entry can
-                // apply a different step per occurrence without recomputing
-                // everything else.
-                let unrepeated_modifiers = negativity
-                    * event.intent.factor()
-                    * cost
-                    * event.need
-                    * closeness
-                    * belonging
-                    * values_verdict.abs().max(if impact.sign == 0 { 0.0 } else { 1.0 });
-                // The clamp guards the *observer's* modifiers, which is what it
-                // was written for: "no stack of them can turn a slight into a
-                // catastrophe or erase a betrayal". Repetition is not one of
-                // those. It is a principled decay of an act the Hero has already
-                // done, and folding it in before the clamp meant `0.7^n` drove
-                // the whole product onto the 0.1 floor from the seventh repeat —
-                // so every act clamped most of the time, the clamp stopped being
-                // a guard and became the normal path, and §5A's "hits the clamp
-                // more than rarely" signal was dead. It also meant the seventh
-                // and the seventieth repetition landed identically, which is not
-                // a diminishing return, it is a floor.
-                //
-                // Clamped first, then damped: the guarantee is about one act's
-                // context, not about the tenth identical act, which is exactly
-                // the thing that should be allowed to fade to nothing.
-                let modifiers = clamp_modifiers(unrepeated_modifiers) * repetition;
-                let delta = effective_sign * tier.base() * modifiers * inheritance * decay * fidelity;
-                score = fold(score, delta);
-
-                // One trace per impact, not per occurrence: a coalesced entry is
-                // one thing that happened `count` times, and `narr explain`
-                // should read that way. Only the first occurrence emits it.
-                if occurrence > 0 {
-                    continue;
+                    traces.push(ImpactTrace {
+                        event_id: event.id,
+                        count: event.count,
+                        act_id: event.act_id.clone(),
+                        scope: scope.to_string(),
+                        axis,
+                        tier,
+                        base: tier.base(),
+                        negativity,
+                        intent: event.intent.factor(),
+                        cost,
+                        need: event.need,
+                        repetition,
+                        closeness,
+                        belonging,
+                        values: values_verdict,
+                        decay,
+                        fidelity,
+                        inheritance,
+                        clamped_modifiers: modifiers,
+                        unclamped_modifiers: unrepeated_modifiers,
+                        delta,
+                        score_after: score,
+                    });
                 }
-
-                traces.push(ImpactTrace {
-                    event_id: event.id,
-                    count: event.count,
-                    act_id: event.act_id.clone(),
-                    scope: scope.to_string(),
-                    axis,
-                    tier,
-                    base: tier.base(),
-                    negativity,
-                    intent: event.intent.factor(),
-                    cost,
-                    need: event.need,
-                    repetition,
-                    closeness,
-                    belonging,
-                    values: values_verdict,
-                    decay,
-                    fidelity,
-                    inheritance,
-                    clamped_modifiers: modifiers,
-                    unclamped_modifiers: unrepeated_modifiers,
-                    delta,
-                    score_after: score,
-                });
-            }
-
             }
 
             // Record what this event landed on, after its own impacts have been
@@ -835,7 +842,9 @@ impl NarrativeLog {
                 // A coalesced entry advances the count by every occurrence it
                 // stands for, all at this entry's tick, so later acts are damped
                 // as they would have been had the repeats stayed separate.
-                let ticks = seen_ticks.entry((event.act_id.as_str(), scope)).or_default();
+                let ticks = seen_ticks
+                    .entry((event.act_id.as_str(), scope))
+                    .or_default();
                 for _ in 0..event.count.max(1) {
                     ticks.push(event.tick);
                 }
@@ -1144,7 +1153,12 @@ mod values_and_decay_tests {
     fn a_coalesced_burst_is_worth_what_its_occurrences_were_worth() {
         // Far enough apart to stay separate: one entry per act.
         let mut separate = NarrativeLog::default();
-        burst(&mut separate, "act.break_a_promise", 10, NarrativeLog::COALESCE_WINDOW_SECONDS * 2.0);
+        burst(
+            &mut separate,
+            "act.break_a_promise",
+            10,
+            NarrativeLog::COALESCE_WINDOW_SECONDS * 2.0,
+        );
 
         // Close enough to merge: one entry standing for ten.
         let mut coalesced = NarrativeLog::default();
@@ -1348,7 +1362,10 @@ mod values_and_decay_tests {
         // A standing point is the unit the bands are cut in — the Mid band is
         // 35 points wide — so a worst-case drift under one point cannot move
         // any entity across a band edge, which is what gameplay reads.
-        println!("COMPACTION: {events_before} -> {} events, folded {folded}, worst error {worst} ({worst_where})", log.events.len());
+        println!(
+            "COMPACTION: {events_before} -> {} events, folded {folded}, worst error {worst} ({worst_where})",
+            log.events.len()
+        );
         assert!(
             worst < 1.0,
             "compaction changed standing by {worst} ({worst_where}); it is meant to summarise, not retune",
@@ -1415,7 +1432,10 @@ mod values_and_decay_tests {
         let now = GAME_DAY_SECONDS;
         let expected = log.standing("entity.vell", Axis::Integrity, now);
         log.warm_for_save(now);
-        assert!(!log.warm_scores.entries.is_empty(), "the save should carry scores");
+        assert!(
+            !log.warm_scores.entries.is_empty(),
+            "the save should carry scores"
+        );
 
         // A clone drops the in-memory memo, so anything answered afterwards
         // came from what the save carried.
@@ -1430,7 +1450,10 @@ mod values_and_decay_tests {
             loaded.warm_scores.entries.is_empty(),
             "and the field should be cleared, so a loaded state matches a played one",
         );
-        assert_eq!(loaded.standing("entity.vell", Axis::Integrity, now), expected);
+        assert_eq!(
+            loaded.standing("entity.vell", Axis::Integrity, now),
+            expected
+        );
     }
 
     /// Retuned content must throw the saved scores away.
@@ -1521,7 +1544,11 @@ mod values_and_decay_tests {
         let mut second = event_for(act, Some("entity.joren"), 1.0);
         second.secrecy = Secrecy::Public;
         different_target.append(second);
-        assert_eq!(different_target.events.len(), 2, "a different target is a different event");
+        assert_eq!(
+            different_target.events.len(),
+            2,
+            "a different target is a different event"
+        );
 
         let mut different_secrecy = NarrativeLog::default();
         let mut public = event_for(act, Some(TARGET), 0.0);
@@ -1540,13 +1567,16 @@ mod values_and_decay_tests {
         let mut early = event_for(act, Some(TARGET), 0.0);
         early.secrecy = Secrecy::Public;
         late.append(early);
-        let mut hours_later = event_for(act, Some(TARGET), NarrativeLog::COALESCE_WINDOW_SECONDS + 1.0);
+        let mut hours_later = event_for(
+            act,
+            Some(TARGET),
+            NarrativeLog::COALESCE_WINDOW_SECONDS + 1.0,
+        );
         hours_later.secrecy = Secrecy::Public;
         late.append(hours_later);
         assert_eq!(late.events.len(), 2, "beyond the window they are two acts");
     }
 
-    
     use crate::narrative::standing::GAME_DAY_SECONDS;
 
     const VELL: &str = "entity.vell";
@@ -1617,7 +1647,10 @@ mod values_and_decay_tests {
         let help = log_with(HELP, VELL);
         let fresh = help.standing(VELL, Axis::Goodwill, 0.0);
         let stale = help.standing(VELL, Axis::Goodwill, 400.0 * GAME_DAY_SECONDS);
-        assert!(stale < fresh, "a Major kindness should fade: {stale} vs {fresh}");
+        assert!(
+            stale < fresh,
+            "a Major kindness should fade: {stale} vs {fresh}"
+        );
         assert!(stale > 0.0, "but it should still count a little: {stale}");
     }
 
@@ -1650,11 +1683,18 @@ mod values_and_decay_tests {
             close.append(event_for(help, Some(VELL), 0.0));
         }
         let before = close.standing(VELL, Axis::Integrity, 0.0);
-        close.append(event_for(narrative_act_def(BETRAY).expect("act"), Some(VELL), 0.0));
+        close.append(event_for(
+            narrative_act_def(BETRAY).expect("act"),
+            Some(VELL),
+            0.0,
+        ));
         let after = close.standing(VELL, Axis::Integrity, 0.0) - before;
 
         // Both are negative; the closer one should be at least as heavy.
-        assert!(after <= plain + 1e-9, "betrayal should not land lighter on a close bond: {after} vs {plain}");
+        assert!(
+            after <= plain + 1e-9,
+            "betrayal should not land lighter on a close bond: {after} vs {plain}"
+        );
     }
 
     #[test]
@@ -1709,7 +1749,10 @@ mod knowledge_tests {
     fn witnessed_and_secret_diverge_for_the_same_act() {
         let witnessed = broken_promise(Secrecy::Witnessed).standing(VELL, Axis::Integrity, 0.0);
         let secret = broken_promise(Secrecy::Secret).standing(VELL, Axis::Integrity, 0.0);
-        assert!(witnessed < secret, "{witnessed} should be worse than {secret}");
+        assert!(
+            witnessed < secret,
+            "{witnessed} should be worse than {secret}"
+        );
     }
 
     #[test]
@@ -1730,7 +1773,10 @@ mod knowledge_tests {
         // the further it travels.
         let mut log = broken_promise(Secrecy::Witnessed);
         log.advance_rumour(600.0 * RUMOUR_INTERVAL_SECONDS, 9);
-        assert!(log.knowledge.knows(JOREN, 0), "a crewmate should have heard by now");
+        assert!(
+            log.knowledge.knows(JOREN, 0),
+            "a crewmate should have heard by now"
+        );
 
         let witness = log.standing(VELL, Axis::Integrity, 0.0).abs();
         let hearsay = log.standing(JOREN, Axis::Integrity, 0.0).abs();
@@ -1748,7 +1794,10 @@ mod knowledge_tests {
         let mut log = broken_promise(Secrecy::Witnessed);
         log.knowledge.silence(VELL);
         log.advance_rumour(1000.0 * RUMOUR_INTERVAL_SECONDS, 9);
-        assert!(!log.knowledge.knows(JOREN, 0), "a silenced witness spreads nothing");
+        assert!(
+            !log.knowledge.knows(JOREN, 0),
+            "a silenced witness spreads nothing"
+        );
         assert!(log.standing(JOREN, Axis::Integrity, 0.0) == 0.0);
     }
 }

@@ -170,9 +170,10 @@ pub fn search_gates(gates: Vec<Gate>, runs: usize, max_steps: usize) -> ReachRep
             let Some(axis) = Axis::from_str(&gate.axis) else {
                 continue;
             };
-            let (Some(low), Some(high)) =
-                (Band::from_str(&gate.at_least), Band::from_str(&gate.at_most))
-            else {
+            let (Some(low), Some(high)) = (
+                Band::from_str(&gate.at_least),
+                Band::from_str(&gate.at_most),
+            ) else {
                 continue;
             };
             for entity in &entities {
@@ -278,7 +279,11 @@ mod tests {
         let report = search_gates(vec![gate("alignment", "very_high", "very_high")], 2, 40);
 
         assert!(report.contradictions.is_empty(), "the gate is well-formed");
-        assert_eq!(report.unreached.len(), 1, "an unreachable gate must be reported");
+        assert_eq!(
+            report.unreached.len(),
+            1,
+            "an unreachable gate must be reported"
+        );
         let unreached = &report.unreached[0];
         assert!(
             unreached.missing > 0.0,

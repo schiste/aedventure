@@ -89,7 +89,11 @@ mod tests {
         assert!(dot.starts_with("digraph entities {"));
         assert!(dot.trim_end().ends_with('}'));
         for entity in add_core::game_data::narrative_entities() {
-            assert!(dot.contains(entity.id), "{} is missing from the graph", entity.id);
+            assert!(
+                dot.contains(entity.id),
+                "{} is missing from the graph",
+                entity.id
+            );
             if let Some(parent) = entity.parent {
                 assert!(
                     dot.contains(&format!("\"{}\" -> \"{parent}\"", entity.id)),
@@ -117,7 +121,10 @@ mod tests {
         log.append(second);
 
         let dot = causal_dot(&log);
-        assert!(dot.contains(&format!("\"e{first_id}\" ->")), "the real cause should be drawn");
+        assert!(
+            dot.contains(&format!("\"e{first_id}\" ->")),
+            "the real cause should be drawn"
+        );
         assert!(
             !dot.contains("\"e9999\""),
             "an event that is not in the log must not appear",

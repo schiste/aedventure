@@ -109,7 +109,11 @@ fn met(log: &NarrativeLog, entity_id: &str) -> bool {
 }
 
 fn share(count: usize, total: usize) -> f64 {
-    if total == 0 { 0.0 } else { count as f64 / total as f64 }
+    if total == 0 {
+        0.0
+    } else {
+        count as f64 / total as f64
+    }
 }
 
 /// Play the fuzzer and keep the narrative log it produced.
@@ -178,7 +182,11 @@ fn extend_to_a_full_game(log: &mut NarrativeLog, policy: Policy, seed: u64, targ
             .collect(),
         None => acts.iter().collect(),
     };
-    let pool: Vec<_> = if movers.is_empty() { acts.iter().collect() } else { movers };
+    let pool: Vec<_> = if movers.is_empty() {
+        acts.iter().collect()
+    } else {
+        movers
+    };
 
     let mut state = seed ^ 0xA5A5_5A5A_1234_9876;
     let mut next = || {
@@ -233,7 +241,11 @@ pub fn play_sessions(policies: &[Policy], runs: usize, max_steps: usize) -> Vec<
         let aimed_at = policy
             .is_directed()
             .then(|| Axis::ALL[(index) % Axis::ALL.len()]);
-        sessions.push(Session { log, policy, aimed_at });
+        sessions.push(Session {
+            log,
+            policy,
+            aimed_at,
+        });
     }
     sessions
 }
@@ -306,8 +318,11 @@ pub fn run(acts_to_play: usize) -> CalibrationReport {
                 let percent = CHECKPOINTS[next_mark];
                 let at_tick = session.events[index].tick;
                 for axis in Axis::ALL {
-                    let counts =
-                        distributions.entry(axis).or_default().entry(percent).or_default();
+                    let counts = distributions
+                        .entry(axis)
+                        .or_default()
+                        .entry(percent)
+                        .or_default();
                     for character in &characters {
                         // Only characters this session has met: someone who
                         // never appeared sits at zero and would count as a
@@ -352,21 +367,21 @@ pub fn run(acts_to_play: usize) -> CalibrationReport {
             continue;
         };
         for character in &characters {
-        for axis in Axis::ALL {
-            for trace in session.explain(character, axis, now).1 {
-                let entry = per_act.entry(trace.act_id.clone()).or_insert((0, 0, 0, 0));
-                entry.0 += 1;
-                // Whether the clamp bit, read from the modifiers as they were
-                // before it, not guessed from how small the result ended up.
-                if trace.unclamped_modifiers < CLAMP_LOW {
-                    entry.1 += 1;
-                    entry.2 += 1;
-                } else if trace.unclamped_modifiers > CLAMP_HIGH {
-                    entry.1 += 1;
-                    entry.3 += 1;
+            for axis in Axis::ALL {
+                for trace in session.explain(character, axis, now).1 {
+                    let entry = per_act.entry(trace.act_id.clone()).or_insert((0, 0, 0, 0));
+                    entry.0 += 1;
+                    // Whether the clamp bit, read from the modifiers as they were
+                    // before it, not guessed from how small the result ended up.
+                    if trace.unclamped_modifiers < CLAMP_LOW {
+                        entry.1 += 1;
+                        entry.2 += 1;
+                    } else if trace.unclamped_modifiers > CLAMP_HIGH {
+                        entry.1 += 1;
+                        entry.3 += 1;
+                    }
                 }
             }
-        }
         }
     }
     let mut clamped_acts: Vec<ClampReport> = per_act
@@ -383,7 +398,11 @@ pub fn run(acts_to_play: usize) -> CalibrationReport {
             })
         })
         .collect();
-    clamped_acts.sort_by(|a, b| b.share.partial_cmp(&a.share).unwrap_or(std::cmp::Ordering::Equal));
+    clamped_acts.sort_by(|a, b| {
+        b.share
+            .partial_cmp(&a.share)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
 
     // What the catalog can move, read from the catalog.
     let axes_no_act_moves: Vec<String> = Axis::ALL
@@ -437,11 +456,15 @@ pub fn run(acts_to_play: usize) -> CalibrationReport {
             dead_axes.push(axis.as_str().to_string());
         }
         if let Some((extreme, counted)) = extremes.get(axis)
-            && share(*extreme, *counted) > RUNAWAY_EXTREME_SHARE {
-                runaway_axes.push(axis.as_str().to_string());
-            }
+            && share(*extreme, *counted) > RUNAWAY_EXTREME_SHARE
+        {
+            runaway_axes.push(axis.as_str().to_string());
+        }
 
-        reported.push(AxisDistribution { axis: axis.as_str().to_string(), at });
+        reported.push(AxisDistribution {
+            axis: axis.as_str().to_string(),
+            at,
+        });
     }
 
     CalibrationReport {

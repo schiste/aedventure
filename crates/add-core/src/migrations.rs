@@ -52,7 +52,10 @@ struct Migration {
 }
 
 /// Ordered registry of data-transforming migrations.
-const MIGRATIONS: &[Migration] = &[Migration { from: 15, apply: migrate_15_to_16 }];
+const MIGRATIONS: &[Migration] = &[Migration {
+    from: 15,
+    apply: migrate_15_to_16,
+}];
 
 /// v15 → v16: exposure became one quantity on one scale.
 ///

@@ -97,9 +97,7 @@ impl NarrativeStory {
                         _ => String::new(),
                     };
                     // lookahead_safe: pure, so ink may probe it freely.
-                    Ok(Some(ValueType::Bool(
-                        matched.contains(&wanted),
-                    )))
+                    Ok(Some(ValueType::Bool(matched.contains(&wanted))))
                 },
                 true,
             )
@@ -113,9 +111,10 @@ impl NarrativeStory {
     pub fn from_state(seed: u64, ink_state: Option<&str>) -> Result<Self, String> {
         let mut narrative = Self::new(seed)?;
         if let Some(state) = ink_state
-            && narrative.story.load_state(state).is_err() {
-                return Self::new(seed);
-            }
+            && narrative.story.load_state(state).is_err()
+        {
+            return Self::new(seed);
+        }
         Ok(narrative)
     }
 
@@ -202,7 +201,9 @@ impl NarrativeStory {
         // Presentation ids come from the authored catalog by position; the
         // `chosen` binding verifies that position at choose time, so a
         // reordered ink file fails loudly instead of applying wrong effects.
-        let authored = story_beat_def(beat_id).map(|beat| beat.choices).unwrap_or(&[]);
+        let authored = story_beat_def(beat_id)
+            .map(|beat| beat.choices)
+            .unwrap_or(&[]);
         let choices = self
             .story
             .get_current_choices()
@@ -237,7 +238,11 @@ mod tests {
         assert_eq!(scene.beat_id, BEAT);
         assert_eq!(scene.lines.len(), 1);
         assert!(scene.lines[0].text.starts_with("From the ridge"));
-        assert!(scene.lines[0].tags.contains(&"speaker:narrator".to_string()));
+        assert!(
+            scene.lines[0]
+                .tags
+                .contains(&"speaker:narrator".to_string())
+        );
         assert!(scene.lines[0].tags.contains(&"mood:tense".to_string()));
 
         assert_eq!(scene.choices.len(), 2);
@@ -368,8 +373,15 @@ mod tests {
         let scene = narrative
             .enter_storylet("sl_two_survivors_talk", &roles)
             .expect("storylet entered");
-        let text = scene.lines.first().map(|line| line.text.clone()).unwrap_or_default();
-        assert!(text.contains("David Chen"), "the scene should name its cast: {text}");
+        let text = scene
+            .lines
+            .first()
+            .map(|line| line.text.clone())
+            .unwrap_or_default();
+        assert!(
+            text.contains("David Chen"),
+            "the scene should name its cast: {text}"
+        );
         assert!(text.contains("Kaylee"), "both roles should appear: {text}");
     }
 
@@ -389,7 +401,10 @@ mod tests {
         let mut without = NarrativeStory::new(1).expect("story loads");
         let plain = without.enter_beat(BEAT).expect("beat entered");
         assert!(
-            !plain.lines.iter().any(|line| line.text.contains("remembers")),
+            !plain
+                .lines
+                .iter()
+                .any(|line| line.text.contains("remembers")),
             "the callback should not appear when no arc matched",
         );
 
@@ -403,7 +418,10 @@ mod tests {
         let mut with = NarrativeStory::with_arcs(1, &arcs).expect("story loads");
         let scene = with.enter_beat(BEAT).expect("beat entered");
         assert!(
-            scene.lines.iter().any(|line| line.text.contains("remembers")),
+            scene
+                .lines
+                .iter()
+                .any(|line| line.text.contains("remembers")),
             "the scene should acknowledge the broken oath: {:?}",
             scene.lines,
         );

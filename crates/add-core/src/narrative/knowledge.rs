@@ -31,7 +31,11 @@ pub struct Knowledge {
 
 impl Knowledge {
     pub fn first_hand(tick: f64) -> Knowledge {
-        Knowledge { learned_at: tick, hops: 0, fidelity: 1.0 }
+        Knowledge {
+            learned_at: tick,
+            hops: 0,
+            fidelity: 1.0,
+        }
     }
 }
 
@@ -124,7 +128,9 @@ impl KnowledgeBase {
     /// can only move when the log grows or when that entity learns something,
     /// and learning is only ever an insertion here.
     pub fn len_for(&self, entity_id: &str) -> usize {
-        self.by_entity.get(entity_id).map_or(0, |events| events.len())
+        self.by_entity
+            .get(entity_id)
+            .map_or(0, |events| events.len())
     }
 
     /// Drop everything anyone knew about these events.
@@ -181,8 +187,7 @@ impl KnowledgeBase {
     /// Does anyone in this entity's subtree know?
     pub fn anyone_knows(&self, scope_id: &str, event_id: u64) -> bool {
         self.by_entity.iter().any(|(entity_id, events)| {
-            events.contains_key(&event_id)
-                && super::graph::ancestry(entity_id).contains(&scope_id)
+            events.contains_key(&event_id) && super::graph::ancestry(entity_id).contains(&scope_id)
         })
     }
 
@@ -417,13 +422,24 @@ mod tests {
         let mut base = witnessed_by_vell();
         base.silence(VELL);
         base.advance(500.0 * RUMOUR_INTERVAL_SECONDS, 3);
-        assert!(!base.knows(JOREN, 1), "a silenced witness should not spread it");
+        assert!(
+            !base.knows(JOREN, 1),
+            "a silenced witness should not spread it"
+        );
     }
 
     #[test]
     fn a_first_hand_account_upgrades_a_rumour() {
         let mut base = KnowledgeBase::default();
-        base.learn(JOREN, 1, Knowledge { learned_at: 0.0, hops: 2, fidelity: 0.49 });
+        base.learn(
+            JOREN,
+            1,
+            Knowledge {
+                learned_at: 0.0,
+                hops: 2,
+                fidelity: 0.49,
+            },
+        );
         base.learn(JOREN, 1, Knowledge::first_hand(10.0));
         assert_eq!(base.fidelity(JOREN, 1), Some(1.0));
         assert!(base.heard_first_hand(JOREN, 1));

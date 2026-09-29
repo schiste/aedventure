@@ -6,11 +6,11 @@
 
 pub mod bench;
 pub mod calibrate;
+pub mod fuzz;
 pub mod graph_export;
 pub mod population;
 pub mod reach;
 pub mod tuning;
-pub mod fuzz;
 
 use add_core::{GameCommand, GameState, Simulation, StationSpecializationPathState};
 use serde::{Deserialize, Serialize};
@@ -215,10 +215,30 @@ impl ScenarioCommand {
             Self::ChooseInkChoice { beat_id, index } => {
                 GameCommand::ChooseInkChoice { beat_id, index }
             }
-            Self::EmitAct { act_id, target, cost, need, secrecy, witnesses, causes } => {
-                GameCommand::EmitAct { act_id, target, cost, need, secrecy, witnesses, causes }
-            }
-            Self::Tell { entity_id, event_id } => GameCommand::Tell { entity_id, event_id },
+            Self::EmitAct {
+                act_id,
+                target,
+                cost,
+                need,
+                secrecy,
+                witnesses,
+                causes,
+            } => GameCommand::EmitAct {
+                act_id,
+                target,
+                cost,
+                need,
+                secrecy,
+                witnesses,
+                causes,
+            },
+            Self::Tell {
+                entity_id,
+                event_id,
+            } => GameCommand::Tell {
+                entity_id,
+                event_id,
+            },
             Self::Silence { entity_id } => GameCommand::Silence { entity_id },
             Self::CompletePreArrivalRoute => GameCommand::CompletePreArrivalRoute,
             Self::SetHeroAssigned { assigned } => GameCommand::SetHeroAssigned { assigned },
@@ -882,7 +902,6 @@ fn normalize_value(value: Value, strip_events: bool) -> Value {
     }
 }
 
-
 /// One JSON export of the narrative vocabulary an agent needs before it writes
 /// content: which beats exist, what each one's choices are, which are
 /// ink-backed, and which knots the compiled story declares. This is the
@@ -917,7 +936,6 @@ pub fn narrative_schema() -> serde_json::Value {
         "commands": ["ChooseStoryOption", "ChooseInkChoice", "StartWorldAction", "Tick"],
     })
 }
-
 
 fn one() -> f64 {
     1.0

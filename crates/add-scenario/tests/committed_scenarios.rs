@@ -137,8 +137,7 @@ fn ink_first_glimpse_runs_headlessly() {
 
     let narrative = &run.final_snapshot["narrative"];
     assert_eq!(
-        narrative["choiceByBeat"]["story.beat.first_glimpse"],
-        "story.choice.glimpse.watch_lights",
+        narrative["choiceByBeat"]["story.beat.first_glimpse"], "story.choice.glimpse.watch_lights",
         "the ink choice applied its authored choice id",
     );
     assert!(
@@ -164,8 +163,10 @@ fn ink_first_glimpse_runs_headlessly() {
 fn standing_reaches_three_distances_from_the_log() {
     use add_core::narrative::{Axis, Band};
 
-    let run = run_scenario_file(&repo_path("scenarios/add/narrative/standing-three-distances.json"))
-        .expect("committed standing scenario should pass");
+    let run = run_scenario_file(&repo_path(
+        "scenarios/add/narrative/standing-three-distances.json",
+    ))
+    .expect("committed standing scenario should pass");
     assert_eq!(run.checkpoints_passed, 3);
 
     let state = add_core::import_save(&run.final_save).expect("save loads");
@@ -212,19 +213,32 @@ fn standing_reaches_three_distances_from_the_log() {
 fn witnessed_and_secret_promises_diverge() {
     use add_core::narrative::Axis;
 
-    let witnessed = run_scenario_file(&repo_path("scenarios/add/narrative/broken-promise-witnessed.json"))
-        .expect("witnessed scenario should pass");
-    let secret = run_scenario_file(&repo_path("scenarios/add/narrative/broken-promise-secret.json"))
-        .expect("secret scenario should pass");
+    let witnessed = run_scenario_file(&repo_path(
+        "scenarios/add/narrative/broken-promise-witnessed.json",
+    ))
+    .expect("witnessed scenario should pass");
+    let secret = run_scenario_file(&repo_path(
+        "scenarios/add/narrative/broken-promise-secret.json",
+    ))
+    .expect("secret scenario should pass");
 
     let seen = add_core::import_save(&witnessed.final_save).expect("save loads");
     let unseen = add_core::import_save(&secret.final_save).expect("save loads");
     let now = seen.clock_seconds;
 
-    let seen_integrity = seen.narrative.log.standing("entity.vell", Axis::Integrity, now);
-    let unseen_integrity = unseen.narrative.log.standing("entity.vell", Axis::Integrity, now);
+    let seen_integrity = seen
+        .narrative
+        .log
+        .standing("entity.vell", Axis::Integrity, now);
+    let unseen_integrity = unseen
+        .narrative
+        .log
+        .standing("entity.vell", Axis::Integrity, now);
 
-    assert!(seen_integrity < 0.0, "a witnessed broken promise should cost: {seen_integrity}");
+    assert!(
+        seen_integrity < 0.0,
+        "a witnessed broken promise should cost: {seen_integrity}"
+    );
     assert_eq!(
         unseen_integrity, 0.0,
         "an unwitnessed one should cost nothing at all: {unseen_integrity}",
@@ -251,7 +265,13 @@ fn witnessed_and_secret_promises_diverge() {
     );
 
     // Nobody can have heard what nobody saw.
-    assert!(!unseen.narrative.log.knowledge.anyone_knows("entity.sleepless", 0));
+    assert!(
+        !unseen
+            .narrative
+            .log
+            .knowledge
+            .anyone_knows("entity.sleepless", 0)
+    );
 }
 
 /// N5 acceptance: mercy_repaid is detected from a committed run, the arc names
@@ -283,7 +303,11 @@ fn mercy_repaid_is_detected_and_names_its_subject() {
         .iter()
         .find(|event| event.act_id == "act.aid_the_hero")
         .expect("the aid was logged");
-    assert!(aid.causes.contains(&0), "the aid should name the mercy: {:?}", aid.causes);
+    assert!(
+        aid.causes.contains(&0),
+        "the aid should name the mercy: {:?}",
+        aid.causes
+    );
 }
 
 /// N6 acceptance: a cast follows the history the player actually built. The
