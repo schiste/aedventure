@@ -123,19 +123,21 @@ jobs:
       - name: Office lane gate
         run: npm run check:office
 
-  # Advisory, not a gate. Both of these are red on `main` today: `cargo fmt`
-  # wants to reformat several files, and clippy reports ~45 warnings (mostly
-  # `collapsible_if` in `simulation.rs`, `from_str` shadowing, and dead helpers
-  # in the narrative module). Failing the build on pre-existing debt the moment
-  # CI is introduced would make the whole pipeline untrusted and get it ignored.
+  # A real gate.
   #
-  # This job reports the debt so it stops growing. The follow-up is to land a
-  # `cargo fmt --all` pass and a clippy cleanup, then delete
-  # `continue-on-error` and promote this to a real gate.
+  # This started advisory: both steps were red on `main`, with `continue-on-error`
+  # so the rest of the pipeline would not look untrusted on day one. That is now
+  # paid off -- `cargo fmt --all` has been run and all 52 clippy warnings are
+  # cleared -- so the escape hatch is gone and `-D warnings` is on. Without it
+  # clippy exits zero with warnings printed, and a job that cannot fail is a job
+  # nobody reads.
+  #
+  # The `narrative` module carries one crate-level `allow` for
+  # `should_implement_trait`; the reasoning is on it. Nothing else is silenced
+  # at the crate level, and `-D warnings` is what keeps it that way.
   lint:
-    name: Format and lint (advisory)
+    name: Format and lint
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
@@ -149,4 +151,4 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: cargo clippy
-        run: cargo clippy --workspace --all-targets
+        run: cargo clippy --workspace --all-targets -- -D warnings
