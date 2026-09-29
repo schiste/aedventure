@@ -4512,10 +4512,17 @@ async function exerciseMainCharacterMovement(page, consoleErrors) {
       state.map?.character?.cell === before.map.character.cell,
     consoleErrors,
   )
+  // The dialog is already open and the state above confirms it; this waits only
+  // for focus to land inside it, which is one render pass. The 1s literal that
+  // was here was the only hard-coded timeout left in the file -- every other
+  // wait goes through `qaTimeout`, so this one assertion alone did not scale
+  // with `ADD_QA_TIMEOUT_SCALE` and failed on a slower Chromium while the rest
+  // of the suite passed. Same condition, same wait, budget the file uses
+  // everywhere else.
   await page.waitForFunction(
     () => document.activeElement?.closest("#travel-confirmation-dialog") !== null,
     undefined,
-    { timeout: 1000 },
+    { timeout: qaTimeout(15000) },
   )
   await page.keyboard.press("Escape")
   await waitForTextState(
