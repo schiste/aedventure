@@ -67,6 +67,7 @@ See [Structured Data](STRUCTURED_DATA.md) for the authoring rules.
 - [Work Pages](WORK_PAGES.md)
 - [Contradictions](contradictions.md)
 - [Entities](entities.md)
+- [Filter Flow](filter-flow.md)
 - [Map](map.md)
 - [Naming Conventions](naming_conventions.md)
 - [Pages To Create](pages-to-create.md)
@@ -98,5 +99,5 @@ See [Structured Data](STRUCTURED_DATA.md) for the authoring rules.
 - [Survival Groups](survival-groups/)
 - [Worldbuilding](worldbuilding/)
 
-_Generated from the lore tree: 27 page(s), 8 subsection(s)._
+_Generated from the lore tree: 28 page(s), 8 subsection(s)._
 <!-- lore:index:end -->

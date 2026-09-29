@@ -1,5 +1,5 @@
 .DS_Store
-node_modules/
+node_modules
 dist/
 build/
 dist-app/
@@ -15,6 +15,10 @@ coverage/
 tmp/
 temp/
 target/
+
+# VitePress local cache and generated site
+lore/.vitepress/cache/
+lore/.vitepress/dist/
 artifacts/agent-verification/
 
 # Local-mode verbose trace logs

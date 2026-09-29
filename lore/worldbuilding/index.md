@@ -7,6 +7,8 @@
 [Editorial overview](README.md)
 
 - [Community Classification Framework](community-classification-framework.md)
+- [Hero Story Hooks After Prologue](hero-story-hooks-after-prologue.md)
+- [Prologue Before The Surface](prologue-before-the-surface.md)
 
 ### Subsections
 
@@ -24,5 +26,5 @@
 - [Technology](technology/)
 - [Tv Shows](tv_shows/)
 
-_Generated from the lore tree: 1 page(s), 13 subsection(s)._
+_Generated from the lore tree: 3 page(s), 13 subsection(s)._
 <!-- lore:index:end -->

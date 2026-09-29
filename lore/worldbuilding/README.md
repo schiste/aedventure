@@ -145,9 +145,8 @@ When an item appears in multiple contexts:
 ## In this section
 
 - [Community Classification Framework](community-classification-framework.md)
-- [Prologue: Before the Surface](prologue-before-the-surface.md)
-- [Quiet Centuries: 226-300 AS](../timeline_quiet_centuries_226-300.md)
-- [Hero Story Hooks After the Prologue](hero-story-hooks-after-prologue.md)
+- [Hero Story Hooks After Prologue](hero-story-hooks-after-prologue.md)
+- [Prologue Before The Surface](prologue-before-the-surface.md)
 
 ### Subsections
 
@@ -165,5 +164,5 @@ When an item appears in multiple contexts:
 - [Technology](technology/)
 - [Tv Shows](tv_shows/)
 
-_Generated from the lore tree: 1 page(s), 13 subsection(s)._
+_Generated from the lore tree: 3 page(s), 13 subsection(s)._
 <!-- lore:index:end -->
