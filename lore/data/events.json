@@ -1,27 +1,55 @@
 {
+  "$schema": "../schemas/events.schema.json",
   "schema_version": 1,
   "events": [
     {
       "id": "event.the-silence",
       "name": "The Silence",
-      "as": 0,
-      "ce": "2034-10-14",
+      "date": { "day_zero": true, "ce": "2034-10-14", "as": 0 },
+      "type": "global-event",
       "status": "canonical",
       "sources": ["source.timeline", "source.truth"]
     },
     {
       "id": "event.activation-alpha",
       "name": "Activation Protocol Alpha",
-      "as": 0,
-      "ce": "2034-10-14",
+      "date": { "ce": "2034-10-14", "as": 0 },
+      "type": "evacuation",
       "status": "canonical",
       "sources": ["source.truth"]
     },
     {
+      "id": "event.ardeche-arrival",
+      "name": "Arrival at the Ardèche caves",
+      "date": { "ce": "2034-10-14" },
+      "type": "survival-origin",
+      "status": "draft",
+      "sources": ["source.henri-journal", "source.unplugged-archives", "source.timeline"],
+      "notes": "Day-level date only. timeline.md places the first evacuees at 06:30, while timeline_quiet_centuries_1-25.md records families moving from 05:30 and Marc arriving at 20:00. These may be different milestones; do not collapse them into a single time."
+    },
+    {
+      "id": "event.mponeng-first-night",
+      "name": "The first night at Mponeng Deep",
+      "date": { "ce": "2034-10-14" },
+      "type": "survival-origin",
+      "status": "draft",
+      "sources": ["source.mponeng-chronicle"],
+      "notes": "Provisional day-level anchor. The available chronology establishes that people were already below ground at the activation, but does not document the first-night sequence."
+    },
+    {
+      "id": "event.first-underground-stabilization",
+      "name": "First underground stabilization",
+      "date": { "as_range": [0, 1] },
+      "type": "period",
+      "status": "draft",
+      "sources": ["source.timeline", "source.mponeng-chronicle"],
+      "notes": "Provisional early population-level stabilization period. The early chronicle describes the underground population as stabilizing by October 2035; later global stabilization estimates refer to a different period. Keep this broad range until the chronology is reconciled."
+    },
+    {
       "id": "event.first-crystal",
       "name": "Material presence of the first Crystals",
-      "as": null,
-      "ce": null,
+      "date": {},
+      "type": "material-presence",
       "status": "draft",
       "sources": ["source.timeline"],
       "notes": "The previous 2041 CE / 7 AS date is no longer canonical. Material Crystal presence is placed around 200 AS by canon decision, but the exact event date remains undocumented."

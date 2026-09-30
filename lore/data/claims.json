@@ -1,1 +1,38 @@
-{"schema_version":1,"claims":[{"id":"claim.sound-protection","subject":"event.the-silence","predicate":"continuous_sound_reduces_hush_risk","object":{"modalities":["drums","machinery","water","voice","music"],"minimum_intensity":"unknown"},"status":"reported","sources":["source.henri","source.timeline"]},{"id":"claim.global-onset","subject":"event.the-silence","predicate":"clinical_onset_is_global","object":true,"status":"canonical","sources":["source.truth"]}]}
+{
+  "$schema": "../schemas/claims.schema.json",
+  "schema_version": 1,
+  "claims": [
+    {
+      "id": "claim.sound-protection",
+      "subject": "event.the-silence",
+      "predicate": "continuous_sound_reduces_hush_risk",
+      "object": {
+        "modalities": ["drums", "machinery", "water", "voice", "music"],
+        "minimum_intensity": "unknown"
+      },
+      "status": "reported",
+      "sources": ["source.henri", "source.timeline"]
+    },
+    {
+      "id": "claim.sound-continuity-protects",
+      "subject_type": "survival_group",
+      "predicate": "observed_sound_continuity_protection",
+      "object": {
+        "minimum_intensity": "unknown",
+        "continuity": "continuous",
+        "modalities": ["drums", "machinery", "water", "voice", "music"]
+      },
+      "status": "reported",
+      "sources": ["source.henri-journal", "source.mponeng-chronicle"],
+      "notes": "Reported synthesis from cross-shelter chronology. Henri's account records continuous drums in Ardèche; the Mponeng record establishes underground presence but does not identify a first sound test. Attribution to both groups remains provisional, and the effective threshold is unknown."
+    },
+    {
+      "id": "claim.global-onset",
+      "subject": "event.the-silence",
+      "predicate": "clinical_onset_is_global",
+      "object": true,
+      "status": "canonical",
+      "sources": ["source.truth"]
+    }
+  ]
+}

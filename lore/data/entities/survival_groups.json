@@ -11,7 +11,7 @@
       "initial_population":87,
       "survival_context":"Prepared cave shelter and evacuation protocol.",
       "observations":["claim.sound-continuity-protects"],
-      "founding_events":["event.activation-protocol-alpha","event.ardeche-arrival"],
+      "founding_events":["event.activation-alpha","event.ardeche-arrival"],
       "sources":["source.henri-journal","source.unplugged-archives"],
       "status":"draft"
     },

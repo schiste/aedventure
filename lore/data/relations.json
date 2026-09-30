@@ -1,1 +1,30 @@
-{"schema_version":1,"relations":[{"subject":"group.ardeche-unplugged","predicate":"formed_around","object":"location.ardeche-caves"},{"subject":"group.mponeng-deep","predicate":"formed_around","object":"location.mponeng-mine"},{"subject":"group.ardeche-unplugged","predicate":"observed","object":"claim.sound-protection"},{"subject":"group.mponeng-deep","predicate":"observed","object":"claim.sound-protection"}]}
+{
+  "$schema": "../schemas/relations.schema.json",
+  "schema_version": 1,
+  "relations": [
+    {
+      "subject": "group.ardeche-unplugged",
+      "predicate": "formed_around",
+      "object": "location.ardeche-caves",
+      "sources": ["source.henri-journal"]
+    },
+    {
+      "subject": "group.mponeng-deep",
+      "predicate": "formed_around",
+      "object": "location.mponeng-mine",
+      "sources": ["source.mponeng-chronicle"]
+    },
+    {
+      "subject": "group.ardeche-unplugged",
+      "predicate": "observed",
+      "object": "claim.sound-continuity-protects",
+      "sources": ["source.henri-journal"]
+    },
+    {
+      "subject": "group.mponeng-deep",
+      "predicate": "observed",
+      "object": "claim.sound-continuity-protects",
+      "sources": ["source.mponeng-chronicle"]
+    }
+  ]
+}

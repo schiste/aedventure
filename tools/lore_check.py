@@ -89,10 +89,45 @@ def structured_checks() -> tuple[int, list[str]]:
         if source_page and not (LORE / source_page).exists():
             errors.append(f"missing source page: {source_page}")
     groups_path = LORE / "data" / "entities" / "survival_groups.json"
+    events_path = LORE / "data" / "events.json"
+    claims_path = LORE / "data" / "claims.json"
+    event_ids = {
+        event["id"]
+        for event in loaded.get(events_path, {}).get("events", [])
+        if isinstance(event, dict) and event.get("id")
+    }
+    claim_ids = {
+        claim["id"]
+        for claim in loaded.get(claims_path, {}).get("claims", [])
+        if isinstance(claim, dict) and claim.get("id")
+    }
     for group in loaded.get(groups_path, {}).get("groups", []):
         page = group.get("page")
         if page and not (LORE / page).exists():
             errors.append(f"missing survival-group page: {page}")
+        origin_period = group.get("origin_period", {})
+        event_refs = []
+        if isinstance(origin_period, dict):
+            event_refs.extend((origin_period.get("start"), origin_period.get("end")))
+        founding_events = group.get("founding_events", [])
+        if isinstance(founding_events, list):
+            event_refs.extend(founding_events)
+        for event_ref in event_refs:
+            if event_ref is not None and (
+                not isinstance(event_ref, str) or event_ref not in event_ids
+            ):
+                errors.append(
+                    f"unknown event reference in {group.get('id', 'survival group')}: {event_ref}"
+                )
+        observations = group.get("observations", [])
+        if isinstance(observations, list):
+            for claim_ref in observations:
+                if claim_ref is not None and (
+                    not isinstance(claim_ref, str) or claim_ref not in claim_ids
+                ):
+                    errors.append(
+                        f"unknown claim reference in {group.get('id', 'survival group')}: {claim_ref}"
+                    )
     for path, data in loaded.items():
         collections = [value for value in data.values() if isinstance(value, list)]
         for collection in collections:

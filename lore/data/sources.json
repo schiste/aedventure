@@ -45,9 +45,9 @@
     },
     {
       "id": "source.mponeng-chronicle",
-      "type": "editorial_page",
-      "path": "survival-groups/mponeng-mine.md",
-      "reliability": "unknown"
+      "type": "chronology",
+      "path": "timeline_quiet_centuries_1-25.md",
+      "reliability": "secondary"
     }
   ]
 }
