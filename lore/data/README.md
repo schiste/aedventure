@@ -18,6 +18,8 @@ Markdown remains the editorial source. These records drive indexes, cards,
 timeline, graph and map views. They do not silently promote draft material to
 canon.
 
+Statuses (`draft`, `reported`, `disputed` and `canonical`) describe the record's evidence level. Validation checks structure and references; it never promotes a record.
+
 <!-- lore:index:start -->
 
 ## In this section

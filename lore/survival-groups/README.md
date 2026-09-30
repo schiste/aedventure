@@ -6,6 +6,8 @@ identities, dates, relationships and provenance.
 - [The Unplugged of Ardèche](ardeche-unplugged.md)
 - [Mponeng Deep Survivors](mponeng-mine.md)
 
+The pilot pages remain `Draft`: their structure is stable, but primary testimony and historical interviews are incomplete.
+
 <!-- lore:index:start -->
 
 ## In this section
