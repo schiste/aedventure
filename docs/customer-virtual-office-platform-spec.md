@@ -3,6 +3,7 @@
 > Scope note: this is the customer virtual-office/platform product
 > specification. It is separate from the live ADD game and does not redefine
 > the ownership or roadmap of `apps/add-rpg`.
+> Archive status: this describes a former product and is retained for reference.
 
 ## 1. Document Purpose
 

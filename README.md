@@ -15,19 +15,14 @@ The former standalone `ADD` repository is legacy/reference material. Its
 imported history remains under `legacy/add/`; new ADD work belongs in this
 repository.
 
-The monorepo also contains a separate office/platform lane. The office
-materials below are not the active ADD game, and they are not evidence that ADD
-still needs to be built from scratch. They remain in the repository because
-the shared engine and the office application are maintained alongside the
-game.
+The former Customer Virtual Office app and its platform lane are archived.
+Their source and planning documents remain for reference, but new product work
+belongs to ADD unless you explicitly ask to reopen that archive. The root build
+and local app commands target ADD.
 
-The repository also retains the hard-fork plan and implementation workspace for
-the separate Aedventure Customer Virtual Office App. That office/platform work
-is not a prerequisite for the live ADD game.
-
-SkyOffice is not the product architecture. SkyOffice is a temporary legacy
-source reference that must be reduced, replaced, and rebuilt into a clean
-architecture before product feature work resumes.
+SkyOffice remains quarantined historical source. It is not the product
+architecture or a prerequisite for ADD work, and its old rebuild plans are
+archived unless you explicitly ask to revive them.
 
 ## Current Product Reality
 
@@ -39,7 +34,7 @@ architecture before product feature work resumes.
 | `packages/add-runtime-client/` | Live ADD content and translation layer | Authored content, validation, selectors, command mapping, and world/presentation adapters |
 | `packages/game-*` | Shared engine primitives | Neutral topology, world, renderer, input, and protocol contracts used when an app consumes them |
 | `apps/engine-sandbox/` | Engine fixture and QA surface | Square/hex renderer and topology proof, not a second product game |
-| `apps/web/`, `apps/api/`, `apps/world-server/`, `apps/media-gateway/` | Office/platform lane | Customer virtual-office product planning and infrastructure |
+| `apps/web/`, `apps/api/`, `apps/world-server/`, `apps/media-gateway/` | Archived office/platform application | Preserved source and opt-in maintenance checks; no active product roadmap |
 | `legacy/add/` | Historical ADD reference | Imported source and design material only; never the live app |
 
 The current game is deliberately incomplete: combat, richer exploration,
@@ -57,8 +52,8 @@ For gameplay work, begin with the live ADD path:
    validation/code-generation path documented in
    [ADD Content Authoring and Codegen](docs/add-content-authoring.md).
 3. Put player-facing presentation and command dispatch in `apps/add-rpg/`.
-4. Add or generalize `packages/game-*` only when the current ADD app (or the
-   office app) has a concrete consumer and an exercised test.
+4. Add or generalize `packages/game-*` only when the current ADD app or another
+   active consumer has a concrete need.
 5. Treat `legacy/add/` as reference material, not an implementation target.
 
 The protected first gameplay loop is
@@ -146,6 +141,13 @@ verification. The gameplay ladder is `npm run verify`; the full gate is
 - [ADD Narrative Runtime: the ink boundary](docs/add-narrative-runtime.md)
 - [Story and Content Engine Contract](docs/story-content-engine.md)
 - [Domain-Neutral Engine Boundary](docs/engine-boundary.md)
+- [Archived Office and Platform Lane](docs/office-platform-archive.md)
+
+## Archived Office and Platform Documents
+
+The following documents are retained as historical reference for the archived
+office product; they are not active ADD plans:
+
 - [Global Product and Technical Specification](docs/customer-virtual-office-platform-spec.md)
 - [Development Rollout Plan](docs/development-rollout-plan.md)
 - [Phase 0 Refactor Plan](docs/phase-0-refactor-plan.md)
@@ -155,9 +157,9 @@ verification. The gameplay ladder is `npm run verify`; the full gate is
 
 ## Source Layout
 
-The entries below the ADD lane are office/platform or legacy/reference scope.
-Their use of words such as “future” describes that separate lane and never the
-status of `apps/add-rpg`.
+The entries below the ADD lane are archived office/platform or legacy/reference
+scope. Their use of words such as “future” describes those historical plans and
+never the status of `apps/add-rpg`.
 
 The ADD lane is built from three bricks - lore, engine, and content - whose
 ownership and dependency direction are fixed by the
@@ -212,7 +214,7 @@ feature easier to implement, test, inspect, or extend toward the future
 strategy/RPG layers. A generic abstraction without a current consumer stays
 out of the critical path.
 
-## Office/Platform Lane
+## Archived Office/Platform Lane
 
 > Scope note: this section documents the separate customer virtual-office and
 > platform lane. It is not the ADD game roadmap, and its future app/server
@@ -285,23 +287,16 @@ Run:
 npm run dev:http
 ```
 
-This builds the target workspace, then starts a dependency-free Node HTTP host
-for local smoke testing:
+This builds the ADD browser game and starts its production preview locally:
 
-- Vite-built playable local browser demo is served under `/app`.
-- The local office map is rendered by Phaser 4 from `/dev/fixture-map`; the
-  asset-registry semantic catalog remains the source of truth for tile IDs.
-- Local-only dev sign-in is mounted under `/dev/sign-in`.
-- Local fixture-map data is mounted under `/dev/fixture-map`.
-- API routes are mounted under `/api`.
-- World transport routes are mounted under `/world`.
-- Media gateway routes are mounted under `/media`.
-- The host uses the same standard Fetch handlers covered by the target stack
-  verification.
-- The target verification also runs a full local app-layer smoke flow across
-  `/dev`, `/api`, `/world`, and `/media`.
-- Stop and restart `npm run dev:http` after server-side changes; the running
-  Node process keeps its loaded world/API/media modules in memory.
+- Open `http://127.0.0.1:8787/app/` for the ADD game.
+- The office browser bundle is archived and is not built or served by the
+  default command.
+- To inspect the archived office app, run `npm run office:dev:http`; it serves
+  that app at `http://127.0.0.1:8788/app`.
+- Office API, world, and media routes remain available only through that
+  opt-in archived preview. Their regression checks remain under
+  `npm run check:office`.
 
 Run the imported SkyOffice baseline verification with:
 

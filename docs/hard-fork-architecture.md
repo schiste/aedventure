@@ -3,6 +3,7 @@
 > Scope note: this target architecture is for the customer virtual-office and
 > platform lane. The live ADD game remains in `apps/add-rpg` with its own Rust
 > authoritative runtime and ADD architecture contract.
+> Archive status: this is historical office planning, not an active roadmap.
 
 ## 1. Target Runtime
 

@@ -1,5 +1,16 @@
 # Agent Workflow
 
+## Product Focus
+
+ADD in `apps/add-rpg/` is the active product and the default target for builds,
+local previews, and new feature work. The former Customer Virtual Office
+application and platform lane are archived in place for reference and opt-in
+maintenance. Do not resume office feature work unless the user explicitly asks.
+Shared engine changes need a current ADD consumer.
+
+For the archive policy and its opt-in preview commands, see
+`docs/office-platform-archive.md`.
+
 This repository has expensive browser, WASM, and renderer checks. Do not use the full target-stack gate as the default validation step for every granular commit.
 
 ## ADD Task Brief Contract

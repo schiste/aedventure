@@ -8,9 +8,8 @@ name: CI
 # exists so that class of failure is caught by the repository rather than by the
 # next person who happens to read the output.
 #
-# The two product lanes are separate jobs on purpose: an ADD change should not
-# have to wait on the office lane, and an office change should not have to wait
-# on the ADD browser smoke. `npm run check` still runs both, for release points.
+# ADD is the active product lane. The archived office app retains a separate
+# maintenance job so its preserved reference build cannot break silently.
 
 on:
   push:
@@ -86,8 +85,8 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
-  # The office/platform lane is a separate product with no path to the ADD game.
-  # It runs in parallel rather than in front of every ADD change.
+  # Archived office/platform regression coverage. This is maintenance evidence,
+  # not an active product lane or a prerequisite for ADD feature work.
   office:
     name: Office lane
     runs-on: ubuntu-latest
@@ -120,7 +119,7 @@ jobs:
         run: |
           npx playwright install --with-deps chromium
 
-      - name: Office lane gate
+      - name: Archived office maintenance gate
         run: npm run check:office
 
   # A real gate.

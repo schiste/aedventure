@@ -15,7 +15,7 @@ Migration work must preserve the current product boundary: ADD gameplay stays
 in `crates/add-core/`, authored ADD data stays in `packages/add-runtime-client/`, and
 the player-facing application stays in `apps/add-rpg/`. Shared `packages/game-*`
 work is allowed only when the live ADD app or an exercised neutral fixture has
-a concrete consumer. Office changes stay in the office/platform lane, and
+a concrete consumer. The archived office lane is outside this migration, and
 `legacy/` remains reference-only. Use the [ADD Repository Capability
 Map](add-capability-map.md) for the first verification command.
 
@@ -42,20 +42,13 @@ Phase 0 was established before code movement.
 Baseline verification commands:
 
 ```sh
-# aedventure
-npm run check
-npm run smoke:apps
-npm run qa:renderer
-
 # ADD
-cargo check
-npm run check:web
-npm run build:web
+npm run build
+npm run agent:verify:add-ui
 ```
 
-All Phase 0 baseline commands passed. The ADD web commands rebuild generated
-WASM bindings, so they require write access to the ADD repository when run from
-a sandboxed environment.
+The build produces the current ADD browser bundle. Use the ADD-focused
+verification profile after changing gameplay or its player-facing app.
 
 ## Target Repository Structure
 

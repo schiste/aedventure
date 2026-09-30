@@ -1,44 +1,16 @@
-# apps/web
+# Archived former Main app
 
-Target frontend application.
+Status: archived on 2026-09-30. ADD in `apps/add-rpg/` is the active product.
 
-Responsibilities:
+This directory preserves the former Customer Virtual Office browser app. Keep
+it available for reference and explicit maintenance requests; do not add
+product features here by default.
 
-- Render the app shell.
-- Host the Phaser world renderer.
-- Send input intents, not authoritative positions.
-- Connect to API sessions.
-- Connect to world-server state.
-- Connect to LiveKit only with server-issued tokens.
+The root `npm run build` and `npm run dev:http` commands now build and serve
+the ADD game. To build and preview this archived app with its local API,
+world-server, and media routes, use `npm run office:dev:http`; it serves at
+`http://127.0.0.1:8788/app`. The office lane's regression checks remain
+available through `npm run check:office`.
 
-The current implementation is a framework-free customer app orchestrator with a
-Phaser 4 canvas renderer:
-
-- Build the browser demo with Vite and TypeScript.
-- Render the local fixture map through Phaser tile layers from the shared visual
-  asset registry contract.
-- Generate the copyleft LPC-derived polished office atlas from semantic asset
-  token IDs while preserving the stable renderer/catalog contract.
-- Join a local user plus demo companion for movement, chat, and media-token
-  validation.
-- Request a world token from the API.
-- Join the world-server with that server-issued token.
-- Stream movement protocol intents over the fixed-tick realtime world transport
-  and keep HTTP as a fallback during local development.
-- Send chat protocol intents.
-- Apply authoritative server messages to local app state.
-- Request media-zone tokens from the media gateway.
-
-Runtime adapters are intentionally narrow:
-
-- `HttpAppApiClient` calls the API for world tokens.
-- `WorldRealtimeTransport` streams movement intents through `/world/realtime`
-  and consumes server snapshot broadcasts for reconciliation/telemetry.
-- HTTP world routes remain available for join, snapshot, leave, chat, and
-  movement fallback during local app-layer smoke testing.
-- `HttpMediaGatewayClient` calls the media gateway for LiveKit tokens.
-- A future Colyseus room should wrap the same authoritative room controller
-  rather than redefining movement rules.
-
-No role/RBAC management UI belongs here during the app-layer MVP. This app can
-use seeded or fixture-backed permissions while the server still enforces access.
+The former product scope and implementation plan are indexed in
+`docs/office-platform-archive.md`.

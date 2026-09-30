@@ -5539,9 +5539,9 @@ function observeServerMovementProtocol(message: {
 
   logMovementDebug(
     "protocol",
-    "server vector telemetry missing; stop and restart npm run dev:http",
+    "server vector telemetry missing; stop and restart npm run office:dev:http",
   )
-  publishToast("World server is outdated. Restart npm run dev:http.", "warning")
+  publishToast("World server is outdated. Restart npm run office:dev:http.", "warning")
 }
 
 function hasServerMovementTelemetry(message: {

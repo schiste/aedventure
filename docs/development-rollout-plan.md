@@ -5,6 +5,7 @@
 > product-shaped applies to the office lane only. The live ADD game is
 > documented in [ADD Canonical Architecture and Code Audit](add-canonical-architecture.md)
 > and [ADD Systems Parity Audit](add-systems-parity-audit.md).
+> Archive status: this rollout plan is historical; ADD is the active product.
 
 This document turns the product specification into an execution plan. It is the
 operational companion to the global spec and Phase 0 hard-fork plan.

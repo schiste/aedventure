@@ -67,7 +67,8 @@ worktree that is allowed to receive those outputs:
 | `npm run content:build` | Checked-in Rust catalogs and TypeScript build output | Yes, generated catalogs |
 | `npm run content:fixtures` | Checked-in ADD content fixtures and build output | Yes, generated fixtures |
 | `npm run wasm:build:add` | Ignored WASM bindings and build output | No source changes |
-| `npm run build` | WASM, TypeScript, browser bundles, and build output | No source changes |
+| `npm run build` | ADD WASM, TypeScript, and the ADD browser bundle | No source changes |
+| `npm run office:build` | Archived office browser bundle and required TypeScript | No source changes |
 | `npm run qa:add-rpg:phase5` | Browser build output and smoke artifacts | No source changes |
 | `npm run qa:add-rpg:size` | Browser build output and a size report | No source changes |
 | `npm run qa:add-rpg:trace` | A trace report under `tmp/` or `AGENT_ARTIFACT_DIR` | No source changes |

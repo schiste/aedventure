@@ -3395,3 +3395,21 @@ Original prompt: continue do the whole plan end to end, granular commits as you 
 - Inspected fresh title, cinematic, Base, Cave, Settings, travel, offline-return, mobile, and map captures. The Objective tracker remains hidden by default and is shown only by the smoke suite's explicit opt-in scenario.
 - `ADD_QA_TIMEOUT_SCALE=3 npm run check` passed after the package renderer split: gameplay and package tests, production ADD build, engine/office/ADD browser smoke, strict asset budgets, Phaser renderer QA, and infra checks. After the final Base card styling pass, `npm run agent:verify:add-ui`, ADD UI package tests, production browser build, built ADD smoke, and `npm run qa:add-rpg:size:built` all passed again. Vite still warns about the 1.94 MB JS chunk; all strict asset budgets passed. `git diff --check` is clean.
 - Follow-up boundary: C01/C13 renderer geometry remains Phaser-owned; screen-specific compositions remain in the app. No commit, merge, push, or deploy was performed.
+
+
+## 2026-09-30 — Archive the former Main app and make ADD primary
+
+- Original prompt: “I want you to archive the Main app and make ADD the main focus of our work”.
+- Identified the former Main app as the Customer Virtual Office browser app in apps/web plus its API, world, and media services. ADD was already described as the active product, but root build and dev:http still built and served the office app.
+- Kept the office code and history in place as an archive. Changed the root build and default local preview to build/serve apps/add-rpg; added separate office:build and office:dev:http commands for explicit archive inspection.
+- Updated README, AGENTS.md, the ADD capability map, office-app README, CI wording, and office planning docs to state that ADD is active and the office lane is archived. Added an archive index and an ADD task brief.
+- Verification: npm run docs:check passed, git diff --check passed, and the
+  ADD-only root npm run build completed successfully. It produced the game
+  bundle in apps/add-rpg/dist-app. No gameplay or content IDs changed.
+- npm run office:build also passed for the opt-in archive path.
+- Replaced the previous office preview on port 8800 with the ADD preview from
+  this worktree. GET /app/ returned HTTP 200 with title ADD RPG. The full
+  gate later exercised the browser interaction smoke.
+- The full pre-push ADD_QA_TIMEOUT_SCALE=3 npm run check passed, including ADD
+  browser smoke, performance and size budgets, archived office maintenance,
+  and renderer QA.

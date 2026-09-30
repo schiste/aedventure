@@ -3,6 +3,7 @@
 > Scope note: this document governs the quarantined SkyOffice reference and
 > customer virtual-office/platform maintenance only. It is not a dependency or
 > roadmap for the live ADD game.
+> Archive status: the former product is archived; consult this only for upkeep.
 
 ## 1. Import Strategy
 

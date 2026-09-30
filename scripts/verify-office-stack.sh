@@ -100,4 +100,4 @@ node "$ROOT_DIR/scripts/dev-app-loop.test.cjs"
 
 "$ROOT_DIR/scripts/verify-infra-config.sh"
 
-echo "Office lane verification passed."
+echo "Archived office maintenance verification passed."

@@ -2,9 +2,9 @@
 
 Status: checked-in operational map for the live ADD game.
 
-> Scope note: this map is for the ADD lane. The office/platform lane has its
-> own scope and verification contracts; it is not an alternate implementation
-> of the ADD game.
+> Scope note: this map routes active ADD work. The former office/platform lane
+> is archived in place; its checks are maintenance-only and it is not an
+> alternate implementation of the ADD game.
 
 This is the shortest route from a player outcome to the owning layer, content
 family, runtime state, and first verification command. Update it when a new
@@ -29,7 +29,7 @@ Run `npm run docs:check` after changing this map or the routing documents.
 | Narrative standing, acts, knowledge, rumor, sifting, or storylet casting | Rust simulation | `crates/add-core/src/narrative/` and the [narrative plan](add-narrative-system-plan.md) | `cargo test -p add-core` |
 | A narrative entity, act, relationship state, sifting pattern, storylet sidecar, or `.ink` scene | Authored ADD content | `packages/add-content/src/content/narrative-*.ts` and `packages/add-content/narrative/story/main.ink` | `npm run content:check` |
 | Neutral square/hex topology, world, input, protocol, or renderer behavior | Shared engine | `packages/game-*` and `apps/engine-sandbox/` | `npm run agent:verify:types` then the relevant engine smoke |
-| Office auth, rooms, media, tenant maps, or server policy | Office/platform lane | `apps/web/`, `apps/api/`, `apps/world-server/`, `apps/media-gateway/` | `npm run smoke:office` |
+| Historical office auth, rooms, media, tenant maps, or server policy | Archived office/platform source | `apps/web/`, `apps/api/`, `apps/world-server/`, `apps/media-gateway/` | `npm run check:office` only when explicitly maintaining the archive |
 | Historical ADD or SkyOffice comparison | Legacy reference | `legacy/add/` or `legacy/skyoffice-original/` | `npm run check:legacy` when SkyOffice is involved |
 
 Gameplay authority does not move into the browser because a UI change is

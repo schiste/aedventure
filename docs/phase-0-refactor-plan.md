@@ -2,6 +2,7 @@
 
 > Scope note: this reset plan applies to the customer virtual-office/platform
 > lane and its imported SkyOffice reference. It is not an ADD game plan.
+> Archive status: this reset plan is historical and is not scheduled work.
 
 The broader multi-phase execution plan lives in
 `docs/development-rollout-plan.md`.

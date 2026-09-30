@@ -28,7 +28,7 @@ case "$PROFILE" in
     echo "=== ADD lane ==="
     "$SCRIPT_DIR/verify-add-stack.sh"
     echo
-    echo "=== Office lane ==="
+    echo "=== Archived office maintenance ==="
     "$SCRIPT_DIR/verify-office-stack.sh"
     echo
     echo "Target stack verification passed."

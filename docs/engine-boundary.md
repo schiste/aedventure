@@ -1,8 +1,8 @@
 # Domain-Neutral Game Engine Boundary Audit
 
 > Scope note: this is a shared-engine boundary audit for the live ADD game and
-> the separate customer virtual-office/platform lane. Office planning here is
-> not the ADD roadmap; ADD remains the first live game consumer.
+> the archived customer virtual-office/platform lane. Office planning here is
+> historical; ADD is the active product and the first live game consumer.
 
 ## Purpose
 

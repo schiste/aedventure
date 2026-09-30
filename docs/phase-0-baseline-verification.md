@@ -3,6 +3,7 @@
 > Scope note: this baseline records the imported SkyOffice/customer
 > virtual-office lane before refactoring. It is a legacy-reference check, not
 > the verification baseline for the live ADD game.
+> Archive status: this office baseline is historical; ADD has its own gates.
 
 ## 1. Purpose
 
