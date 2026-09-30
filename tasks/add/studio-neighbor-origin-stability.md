@@ -42,22 +42,27 @@ the existing follow-camera movement intact.
 - Additional commands: `npm --workspace @aedventure/add-rpg run build:browser`;
   `ADD_QA_TIMEOUT_SCALE=3 AGENT_ARTIFACT_DIR=/private/tmp/aedventure-studio-neighbor-gate npm run smoke:add-rpg:built`.
 - Browser/screenshot/state evidence: run a clean browser session from the
-  Survivor Cave to `hex:1,3`, sampling the Hero, Studio anchor, and camera
-  through the exact reveal transition. The deployed local preview must be
-  rebuilt from current `main`, not served from its stale Sep 26 bundle.
+  Survivor Cave to hex:1,3. Start an in-page animation-frame observer before
+  the movement keypress so the complete slide and 350 ms after arrival are
+  sampled even while Playwright resolves the travel dialog. Check the Hero's
+  screen position, camera, Studio anchor, and destination through the reveal.
+  The local preview must be rebuilt from current main.
 
 ## Acceptance evidence (required before completion)
 
-- Scenario/replay artifact: the clean Playwright route started at the
-  Survivor Cave, followed the shortest path, and stopped after entering
-  hex:1,3. It checked the Studio world anchor at every travel sample and
-  bounded consecutive Hero screen-position changes to 90 px. The scenario
-  passed in the current-main production bundle.
-- Focused command/result artifact: npm run agent:verify:add-ui passed;
-  ADD_QA_TIMEOUT_SCALE=3 AGENT_ARTIFACT_DIR=/private/tmp/aedventure-studio-neighbor-gate
-  npm run smoke:add-rpg:built passed; the full npm run check passed with
-  CARGO_BUILD_JOBS=1 and RUSTC_WRAPPER unset after one host-killed Rust
-  compiler attempt.
+- Scenario/replay artifact: the built smoke route started at the Survivor
+  Cave, followed the shortest path, and stopped after entering the Studio-
+  adjacent hex. Its in-page animation-frame observer started before the
+  movement keypress and continued 350 ms after arrival. It sampled the Studio
+  world anchor on every frame and bounded consecutive Hero screen-position
+  changes to 90 px. The current rerun passed.
+- Focused command/result artifact: `npm run agent:verify:add-ui` passed,
+  including ADD core/scenario tests, content checks, WASM, types, and smoke
+  syntax. `ADD_QA_TIMEOUT_SCALE=3 npm run smoke:add-rpg:built` passed.
+  `RUSTC_WRAPPER= CARGO_TARGET_DIR=/private/tmp/aedventure-check-125
+  ADD_QA_TIMEOUT_SCALE=3 npm run check` passed on the current session tree,
+  including the ADD and Office lanes, browser smoke, renderer QA, and
+  infrastructure checks.
 - Player-facing evidence: visually inspected
   /private/tmp/aedventure-studio-neighbor-gate/screenshots/add-rpg-studio-adjacent-travel-smoke.png
   and the relaunched-preview replay at

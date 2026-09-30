@@ -209,22 +209,64 @@ async function dismissOpeningCinematic(page, { timeoutMs = 20000 } = {}) {
 
   const deadline = Date.now() + timeoutMs
   let clearRuns = 0
+  let skipAttempts = 0
+  let lastSkipAttempt = null
   while (Date.now() < deadline) {
     if (page.isClosed()) return
     const skip = page.locator("#cinematic-skip")
     if (await skip.count()) {
+      skipAttempts += 1
       try {
         await skip.click({ timeout: Math.min(2000, timeoutMs) })
-      } catch {
-        // The stage can finish between the count and the click.
+        lastSkipAttempt = { attempt: skipAttempts, result: "clicked" }
+      } catch (error) {
+        lastSkipAttempt = {
+          attempt: skipAttempts,
+          result: "click failed",
+          error: error instanceof Error ? error.message : String(error),
+        }
       }
     }
     clearRuns = (await page.locator("#cinematic-stage").count()) ? 0 : clearRuns + 1
     if (clearRuns >= 2) return
     await page.waitForTimeout(150)
   }
+
+  const visibleState = await page.evaluate(() => {
+    const stage = document.querySelector("#cinematic-stage")
+    const skip = document.querySelector("#cinematic-skip")
+    let game = null
+    try {
+      const raw = typeof window.render_game_to_text === "function"
+        ? window.render_game_to_text()
+        : null
+      game = typeof raw === "string" ? JSON.parse(raw) : raw
+    } catch (error) {
+      game = { inspectionError: error instanceof Error ? error.message : String(error) }
+    }
+    const skipStyle = skip ? getComputedStyle(skip) : null
+    return {
+      stagePresent: Boolean(stage),
+      stageText: stage?.innerText ?? null,
+      skipPresent: Boolean(skip),
+      skipVisible: Boolean(
+        skip &&
+        skipStyle &&
+        skipStyle.display !== "none" &&
+        skipStyle.visibility !== "hidden" &&
+        skip.getBoundingClientRect().width > 0 &&
+        skip.getBoundingClientRect().height > 0
+      ),
+      cinematics: game?.snapshot?.cinematics ?? null,
+      visibleText: document.body.innerText.slice(-1200),
+    }
+  }).catch((error) => ({
+    inspectionError: error instanceof Error ? error.message : String(error),
+  }))
+
   throw new Error(
-    "The opening cinematic never cleared; every later scenario would be blocked by it.",
+    "The opening cinematic never cleared; every later scenario would be blocked by it. " +
+      JSON.stringify({ skipAttempts, lastSkipAttempt, visibleState }, null, 2),
   )
 }
 

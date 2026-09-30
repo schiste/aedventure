@@ -2740,52 +2740,19 @@ async function assertStudioAdjacentTravelContinuity(browser, url) {
       const distanceAfter = hexDistance(parseSmokeCell(nextCell), studioCoord)
       const anchorBefore = state.map.landmarks.baseCenterWorld
       assert.ok(anchorBefore && Number.isFinite(anchorBefore.x) && Number.isFinite(anchorBefore.y))
+      const keypressStartedAt = Date.now()
+      const motionTracePromise = collectStudioAdjacentTravelMotionTrace(page, {
+        targetCell: nextCell,
+        anchorBefore,
+        timeoutMs: qaTimeout(12000),
+      })
       await pressTravelKeys(page, keyboardKeysForCellStep(fromCell, nextCell))
+      const keypressFinishedAt = Date.now()
       await resolveTravelDialogIfNeeded(page, consoleErrors)
-
-      let sawMovement = false
-      let previousScreenPoint = null
-      let arrival = null
-      let lastObservedState = state
-      const startedAt = Date.now()
-      while (Date.now() - startedAt < qaTimeout(12000)) {
-        const nextState = await renderGameToText(page)
-        lastObservedState = nextState
-        assert.deepEqual(
-          nextState.map?.landmarks?.baseCenterWorld,
-          anchorBefore,
-          "Studio world anchor moved while entering " + nextCell + " from " + fromCell + ".",
-        )
-
-        if (nextState.map?.character?.moving) {
-          sawMovement = true
-          if (distanceAfter === 1) {
-            const screenPoint = await characterScreenPoint(page, nextState)
-            if (previousScreenPoint) {
-              const jump = Math.hypot(
-                screenPoint.x - previousScreenPoint.x,
-                screenPoint.y - previousScreenPoint.y,
-              )
-              assert.ok(
-                jump <= 90,
-                "Hero/camera screen position jumped " + jump.toFixed(1) +
-                  "px while entering the Studio-adjacent hex " + nextCell + ".",
-              )
-            }
-            previousScreenPoint = screenPoint
-          }
-        } else if (
-          sawMovement &&
-          nextState.map?.character?.cell === nextCell &&
-          nextState.map?.character?.moving === false &&
-          nextState.travel?.active !== true &&
-          nextState.ui?.worldTime?.animating === false
-        ) {
-          arrival = nextState
-          break
-        }
-        await page.waitForTimeout(75)
-      }
+      const travelResolvedAt = Date.now()
+      const motionTrace = await motionTracePromise
+      const sawMovement = motionTrace.sawMovement
+      const arrival = motionTrace.arrival
 
       if (!sawMovement) {
         const screenshotPath = path.join(
@@ -2800,11 +2767,18 @@ async function assertStudioAdjacentTravelContinuity(browser, url) {
           nextCell,
           distanceBefore,
           distanceAfter,
-          hero: lastObservedState.map?.character,
-          travel: lastObservedState.travel,
-          currentAction: lastObservedState.shell?.currentAction,
-          mapCamera: lastObservedState.map?.camera,
-          worldTime: lastObservedState.ui?.worldTime,
+          movementTiming: {
+            keypressToTravelResolutionMs: travelResolvedAt - keypressStartedAt,
+            keypressDurationMs: keypressFinishedAt - keypressStartedAt,
+            observerDurationMs: motionTrace.elapsedMs,
+            sampleCount: motionTrace.samples.length,
+            samples: motionTrace.samples,
+          },
+          hero: motionTrace.finalState?.map?.character,
+          travel: motionTrace.finalState?.travel,
+          currentAction: motionTrace.finalState?.shell?.currentAction,
+          mapCamera: motionTrace.finalState?.map?.camera,
+          worldTime: motionTrace.finalState?.ui?.worldTime,
           visibleText,
           consoleErrors,
           screenshotPath,
@@ -2814,7 +2788,31 @@ async function assertStudioAdjacentTravelContinuity(browser, url) {
             ". Last observed browser state: " + JSON.stringify(observed, null, 2),
         )
       }
+
       assert.ok(arrival, "Hero did not settle on " + nextCell + ".")
+      assert.equal(
+        motionTrace.anchorStable,
+        true,
+        "Studio world anchor moved while entering " + nextCell + " from " + fromCell +
+          ": " + JSON.stringify(motionTrace.anchorObservations),
+      )
+      const screenSamples = motionTrace.samples.filter(
+        (sample) => Number.isFinite(sample.screenX) && Number.isFinite(sample.screenY),
+      )
+      for (let index = 1; index < screenSamples.length; index += 1) {
+        const previous = screenSamples[index - 1]
+        const current = screenSamples[index]
+        const elapsedMs = current.elapsedMs - previous.elapsedMs
+        if (elapsedMs > 350) continue
+        const jump = Math.hypot(current.screenX - previous.screenX, current.screenY - previous.screenY)
+        assert.ok(
+          jump <= 90,
+          "Hero/camera screen position jumped " + jump.toFixed(1) +
+            "px in " + elapsedMs.toFixed(1) +
+            "ms while entering the Studio-adjacent hex " + nextCell + ". Trace: " +
+            JSON.stringify(screenSamples),
+        )
+      }
       assert.equal(arrival.map.character.cell, nextCell)
       assert.equal(arrival.map.character.moving, false)
       state = arrival
@@ -2837,6 +2835,133 @@ async function assertStudioAdjacentTravelContinuity(browser, url) {
   } finally {
     await page.close()
   }
+}
+
+async function collectStudioAdjacentTravelMotionTrace(
+  page,
+  { targetCell, anchorBefore, timeoutMs },
+) {
+  return page.evaluate(
+    ({ targetCell, anchorBefore, timeoutMs }) =>
+      new Promise((resolve) => {
+        const startedAt = performance.now()
+        const samples = []
+        const anchorObservations = []
+        let sawMovement = false
+        let arrival = null
+        let arrivalObservedAt = null
+        let finalState = null
+        let sampleError = null
+
+        const finish = () => {
+          resolve({
+            sawMovement,
+            arrival,
+            anchorStable:
+              anchorObservations.length > 0 &&
+              anchorObservations.every(
+                (anchor) => anchor && anchor.x === anchorBefore.x && anchor.y === anchorBefore.y,
+              ),
+            anchorObservations,
+            samples,
+            elapsedMs: performance.now() - startedAt,
+            finalState,
+            sampleError,
+          })
+        }
+
+        const sampleFrame = () => {
+          const elapsedMs = performance.now() - startedAt
+          try {
+            if (typeof window.render_game_to_text !== "function") {
+              throw new Error("render_game_to_text is not installed")
+            }
+            const state = JSON.parse(window.render_game_to_text())
+            finalState = state
+            const map = state.map
+            const character = map?.character
+            const travel = state.travel
+            const anchor = map?.landmarks?.baseCenterWorld
+            if (anchor) anchorObservations.push(anchor)
+
+            if (character) {
+              if (character.moving === true) sawMovement = true
+              const canvas = document.querySelector("#add-world canvas")
+              const bounds = canvas?.getBoundingClientRect()
+              const camera = map?.camera
+              const screenX =
+                bounds && camera && Number.isFinite(character.x) && Number.isFinite(camera.scrollX)
+                  ? bounds.left + (character.x - camera.scrollX) * camera.zoom
+                  : null
+              const screenY =
+                bounds && camera && Number.isFinite(character.y) && Number.isFinite(camera.scrollY)
+                  ? bounds.top + (character.y - camera.scrollY) * camera.zoom
+                  : null
+              if (
+                sawMovement ||
+                travel?.active === true ||
+                character.moving === true ||
+                arrival !== null
+              ) {
+                samples.push({
+                  elapsedMs,
+                  cell: character.cell,
+                  moving: character.moving,
+                  x: character.x,
+                  y: character.y,
+                  screenX,
+                  screenY,
+                  camera: map?.camera ?? null,
+                  mapId: map?.mapId ?? null,
+                  renderCount: map?.renderCount ?? null,
+                  travelActive: travel?.active ?? null,
+                  travelPhase: travel?.phase ?? null,
+                  worldTimeAnimating: state.ui?.worldTime?.animating ?? null,
+                })
+              }
+
+              const hasArrived =
+                sawMovement &&
+                character.cell === targetCell &&
+                character.moving === false &&
+                travel?.active !== true &&
+                state.ui?.worldTime?.animating === false
+              if (hasArrived && arrival === null) {
+                arrival = {
+                  map: {
+                    character: { ...character },
+                    landmarks: {
+                      baseCenterWorld: anchor ? { ...anchor } : null,
+                    },
+                    camera: map?.camera ? { ...map.camera } : null,
+                    mapId: map?.mapId ?? null,
+                    renderCount: map?.renderCount ?? null,
+                  },
+                  travel: travel ? { ...travel } : null,
+                  ui: { worldTime: { ...state.ui?.worldTime } },
+                }
+                arrivalObservedAt = elapsedMs
+              }
+            }
+          } catch (error) {
+            sampleError = error instanceof Error ? error.message : String(error)
+          }
+
+          if (arrivalObservedAt !== null && elapsedMs - arrivalObservedAt >= 350) {
+            finish()
+            return
+          }
+          if (elapsedMs >= timeoutMs) {
+            finish()
+            return
+          }
+          requestAnimationFrame(sampleFrame)
+        }
+
+        requestAnimationFrame(sampleFrame)
+      }),
+    { targetCell, anchorBefore, timeoutMs },
+  )
 }
 
 function assertInitialDiscoveryAnchors(state) {
@@ -4569,9 +4694,11 @@ async function exerciseMainCharacterMovement(page, consoleErrors) {
   const minimumArrivalClockSeconds = before.snapshot.clockSeconds + 59
   const observedTravelClockTimes = new Set()
   const observedTravelRevealProgress = new Set()
+  const observedTravelArrivalTimes = new Set()
   await assertTravelRevealPreview(page, consoleErrors, {
     observedTravelClockTimes,
     observedTravelRevealProgress,
+    observedTravelArrivalTimes,
   })
   const moved = await waitForTextState(
     page,
@@ -4582,6 +4709,7 @@ async function exerciseMainCharacterMovement(page, consoleErrors) {
       if (state.map?.visibility?.travelRevealPreviewActive) {
         observedTravelRevealProgress.add(state.map.visibility.travelRevealPreviewProgress)
       }
+      if (state.travel?.toTime) observedTravelArrivalTimes.add(state.travel.toTime)
       const presentationClockSeconds =
         state.ui?.worldTime?.presentationClockSeconds ?? state.snapshot?.clockSeconds ?? 0
       const authoritativeClockSeconds =
@@ -4628,7 +4756,10 @@ async function exerciseMainCharacterMovement(page, consoleErrors) {
     ) < 0.01,
     "Travel duration should be derived from the visible minute cadence.",
   )
-  assert.ok(moved.travel.toTime, "Travel should expose an arrival time")
+  assert.ok(
+    observedTravelArrivalTimes.size > 0,
+    "Travel should expose an arrival time while the crossing is active.",
+  )
   assert.ok(moved.travel.exposureRisk, "Travel should expose an exposure risk")
   assert.equal(moved.map.interaction.lastInput, "keyboard")
   assert.equal(moved.map.interaction.activeSource, "selection")
@@ -5112,7 +5243,11 @@ async function assertNonBlankFogMapScreenshot(page, state) {
 }
 
 async function assertTravelRevealPreview(page, consoleErrors, observations = {}) {
-  const { observedTravelClockTimes, observedTravelRevealProgress } = observations
+  const {
+    observedTravelClockTimes,
+    observedTravelRevealProgress,
+    observedTravelArrivalTimes,
+  } = observations
   const state = await waitForTextState(
     page,
     (candidate) => {
@@ -5120,6 +5255,7 @@ async function assertTravelRevealPreview(page, consoleErrors, observations = {})
         candidate,
         observedTravelClockTimes,
         observedTravelRevealProgress,
+        observedTravelArrivalTimes,
       )
       return (
         candidate.map?.character?.moving === true &&
@@ -5137,6 +5273,7 @@ async function assertTravelRevealPreview(page, consoleErrors, observations = {})
     page,
     observedTravelClockTimes,
     observedTravelRevealProgress,
+    observedTravelArrivalTimes,
   )
   await assertNonBlankNamedMapScreenshot(
     page,
@@ -5150,14 +5287,20 @@ async function collectTravelAnimationObservations(
   page,
   observedTravelClockTimes,
   observedTravelRevealProgress,
+  observedTravelArrivalTimes,
 ) {
-  if (!observedTravelClockTimes && !observedTravelRevealProgress) return
+  if (
+    !observedTravelClockTimes &&
+    !observedTravelRevealProgress &&
+    !observedTravelArrivalTimes
+  ) return
   for (let sample = 0; sample < 5; sample += 1) {
     await page.waitForTimeout(80)
     collectTravelAnimationObservation(
       await renderGameToText(page),
       observedTravelClockTimes,
       observedTravelRevealProgress,
+      observedTravelArrivalTimes,
     )
   }
 }
@@ -5166,6 +5309,7 @@ function collectTravelAnimationObservation(
   state,
   observedTravelClockTimes,
   observedTravelRevealProgress,
+  observedTravelArrivalTimes,
 ) {
   if (state.ui?.worldTime?.animating && state.ui.worldTime.localTime) {
     observedTravelClockTimes?.add(state.ui.worldTime.localTime)
@@ -5173,6 +5317,7 @@ function collectTravelAnimationObservation(
   if (state.map?.visibility?.travelRevealPreviewActive) {
     observedTravelRevealProgress?.add(state.map.visibility.travelRevealPreviewProgress)
   }
+  if (state.travel?.toTime) observedTravelArrivalTimes?.add(state.travel.toTime)
 }
 
 async function assertNonBlankNamedMapScreenshot(page, filename, label) {

@@ -50,6 +50,9 @@ const CONTRACT = {
 }
 
 /** Stands in for a Playwright Locator: blank for `blankFrames`, then painted. */
+const BLANK_FRAME = flatPng(400, 300, 12)
+const PAINTED_FRAME = variedPng(400, 300)
+
 function fakeTarget(blankFrames) {
   let calls = 0
   return {
@@ -58,7 +61,7 @@ function fakeTarget(blankFrames) {
     },
     async screenshot({ path: target }) {
       calls += 1
-      const buffer = calls <= blankFrames ? flatPng(400, 300, 12) : variedPng(400, 300)
+      const buffer = calls <= blankFrames ? BLANK_FRAME : PAINTED_FRAME
       fs.writeFileSync(target, buffer)
       return buffer
     },
