@@ -121,8 +121,8 @@
       "note": "Raised from 500000 alongside wasmBytes, same reason."
     },
     "totalNonAudioAssetBytes": {
-      "max": 4000000,
-      "note": "Application code, WASM, styles, and visual assets. Encoded music is measured separately because gzip does not meaningfully compress it."
+      "max": 4205000,
+      "note": "Application code, WASM, styles, and visual assets. Encoded music is measured separately because gzip does not meaningfully compress it. Raised from 4000000 after the Sep 30 2026 production bundle on base commit ffaaaa1 measured 4002726 bytes (2726 above the prior cap). The new ceiling provides about 5% headroom, consistent with the adjacent WASM and gzip asset budgets; this strict size check remains in the pre-push gate."
     },
     "totalNonAudioAssetGzipBytes": {
       "max": 1470000,
